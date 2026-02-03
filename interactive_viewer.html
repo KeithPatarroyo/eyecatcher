@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Eyecatcher - Interactive Evolution</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        #header {
+            background: #1a1a1a;
+            padding: 20px;
+            border-bottom: 2px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        
+        #controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #0052a3;
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            background: #333;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #breed-btn {
+            background: #28a745;
+        }
+        
+        #breed-btn:hover {
+            background: #218838;
+        }
+        
+        #stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #888;
+        }
+        
+        .stat {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .stat-value {
+            color: #0066cc;
+            font-weight: bold;
+        }
+        
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        
+        .pattern-card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+            position: relative;
+        }
+        
+        .pattern-card:hover {
+            transform: scale(1.02);
+            border-color: #0066cc;
+        }
+        
+        .pattern-card.selected {
+            border-color: #28a745;
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.5);
+        }
+        
+        .pattern-canvas {
+            width: 100%;
+            height: 300px;
+            display: block;
+            background: #000;
+        }
+        
+        .pattern-info {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .pattern-meta {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .click-count {
+            background: #28a745;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .click-count.zero {
+            background: #333;
+        }
+        
+        .save-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+        
+        .pattern-card:hover .save-btn {
+            opacity: 1;
+        }
+        
+        .save-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: #0066cc;
+        }
+        
+        #instructions {
+            background: #1a1a1a;
+            padding: 15px 20px;
+            margin: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #0066cc;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #0066cc;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🎨 Eyecatcher - Interactive Evolution</h1>
+        <div id="controls">
+            <button id="breed-btn" disabled>Continue Generation</button>
+            <button id="reset-btn">Reset Population</button>
+            <div id="stats">
+                <div class="stat">
+                    <span>Generation:</span>
+                    <span class="stat-value" id="gen-num">0</span>
+                </div>
+                <div class="stat">
+                    <span>Selected:</span>
+                    <span class="stat-value" id="selected-count">0</span>
+                </div>
+                <div class="stat">
+                    <span>Total Clicks:</span>
+                    <span class="stat-value" id="total-clicks">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        <strong>How to use:</strong> Click on patterns you like. The more you click, the higher their fitness. 
+        When you're happy with your selection, click "Continue Generation" to breed the next generation from your favorites.
+        Patterns with green borders are selected. Hover over a pattern and click "Save" to keep it.
+    </div>
+    
+    <div id="grid"></div>
+    
+    <div id="loading" style="display: none;">
+        <div class="spinner"></div>
+        <div style="text-align: center; margin-top: 10px;">Loading patterns...</div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let currentPopulation = [];
+        let animationTime = 0;
+        let animating = true;
+        
+        // WebGL setup for each canvas
+        const patterns = new Map();
+        
+        function createWebGLContext(canvas) {
+            const gl = canvas.getContext('webgl2');
+            if (!gl) {
+                console.error('WebGL 2 not supported');
+                return null;
+            }
+            return gl;
+        }
+        
+        function compileShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            
+            return shader;
+        }
+        
+        function createProgram(gl, vertexSource, fragmentSource) {
+            const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
+            const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+            
+            if (!vertexShader || !fragmentShader) return null;
+            
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program linking error:', gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                return null;
+            }
+            
+            return program;
+        }
+        
+        const vertexShaderSource = `#version 300 es
+            in vec2 position;
+            out vec2 vUV;
+            
+            void main() {
+                vUV = position * 0.5 + 0.5;
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `;
+        
+        function setupPattern(canvas, shaderCode) {
+            const gl = createWebGLContext(canvas);
+            if (!gl) return null;
+            
+            const program = createProgram(gl, vertexShaderSource, shaderCode);
+            if (!program) return null;
+            
+            // Setup geometry
+            const positions = new Float32Array([
+                -1, -1,
+                 1, -1,
+                -1,  1,
+                 1,  1,
+            ]);
+            
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+            
+            return { gl, program, positionBuffer };
+        }
+        
+        function renderPattern(patternData, time) {
+            const { gl, program, positionBuffer } = patternData;
+            
+            gl.useProgram(program);
+            
+            // Set time uniform
+            const timeLocation = gl.getUniformLocation(program, 'uTime');
+            gl.uniform1f(timeLocation, time);
+            
+            // Setup attributes
+            const positionLocation = gl.getAttribLocation(program, 'position');
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.enableVertexAttribArray(positionLocation);
+            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+            
+            // Draw
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
+        
+        async function loadPopulation() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('grid').innerHTML = '';
+            patterns.clear();
+            
+            try {
+                const response = await fetch(`${API_URL}/population`);
+                const data = await response.json();
+                
+                currentPopulation = data.population;
+                document.getElementById('gen-num').textContent = data.generation;
+                
+                // Create pattern cards
+                const grid = document.getElementById('grid');
+                
+                for (const pattern of currentPopulation) {
+                    const card = document.createElement('div');
+                    card.className = 'pattern-card';
+                    card.dataset.id = pattern.id;
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.className = 'pattern-canvas';
+                    canvas.width = 512;
+                    canvas.height = 512;
+                    
+                    const info = document.createElement('div');
+                    info.className = 'pattern-info';
+                    info.innerHTML = `
+                        <div class="pattern-meta">
+                            ID: ${pattern.id} | Nodes: ${pattern.nodes} | Connections: ${pattern.connections}
+                        </div>
+                        <div class="click-count ${pattern.clicks === 0 ? 'zero' : ''}">${pattern.clicks}</div>
+                    `;
+                    
+                    const saveBtn = document.createElement('button');
+                    saveBtn.className = 'save-btn';
+                    saveBtn.textContent = '💾 Save';
+                    saveBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        savePattern(pattern.id);
+                    };
+                    
+                    card.appendChild(canvas);
+                    card.appendChild(info);
+                    card.appendChild(saveBtn);
+                    grid.appendChild(card);
+                    
+                    // Setup WebGL
+                    const patternData = setupPattern(canvas, pattern.shader);
+                    if (patternData) {
+                        patterns.set(pattern.id, { canvas, ...patternData, clicks: pattern.clicks });
+                    }
+                    
+                    // Click handler
+                    card.addEventListener('click', () => clickPattern(pattern.id, card));
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error loading population:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div style="color: #dc3545;">Error: ${error.message}</div>
+                    <div style="margin-top: 10px; font-size: 14px;">Make sure the server is running: python server.py</div>
+                `;
+            }
+        }
+        
+        async function clickPattern(id, card) {
+            try {
+                const response = await fetch(`${API_URL}/click`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                
+                const data = await response.json();
+                
+                // Update UI
+                const clickCount = card.querySelector('.click-count');
+                clickCount.textContent = data.clicks;
+                clickCount.classList.remove('zero');
+                card.classList.add('selected');
+                
+                // Update pattern data
+                const pattern = patterns.get(id);
+                if (pattern) {
+                    pattern.clicks = data.clicks;
+                }
+                
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error recording click:', error);
+            }
+        }
+        
+        async function breedGeneration() {
+            document.getElementById('breed-btn').disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_URL}/breed`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+                
+                console.log(`Bred generation ${data.generation} from ${data.parents_selected} parents`);
+                
+                // Load new population
+                await loadPopulation();
+                
+            } catch (error) {
+                console.error('Error breeding:', error);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        async function resetPopulation() {
+            if (!confirm('Reset and create new random population?')) return;
+            
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                await fetch(`${API_URL}/init`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ size: 12 })
+                });
+                
+                await loadPopulation();
+                
+            } catch (error) {
+                console.error('Error resetting:', error);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        async function savePattern(id) {
+            try {
+                const response = await fetch(`${API_URL}/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                
+                const data = await response.json();
+                alert(`Saved!\nShader: ${data.shader_path}\nImage: ${data.image_path}`);
+                
+            } catch (error) {
+                console.error('Error saving:', error);
+                alert('Error saving pattern');
+            }
+        }
+        
+        function updateStats() {
+            const selected = Array.from(patterns.values()).filter(p => p.clicks > 0).length;
+            const totalClicks = Array.from(patterns.values()).reduce((sum, p) => sum + p.clicks, 0);
+            
+            document.getElementById('selected-count').textContent = selected;
+            document.getElementById('total-clicks').textContent = totalClicks;
+            
+            // Enable breed button if at least one pattern selected
+            document.getElementById('breed-btn').disabled = selected === 0;
+        }
+        
+        // Animation loop
+        function animate() {
+            if (animating) {
+                animationTime = (animationTime + 0.005) % 1.0;
+                
+                patterns.forEach((patternData) => {
+                    renderPattern(patternData, animationTime);
+                });
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Event listeners
+        document.getElementById('breed-btn').addEventListener('click', breedGeneration);
+        document.getElementById('reset-btn').addEventListener('click', resetPopulation);
+        
+        // Initialize
+        loadPopulation();
+        animate();
+        
+        console.log('🎨 Eyecatcher Interactive Evolution ready!');
+    </script>
+</body>
+</html>

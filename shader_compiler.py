@@ -1,0 +1,290 @@
+"""
+CPPN to GLSL Shader Compiler.
+Converts NEAT genomes into GPU-executable shader code.
+"""
+import neat
+from typing import Dict, List, Set, Tuple
+import json
+
+
+class ShaderCompiler:
+    """
+    Compiles CPPN networks into GLSL fragment shader code.
+    The shader can then be executed on GPU for real-time rendering.
+    """
+    
+    # Map NEAT activation functions to GLSL
+    ACTIVATION_FUNCTIONS = {
+        'sigmoid': 'sigmoid',
+        'tanh': 'tanh',
+        'sin': 'sin',
+        'cos': 'cos',
+        'gauss': 'gauss',
+        'relu': 'relu',
+        'abs': 'abs',
+        'square': 'square',
+        'cube': 'cube',
+        'identity': 'identity',
+        'clamped': 'clamped',
+        'exp': 'exp',
+        'hat': 'hat',
+        'inv': 'inv',
+        'log': 'log',
+    }
+    
+    def __init__(self):
+        self.node_order: List[int] = []
+        self.node_code: Dict[int, str] = {}
+        
+    def compile_to_glsl(self, genome: neat.DefaultGenome, config: neat.Config) -> str:
+        """
+        Compile a CPPN genome into GLSL shader code.
+        
+        Args:
+            genome: NEAT genome to compile
+            config: NEAT configuration
+            
+        Returns:
+            Complete GLSL fragment shader code as string
+        """
+        # Analyze network topology
+        connections = self._get_enabled_connections(genome)
+        nodes = self._topological_sort(genome, connections, config)
+        
+        # Generate node computation code
+        node_computations = self._generate_node_code(genome, connections, nodes, config)
+        
+        # Build complete shader
+        shader = self._build_shader_template(node_computations, config)
+        
+        return shader
+    
+    def _get_enabled_connections(self, genome: neat.DefaultGenome) -> List[Tuple]:
+        """Get all enabled connections in the genome."""
+        return [(c.key[0], c.key[1], c.weight) 
+                for c in genome.connections.values() if c.enabled]
+    
+    def _topological_sort(self, 
+                         genome: neat.DefaultGenome, 
+                         connections: List[Tuple],
+                         config: neat.Config) -> List[int]:
+        """
+        Topologically sort nodes for correct evaluation order.
+        
+        Returns:
+            List of node IDs in evaluation order
+        """
+        # Build adjacency list
+        in_degree = {}
+        adjacency = {}
+        all_nodes = set()
+        
+        # Initialize with input nodes (IDs 0-4: x, y, distance, time, bias)
+        num_inputs = config.genome_config.num_inputs
+        input_nodes = list(range(-num_inputs, 0))
+        
+        # Output nodes (IDs starting from 0: R, G, B)
+        num_outputs = config.genome_config.num_outputs
+        output_nodes = list(range(num_outputs))
+        
+        all_nodes.update(input_nodes)
+        all_nodes.update(output_nodes)
+        all_nodes.update(genome.nodes.keys())
+        
+        # Initialize in-degree and adjacency
+        for node in all_nodes:
+            in_degree[node] = 0
+            adjacency[node] = []
+        
+        # Build graph from connections
+        for src, dst, weight in connections:
+            adjacency[src].append(dst)
+            in_degree[dst] += 1
+            all_nodes.add(src)
+            all_nodes.add(dst)
+        
+        # Topological sort using Kahn's algorithm
+        queue = [node for node in all_nodes if in_degree[node] == 0]
+        sorted_nodes = []
+        
+        while queue:
+            node = queue.pop(0)
+            sorted_nodes.append(node)
+            
+            for neighbor in adjacency.get(node, []):
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+        
+        return sorted_nodes
+    
+    def _generate_node_code(self,
+                           genome: neat.DefaultGenome,
+                           connections: List[Tuple],
+                           nodes: List[int],
+                           config: neat.Config) -> str:
+        """Generate GLSL code for all node computations."""
+        
+        # Build connection map: node_id -> [(input_node, weight), ...]
+        node_inputs = {}
+        for src, dst, weight in connections:
+            if dst not in node_inputs:
+                node_inputs[dst] = []
+            node_inputs[dst].append((src, weight))
+        
+        code_lines = []
+        
+        # Input nodes are already defined as vX, vY, vDist, vTime, vBias
+        input_names = {
+            -5: 'vX',
+            -4: 'vY', 
+            -3: 'vDist',
+            -2: 'vTime',
+            -1: 'vBias'
+        }
+        
+        node_vars = input_names.copy()
+        
+        # Generate code for each node
+        for node_id in nodes:
+            # Skip input nodes (already defined)
+            if node_id in input_names:
+                continue
+            
+            # Get node configuration
+            if node_id in genome.nodes:
+                node = genome.nodes[node_id]
+                activation = node.activation
+                bias = node.bias
+                response = node.response
+            else:
+                # Output nodes use defaults
+                activation = 'identity'
+                bias = 0.0
+                response = 1.0
+            
+            # Generate variable name
+            var_name = f"node_{node_id}" if node_id >= config.genome_config.num_outputs else f"output_{node_id}"
+            node_vars[node_id] = var_name
+            
+            # Compute weighted sum of inputs
+            if node_id in node_inputs:
+                input_terms = []
+                for src_id, weight in node_inputs[node_id]:
+                    src_var = node_vars.get(src_id, f"node_{src_id}")
+                    input_terms.append(f"{src_var} * {weight:.6f}")
+                
+                weighted_sum = " + ".join(input_terms)
+                if bias != 0.0:
+                    weighted_sum += f" + {bias:.6f}"
+                
+                # Apply activation function
+                activation_func = self.ACTIVATION_FUNCTIONS.get(activation, 'identity')
+                
+                if response != 1.0:
+                    code_lines.append(f"    float {var_name} = {activation_func}(({weighted_sum}) * {response:.6f});")
+                else:
+                    code_lines.append(f"    float {var_name} = {activation_func}({weighted_sum});")
+            else:
+                # Node with no inputs
+                code_lines.append(f"    float {var_name} = {bias:.6f};")
+        
+        return "\n".join(code_lines)
+    
+    def _build_shader_template(self, node_code: str, config: neat.Config) -> str:
+        """Build the complete GLSL shader with node computations."""
+        
+        shader = f"""#version 300 es
+precision highp float;
+
+// Inputs from vertex shader
+in vec2 vUV;  // UV coordinates (0-1)
+uniform float uTime;  // Time uniform (0-1)
+
+// Output color
+out vec4 fragColor;
+
+// Activation functions
+float sigmoid(float x) {{
+    return 1.0 / (1.0 + exp(-x));
+}}
+
+float gauss(float x) {{
+    return exp(-x * x);
+}}
+
+float relu(float x) {{
+    return max(0.0, x);
+}}
+
+float square(float x) {{
+    return x * x;
+}}
+
+float cube(float x) {{
+    return x * x * x;
+}}
+
+float identity(float x) {{
+    return x;
+}}
+
+float clamped(float x) {{
+    return clamp(x, -1.0, 1.0);
+}}
+
+float hat(float x) {{
+    return max(0.0, 1.0 - abs(x));
+}}
+
+float inv(float x) {{
+    if (abs(x) < 0.001) return 0.0;
+    return 1.0 / x;
+}}
+
+void main() {{
+    // Convert UV to CPPN coordinate space (-1 to 1)
+    float vX = vUV.x * 2.0 - 1.0;
+    float vY = vUV.y * 2.0 - 1.0;
+    float vDist = sqrt(vX * vX + vY * vY);
+    float vTime = uTime * 2.0 - 1.0;
+    float vBias = 1.0;
+    
+    // Network computations
+{node_code}
+    
+    // Output RGB (clamp to 0-1)
+    float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
+    float g = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);
+    float b = clamp((output_2 + 1.0) * 0.5, 0.0, 1.0);
+    
+    fragColor = vec4(r, g, b, 1.0);
+}}
+"""
+        return shader
+    
+    def export_shader_bundle(self, 
+                            genome: neat.DefaultGenome, 
+                            config: neat.Config,
+                            filepath: str):
+        """
+        Export shader code and metadata as a JSON bundle.
+        
+        Args:
+            genome: NEAT genome
+            config: NEAT configuration
+            filepath: Output file path
+        """
+        shader_code = self.compile_to_glsl(genome, config)
+        
+        bundle = {
+            "shader": shader_code,
+            "metadata": {
+                "num_nodes": len(genome.nodes),
+                "num_connections": len([c for c in genome.connections.values() if c.enabled]),
+                "fitness": getattr(genome, 'fitness', None)
+            }
+        }
+        
+        with open(filepath, 'w') as f:
+            json.dump(bundle, f, indent=2)
