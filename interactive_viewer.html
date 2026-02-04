@@ -286,6 +286,46 @@
         .signal-derived input:not(:checked) + label {
             color: #555;
         }
+        
+        #time-mode-controls {
+            background: #1a1a1a;
+            padding: 12px 20px;
+            margin: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+        
+        .time-mode-radios {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .time-mode-radio {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .time-mode-radio input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #0066cc;
+        }
+        
+        .time-mode-radio label {
+            cursor: pointer;
+            color: #ccc;
+            font-size: 13px;
+        }
+        
+        .time-mode-radio input:checked + label {
+            color: #0066cc;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -317,13 +357,31 @@
         Patterns with green borders are selected. Hover over a pattern and click "Save" to keep it.
     </div>
     
+    <div id="time-mode-controls">
+        <div class="signal-group-title">Raw Time Source (Time Mode) <span class="signal-hint">(→ Time Signal CPPN modifies it)</span></div>
+        <div class="time-mode-radios">
+            <div class="time-mode-radio">
+                <input type="radio" id="time-mode-loop" name="timeMode" value="loop">
+                <label for="time-mode-loop">Loop <span class="signal-hint">(sawtooth)</span></label>
+            </div>
+            <div class="time-mode-radio">
+                <input type="radio" id="time-mode-oscillate" name="timeMode" value="oscillate" checked>
+                <label for="time-mode-oscillate">Oscillate <span class="signal-hint">(sine wave)</span></label>
+            </div>
+            <div class="time-mode-radio">
+                <input type="radio" id="time-mode-infinite" name="timeMode" value="infinite">
+                <label for="time-mode-infinite">Infinite <span class="signal-hint">(linear)</span></label>
+            </div>
+        </div>
+    </div>
+    
     <div id="signal-controls">
         <div class="signal-group">
             <div class="signal-group-title">Time Signal CPPN Inputs</div>
             <div class="signal-checkboxes">
                 <div class="signal-checkbox">
                     <input type="checkbox" id="time-rawTime" checked>
-                    <label for="time-rawTime">Raw Time <span class="signal-hint">(0→1 cycle)</span></label>
+                    <label for="time-rawTime">Raw Time <span class="signal-hint">(from Time Mode above)</span></label>
                 </div>
                 <div class="signal-checkbox">
                     <input type="checkbox" id="time-mouseSpeed" checked>
@@ -380,7 +438,11 @@
             : 'http://localhost:5001/api';
         let currentPopulation = [];
         let animationTime = 0;
+        let oscillatePhase = 0;  // For oscillate mode: phase of sine wave
         let animating = true;
+        
+        // Time mode configuration
+        const ANIMATION_SPEED = 0.005;  // Time increment per frame (0.001 = slow, 0.01 = fast)
         
         // Signal enable states (which inputs are fed to the CPPNs)
         const signalState = {
@@ -400,7 +462,7 @@
         
         // Wire up signal checkboxes
         function initSignalControls() {
-            // Time CPPN signals
+            // Time CPPN signals (including rawTime)
             ['rawTime', 'mouseSpeed', 'mouseDist', 'inactivity'].forEach(sig => {
                 const checkbox = document.getElementById(`time-${sig}`);
                 if (checkbox) {
@@ -563,6 +625,7 @@
             gl.uniform1f(gl.getUniformLocation(program, 'uInactivity'), inact);
             
             // Set time CPPN signal enable uniforms
+            // Raw Time can be enabled/disabled via checkbox (disabled when time mode is "none")
             gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableRawTime'), 
                 signalState.time.rawTime ? 1.0 : 0.0);
             gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableMouseSpeed'), 
@@ -821,7 +884,46 @@
         // Animation loop
         function animate() {
             if (animating) {
-                animationTime = (animationTime + 0.005) % 1.0;
+                // Get selected time mode (default to 'oscillate')
+                const timeMode = document.querySelector('input[name="timeMode"]:checked')?.value || 'oscillate';
+                
+                // Update time based on mode
+                // Time mode generates BASE time (0-1), which Time Signal CPPN will then modify
+                // If mode is "none", time stays at 0 (no automatic animation)
+                switch (timeMode) {
+                    case 'loop':
+                        // Sawtooth: 0 -> 1 -> 0 -> 1 (sharp loop/wrap around)
+                        // This creates a linear ramp that resets to 0
+                        animationTime = (animationTime + ANIMATION_SPEED) % 1.0;
+                        break;
+                    
+                    case 'oscillate':
+                        // Smooth sine wave: 0 -> 1 -> 0 -> 1 (smooth breathing)
+                        // This creates a smooth oscillation
+                        oscillatePhase += ANIMATION_SPEED;
+                        // Map sine wave to 0-1 range
+                        // sin(phase) goes from -1 to 1, we map it to 0 to 1
+                        animationTime = (Math.sin(oscillatePhase * Math.PI * 2) + 1) * 0.5;
+                        break;
+                    
+                    case 'infinite':
+                        // Linear: keeps increasing forever (truly infinite, no wrapping)
+                        // Time grows unbounded - shader can handle values > 1.0
+                        animationTime += ANIMATION_SPEED;
+                        // No wrapping - let it grow infinitely
+                        break;
+                    
+                    default:
+                        console.error('Unknown TIME_MODE:', timeMode);
+                        animationTime = (animationTime + ANIMATION_SPEED) % 1.0;
+                }
+                
+                // Prepare time for shader
+                // For loop/oscillate: time is already 0-1
+                // For infinite: time can be > 1.0 (truly infinite growth)
+                // Shader converts uTime to -1 to 1 range, so values > 1.0 become > 1.0 in that range
+                // This BASE time will be modified by Time Signal CPPN (if Raw Time is enabled)
+                const normalizedTime = animationTime;
                 
                 // Decay mouse speed when not moving
                 mouseSpeed *= MOUSE_SPEED_DECAY;
@@ -832,17 +934,27 @@
                 patterns.forEach((patternData) => {
                     // Compute distance from mouse to this pattern's canvas center
                     const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
-                    renderPattern(patternData, animationTime, mouseSpeed, mouseDist, activity);
+                    // Pass normalized time (0-1) to shader
+                    renderPattern(patternData, normalizedTime, mouseSpeed, mouseDist, activity);
                 });
                 
                 // Update debug overlay
                 EyecatcherDebug.update({
-                    time: animationTime,
+                    time: normalizedTime,
                     mouseSpeed: mouseSpeed,
                     activity: activity,
                     mouseX: mouseX,
                     mouseY: mouseY
                 });
+                
+                // Debug: Log time mode changes (only once per mode change)
+                if (typeof animate.lastTimeMode === 'undefined') {
+                    animate.lastTimeMode = timeMode;
+                }
+                if (animate.lastTimeMode !== timeMode) {
+                    console.log(`⏱️ Time mode changed: ${animate.lastTimeMode} → ${timeMode}`);
+                    animate.lastTimeMode = timeMode;
+                }
             }
             
             requestAnimationFrame(animate);
@@ -855,6 +967,23 @@
         // Initialize
         initSignalControls();
         
+        // Wire up time mode radio buttons to reset time on change
+        function initTimeModeControls() {
+            const timeModeRadios = document.querySelectorAll('input[name="timeMode"]');
+            
+            timeModeRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const mode = e.target.value;
+                    
+                    // Reset time when switching modes for clearer transition
+                    animationTime = 0;
+                    oscillatePhase = 0;
+                    
+                    console.log(`⏱️ Time mode set to: ${mode}`);
+                });
+            });
+        }
+        
         // Initialize debug module
         EyecatcherDebug.init({
             apiUrl: API_URL,
@@ -863,6 +992,7 @@
             getSignalState: () => signalState
         });
         
+        initTimeModeControls();
         loadPopulation();
         animate();
         
