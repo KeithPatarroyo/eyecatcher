@@ -231,9 +231,12 @@
     </div>
     
     <div id="instructions">
-        <strong>How to use:</strong> Click on patterns you like. The more you click, the higher their fitness. 
+        <strong>How to use:</strong> Click on patterns you like. The more you click, the higher their fitness.
         When you're happy with your selection, click "Continue Generation" to breed the next generation from your favorites.
         Patterns with green borders are selected. Hover over a pattern and click "Save" to keep it.
+        <br><br>
+        <strong>Real-time interaction:</strong> Move your mouse over a pattern to perturb it! The animation responds to your cursor
+        position with ripple effects. This lets you explore how each pattern reacts to disturbances.
     </div>
     
     <div id="grid"></div>
@@ -252,29 +255,36 @@
         let animationTime = 0;
         let animating = true;
         
-        // Mouse speed tracking
+        // Mouse tracking - both speed and position
         let mouseSpeed = 0;
         let lastMouseX = 0;
         let lastMouseY = 0;
         let lastMouseTime = performance.now();
         const MOUSE_SPEED_DECAY = 0.95;  // How fast mouse speed decays
         const MOUSE_SPEED_SCALE = 0.005;  // Scale factor for mouse movement
-        
-        // Track mouse movement globally
+
+        // Global mouse position (normalized 0-1, updated per canvas on hover)
+        let globalMouseX = 0.5;
+        let globalMouseY = 0.5;
+
+        // Per-canvas mouse state: canvasId -> {x, y, active, perturbStrength}
+        const canvasMouseState = new Map();
+
+        // Track mouse movement globally for speed
         document.addEventListener('mousemove', (e) => {
             const now = performance.now();
             const dt = now - lastMouseTime;
-            
+
             if (dt > 0) {
                 const dx = e.clientX - lastMouseX;
                 const dy = e.clientY - lastMouseY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const instantSpeed = distance / dt;
-                
+
                 // Smooth the speed with exponential moving average
                 mouseSpeed = Math.min(1.0, mouseSpeed * 0.7 + instantSpeed * MOUSE_SPEED_SCALE * 0.3);
             }
-            
+
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
             lastMouseTime = now;
@@ -359,24 +369,36 @@
         }
         
         function renderPattern(patternData, time, mouseSpd) {
-            const { gl, program, positionBuffer } = patternData;
-            
+            const { gl, program, positionBuffer, id } = patternData;
+
             gl.useProgram(program);
-            
+
             // Set time uniform
             const timeLocation = gl.getUniformLocation(program, 'uTime');
             gl.uniform1f(timeLocation, time);
-            
+
             // Set mouse speed uniform
             const mouseSpeedLocation = gl.getUniformLocation(program, 'uMouseSpeed');
             gl.uniform1f(mouseSpeedLocation, mouseSpd);
-            
+
+            // Get per-canvas mouse state
+            const mouseState = canvasMouseState.get(id) || { x: 0.5, y: 0.5, active: false, perturbStrength: 0 };
+
+            // Set mouse position uniforms
+            const mouseXLocation = gl.getUniformLocation(program, 'uMouseX');
+            const mouseYLocation = gl.getUniformLocation(program, 'uMouseY');
+            const perturbLocation = gl.getUniformLocation(program, 'uPerturbStrength');
+
+            gl.uniform1f(mouseXLocation, mouseState.x);
+            gl.uniform1f(mouseYLocation, mouseState.y);
+            gl.uniform1f(perturbLocation, mouseState.perturbStrength);
+
             // Setup attributes
             const positionLocation = gl.getAttribLocation(program, 'position');
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.enableVertexAttribArray(positionLocation);
             gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-            
+
             // Draw
             gl.clearColor(0, 0, 0, 1);
             gl.clear(gl.COLOR_BUFFER_BIT);
@@ -433,9 +455,35 @@
                     // Setup WebGL
                     const patternData = setupPattern(canvas, pattern.shader);
                     if (patternData) {
-                        patterns.set(pattern.id, { canvas, ...patternData, clicks: pattern.clicks });
+                        patterns.set(pattern.id, { canvas, ...patternData, clicks: pattern.clicks, id: pattern.id });
+
+                        // Initialize mouse state for this canvas
+                        canvasMouseState.set(pattern.id, { x: 0.5, y: 0.5, active: false, perturbStrength: 0 });
+
+                        // Mouse tracking for this canvas
+                        canvas.addEventListener('mousemove', (e) => {
+                            const rect = canvas.getBoundingClientRect();
+                            const x = (e.clientX - rect.left) / rect.width;
+                            const y = 1.0 - (e.clientY - rect.top) / rect.height; // Flip Y for GL coords
+                            const state = canvasMouseState.get(pattern.id);
+                            state.x = x;
+                            state.y = y;
+                            state.active = true;
+                            // Build up perturbation strength while mouse is over canvas
+                            state.perturbStrength = Math.min(1.0, state.perturbStrength + 0.05);
+                        });
+
+                        canvas.addEventListener('mouseenter', (e) => {
+                            const state = canvasMouseState.get(pattern.id);
+                            state.active = true;
+                        });
+
+                        canvas.addEventListener('mouseleave', (e) => {
+                            const state = canvasMouseState.get(pattern.id);
+                            state.active = false;
+                        });
                     }
-                    
+
                     // Click handler
                     card.addEventListener('click', () => clickPattern(pattern.id, card));
                 }
@@ -566,15 +614,22 @@
         function animate() {
             if (animating) {
                 animationTime = (animationTime + 0.005) % 1.0;
-                
+
                 // Decay mouse speed when not moving
                 mouseSpeed *= MOUSE_SPEED_DECAY;
-                
+
+                // Decay perturbation strength for inactive canvases
+                canvasMouseState.forEach((state, id) => {
+                    if (!state.active) {
+                        state.perturbStrength *= 0.95; // Smooth decay when mouse leaves
+                    }
+                });
+
                 patterns.forEach((patternData) => {
                     renderPattern(patternData, animationTime, mouseSpeed);
                 });
             }
-            
+
             requestAnimationFrame(animate);
         }
         
