@@ -88,20 +88,20 @@
         
         #grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            padding: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            padding: 10px;
             max-width: 1800px;
             margin: 0 auto;
         }
         
         .pattern-card {
             background: #1a1a1a;
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
             cursor: pointer;
-            transition: all 0.3s;
-            border: 3px solid transparent;
+            transition: all 0.2s;
+            border: 2px solid transparent;
             position: relative;
         }
         
@@ -117,30 +117,30 @@
         
         .pattern-canvas {
             width: 100%;
-            height: 300px;
+            height: 120px;
             display: block;
             background: #000;
         }
         
         .pattern-info {
-            padding: 15px;
+            padding: 8px 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         
         .pattern-meta {
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
         }
         
         .click-count {
             background: #28a745;
             color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
+            padding: 4px 8px;
+            border-radius: 12px;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 11px;
         }
         
         .click-count.zero {
@@ -205,6 +205,154 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        #signal-controls {
+            background: #1a1a1a;
+            padding: 12px 20px;
+            margin: 10px 20px;
+            border-radius: 8px;
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            font-size: 13px;
+        }
+        
+        .signal-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .signal-group-title {
+            color: #888;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .signal-checkboxes {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .signal-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .signal-checkbox input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+            accent-color: #0066cc;
+        }
+        
+        .signal-checkbox label {
+            cursor: pointer;
+            color: #ccc;
+        }
+        
+        .signal-checkbox input:not(:checked) + label {
+            color: #666;
+            text-decoration: line-through;
+        }
+        
+        .signal-hint {
+            font-size: 10px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .signal-flow {
+            display: flex;
+            align-items: center;
+            color: #0066cc;
+            font-size: 20px;
+            font-weight: bold;
+            padding: 0 5px;
+        }
+        
+        .signal-derived label {
+            color: #6ca0dc;
+        }
+        
+        .signal-derived input:not(:checked) + label {
+            color: #555;
+        }
+        
+        #debug-overlay {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 11px;
+            color: #aaa;
+            z-index: 1000;
+            min-width: 180px;
+        }
+        
+        #debug-overlay.hidden {
+            display: none;
+        }
+        
+        #debug-overlay h4 {
+            margin: 0 0 8px 0;
+            color: #888;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 4px;
+        }
+        
+        .debug-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+        
+        .debug-label {
+            color: #666;
+        }
+        
+        .debug-value {
+            color: #0a0;
+            font-weight: bold;
+        }
+        
+        .debug-value.disabled {
+            color: #666;
+            text-decoration: line-through;
+        }
+        
+        #debug-toggle {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 10px;
+            color: #888;
+            cursor: pointer;
+            z-index: 999;
+        }
+        
+        #debug-toggle:hover {
+            background: rgba(50, 50, 50, 0.9);
+            color: #aaa;
+        }
     </style>
 </head>
 <body>
@@ -231,9 +379,55 @@
     </div>
     
     <div id="instructions">
-        <strong>How to use:</strong> Click on patterns you like. The more you click, the higher their fitness. 
+        <strong>How to use:</strong> Click on patterns you like (right-click to undo). The more you click, the higher their fitness. 
         When you're happy with your selection, click "Continue Generation" to breed the next generation from your favorites.
         Patterns with green borders are selected. Hover over a pattern and click "Save" to keep it.
+    </div>
+    
+    <div id="signal-controls">
+        <div class="signal-group">
+            <div class="signal-group-title">Time Signal CPPN Inputs</div>
+            <div class="signal-checkboxes">
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="time-rawTime" checked>
+                    <label for="time-rawTime">Raw Time <span class="signal-hint">(0→1 cycle)</span></label>
+                </div>
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="time-mouseSpeed" checked>
+                    <label for="time-mouseSpeed">Mouse Speed</label>
+                </div>
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="time-mouseDist" checked>
+                    <label for="time-mouseDist">Mouse Dist</label>
+                </div>
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="time-inactivity" checked>
+                    <label for="time-inactivity">Inactivity</label>
+                </div>
+            </div>
+        </div>
+        <div class="signal-flow">→</div>
+        <div class="signal-group">
+            <div class="signal-group-title">Visual CPPN Inputs</div>
+            <div class="signal-checkboxes">
+                <div class="signal-checkbox signal-derived">
+                    <input type="checkbox" id="visual-time" checked>
+                    <label for="visual-time">Body Clock <span class="signal-hint">(from Time CPPN)</span></label>
+                </div>
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="visual-mouseSpeed" checked>
+                    <label for="visual-mouseSpeed">Mouse Speed</label>
+                </div>
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="visual-mouseDist" checked>
+                    <label for="visual-mouseDist">Mouse Dist</label>
+                </div>
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="visual-inactivity" checked>
+                    <label for="visual-inactivity">Inactivity</label>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div id="grid"></div>
@@ -241,6 +435,61 @@
     <div id="loading" style="display: none;">
         <div class="spinner"></div>
         <div style="text-align: center; margin-top: 10px;">Loading patterns...</div>
+    </div>
+    
+    <button id="debug-toggle">Debug</button>
+    <div id="debug-overlay" class="hidden">
+        <h4>Input Signals</h4>
+        <div class="debug-row">
+            <span class="debug-label">Time:</span>
+            <span class="debug-value" id="dbg-time">0.000</span>
+        </div>
+        <div class="debug-row">
+            <span class="debug-label">Mouse Speed:</span>
+            <span class="debug-value" id="dbg-mouseSpeed">0.000</span>
+        </div>
+        <div class="debug-row">
+            <span class="debug-label">Inactivity:</span>
+            <span class="debug-value" id="dbg-inactivity">0.000</span>
+        </div>
+        <div class="debug-row">
+            <span class="debug-label">Mouse Pos:</span>
+            <span class="debug-value" id="dbg-mousePos">0, 0</span>
+        </div>
+        <h4 style="margin-top: 10px;">Time CPPN Inputs</h4>
+        <div class="debug-row">
+            <span class="debug-label">Raw Time:</span>
+            <span class="debug-value" id="dbg-t-rawTime">0.000</span>
+        </div>
+        <div class="debug-row">
+            <span class="debug-label">Mouse Speed:</span>
+            <span class="debug-value" id="dbg-t-mouseSpeed">0.000</span>
+        </div>
+        <div class="debug-row">
+            <span class="debug-label">Mouse Dist:</span>
+            <span class="debug-value" id="dbg-t-mouseDist">0.000</span>
+        </div>
+        <div class="debug-row">
+            <span class="debug-label">Inactivity:</span>
+            <span class="debug-value" id="dbg-t-inactivity">0.000</span>
+        </div>
+        <h4 style="margin-top: 10px;">Visual CPPN Inputs</h4>
+        <div class="debug-row">
+            <span class="debug-label" style="color: #6ca0dc;">Time (output):</span>
+            <span class="debug-value" id="dbg-v-time" style="color: #6ca0dc;">0.000</span>
+        </div>
+        <div class="debug-row">
+            <span class="debug-label">Mouse Speed:</span>
+            <span class="debug-value" id="dbg-v-mouseSpeed">0.000</span>
+        </div>
+        <div class="debug-row">
+            <span class="debug-label">Mouse Dist:</span>
+            <span class="debug-value" id="dbg-v-mouseDist">0.000</span>
+        </div>
+        <div class="debug-row">
+            <span class="debug-label">Inactivity:</span>
+            <span class="debug-value" id="dbg-v-inactivity">0.000</span>
+        </div>
     </div>
 
     <script>
@@ -252,18 +501,121 @@
         let animationTime = 0;
         let animating = true;
         
-        // Mouse speed tracking
+        // Signal enable states (which inputs are fed to the CPPNs)
+        const signalState = {
+            time: {
+                rawTime: true,
+                mouseSpeed: true,
+                mouseDist: true,
+                inactivity: true
+            },
+            visual: {
+                time: true,
+                mouseSpeed: true,
+                mouseDist: true,
+                inactivity: true
+            }
+        };
+        
+        // Wire up signal checkboxes
+        function initSignalControls() {
+            // Time CPPN signals
+            ['rawTime', 'mouseSpeed', 'mouseDist', 'inactivity'].forEach(sig => {
+                const checkbox = document.getElementById(`time-${sig}`);
+                if (checkbox) {
+                    checkbox.addEventListener('change', (e) => {
+                        signalState.time[sig] = e.target.checked;
+                    });
+                }
+            });
+            // Visual CPPN signals
+            ['time', 'mouseSpeed', 'mouseDist', 'inactivity'].forEach(sig => {
+                const checkbox = document.getElementById(`visual-${sig}`);
+                if (checkbox) {
+                    checkbox.addEventListener('change', (e) => {
+                        signalState.visual[sig] = e.target.checked;
+                    });
+                }
+            });
+            
+            // Debug overlay toggle
+            const debugToggle = document.getElementById('debug-toggle');
+            const debugOverlay = document.getElementById('debug-overlay');
+            debugToggle.addEventListener('click', () => {
+                debugOverlay.classList.toggle('hidden');
+                debugToggle.style.display = debugOverlay.classList.contains('hidden') ? 'block' : 'none';
+            });
+            // Close debug on click inside it (optional close button could be added)
+            debugOverlay.addEventListener('dblclick', () => {
+                debugOverlay.classList.add('hidden');
+                debugToggle.style.display = 'block';
+            });
+        }
+        
+        // Update debug overlay with current signal values
+        function updateDebugOverlay(time, mouseSpd, avgMouseDist, inact) {
+            // Skip if hidden
+            if (document.getElementById('debug-overlay').classList.contains('hidden')) return;
+            
+            const fmt = (v) => v.toFixed(3);
+            
+            // Raw signals
+            document.getElementById('dbg-time').textContent = fmt(time);
+            document.getElementById('dbg-mouseSpeed').textContent = fmt(mouseSpd);
+            document.getElementById('dbg-inactivity').textContent = fmt(inact);
+            document.getElementById('dbg-mousePos').textContent = `${Math.round(mouseX)}, ${Math.round(mouseY)}`;
+            
+            // Time CPPN effective values (after enable gating)
+            const tRawTime = signalState.time.rawTime ? time : 0;
+            const tMouseSpeed = signalState.time.mouseSpeed ? mouseSpd : 0;
+            const tMouseDist = signalState.time.mouseDist ? avgMouseDist : 0;
+            const tInactivity = signalState.time.inactivity ? inact : 0;
+            
+            setDebugValue('dbg-t-rawTime', tRawTime, signalState.time.rawTime);
+            setDebugValue('dbg-t-mouseSpeed', tMouseSpeed, signalState.time.mouseSpeed);
+            setDebugValue('dbg-t-mouseDist', tMouseDist, signalState.time.mouseDist);
+            setDebugValue('dbg-t-inactivity', tInactivity, signalState.time.inactivity);
+            
+            // Visual CPPN effective values
+            const vTime = signalState.visual.time ? time : 0;
+            const vMouseSpeed = signalState.visual.mouseSpeed ? mouseSpd : 0;
+            const vMouseDist = signalState.visual.mouseDist ? avgMouseDist : 0;
+            const vInactivity = signalState.visual.inactivity ? inact : 0;
+            
+            setDebugValue('dbg-v-time', vTime, signalState.visual.time);
+            setDebugValue('dbg-v-mouseSpeed', vMouseSpeed, signalState.visual.mouseSpeed);
+            setDebugValue('dbg-v-mouseDist', vMouseDist, signalState.visual.mouseDist);
+            setDebugValue('dbg-v-inactivity', vInactivity, signalState.visual.inactivity);
+        }
+        
+        function setDebugValue(id, value, enabled) {
+            const el = document.getElementById(id);
+            el.textContent = value.toFixed(3);
+            el.classList.toggle('disabled', !enabled);
+        }
+        
+        // Mouse tracking
         let mouseSpeed = 0;
+        let mouseX = 0;  // Current mouse position
+        let mouseY = 0;
         let lastMouseX = 0;
         let lastMouseY = 0;
+        let lastMouseMoveTime = performance.now();  // When mouse last moved
         let lastMouseTime = performance.now();
+        let inactivity = 0;  // Time since mouse last moved (0-1)
         const MOUSE_SPEED_DECAY = 0.95;  // How fast mouse speed decays
         const MOUSE_SPEED_SCALE = 0.005;  // Scale factor for mouse movement
+        const MOUSE_DIST_SCALE = 300;  // Pixels for max distance (1.0) - smaller for compact grid
+        const INACTIVITY_MAX_MS = 3000;  // 3 seconds = max inactivity (1.0)
         
         // Track mouse movement globally
         document.addEventListener('mousemove', (e) => {
             const now = performance.now();
             const dt = now - lastMouseTime;
+            
+            // Update current mouse position
+            mouseX = e.clientX;
+            mouseY = e.clientY;
             
             if (dt > 0) {
                 const dx = e.clientX - lastMouseX;
@@ -278,7 +630,27 @@
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
             lastMouseTime = now;
+            lastMouseMoveTime = now;  // Reset inactivity timer
         });
+        
+        // Compute distance from mouse to a canvas center (normalized 0-1)
+        function getMouseDistanceToCanvas(canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const dx = mouseX - centerX;
+            const dy = mouseY - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            // Normalize: 0 = on center, 1 = far away
+            return Math.min(1.0, dist / MOUSE_DIST_SCALE);
+        }
+        
+        // Compute inactivity (time since mouse last moved, normalized 0-1)
+        function getInactivity() {
+            const now = performance.now();
+            const timeSinceMove = now - lastMouseMoveTime;
+            return Math.min(1.0, timeSinceMove / INACTIVITY_MAX_MS);
+        }
         
         // WebGL setup for each canvas
         const patterns = new Map();
@@ -358,18 +730,36 @@
             return { gl, program, positionBuffer };
         }
         
-        function renderPattern(patternData, time, mouseSpd) {
+        function renderPattern(patternData, time, mouseSpd, mouseDist, inact) {
             const { gl, program, positionBuffer } = patternData;
             
             gl.useProgram(program);
             
-            // Set time uniform
-            const timeLocation = gl.getUniformLocation(program, 'uTime');
-            gl.uniform1f(timeLocation, time);
+            // Set base signal uniforms
+            gl.uniform1f(gl.getUniformLocation(program, 'uTime'), time);
+            gl.uniform1f(gl.getUniformLocation(program, 'uMouseSpeed'), mouseSpd);
+            gl.uniform1f(gl.getUniformLocation(program, 'uMouseDist'), mouseDist);
+            gl.uniform1f(gl.getUniformLocation(program, 'uInactivity'), inact);
             
-            // Set mouse speed uniform
-            const mouseSpeedLocation = gl.getUniformLocation(program, 'uMouseSpeed');
-            gl.uniform1f(mouseSpeedLocation, mouseSpd);
+            // Set time CPPN signal enable uniforms
+            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableRawTime'), 
+                signalState.time.rawTime ? 1.0 : 0.0);
+            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableMouseSpeed'), 
+                signalState.time.mouseSpeed ? 1.0 : 0.0);
+            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableMouseDist'), 
+                signalState.time.mouseDist ? 1.0 : 0.0);
+            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableInactivity'), 
+                signalState.time.inactivity ? 1.0 : 0.0);
+            
+            // Set visual CPPN signal enable uniforms
+            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableTime'), 
+                signalState.visual.time ? 1.0 : 0.0);
+            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableMouseSpeed'), 
+                signalState.visual.mouseSpeed ? 1.0 : 0.0);
+            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableMouseDist'), 
+                signalState.visual.mouseDist ? 1.0 : 0.0);
+            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableInactivity'), 
+                signalState.visual.inactivity ? 1.0 : 0.0);
             
             // Setup attributes
             const positionLocation = gl.getAttribLocation(program, 'position');
@@ -405,8 +795,8 @@
                     
                     const canvas = document.createElement('canvas');
                     canvas.className = 'pattern-canvas';
-                    canvas.width = 512;
-                    canvas.height = 512;
+                    canvas.width = 256;
+                    canvas.height = 256;
                     
                     const info = document.createElement('div');
                     info.className = 'pattern-info';
@@ -436,8 +826,12 @@
                         patterns.set(pattern.id, { canvas, ...patternData, clicks: pattern.clicks });
                     }
                     
-                    // Click handler
+                    // Click handler (left click to add, right click to remove)
                     card.addEventListener('click', () => clickPattern(pattern.id, card));
+                    card.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        unclickPattern(pattern.id, card);
+                    });
                 }
                 
                 document.getElementById('loading').style.display = 'none';
@@ -479,9 +873,40 @@
                 }
                 
                 updateStats();
-                
             } catch (error) {
                 console.error('Error recording click:', error);
+            }
+        }
+        
+        async function unclickPattern(id, card) {
+            try {
+                const response = await fetch(`${API_URL}/unclick`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                
+                const data = await response.json();
+                
+                // Update UI
+                const clickCount = card.querySelector('.click-count');
+                clickCount.textContent = data.clicks;
+                
+                if (data.clicks === 0) {
+                    clickCount.classList.add('zero');
+                    card.classList.remove('selected');
+                }
+                
+                // Update pattern data
+                const pattern = patterns.get(id);
+                if (pattern) {
+                    pattern.clicks = data.clicks;
+                }
+                
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error removing click:', error);
             }
         }
         
@@ -570,9 +995,24 @@
                 // Decay mouse speed when not moving
                 mouseSpeed *= MOUSE_SPEED_DECAY;
                 
+                // Compute current inactivity level
+                inactivity = getInactivity();
+                
+                // Track avg mouse distance for debug display
+                let totalMouseDist = 0;
+                let patternCount = 0;
+                
                 patterns.forEach((patternData) => {
-                    renderPattern(patternData, animationTime, mouseSpeed);
+                    // Compute distance from mouse to this pattern's canvas center
+                    const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
+                    renderPattern(patternData, animationTime, mouseSpeed, mouseDist, inactivity);
+                    totalMouseDist += mouseDist;
+                    patternCount++;
                 });
+                
+                // Update debug overlay
+                const avgMouseDist = patternCount > 0 ? totalMouseDist / patternCount : 0;
+                updateDebugOverlay(animationTime, mouseSpeed, avgMouseDist, inactivity);
             }
             
             requestAnimationFrame(animate);
@@ -583,6 +1023,7 @@
         document.getElementById('reset-btn').addEventListener('click', resetPopulation);
         
         // Initialize
+        initSignalControls();
         loadPopulation();
         animate();
         
