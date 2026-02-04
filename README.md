@@ -7,9 +7,14 @@ Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Li
 - **Dual-CPPN Architecture**: Each individual has two evolved networks:
   - **Visual CPPN**: Generates RGB colors from spatial coordinates and time
   - **Time Signal CPPN**: Transforms raw time into a unique temporal rhythm
-- **Interactive Input**: Patterns react to mouse movement speed in real-time
+- **Rich Input Signals**: Patterns react to multiple real-time inputs:
+  - Mouse movement speed
+  - Distance from mouse to each pattern
+  - User inactivity (time since mouse moved)
+- **Signal Controls**: Toggle which inputs affect each CPPN via interactive checkboxes
 - **GPU Rendering**: Compiles CPPNs to GLSL shaders for real-time WebGL rendering
 - **Interactive Evolution**: Web interface for selecting and breeding patterns
+- **Debug Overlay**: Real-time visualization of all input signals
 - **NEAT Evolution**: Uses NEAT-Python for evolving network topology and weights
 
 ## Quick Start
@@ -33,10 +38,13 @@ Then open **http://localhost:5001** in your browser.
 The web interface allows you to:
 
 1. **View patterns**: 12 animated CPPN patterns rendered in real-time
-2. **Click to select**: Click patterns you like to increase their fitness
-3. **Breed**: Create a new generation from selected parents
-4. **Save**: Download favorite patterns as shaders and images
-5. **Interact**: Move your mouse to see patterns react differently
+2. **Click to select**: Left-click patterns you like to increase their fitness
+3. **Right-click to undo**: Right-click to decrease fitness (remove accidental clicks)
+4. **Breed**: Create a new generation from selected parents
+5. **Save**: Download favorite patterns as shaders and images
+6. **Interact**: Move your mouse to see patterns react differently
+7. **Signal controls**: Toggle which inputs (time, mouseSpeed, mouseDist, inactivity) affect each CPPN
+8. **Debug overlay**: Click "Debug" button to see real-time signal values
 
 ## Architecture
 
@@ -45,32 +53,37 @@ The web interface allows you to:
 Each individual consists of two CPPNs that evolve together:
 
 ```
-[raw_time, mouseSpeed, bias] → Time Signal CPPN → modified_time
-[x, y, dist, modified_time, mouseSpeed, bias] → Visual CPPN → RGB
+[rawTime, mouseSpeed, mouseDist, inactivity, bias] → Time Signal CPPN → modifiedTime
+                                                                              ↓
+[x, y, dist, modifiedTime, mouseSpeed, mouseDist, inactivity, bias] → Visual CPPN → RGB
 ```
 
 This allows each pattern to have its own unique "heartbeat" - how it perceives and responds to time.
 
-### Visual CPPN Inputs (6)
+### Time Signal CPPN Inputs (5)
+- `rawTime`: Linear animation time (-1 to 1)
+- `mouseSpeed`: Mouse movement speed (0 to 1)
+- `mouseDist`: Distance from mouse to pattern center (0 to 1)
+- `inactivity`: Time since mouse last moved (0 to 1)
+- `bias`: Constant 1.0
+
+### Time Signal CPPN Outputs (1)
+- `modifiedTime`: Transformed time signal (-1 to 1)
+
+### Visual CPPN Inputs (8)
 - `x`: Horizontal position (-1 to 1)
 - `y`: Vertical position (-1 to 1)
 - `distance`: Distance from center
 - `time`: Modified time from Time Signal CPPN (-1 to 1)
 - `mouseSpeed`: Mouse movement speed (0 to 1)
+- `mouseDist`: Distance from mouse to pattern center (0 to 1)
+- `inactivity`: Time since mouse last moved (0 to 1)
 - `bias`: Constant 1.0
 
 ### Visual CPPN Outputs (3)
 - `R`: Red channel (0-1)
 - `G`: Green channel (0-1)
 - `B`: Blue channel (0-1)
-
-### Time Signal CPPN Inputs (3)
-- `rawTime`: Linear animation time (-1 to 1)
-- `mouseSpeed`: Mouse movement speed (0 to 1)
-- `bias`: Constant 1.0
-
-### Time Signal CPPN Outputs (1)
-- `modifiedTime`: Transformed time signal (-1 to 1)
 
 ## Core Components
 
@@ -92,8 +105,8 @@ This allows each pattern to have its own unique "heartbeat" - how it perceives a
 - Serves the interactive viewer HTML
 
 ### Configuration Files
-- `neat_config.txt`: Visual CPPN parameters (6 inputs, 3 outputs)
-- `neat_config_time.txt`: Time Signal CPPN parameters (3 inputs, 1 output)
+- `neat_config.txt`: Visual CPPN parameters (8 inputs, 3 outputs)
+- `neat_config_time.txt`: Time Signal CPPN parameters (5 inputs, 1 output)
 
 ## Activation Functions
 
@@ -118,7 +131,14 @@ engine.create_population()
 dual_genome = create_random_dual_genome(engine, genome_id=0)
 
 # Query the dual CPPN
-r, g, b = engine.query_dual_cppn(dual_genome, x=0.5, y=0.5, raw_time=0.5, mouse_speed=0.2)
+r, g, b = engine.query_dual_cppn(
+    dual_genome, 
+    x=0.5, y=0.5, 
+    raw_time=0.5, 
+    mouse_speed=0.2,
+    mouse_distance=0.3,
+    inactivity=0.0
+)
 ```
 
 ### Compile to Shader
@@ -205,6 +225,11 @@ ffmpeg -i output/frames/frame_%03d.png -vf "fps=30,scale=512:-1:flags=lanczos" o
 - [x] Interactive web-based selection interface
 - [x] Mouse speed reactivity
 - [x] Dual-CPPN architecture (visual + time signal)
+- [x] Mouse distance reactivity (per-pattern)
+- [x] Inactivity signal (time since mouse moved)
+- [x] Signal enable/disable controls
+- [x] Debug overlay for signal visualization
+- [x] Right-click to remove clicks
 - [ ] Direct video export (MP4/GIF)
 - [ ] Multiple fitness functions for aesthetic properties
 - [ ] 3D patterns (add z coordinate)
