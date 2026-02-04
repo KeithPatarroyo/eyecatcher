@@ -70,30 +70,158 @@
             background: #218838;
         }
         
-        #stats {
-            display: flex;
+        /* Span-based controls (render when <button> is stripped by Simple Browser / sanitizers) */
+        .btn-action, .btn-zoom {
+            display: inline-block;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+            user-select: none;
+        }
+        .btn-action {
+            padding: 12px 24px;
+            background: #0066cc;
+            color: white;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .btn-action:hover:not(.disabled) {
+            background: #0052a3;
+            transform: translateY(-1px);
+        }
+        .btn-action.breed {
+            background: #28a745;
+        }
+        .btn-action.breed:hover:not(.disabled) {
+            background: #218838;
+        }
+        .btn-action.disabled {
+            background: #1a2a1a;
+            color: #7cb87c;
+            border-color: #28a745;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .zoom-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 10px;
+            background: #252525;
+            border-radius: 6px;
+            border: 1px solid #444;
+        }
+        .zoom-controls-label {
+            font-size: 12px;
+            color: #aaa;
+            margin-right: 2px;
+        }
+        .btn-zoom {
+            width: 32px;
+            height: 28px;
+            line-height: 28px;
+            padding: 0;
+            font-size: 18px;
+            text-align: center;
+            border-radius: 4px;
+            background: #0066cc;
+            color: #fff;
+            border: none;
+        }
+        .btn-zoom:hover {
+            background: #0052a3;
+        }
+        #zoom-label {
+            display: inline-block;
+            min-width: 2.5em;
+            padding: 4px 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #0066cc;
+            background: #252525;
+            border: 1px solid #444;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        #stats.stats-row {
+            display: inline-flex;
+            flex-wrap: wrap;
             gap: 20px;
             font-size: 14px;
             color: #888;
         }
         
-        .stat {
-            display: flex;
+        #stats .stat {
+            display: inline-flex;
             gap: 8px;
+            align-items: center;
+        }
+        
+        .stat-label {
+            color: #888;
         }
         
         .stat-value {
+            display: inline-block;
+            min-width: 1.5em;
+            padding: 2px 6px;
             color: #0066cc;
             font-weight: bold;
+            background: #252525;
+            border: 1px solid #444;
+            border-radius: 4px;
+            text-align: center;
         }
         
         #grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(calc(140px * var(--pattern-zoom, 1)), 1fr));
+            gap: calc(8px * var(--pattern-zoom, 1));
             padding: 10px;
             max-width: 1800px;
             margin: 0 auto;
+            min-height: 280px;
+            background: #0d0d0d;
+        }
+        
+        .pattern-canvas-fallback {
+            width: 100%;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1a1a1a;
+            color: #666;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .grid-error {
+            grid-column: 1 / -1;
+            padding: 24px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            color: #ccc;
+            text-align: center;
+        }
+        
+        .grid-error .retry-btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 10px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .grid-error .retry-btn:hover {
+            background: #0052a3;
         }
         
         .pattern-card {
@@ -171,6 +299,27 @@
         
         .save-btn:hover {
             background: rgba(255, 255, 255, 0.3);
+        }
+        .submit-community-btn {
+            position: absolute;
+            top: 10px;
+            right: 70px;
+            padding: 8px 12px;
+            background: rgba(40, 167, 69, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+        .pattern-card:hover .submit-community-btn {
+            opacity: 1;
+        }
+        .submit-community-btn:hover {
+            background: rgba(34, 136, 56, 0.95);
         }
         
         #loading {
@@ -326,28 +475,213 @@
             color: #0066cc;
             font-weight: 600;
         }
+        #population-panel {
+            background: #1a1a1a;
+            padding: 12px 20px;
+            margin: 0 20px 20px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        #population-panel .panel-label {
+            font-size: 13px;
+            color: #aaa;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+        #population-panel .pop-btn {
+            display: inline-block;
+            padding: 8px 14px;
+            font-size: 13px;
+            background: #252525;
+            color: #ccc;
+            border: 1px solid #444;
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+        }
+        #population-panel .pop-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+        #population-panel .pop-btn.primary {
+            background: #28a745;
+            color: #fff;
+            border-color: #28a745;
+        }
+        #population-panel .pop-btn.primary:hover {
+            background: #218838;
+        }
+        #load-list-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        #load-list-modal.show { display: flex; }
+        #load-list-modal .modal-content {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+            max-height: 70vh;
+            overflow: auto;
+        }
+        #load-list-modal h3 { margin-bottom: 12px; color: #ccc; }
+        #load-list-modal ul { list-style: none; }
+        #load-list-modal li {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+        }
+        #load-list-modal li:hover { background: #252525; }
+        #load-list-modal .modal-close { margin-top: 12px; cursor: pointer; color: #0066cc; }
+        #community-submit-modal, #community-list-modal, #admin-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        #community-submit-modal.show, #community-list-modal.show, #admin-modal.show { display: flex; }
+        #admin-modal .modal-content { background: #1a1a1a; padding: 20px; border-radius: 8px; max-width: 420px; width: 90%; max-height: 80vh; overflow: auto; }
+        #admin-modal label { display: block; margin-top: 10px; color: #aaa; font-size: 13px; }
+        #admin-modal input[type="password"], #admin-modal input[type="text"] {
+            width: 100%; padding: 8px 10px; margin-top: 4px; background: #252525; border: 1px solid #444;
+            color: #eee; border-radius: 4px; box-sizing: border-box;
+        }
+        #admin-modal .modal-actions { margin-top: 16px; display: flex; gap: 10px; }
+        #admin-modal .modal-actions button, #admin-modal .modal-close {
+            padding: 8px 16px; cursor: pointer; border-radius: 6px; border: 1px solid #444;
+            background: #252525; color: #ccc;
+        }
+        #admin-modal .modal-actions button.primary { background: #28a745; color: white; border-color: #28a745; }
+        #admin-modal ul { list-style: none; margin-top: 12px; }
+        #admin-modal .pending-item {
+            padding: 12px; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+        #admin-modal .pending-item .preview-wrap {
+            flex-shrink: 0;
+            width: 80px;
+            height: 80px;
+            background: #0d0d0d;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        #admin-modal .pending-item .preview-wrap canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #admin-modal .pending-item .info { flex: 1; min-width: 0; }
+        #admin-modal .pending-item .actions { display: flex; gap: 8px; flex-shrink: 0; }
+        #admin-modal .pending-item button { padding: 6px 12px; font-size: 12px; cursor: pointer; border-radius: 4px; border: 1px solid #444; background: #252525; color: #ccc; }
+        #admin-modal .pending-item button.approve-btn { background: #28a745; color: white; border-color: #28a745; }
+        #admin-modal .pending-item button.reject-btn { background: #dc3545; color: white; border-color: #dc3545; }
+        #admin-modal .modal-close { margin-top: 12px; cursor: pointer; color: #0066cc; }
+        #community-submit-modal .modal-content, #community-list-modal .modal-content {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 380px;
+            width: 90%;
+            max-height: 70vh;
+            overflow: auto;
+        }
+        #community-submit-modal h3, #community-list-modal h3 { margin-bottom: 12px; color: #ccc; }
+        #community-submit-modal label { display: block; margin-top: 10px; color: #aaa; font-size: 13px; }
+        #community-submit-modal input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            margin-top: 4px;
+            background: #252525;
+            border: 1px solid #444;
+            color: #eee;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        #community-submit-modal .modal-actions { margin-top: 16px; display: flex; gap: 10px; }
+        #community-submit-modal .modal-actions button, #community-list-modal .modal-close {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #252525;
+            color: #ccc;
+        }
+        #community-submit-modal .modal-actions button.primary {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+        #community-list-modal ul { list-style: none; }
+        #community-list-modal li {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        #community-list-modal li:hover { background: #252525; }
+        #community-list-modal .community-item .preview-wrap {
+            flex-shrink: 0;
+            width: 80px;
+            height: 80px;
+            background: #0d0d0d;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        #community-list-modal .community-item .preview-wrap canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #community-list-modal .community-item .info { flex: 1; min-width: 0; }
+        #community-list-modal .community-item .check-wrap {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+        #community-list-modal .community-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #28a745;
+        }
+        #community-list-modal .modal-close { margin-top: 12px; cursor: pointer; color: #0066cc; }
     </style>
 </head>
 <body>
     <div id="header">
         <h1>🎨 Eyecatcher - Interactive Evolution</h1>
         <div id="controls">
-            <button id="breed-btn" disabled>Continue Generation</button>
-            <button id="reset-btn">Reset Population</button>
-            <div id="stats">
-                <div class="stat">
-                    <span>Generation:</span>
-                    <span class="stat-value" id="gen-num">0</span>
-                </div>
-                <div class="stat">
-                    <span>Selected:</span>
-                    <span class="stat-value" id="selected-count">0</span>
-                </div>
-                <div class="stat">
-                    <span>Total Clicks:</span>
-                    <span class="stat-value" id="total-clicks">0</span>
-                </div>
-            </div>
+            <span id="breed-btn" class="btn-action breed disabled" role="button" tabindex="0" aria-disabled="true">Continue Generation</span>
+            <span id="new-random-btn" class="btn-action" role="button" tabindex="0">New random population</span>
+            <span class="zoom-controls" title="Pattern size">
+                <span class="zoom-controls-label">Zoom</span>
+                <span id="zoom-out" class="btn-zoom" role="button" tabindex="0" title="Zoom out" aria-label="Zoom out">−</span>
+                <span id="zoom-label" style="display:inline-block;min-width:2.5em;padding:4px 8px;font-weight:bold;color:#0066cc;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">100%</span>
+                <span id="zoom-in" class="btn-zoom" role="button" tabindex="0" title="Zoom in" aria-label="Zoom in">+</span>
+            </span>
+            <span id="stats" style="display:inline-flex;flex-wrap:wrap;gap:20px;font-size:14px;color:#888;">
+                <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Generation:</span><span id="gen-num" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
+                <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Selected:</span><span id="selected-count" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
+                <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Total Clicks:</span><span id="total-clicks" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
+            </span>
         </div>
     </div>
     
@@ -372,6 +706,75 @@
                 <input type="radio" id="time-mode-infinite" name="timeMode" value="infinite">
                 <label for="time-mode-infinite">Infinite <span class="signal-hint">(linear)</span></label>
             </div>
+        </div>
+    </div>
+    
+    <div id="population-panel">
+        <span class="panel-label">Population:</span>
+        <span id="new-from-seeds-btn" class="pop-btn" role="button" tabindex="0">New from Seeds</span>
+        <span id="new-from-community-btn" class="pop-btn" role="button" tabindex="0">New from Community</span>
+        <span id="load-saved-btn" class="pop-btn" role="button" tabindex="0">Load Saved</span>
+        <span id="save-current-btn" class="pop-btn" role="button" tabindex="0">Save Current</span>
+        <span id="export-btn" class="pop-btn" role="button" tabindex="0">Export</span>
+        <span id="import-btn" class="pop-btn" role="button" tabindex="0">Import</span>
+        <span id="moderate-community-btn" class="pop-btn" role="button" tabindex="0" title="Accept community submissions (admin)">Moderate</span>
+        <input type="file" id="import-file" accept=".json" style="display:none;">
+    </div>
+    
+    <div id="admin-modal">
+        <div class="modal-content">
+            <div id="admin-step-key">
+                <h3>Community moderation</h3>
+                <p style="color:#888;font-size:13px;">Enter the admin API key to review pending submissions.</p>
+                <label>API key <input type="password" id="admin-key-input" placeholder="Admin key" autocomplete="off"></label>
+                <p id="admin-key-error" style="color:#dc3545;font-size:13px;margin-top:8px;display:none;"></p>
+                <div class="modal-actions">
+                    <button type="button" class="primary" id="admin-key-submit">Continue</button>
+                    <button type="button" id="admin-modal-cancel">Cancel</button>
+                </div>
+            </div>
+            <div id="admin-step-list" style="display:none;">
+                <h3>Pending submissions</h3>
+                <p style="color:#888;font-size:13px;">Approve to publish in Community, or reject to remove.</p>
+                <ul id="admin-pending-list"></ul>
+                <span class="modal-close" id="admin-list-close">Close</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="community-submit-modal">
+        <div class="modal-content">
+            <h3>Submit to Community</h3>
+            <p style="color:#888;font-size:13px;">Share this pattern for others to use. It will be reviewed before appearing in Community.</p>
+            <label>Pattern name <input type="text" id="community-submit-name" placeholder="e.g. Sunset spiral"></label>
+            <label>Your name <input type="text" id="community-submit-creator" placeholder="e.g. Anonymous"></label>
+            <div class="modal-actions">
+                <button type="button" class="primary" id="community-submit-do">Submit</button>
+                <button type="button" id="community-submit-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <div id="community-list-modal">
+        <div class="modal-content">
+            <h3>Load from Community</h3>
+            <p style="color:#888;font-size:13px;">Select one or more patterns (click row or checkbox), then "Load selected". Or use the shortcuts below.</p>
+            <ul id="community-list"></ul>
+            <div class="community-modal-actions" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                <button type="button" class="pop-btn primary" id="community-load-selected-btn">Load selected</button>
+                <button type="button" class="pop-btn" id="community-load-12-btn">Load first 12</button>
+                <span style="color:#666;font-size:12px;">|</span>
+                <button type="button" class="pop-btn" id="community-select-all-btn" style="font-size:12px;">Select all</button>
+                <button type="button" class="pop-btn" id="community-deselect-all-btn" style="font-size:12px;">Deselect all</button>
+            </div>
+            <span class="modal-close" id="community-list-close" style="display:block;margin-top:12px;">Cancel</span>
+        </div>
+    </div>
+    
+    <div id="load-list-modal">
+        <div class="modal-content">
+            <h3>Load saved population</h3>
+            <ul id="load-list"></ul>
+            <span class="modal-close" id="load-modal-close">Cancel</span>
         </div>
     </div>
     
@@ -421,13 +824,14 @@
         </div>
     </div>
     
-    <div id="grid"></div>
+    <div id="grid" style="min-height:280px;padding:10px;background:#0d0d0d;"></div>
     
     <div id="loading" style="display: none;">
         <div class="spinner"></div>
         <div style="text-align: center; margin-top: 10px;">Loading patterns...</div>
     </div>
     
+    <script src="storage.js"></script>
     <!-- Debug overlay module (creates its own DOM elements) -->
     <script src="debug.js"></script>
 
@@ -437,6 +841,8 @@
             ? `${window.location.origin}/api`
             : 'http://localhost:5001/api';
         let currentPopulation = [];
+        let currentGenomes = null;  // When set, we're in stateless mode (client holds genomes)
+        let currentGenerationNum = 0;
         let animationTime = 0;
         let oscillatePhase = 0;  // For oscillate mode: phase of sine wave
         let animating = true;
@@ -460,7 +866,18 @@
             }
         };
         
-        // Wire up signal checkboxes
+        // Pattern grid zoom
+        let patternZoom = 1.0;
+        const ZOOM_MIN = 0.5;
+        const ZOOM_MAX = 2.0;
+        const ZOOM_STEP = 0.25;
+        function applyZoom() {
+            document.documentElement.style.setProperty('--pattern-zoom', String(patternZoom));
+            const label = document.getElementById('zoom-label');
+            if (label) label.textContent = Math.round(patternZoom * 100) + '%';
+        }
+        
+        // Wire up signal checkboxes and zoom
         function initSignalControls() {
             // Time CPPN signals (including rawTime)
             ['rawTime', 'mouseSpeed', 'mouseDist', 'inactivity'].forEach(sig => {
@@ -480,6 +897,16 @@
                     });
                 }
             });
+            // Zoom controls
+            document.getElementById('zoom-in').addEventListener('click', () => {
+                patternZoom = Math.min(ZOOM_MAX, patternZoom + ZOOM_STEP);
+                applyZoom();
+            });
+            document.getElementById('zoom-out').addEventListener('click', () => {
+                patternZoom = Math.max(ZOOM_MIN, patternZoom - ZOOM_STEP);
+                applyZoom();
+            });
+            applyZoom();
         }
         
         // Mouse tracking
@@ -657,115 +1084,171 @@
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
         
-        async function loadPopulation() {
+        function showGridError(message, showRetry) {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '<div class="grid-error">' +
+                '<div style="color:#dc3545;font-weight:600;">Could not load CPPN patterns</div>' +
+                '<div style="margin-top:8px;">' + message + '</div>' +
+                '<div style="margin-top:12px;font-size:13px;color:#888;">Start the server: <code>python server.py</code><br>Then open <a href="http://localhost:5001" style="color:#0066cc;">http://localhost:5001</a></div>' +
+                (showRetry ? '<button type="button" class="retry-btn" id="grid-retry-btn">Retry</button>' : '') +
+                '</div>';
+            document.getElementById('loading').style.display = 'none';
+            if (showRetry) {
+                document.getElementById('grid-retry-btn').onclick = loadPopulation;
+            }
+        }
+        
+        function renderGridFromPopulation(population) {
+            document.getElementById('grid').innerHTML = '';
+            patterns.clear();
+            const grid = document.getElementById('grid');
+            for (const pattern of population) {
+                const card = document.createElement('div');
+                card.className = 'pattern-card';
+                card.dataset.id = pattern.id;
+                const canvas = document.createElement('canvas');
+                canvas.className = 'pattern-canvas';
+                canvas.width = 256;
+                canvas.height = 256;
+                const info = document.createElement('div');
+                info.className = 'pattern-info';
+                info.innerHTML = `
+                    <div class="pattern-meta">
+                        ID: ${pattern.id} | Nodes: ${pattern.nodes} | Connections: ${pattern.connections}
+                    </div>
+                    <div class="click-count ${pattern.clicks === 0 ? 'zero' : ''}">${pattern.clicks}</div>
+                `;
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'save-btn';
+                saveBtn.textContent = '💾 Save';
+                saveBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    savePattern(pattern.id);
+                };
+                const submitCommunityBtn = document.createElement('button');
+                submitCommunityBtn.className = 'submit-community-btn';
+                submitCommunityBtn.textContent = 'Submit to Community';
+                submitCommunityBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openSubmitCommunityModal(pattern.id);
+                };
+                card.appendChild(canvas);
+                card.appendChild(info);
+                card.appendChild(submitCommunityBtn);
+                card.appendChild(saveBtn);
+                grid.appendChild(card);
+                const patternData = setupPattern(canvas, pattern.shader);
+                if (patternData) {
+                    patterns.set(pattern.id, { canvas, ...patternData, clicks: pattern.clicks });
+                } else {
+                    const fallback = document.createElement('div');
+                    fallback.className = 'pattern-canvas-fallback';
+                    fallback.textContent = 'WebGL not available';
+                    card.replaceChild(fallback, canvas);
+                }
+                card.addEventListener('click', () => clickPattern(pattern.id, card));
+                card.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    unclickPattern(pattern.id, card);
+                });
+                card.addEventListener('mouseenter', () => {
+                    if (typeof EyecatcherDebug !== 'undefined') EyecatcherDebug.setHoveredPatternId(pattern.id);
+                });
+                card.addEventListener('mouseleave', () => {
+                    if (typeof EyecatcherDebug !== 'undefined' && EyecatcherDebug.getHoveredPatternId() === pattern.id) {
+                        EyecatcherDebug.setHoveredPatternId(null);
+                    }
+                });
+            }
+            updateStats();
+        }
+        
+        async function loadFromStatelessGenomes(genomes, generationNum) {
+            if (!genomes || !genomes.length) return;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('grid').innerHTML = '';
             patterns.clear();
-            
+            try {
+                const compilePayload = genomes.map(g => ({ ...g, clicks: 0 }));
+                const comp = await fetch(`${API_URL}/compile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ genomes: compilePayload })
+                });
+                if (!comp.ok) {
+                    const err = await comp.json().catch(() => ({}));
+                    showGridError(err.error || 'Compile failed', true);
+                    return;
+                }
+                const compData = await comp.json();
+                currentGenomes = genomes;
+                currentGenerationNum = generationNum;
+                currentPopulation = compData.shaders || [];
+                document.getElementById('gen-num').textContent = currentGenerationNum;
+                renderGridFromPopulation(currentPopulation);
+            } catch (e) {
+                console.error(e);
+                showGridError(e.message || 'Failed to compile', true);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        async function loadPopulation() {
+            currentGenomes = null;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('grid').innerHTML = '';
+            patterns.clear();
             try {
                 const response = await fetch(`${API_URL}/population`);
-                const data = await response.json();
-                
-                currentPopulation = data.population;
-                document.getElementById('gen-num').textContent = data.generation;
-                
-                // Create pattern cards
-                const grid = document.getElementById('grid');
-                
-                for (const pattern of currentPopulation) {
-                    const card = document.createElement('div');
-                    card.className = 'pattern-card';
-                    card.dataset.id = pattern.id;
-                    
-                    const canvas = document.createElement('canvas');
-                    canvas.className = 'pattern-canvas';
-                    canvas.width = 256;
-                    canvas.height = 256;
-                    
-                    const info = document.createElement('div');
-                    info.className = 'pattern-info';
-                    info.innerHTML = `
-                        <div class="pattern-meta">
-                            ID: ${pattern.id} | Nodes: ${pattern.nodes} | Connections: ${pattern.connections}
-                        </div>
-                        <div class="click-count ${pattern.clicks === 0 ? 'zero' : ''}">${pattern.clicks}</div>
-                    `;
-                    
-                    const saveBtn = document.createElement('button');
-                    saveBtn.className = 'save-btn';
-                    saveBtn.textContent = '💾 Save';
-                    saveBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        savePattern(pattern.id);
-                    };
-                    
-                    card.appendChild(canvas);
-                    card.appendChild(info);
-                    card.appendChild(saveBtn);
-                    grid.appendChild(card);
-                    
-                    // Setup WebGL
-                    const patternData = setupPattern(canvas, pattern.shader);
-                    if (patternData) {
-                        patterns.set(pattern.id, { canvas, ...patternData, clicks: pattern.clicks });
-                    }
-                    
-                    // Click handler (left click to add, right click to remove)
-                    card.addEventListener('click', () => clickPattern(pattern.id, card));
-                    card.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        unclickPattern(pattern.id, card);
-                    });
-                    
-                    // Hover tracking for debug overlay
-                    card.addEventListener('mouseenter', () => {
-                        EyecatcherDebug.setHoveredPatternId(pattern.id);
-                    });
-                    card.addEventListener('mouseleave', () => {
-                        if (EyecatcherDebug.getHoveredPatternId() === pattern.id) {
-                            EyecatcherDebug.setHoveredPatternId(null);
-                        }
-                    });
+                if (!response.ok) {
+                    showGridError('Server returned ' + response.status + '. Is the server running?', true);
+                    return;
                 }
-                
-                document.getElementById('loading').style.display = 'none';
-                updateStats();
-                
+                const data = await response.json();
+                const population = data.population;
+                if (!Array.isArray(population) || population.length === 0) {
+                    showGridError('No patterns in response. Try New random population.', true);
+                    return;
+                }
+                currentPopulation = population;
+                currentGenerationNum = data.generation;
+                document.getElementById('gen-num').textContent = currentGenerationNum;
+                renderGridFromPopulation(currentPopulation);
             } catch (error) {
                 console.error('Error loading population:', error);
-                const openUrl = (window.location.protocol || '').startsWith('http')
-                    ? 'Refresh this page.'
-                    : 'Open <a href="http://localhost:5001" style="color: #0066cc;">http://localhost:5001</a> in your browser (do not open the HTML file directly).';
-                document.getElementById('loading').innerHTML = `
-                    <div style="color: #dc3545;">Error: ${error.message}</div>
-                    <div style="margin-top: 10px; font-size: 14px;">Make sure the server is running: <code>python server.py</code></div>
-                    <div style="margin-top: 8px; font-size: 14px;">${openUrl}</div>
-                `;
+                showGridError(error.message || 'Network error. Is the server running at ' + API_URL.replace('/api', '') + '?', true);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
             }
         }
         
         async function clickPattern(id, card) {
+            if (currentGenomes) {
+                const pattern = patterns.get(id);
+                if (pattern) {
+                    pattern.clicks = (pattern.clicks || 0) + 1;
+                    const clickCount = card.querySelector('.click-count');
+                    clickCount.textContent = pattern.clicks;
+                    clickCount.classList.remove('zero');
+                    card.classList.add('selected');
+                    updateStats();
+                }
+                return;
+            }
             try {
                 const response = await fetch(`${API_URL}/click`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id })
                 });
-                
                 const data = await response.json();
-                
-                // Update UI
                 const clickCount = card.querySelector('.click-count');
                 clickCount.textContent = data.clicks;
                 clickCount.classList.remove('zero');
                 card.classList.add('selected');
-                
-                // Update pattern data
                 const pattern = patterns.get(id);
-                if (pattern) {
-                    pattern.clicks = data.clicks;
-                }
-                
+                if (pattern) pattern.clicks = data.clicks;
                 updateStats();
             } catch (error) {
                 console.error('Error recording click:', error);
@@ -773,100 +1256,257 @@
         }
         
         async function unclickPattern(id, card) {
+            if (currentGenomes) {
+                const pattern = patterns.get(id);
+                if (pattern && pattern.clicks > 0) {
+                    pattern.clicks--;
+                    const clickCount = card.querySelector('.click-count');
+                    clickCount.textContent = pattern.clicks;
+                    if (pattern.clicks === 0) {
+                        clickCount.classList.add('zero');
+                        card.classList.remove('selected');
+                    }
+                    updateStats();
+                }
+                return;
+            }
             try {
                 const response = await fetch(`${API_URL}/unclick`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id })
                 });
-                
                 const data = await response.json();
-                
-                // Update UI
                 const clickCount = card.querySelector('.click-count');
                 clickCount.textContent = data.clicks;
-                
                 if (data.clicks === 0) {
                     clickCount.classList.add('zero');
                     card.classList.remove('selected');
                 }
-                
-                // Update pattern data
                 const pattern = patterns.get(id);
-                if (pattern) {
-                    pattern.clicks = data.clicks;
-                }
-                
+                if (pattern) pattern.clicks = data.clicks;
                 updateStats();
-                
             } catch (error) {
                 console.error('Error removing click:', error);
             }
         }
         
+        function setBreedButtonDisabled(disabled) {
+            const el = document.getElementById('breed-btn');
+            if (disabled) {
+                el.classList.add('disabled');
+                el.setAttribute('aria-disabled', 'true');
+            } else {
+                el.classList.remove('disabled');
+                el.setAttribute('aria-disabled', 'false');
+            }
+        }
+        
         async function breedGeneration() {
-            document.getElementById('breed-btn').disabled = true;
+            if (document.getElementById('breed-btn').classList.contains('disabled')) return;
+            setBreedButtonDisabled(true);
             document.getElementById('loading').style.display = 'block';
+            
+            if (currentGenomes) {
+                try {
+                    const parents = currentPopulation
+                        .map((p, idx) => {
+                            const pat = patterns.get(p.id);
+                            const clicks = pat ? pat.clicks : 0;
+                            const genome = currentGenomes[idx];
+                            return genome ? { genome, clicks } : null;
+                        })
+                        .filter(Boolean)
+                        .filter(p => p.clicks > 0);
+                    if (!parents.length) {
+                        alert('Select at least one pattern (click on it) before breeding.');
+                        document.getElementById('loading').style.display = 'none';
+                        updateStats();
+                        return;
+                    }
+                    const response = await fetch(`${API_URL}/breed`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ parents, population_size: currentPopulation.length || 12 })
+                    });
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (_) {
+                        alert('Breed failed: server returned invalid response (status ' + response.status + ')');
+                        document.getElementById('loading').style.display = 'none';
+                        updateStats();
+                        return;
+                    }
+                    if (!response.ok || data.error) {
+                        alert(data.error || 'Breed failed (status ' + response.status + ')');
+                        document.getElementById('loading').style.display = 'none';
+                        updateStats();
+                        return;
+                    }
+                    if (!Array.isArray(data.children)) {
+                        alert('Breed failed: no children in response');
+                        document.getElementById('loading').style.display = 'none';
+                        updateStats();
+                        return;
+                    }
+                    await loadFromStatelessGenomes(data.children, currentGenerationNum + 1);
+                } catch (e) {
+                    console.error('Error breeding:', e);
+                    alert('Breed failed: ' + (e.message || String(e)));
+                    document.getElementById('loading').style.display = 'none';
+                    updateStats();
+                }
+                return;
+            }
             
             try {
                 const response = await fetch(`${API_URL}/breed`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
                 });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    alert(data.error);
+                let data;
+                try {
+                    data = await response.json();
+                } catch (_) {
+                    alert('Breed failed: server returned invalid response (status ' + response.status + ')');
                     document.getElementById('loading').style.display = 'none';
+                    updateStats();
                     return;
                 }
-                
-                console.log(`Bred generation ${data.generation} from ${data.parents_selected} parents`);
-                
-                // Load new population
+                if (!response.ok || data.error) {
+                    alert(data.error || 'Breed failed (status ' + response.status + ')');
+                    document.getElementById('loading').style.display = 'none';
+                    updateStats();
+                    return;
+                }
                 await loadPopulation();
-                
             } catch (error) {
                 console.error('Error breeding:', error);
+                alert('Breed failed: ' + (error.message || String(error)));
                 document.getElementById('loading').style.display = 'none';
+                updateStats();
             }
         }
         
-        async function resetPopulation() {
-            if (!confirm('Reset and create new random population?')) return;
-            
+        /** Get current genomes and generation (from client state or by fetching server population). */
+        async function getCurrentGenomesForSave() {
+            if (currentGenomes && currentGenomes.length) {
+                return { genomes: currentGenomes, generation: currentGenerationNum };
+            }
+            const r = await fetch(`${API_URL}/population/genomes`);
+            if (!r.ok) return null;
+            const d = await r.json();
+            const genomes = d.genomes || [];
+            const generation = d.generation != null ? d.generation : 0;
+            if (!genomes.length) return null;
+            return { genomes, generation };
+        }
+
+        async function startNewRandomPopulation() {
             document.getElementById('loading').style.display = 'block';
-            
             try {
-                await fetch(`${API_URL}/init`, {
+                const r = await fetch(`${API_URL}/random`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ size: 12 })
                 });
-                
-                await loadPopulation();
-                
+                if (!r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    alert(d.error || 'Failed to create random population');
+                    return;
+                }
+                const d = await r.json();
+                await loadFromStatelessGenomes(d.genomes || [], 0);
             } catch (error) {
-                console.error('Error resetting:', error);
+                console.error('Error starting random population:', error);
+                alert('Error: ' + (error.message || String(error)));
+            } finally {
                 document.getElementById('loading').style.display = 'none';
             }
         }
         
         async function savePattern(id) {
             try {
+                // Build request body - include genome JSON for stateless mode
+                const body = { id };
+                if (currentGenomes) {
+                    // Find the genome by matching currentPopulation index to currentGenomes
+                    const idx = currentPopulation.findIndex(p => p.id === id);
+                    if (idx >= 0 && currentGenomes[idx]) {
+                        body.genome = currentGenomes[idx];
+                    }
+                }
+
                 const response = await fetch(`${API_URL}/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id })
+                    body: JSON.stringify(body)
                 });
-                
+
                 const data = await response.json();
+                if (data.error) {
+                    alert('Save failed: ' + data.error);
+                    return;
+                }
                 alert(`Saved!\nShader: ${data.shader_path}\nImage: ${data.image_path}`);
-                
+
             } catch (error) {
                 console.error('Error saving:', error);
                 alert('Error saving pattern');
+            }
+        }
+
+        /** Get genome JSON for a pattern (from client state or server). */
+        async function getGenomeForPattern(patternId) {
+            if (currentGenomes) {
+                const idx = currentPopulation.findIndex(p => p.id === patternId);
+                if (idx >= 0 && currentGenomes[idx]) return currentGenomes[idx];
+            }
+            const r = await fetch(`${API_URL}/population/genome/${patternId}`);
+            if (!r.ok) return null;
+            const d = await r.json();
+            return d.genome || null;
+        }
+
+        let _submitCommunityGenome = null;
+        async function openSubmitCommunityModal(patternId) {
+            document.getElementById('loading').style.display = 'block';
+            const genome = await getGenomeForPattern(patternId);
+            document.getElementById('loading').style.display = 'none';
+            if (!genome) {
+                alert('Could not get pattern data.');
+                return;
+            }
+            _submitCommunityGenome = genome;
+            document.getElementById('community-submit-name').value = '';
+            document.getElementById('community-submit-creator').value = '';
+            document.getElementById('community-submit-modal').classList.add('show');
+        }
+        function closeSubmitCommunityModal() {
+            _submitCommunityGenome = null;
+            document.getElementById('community-submit-modal').classList.remove('show');
+        }
+        async function submitCommunityForm() {
+            if (!_submitCommunityGenome) return;
+            const name = (document.getElementById('community-submit-name').value || '').trim() || 'Unnamed';
+            const creator = (document.getElementById('community-submit-creator').value || '').trim() || 'Anonymous';
+            try {
+                const r = await fetch(`${API_URL}/community/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ genome: _submitCommunityGenome, name, creator })
+                });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) {
+                    alert(d.error || 'Submit failed');
+                    return;
+                }
+                alert('Submitted! It will be reviewed before appearing in Community.');
+                closeSubmitCommunityModal();
+            } catch (e) {
+                alert('Error: ' + (e.message || String(e)));
             }
         }
         
@@ -878,7 +1518,7 @@
             document.getElementById('total-clicks').textContent = totalClicks;
             
             // Enable breed button if at least one pattern selected
-            document.getElementById('breed-btn').disabled = selected === 0;
+            setBreedButtonDisabled(selected === 0);
         }
         
         // Animation loop
@@ -938,14 +1578,16 @@
                     renderPattern(patternData, normalizedTime, mouseSpeed, mouseDist, activity);
                 });
                 
-                // Update debug overlay
-                EyecatcherDebug.update({
-                    time: normalizedTime,
-                    mouseSpeed: mouseSpeed,
-                    activity: activity,
-                    mouseX: mouseX,
-                    mouseY: mouseY
-                });
+                // Update debug overlay (guard against missing debug.js)
+                if (typeof EyecatcherDebug !== 'undefined') {
+                    EyecatcherDebug.update({
+                        time: normalizedTime,
+                        mouseSpeed: mouseSpeed,
+                        activity: activity,
+                        mouseX: mouseX,
+                        mouseY: mouseY
+                    });
+                }
                 
                 // Debug: Log time mode changes (only once per mode change)
                 if (typeof animate.lastTimeMode === 'undefined') {
@@ -960,9 +1602,409 @@
             requestAnimationFrame(animate);
         }
         
+        // Keyboard support for span-based buttons
+        function onRoleButtonKeydown(e, onClick) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+            }
+        }
+        
         // Event listeners
-        document.getElementById('breed-btn').addEventListener('click', breedGeneration);
-        document.getElementById('reset-btn').addEventListener('click', resetPopulation);
+        const breedBtnEl = document.getElementById('breed-btn');
+        breedBtnEl.addEventListener('click', breedGeneration);
+        breedBtnEl.addEventListener('keydown', (e) => onRoleButtonKeydown(e, breedGeneration));
+        document.getElementById('new-random-btn').addEventListener('click', startNewRandomPopulation);
+        document.getElementById('new-random-btn').addEventListener('keydown', (e) => onRoleButtonKeydown(e, startNewRandomPopulation));
+        document.getElementById('zoom-in').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                document.getElementById('zoom-in').click();
+            }
+        });
+        document.getElementById('zoom-out').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                document.getElementById('zoom-out').click();
+            }
+        });
+        
+        // Population panel handlers
+        async function onNewFromSeedsClick() {
+            const el = document.getElementById('loading');
+            if (el) el.style.display = 'block';
+            try {
+                const r = await fetch(API_URL + '/seeds');
+                if (!r.ok) { alert('Failed to load seeds'); return; }
+                const d = await r.json();
+                const seeds = d.seeds || [];
+                if (!seeds.length) { alert('No seeds available.'); return; }
+                await loadFromStatelessGenomes(seeds.slice(0, 12).map(s => s.genome || s), 0);
+            } catch (e) { alert('Error: ' + (e.message || e)); }
+            finally { if (el) el.style.display = 'none'; }
+        }
+        async function onLoadSavedClick() {
+            try {
+                if (typeof EyecatcherStorage === 'undefined') { alert('Storage not loaded. Check that storage.js is served.'); return; }
+                await EyecatcherStorage.init();
+                const list = await EyecatcherStorage.listPopulations();
+                const ul = document.getElementById('load-list');
+                if (!ul) return;
+                ul.innerHTML = '';
+                if (!list.length) ul.innerHTML = '<li style="color:#888;">No saved populations</li>';
+                else list.forEach(pop => {
+                    const li = document.createElement('li');
+                    li.textContent = (pop.name || 'Unnamed') + ' (gen ' + (pop.generation || 0) + ', ' + (pop.genomes || []).length + ' patterns)';
+                    li.onclick = async () => {
+                        document.getElementById('load-list-modal').classList.remove('show');
+                        await loadFromStatelessGenomes(pop.genomes || [], pop.generation || 0);
+                    };
+                    ul.appendChild(li);
+                });
+                document.getElementById('load-list-modal').classList.add('show');
+            } catch (e) { alert('Error: ' + (e.message || e)); }
+        }
+        let _communityPatternsList = [];
+        async function onNewFromCommunityClick() {
+            document.getElementById('loading').style.display = 'block';
+            try {
+                const r = await fetch(API_URL + '/community');
+                if (!r.ok) { alert('Failed to load community.'); return; }
+                const d = await r.json();
+                _communityPatternsList = d.patterns || [];
+                const ul = document.getElementById('community-list');
+                if (!ul) return;
+                ul.innerHTML = '';
+                const loadSelectedBtn = document.getElementById('community-load-selected-btn');
+                const load12Btn = document.getElementById('community-load-12-btn');
+                const selectAllBtn = document.getElementById('community-select-all-btn');
+                const deselectAllBtn = document.getElementById('community-deselect-all-btn');
+                if (!_communityPatternsList.length) {
+                    ul.innerHTML = '<li style="color:#888;">No approved community patterns yet.</li>';
+                    if (loadSelectedBtn) loadSelectedBtn.style.display = 'none';
+                    if (load12Btn) load12Btn.style.display = 'none';
+                    if (selectAllBtn) selectAllBtn.style.display = 'none';
+                    if (deselectAllBtn) deselectAllBtn.style.display = 'none';
+                } else {
+                    if (loadSelectedBtn) loadSelectedBtn.style.display = 'inline-block';
+                    if (load12Btn) load12Btn.style.display = 'inline-block';
+                    if (selectAllBtn) selectAllBtn.style.display = 'inline-block';
+                    if (deselectAllBtn) deselectAllBtn.style.display = 'inline-block';
+                    let shadersByKey = {};
+                    try {
+                        const compilePayload = _communityPatternsList.map(pat => ({ ...pat.genome, key: pat.id, clicks: 0 }));
+                        const comp = await fetch(API_URL + '/compile', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ genomes: compilePayload })
+                        });
+                        if (comp.ok) {
+                            const compData = await comp.json();
+                            (compData.shaders || []).forEach(sh => { shadersByKey[sh.id] = sh; });
+                        }
+                    } catch (e) { console.warn('Could not compile community previews:', e); }
+                    const previewPatternData = [];
+                    _communityPatternsList.forEach((pat, idx) => {
+                        const li = document.createElement('li');
+                        li.className = 'community-item';
+                        li.dataset.idx = String(idx);
+                        const checkWrap = document.createElement('div');
+                        checkWrap.className = 'check-wrap';
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = false;
+                        checkWrap.appendChild(checkbox);
+                        const previewWrap = document.createElement('div');
+                        previewWrap.className = 'preview-wrap';
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 80;
+                        canvas.height = 80;
+                        previewWrap.appendChild(canvas);
+                        const info = document.createElement('div');
+                        info.className = 'info';
+                        info.textContent = (pat.name || 'Unnamed') + ' by ' + (pat.creator || '?');
+                        li.appendChild(checkWrap);
+                        li.appendChild(previewWrap);
+                        li.appendChild(info);
+                        li.onclick = (e) => {
+                            if (e.target.type === 'checkbox') return;
+                            checkbox.checked = !checkbox.checked;
+                        };
+                        checkbox.onclick = (e) => e.stopPropagation();
+                        ul.appendChild(li);
+                        const shaderInfo = shadersByKey[pat.id];
+                        if (shaderInfo && shaderInfo.shader) {
+                            const pd = setupPattern(canvas, shaderInfo.shader);
+                            if (pd) previewPatternData.push(pd);
+                        }
+                    });
+                    requestAnimationFrame(() => {
+                        previewPatternData.forEach(pd => renderPattern(pd, 0.5, 0, 0, 0));
+                    });
+                }
+                document.getElementById('community-list-modal').classList.add('show');
+            } catch (e) { alert('Error: ' + (e.message || e)); }
+            finally { document.getElementById('loading').style.display = 'none'; }
+        }
+        function getCommunitySelectedGenomes() {
+            const ul = document.getElementById('community-list');
+            if (!ul) return [];
+            const checked = ul.querySelectorAll('.community-item input[type="checkbox"]:checked');
+            return Array.from(checked).map(cb => {
+                const li = cb.closest('.community-item');
+                const idx = parseInt(li.dataset.idx, 10);
+                return _communityPatternsList[idx] ? _communityPatternsList[idx].genome : null;
+            }).filter(Boolean);
+        }
+        function onCommunityLoadSelected() {
+            const genomes = getCommunitySelectedGenomes();
+            if (!genomes.length) {
+                alert('Select at least one pattern (click rows or checkboxes).');
+                return;
+            }
+            document.getElementById('community-list-modal').classList.remove('show');
+            loadFromStatelessGenomes(genomes, 0);
+        }
+        function onCommunityLoad12() {
+            const first12 = _communityPatternsList.slice(0, 12).map(p => p.genome);
+            if (!first12.length) return;
+            document.getElementById('community-list-modal').classList.remove('show');
+            loadFromStatelessGenomes(first12, 0);
+        }
+        function onCommunitySelectAll() {
+            document.querySelectorAll('#community-list .community-item input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+        }
+        function onCommunityDeselectAll() {
+            document.querySelectorAll('#community-list .community-item input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+        }
+        async function onSaveCurrentClick() {
+            if (typeof EyecatcherStorage === 'undefined') { alert('Storage not loaded.'); return; }
+            const data = await getCurrentGenomesForSave();
+            if (!data || !data.genomes.length) {
+                alert('No population to save. Start with New random population or Load Saved.');
+                return;
+            }
+            const name = prompt('Name this population:', 'Session ' + new Date().toLocaleDateString());
+            if (name == null) return;
+            try {
+                await EyecatcherStorage.init();
+                await EyecatcherStorage.savePopulation((name.trim() || 'Unnamed'), data.genomes, data.generation);
+                alert('Saved.');
+            } catch (e) {
+                alert('Error: ' + (e.message || e));
+            }
+        }
+        async function onExportClick() {
+            const data = await getCurrentGenomesForSave();
+            if (!data || !data.genomes.length) {
+                alert('No population to export. Start with New random population or Load Saved.');
+                return;
+            }
+            const blob = new Blob([JSON.stringify({ name: 'Exported', generation: data.generation, genomes: data.genomes, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'eyecatcher-population.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+        function onImportClick() {
+            const input = document.getElementById('import-file');
+            if (input) input.click();
+        }
+
+        let _adminKey = '';
+        function openAdminModal() {
+            _adminKey = '';
+            document.getElementById('admin-key-input').value = '';
+            document.getElementById('admin-key-error').style.display = 'none';
+            document.getElementById('admin-key-error').textContent = '';
+            document.getElementById('admin-step-key').style.display = 'block';
+            document.getElementById('admin-step-list').style.display = 'none';
+            document.getElementById('admin-modal').classList.add('show');
+        }
+        function closeAdminModal() {
+            _adminKey = '';
+            document.getElementById('admin-modal').classList.remove('show');
+        }
+        async function submitAdminKey() {
+            const key = (document.getElementById('admin-key-input').value || '').trim();
+            const errEl = document.getElementById('admin-key-error');
+            if (!key) {
+                errEl.textContent = 'Please enter the API key.';
+                errEl.style.display = 'block';
+                return;
+            }
+            try {
+                const r = await fetch(API_URL + '/admin/submissions?admin_key=' + encodeURIComponent(key), {
+                    headers: { 'X-Admin-Key': key }
+                });
+                if (r.status === 403) {
+                    errEl.textContent = 'Invalid API key.';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                if (!r.ok) {
+                    errEl.textContent = 'Request failed (status ' + r.status + ').';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                _adminKey = key;
+                const d = await r.json();
+                const list = d.submissions || [];
+                document.getElementById('admin-step-key').style.display = 'none';
+                document.getElementById('admin-step-list').style.display = 'block';
+                await renderAdminPendingList(list);
+            } catch (e) {
+                errEl.textContent = 'Error: ' + (e.message || String(e));
+                errEl.style.display = 'block';
+            }
+        }
+        async function renderAdminPendingList(submissions) {
+            const ul = document.getElementById('admin-pending-list');
+            ul.innerHTML = '';
+            if (!submissions.length) {
+                ul.innerHTML = '<li style="color:#888;padding:12px;">No pending submissions.</li>';
+                return;
+            }
+            let shadersByKey = {};
+            try {
+                const compilePayload = submissions.map(s => ({ ...s.genome, key: s.id, clicks: 0 }));
+                const comp = await fetch(API_URL + '/compile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ genomes: compilePayload })
+                });
+                if (comp.ok) {
+                    const compData = await comp.json();
+                    (compData.shaders || []).forEach(sh => { shadersByKey[sh.id] = sh; });
+                }
+            } catch (e) {
+                console.warn('Could not compile previews:', e);
+            }
+            const previewPatternData = [];
+            submissions.forEach(sub => {
+                const li = document.createElement('li');
+                li.className = 'pending-item';
+                const previewWrap = document.createElement('div');
+                previewWrap.className = 'preview-wrap';
+                const canvas = document.createElement('canvas');
+                canvas.width = 80;
+                canvas.height = 80;
+                previewWrap.appendChild(canvas);
+                const info = document.createElement('div');
+                info.className = 'info';
+                info.innerHTML = '<strong>' + (sub.name || 'Unnamed') + '</strong> by ' + (sub.creator || '?');
+                const actions = document.createElement('div');
+                actions.className = 'actions';
+                actions.innerHTML = '<button type="button" class="approve-btn">Approve</button><button type="button" class="reject-btn">Reject</button>';
+                li.appendChild(previewWrap);
+                li.appendChild(info);
+                li.appendChild(actions);
+                li.querySelector('.approve-btn').addEventListener('click', () => adminApprove(sub.id, li));
+                li.querySelector('.reject-btn').addEventListener('click', () => adminReject(sub.id, li));
+                ul.appendChild(li);
+                const shaderInfo = shadersByKey[sub.id];
+                if (shaderInfo && shaderInfo.shader) {
+                    const pd = setupPattern(canvas, shaderInfo.shader);
+                    if (pd) previewPatternData.push(pd);
+                }
+            });
+            requestAnimationFrame(() => {
+                previewPatternData.forEach(pd => renderPattern(pd, 0.5, 0, 0, 0));
+            });
+        }
+        async function adminApprove(id, rowEl) {
+            try {
+                const r = await fetch(API_URL + '/admin/approve?admin_key=' + encodeURIComponent(_adminKey), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': _adminKey },
+                    body: JSON.stringify({ id })
+                });
+                if (r.status === 403) { alert('Invalid API key.'); return; }
+                if (!r.ok) { alert('Approve failed.'); return; }
+                rowEl.remove();
+            } catch (e) { alert('Error: ' + (e.message || e)); }
+        }
+        async function adminReject(id, rowEl) {
+            try {
+                const r = await fetch(API_URL + '/admin/reject?admin_key=' + encodeURIComponent(_adminKey), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': _adminKey },
+                    body: JSON.stringify({ id })
+                });
+                if (r.status === 403) { alert('Invalid API key.'); return; }
+                if (!r.ok) { alert('Reject failed.'); return; }
+                rowEl.remove();
+            } catch (e) { alert('Error: ' + (e.message || e)); }
+        }
+        window.onNewFromSeedsClick = onNewFromSeedsClick;
+        window.onNewFromCommunityClick = onNewFromCommunityClick;
+        window.onModerateClick = openAdminModal;
+        window.onLoadSavedClick = onLoadSavedClick;
+        window.onSaveCurrentClick = onSaveCurrentClick;
+        window.onExportClick = onExportClick;
+        window.onImportClick = onImportClick;
+        
+        // Population panel: keyboard support for span-buttons
+        const populationPanel = document.getElementById('population-panel');
+        if (populationPanel) {
+            populationPanel.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute && e.target.getAttribute('role') === 'button') {
+                    e.preventDefault();
+                    e.target.click();
+                }
+            });
+        }
+        
+        const newFromSeedsBtn = document.getElementById('new-from-seeds-btn');
+        if (newFromSeedsBtn) newFromSeedsBtn.addEventListener('click', onNewFromSeedsClick);
+        const loadSavedBtn = document.getElementById('load-saved-btn');
+        if (loadSavedBtn) loadSavedBtn.addEventListener('click', onLoadSavedClick);
+        const loadModalClose = document.getElementById('load-modal-close');
+        if (loadModalClose) loadModalClose.addEventListener('click', () => { document.getElementById('load-list-modal').classList.remove('show'); });
+        document.getElementById('community-submit-do').addEventListener('click', submitCommunityForm);
+        document.getElementById('community-submit-cancel').addEventListener('click', closeSubmitCommunityModal);
+        document.getElementById('community-list-close').addEventListener('click', () => document.getElementById('community-list-modal').classList.remove('show'));
+        document.getElementById('community-load-selected-btn').addEventListener('click', onCommunityLoadSelected);
+        document.getElementById('community-load-12-btn').addEventListener('click', onCommunityLoad12);
+        document.getElementById('community-select-all-btn').addEventListener('click', onCommunitySelectAll);
+        document.getElementById('community-deselect-all-btn').addEventListener('click', onCommunityDeselectAll);
+        const newFromCommunityBtn = document.getElementById('new-from-community-btn');
+        if (newFromCommunityBtn) {
+            newFromCommunityBtn.addEventListener('click', onNewFromCommunityClick);
+            newFromCommunityBtn.addEventListener('keydown', (e) => onRoleButtonKeydown(e, onNewFromCommunityClick));
+        }
+        const moderateBtn = document.getElementById('moderate-community-btn');
+        if (moderateBtn) {
+            moderateBtn.addEventListener('click', openAdminModal);
+            moderateBtn.addEventListener('keydown', (e) => onRoleButtonKeydown(e, openAdminModal));
+        }
+        document.getElementById('admin-key-submit').addEventListener('click', submitAdminKey);
+        document.getElementById('admin-modal-cancel').addEventListener('click', closeAdminModal);
+        document.getElementById('admin-list-close').addEventListener('click', closeAdminModal);
+        document.getElementById('admin-key-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAdminKey(); });
+        const saveCurrentBtn = document.getElementById('save-current-btn');
+        if (saveCurrentBtn) saveCurrentBtn.addEventListener('click', onSaveCurrentClick);
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn) exportBtn.addEventListener('click', onExportClick);
+        const importBtn = document.getElementById('import-btn');
+        const importFile = document.getElementById('import-file');
+        if (importBtn && importFile) importBtn.addEventListener('click', onImportClick);
+        if (importFile) importFile.addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
+            try {
+                const json = JSON.parse(await file.text());
+                const genomes = json.genomes || [];
+                if (!genomes.length) { alert('No genomes in file'); return; }
+                if (typeof EyecatcherStorage !== 'undefined') {
+                    await EyecatcherStorage.init();
+                    await EyecatcherStorage.importPopulation(json);
+                }
+                await loadFromStatelessGenomes(genomes, json.generation != null ? json.generation : 0);
+            } catch (err) { alert('Import failed: ' + (err.message || err)); }
+        });
         
         // Initialize
         initSignalControls();
@@ -984,13 +2026,15 @@
             });
         }
         
-        // Initialize debug module
-        EyecatcherDebug.init({
-            apiUrl: API_URL,
-            getMouseDistance: getMouseDistanceToCanvas,
-            getPatterns: () => patterns,
-            getSignalState: () => signalState
-        });
+        // Initialize debug module (guard against missing debug.js)
+        if (typeof EyecatcherDebug !== 'undefined') {
+            EyecatcherDebug.init({
+                apiUrl: API_URL,
+                getMouseDistance: getMouseDistanceToCanvas,
+                getPatterns: () => patterns,
+                getSignalState: () => signalState
+            });
+        }
         
         initTimeModeControls();
         loadPopulation();
