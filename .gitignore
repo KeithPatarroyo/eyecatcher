@@ -11,3 +11,4 @@ output/
 *.pkl
 .pytest_cache/
 uv.lock
+data/community.db
