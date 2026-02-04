@@ -170,7 +170,8 @@ button:disabled {
 
 #grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(calc(140px * var(--pattern-zoom, 1)), 1fr));
+    /* Fixed column width scaled by zoom so cards stay square and scale uniformly */
+    grid-template-columns: repeat(auto-fill, calc(140px * var(--pattern-zoom, 1)));
     gap: calc(8px * var(--pattern-zoom, 1));
     padding: 10px;
     max-width: 1800px;
@@ -181,7 +182,8 @@ button:disabled {
 
 .pattern-canvas-fallback {
     width: 100%;
-    height: 120px;
+    aspect-ratio: 1;
+    min-height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -239,9 +241,11 @@ button:disabled {
 
 .pattern-canvas {
     width: 100%;
-    height: 120px;
+    aspect-ratio: 1;
+    height: auto;
     display: block;
     background: #000;
+    vertical-align: top;
 }
 
 .pattern-info {
