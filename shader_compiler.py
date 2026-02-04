@@ -142,14 +142,16 @@ class ShaderCompiler:
         
         code_lines = []
         
-        # Default input names for visual CPPN
+        # Default input names for visual CPPN (8 inputs)
         if input_names is None:
             input_names = {
-                -6: 'vX',
-                -5: 'vY', 
-                -4: 'vDist',
-                -3: 'vTime',
-                -2: 'vMouseSpeed',
+                -8: 'vX',
+                -7: 'vY', 
+                -6: 'vDist',
+                -5: 'vTime',
+                -4: 'vMouseSpeed',
+                -3: 'vMouseDist',
+                -2: 'vInactivity',
                 -1: 'vBias'
             }
         
@@ -211,10 +213,12 @@ class ShaderCompiler:
         connections = self._get_enabled_connections(time_genome)
         nodes = self._topological_sort(time_genome, connections, time_config)
         
-        # Time signal input names: raw_time, mouseSpeed, bias
+        # Time signal input names: raw_time, mouseSpeed, mouseDistance, inactivity, bias (5 inputs)
         time_input_names = {
-            -3: 'vRawTime',
-            -2: 'vMouseSpeed',
+            -5: 'vRawTime',
+            -4: 'vMouseSpeed',
+            -3: 'vMouseDist',
+            -2: 'vInactivity',
             -1: 'vBias'
         }
         
@@ -234,6 +238,18 @@ precision highp float;
 in vec2 vUV;  // UV coordinates (0-1)
 uniform float uTime;  // Time uniform (0-1)
 uniform float uMouseSpeed;  // Mouse movement speed (0-1)
+uniform float uMouseDist;  // Distance from mouse to this pattern's center (0-1)
+uniform float uInactivity;  // Time since mouse last moved (0-1)
+
+// Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
+uniform float uTimeEnableRawTime;
+uniform float uTimeEnableMouseSpeed;
+uniform float uTimeEnableMouseDist;
+uniform float uTimeEnableInactivity;
+uniform float uVisualEnableTime;
+uniform float uVisualEnableMouseSpeed;
+uniform float uVisualEnableMouseDist;
+uniform float uVisualEnableInactivity;
 
 // Output color
 out vec4 fragColor;
@@ -281,8 +297,12 @@ void main() {{
     float vX = vUV.x * 2.0 - 1.0;
     float vY = vUV.y * 2.0 - 1.0;
     float vDist = sqrt(vX * vX + vY * vY);
-    float vTime = uTime * 2.0 - 1.0;
-    float vMouseSpeed = uMouseSpeed * 2.0 - 1.0;  // Mouse speed input
+    
+    // Apply enable gates (disabled = 0.0 neutral)
+    float vTime = (uTime * 2.0 - 1.0) * uVisualEnableTime;
+    float vMouseSpeed = (uMouseSpeed * 2.0 - 1.0) * uVisualEnableMouseSpeed;
+    float vMouseDist = (uMouseDist * 2.0 - 1.0) * uVisualEnableMouseDist;
+    float vInactivity = (uInactivity * 2.0 - 1.0) * uVisualEnableInactivity;
     float vBias = 1.0;
     
     // Network computations
@@ -345,6 +365,18 @@ precision highp float;
 in vec2 vUV;  // UV coordinates (0-1)
 uniform float uTime;  // Time uniform (0-1)
 uniform float uMouseSpeed;  // Mouse movement speed (0-1)
+uniform float uMouseDist;  // Distance from mouse to this pattern's center (0-1)
+uniform float uInactivity;  // Time since mouse last moved (0-1)
+
+// Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
+uniform float uTimeEnableRawTime;
+uniform float uTimeEnableMouseSpeed;
+uniform float uTimeEnableMouseDist;
+uniform float uTimeEnableInactivity;
+uniform float uVisualEnableTime;
+uniform float uVisualEnableMouseSpeed;
+uniform float uVisualEnableMouseDist;
+uniform float uVisualEnableInactivity;
 
 // Output color
 out vec4 fragColor;
@@ -388,23 +420,37 @@ float inv(float x) {{
 }}
 
 void main() {{
-    // Raw inputs
-    float vRawTime = uTime * 2.0 - 1.0;
-    float vMouseSpeed = uMouseSpeed * 2.0 - 1.0;
+    // Raw inputs (before enable gating)
+    float rawTime_base = uTime * 2.0 - 1.0;
+    float mouseSpeed_base = uMouseSpeed * 2.0 - 1.0;
+    float mouseDist_base = uMouseDist * 2.0 - 1.0;
+    float inactivity_base = uInactivity * 2.0 - 1.0;
     float vBias = 1.0;
     
     // === TIME SIGNAL NETWORK ===
-    // Transforms raw time based on mouse speed
+    // Apply enable gates for time CPPN inputs (disabled = 0.0 neutral)
+    float vRawTime = rawTime_base * uTimeEnableRawTime;
+    float vMouseSpeed = mouseSpeed_base * uTimeEnableMouseSpeed;
+    float vMouseDist = mouseDist_base * uTimeEnableMouseDist;
+    float vInactivity = inactivity_base * uTimeEnableInactivity;
+    
+    // Time signal network computation
 {time_code}
     
     // Get modified time from time signal network (clamped to valid range)
-    float vTime = clamp(time_output_0, -1.0, 1.0);
+    float timeFromNetwork = clamp(time_output_0, -1.0, 1.0);
     
     // === VISUAL NETWORK ===
     // Convert UV to CPPN coordinate space (-1 to 1)
     float vX = vUV.x * 2.0 - 1.0;
     float vY = vUV.y * 2.0 - 1.0;
     float vDist = sqrt(vX * vX + vY * vY);
+    
+    // Apply enable gates for visual CPPN inputs (disabled = 0.0 neutral)
+    float vTime = timeFromNetwork * uVisualEnableTime;
+    vMouseSpeed = mouseSpeed_base * uVisualEnableMouseSpeed;
+    vMouseDist = mouseDist_base * uVisualEnableMouseDist;
+    vInactivity = inactivity_base * uVisualEnableInactivity;
     
     // Visual network computations (using modified time)
 {visual_code}
