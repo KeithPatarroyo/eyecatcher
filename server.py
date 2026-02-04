@@ -177,6 +177,28 @@ def record_click():
     return jsonify({'error': 'Individual not found'}), 404
 
 
+@app.route('/api/unclick', methods=['POST'])
+def remove_click():
+    """Remove a click (decrease fitness) for an individual."""
+    data = request.json
+    individual_id = data.get('id')
+    
+    for individual in current_population:
+        if individual['id'] == individual_id:
+            if individual['clicks'] > 0:
+                individual['clicks'] -= 1
+                individual['fitness'] = individual['clicks']
+                # Update fitness on the dual genome
+                individual['genome'].fitness = individual['clicks']
+            return jsonify({
+                'id': individual_id,
+                'clicks': individual['clicks'],
+                'status': 'removed'
+            })
+    
+    return jsonify({'error': 'Individual not found'}), 404
+
+
 @app.route('/api/breed', methods=['POST'])
 def breed():
     """Breed next generation from selected individuals."""
