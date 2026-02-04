@@ -352,6 +352,17 @@
                     </div>
                     <div class="click-count ${pattern.clicks === 0 ? 'zero' : ''}">${pattern.clicks}</div>
                 `;
+                const actions = document.createElement('div');
+                actions.className = 'pattern-actions';
+                const submitCommunityBtn = document.createElement('button');
+                submitCommunityBtn.className = 'submit-community-btn';
+                submitCommunityBtn.setAttribute('title', 'Submit to Community');
+                submitCommunityBtn.setAttribute('aria-label', 'Submit to Community');
+                submitCommunityBtn.textContent = '↗';
+                submitCommunityBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    CommunityUI.openSubmitCommunityModal(pattern.id);
+                };
                 const saveBtn = document.createElement('button');
                 saveBtn.className = 'save-btn';
                 saveBtn.textContent = '💾 Save';
@@ -359,17 +370,11 @@
                     e.stopPropagation();
                     savePattern(pattern.id);
                 };
-                const submitCommunityBtn = document.createElement('button');
-                submitCommunityBtn.className = 'submit-community-btn';
-                submitCommunityBtn.textContent = 'Submit to Community';
-                submitCommunityBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    CommunityUI.openSubmitCommunityModal(pattern.id);
-                };
+                actions.appendChild(submitCommunityBtn);
+                actions.appendChild(saveBtn);
                 card.appendChild(canvas);
+                card.appendChild(actions);
                 card.appendChild(info);
-                card.appendChild(submitCommunityBtn);
-                card.appendChild(saveBtn);
                 grid.appendChild(card);
                 const patternData = setupPattern(canvas, pattern.shader);
                 if (patternData) {

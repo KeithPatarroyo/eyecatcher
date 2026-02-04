@@ -4,25 +4,7 @@
  * Styles for community submit, browse, and admin moderation modals.
  */
 
-/* Submit to Community button on pattern cards */
-.submit-community-btn {
-    position: absolute;
-    top: 10px;
-    right: 70px;
-    padding: 8px 12px;
-    background: rgba(40, 167, 69, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    border-radius: 6px;
-    font-size: 11px;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s, background 0.2s;
-    z-index: 10;
-}
-.pattern-card:hover .submit-community-btn {
-    opacity: 1;
-}
+/* Submit to Community button: layout and scaling in viewer.css (in-flow .pattern-actions) */
 .submit-community-btn:hover {
     background: rgba(34, 136, 56, 0.95);
 }
