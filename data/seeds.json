@@ -1,0 +1,634 @@
+{
+  "seeds": [
+    {
+      "id": 0,
+      "name": "Seed 1",
+      "genome": {
+        "key": 0,
+        "visual": {
+          "key": 0,
+          "fitness": null,
+          "nodes": {
+            "0": {
+              "bias": 3.5228110267301225,
+              "response": 1.0,
+              "activation": "abs",
+              "aggregation": "sum"
+            },
+            "1": {
+              "bias": -3.917491586837925,
+              "response": 1.0,
+              "activation": "sin",
+              "aggregation": "sum"
+            },
+            "2": {
+              "bias": 0.6591348502910767,
+              "response": 1.0,
+              "activation": "sin",
+              "aggregation": "sum"
+            },
+            "103": {
+              "bias": -1.200065738524723,
+              "response": 1.0,
+              "activation": "sin",
+              "aggregation": "sum"
+            },
+            "104": {
+              "bias": 1.6508434721063565,
+              "response": 1.0,
+              "activation": "relu",
+              "aggregation": "sum"
+            }
+          },
+          "connections": {
+            "-7_103": {
+              "innovation": 579,
+              "weight": 2.2720184765562177,
+              "enabled": true
+            },
+            "-8_2": {
+              "innovation": 40,
+              "weight": 0.06708240511566124,
+              "enabled": true
+            },
+            "-8_1": {
+              "innovation": 64,
+              "weight": -1.0810482239385197,
+              "enabled": true
+            },
+            "-4_1": {
+              "innovation": 25,
+              "weight": 0.20652609601059646,
+              "enabled": true
+            },
+            "-1_103": {
+              "innovation": 580,
+              "weight": -0.25178108877577826,
+              "enabled": true
+            },
+            "-5_2": {
+              "innovation": 4,
+              "weight": 1.8821998010719168,
+              "enabled": true
+            },
+            "-4_104": {
+              "innovation": 581,
+              "weight": -2.068780897044684,
+              "enabled": true
+            },
+            "-4_0": {
+              "innovation": 21,
+              "weight": -0.519030902856492,
+              "enabled": true
+            },
+            "-8_104": {
+              "innovation": 582,
+              "weight": 0.9562900952610003,
+              "enabled": true
+            },
+            "-4_2": {
+              "innovation": 8,
+              "weight": 1.0186512806619954,
+              "enabled": true
+            },
+            "104_1": {
+              "innovation": 583,
+              "weight": 1.2674433663484652,
+              "enabled": true
+            },
+            "-2_2": {
+              "innovation": 36,
+              "weight": -1.5567488520050756,
+              "enabled": true
+            },
+            "-2_1": {
+              "innovation": 80,
+              "weight": -4.029909510737843,
+              "enabled": true
+            },
+            "-3_0": {
+              "innovation": 42,
+              "weight": 0.5000520131942519,
+              "enabled": true
+            },
+            "-8_0": {
+              "innovation": 22,
+              "weight": 1.5486114212281183,
+              "enabled": true
+            },
+            "-7_2": {
+              "innovation": 6,
+              "weight": 0.01129121900554991,
+              "enabled": true
+            },
+            "-5_1": {
+              "innovation": 1,
+              "weight": -0.36314112280463096,
+              "enabled": true
+            },
+            "-6_2": {
+              "innovation": 17,
+              "weight": 1.0106353950024638,
+              "enabled": true
+            },
+            "-6_1": {
+              "innovation": 14,
+              "weight": 5.942631138035811,
+              "enabled": true
+            },
+            "-1_2": {
+              "innovation": 98,
+              "weight": 0.3800736043553782,
+              "enabled": true
+            },
+            "-7_0": {
+              "innovation": 29,
+              "weight": 2.4392146851886682,
+              "enabled": true
+            },
+            "-4_103": {
+              "innovation": 584,
+              "weight": -0.024499775392533247,
+              "enabled": true
+            },
+            "104_2": {
+              "innovation": 585,
+              "weight": 0.8632968936901698,
+              "enabled": true
+            }
+          }
+        },
+        "time_signal": {
+          "key": 0,
+          "fitness": null,
+          "nodes": {
+            "0": {
+              "bias": -1.1381366950425724,
+              "response": 1.0,
+              "activation": "gauss",
+              "aggregation": "sum"
+            },
+            "51": {
+              "bias": -1.0040174481821789,
+              "response": 1.0,
+              "activation": "abs",
+              "aggregation": "sum"
+            }
+          },
+          "connections": {
+            "-5_51": {
+              "innovation": 167,
+              "weight": 1.3459854134938332,
+              "enabled": true
+            },
+            "-1_51": {
+              "innovation": 168,
+              "weight": -1.5370021173208699,
+              "enabled": true
+            },
+            "-2_0": {
+              "innovation": 24,
+              "weight": 2.4770323428678904,
+              "enabled": true
+            },
+            "-3_51": {
+              "innovation": 169,
+              "weight": -2.5834670778081583,
+              "enabled": true
+            },
+            "-4_51": {
+              "innovation": 170,
+              "weight": 7.321407101789976,
+              "enabled": true
+            },
+            "-4_0": {
+              "innovation": 11,
+              "weight": -0.6748264947698678,
+              "enabled": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 1,
+      "name": "Seed 2",
+      "genome": {
+        "key": 1,
+        "visual": {
+          "key": 1,
+          "fitness": null,
+          "nodes": {
+            "0": {
+              "bias": 0.6547545565505318,
+              "response": 1.0,
+              "activation": "cos",
+              "aggregation": "sum"
+            },
+            "1": {
+              "bias": -1.6966410212697483,
+              "response": 1.0,
+              "activation": "cube",
+              "aggregation": "sum"
+            },
+            "2": {
+              "bias": -0.2695259336185413,
+              "response": 1.0,
+              "activation": "relu",
+              "aggregation": "sum"
+            },
+            "105": {
+              "bias": -0.6105655599013704,
+              "response": 1.0,
+              "activation": "gauss",
+              "aggregation": "sum"
+            },
+            "106": {
+              "bias": -5.402039877082225,
+              "response": 1.0,
+              "activation": "abs",
+              "aggregation": "sum"
+            }
+          },
+          "connections": {
+            "-2_1": {
+              "innovation": 80,
+              "weight": 4.840880070018117,
+              "enabled": true
+            },
+            "105_2": {
+              "innovation": 586,
+              "weight": -0.3141386425329904,
+              "enabled": true
+            },
+            "-3_2": {
+              "innovation": 34,
+              "weight": 1.5493164221017568,
+              "enabled": true
+            },
+            "106_1": {
+              "innovation": 587,
+              "weight": 0.730741616392582,
+              "enabled": true
+            },
+            "-1_0": {
+              "innovation": 88,
+              "weight": -1.0306422108343,
+              "enabled": true
+            },
+            "-5_1": {
+              "innovation": 1,
+              "weight": -4.796733545863612,
+              "enabled": true
+            },
+            "-1_105": {
+              "innovation": 588,
+              "weight": 3.6976903643574226,
+              "enabled": true
+            },
+            "-1_2": {
+              "innovation": 98,
+              "weight": -0.8450069767786726,
+              "enabled": true
+            },
+            "-6_105": {
+              "innovation": 589,
+              "weight": 1.7625084131750794,
+              "enabled": true
+            },
+            "-3_105": {
+              "innovation": 590,
+              "weight": -0.27809049961550103,
+              "enabled": true
+            },
+            "-3_1": {
+              "innovation": 20,
+              "weight": 2.5245523037586954,
+              "enabled": true
+            },
+            "-6_2": {
+              "innovation": 17,
+              "weight": 3.5086103983605756,
+              "enabled": true
+            },
+            "-6_106": {
+              "innovation": 591,
+              "weight": -3.1450729903209247,
+              "enabled": true
+            },
+            "-5_2": {
+              "innovation": 4,
+              "weight": -7.5699223373900075,
+              "enabled": true
+            },
+            "-4_105": {
+              "innovation": 592,
+              "weight": -2.7447375947400108,
+              "enabled": true
+            },
+            "-6_1": {
+              "innovation": 14,
+              "weight": -2.6890335234311102,
+              "enabled": true
+            },
+            "106_0": {
+              "innovation": 593,
+              "weight": -0.6517136211732734,
+              "enabled": true
+            },
+            "-4_1": {
+              "innovation": 25,
+              "weight": -3.1570001408787767,
+              "enabled": true
+            },
+            "-2_2": {
+              "innovation": 36,
+              "weight": 1.2375787929623234,
+              "enabled": true
+            },
+            "-6_0": {
+              "innovation": 16,
+              "weight": -1.1725565914055875,
+              "enabled": true
+            },
+            "-8_2": {
+              "innovation": 40,
+              "weight": -1.4122509809438704,
+              "enabled": true
+            },
+            "-7_2": {
+              "innovation": 6,
+              "weight": -2.9300950980696987,
+              "enabled": true
+            },
+            "-4_0": {
+              "innovation": 21,
+              "weight": 0.19781187034362646,
+              "enabled": true
+            }
+          }
+        },
+        "time_signal": {
+          "key": 1,
+          "fitness": null,
+          "nodes": {
+            "0": {
+              "bias": -0.1086495502845346,
+              "response": 1.0,
+              "activation": "identity",
+              "aggregation": "sum"
+            },
+            "52": {
+              "bias": 0.6872626534010737,
+              "response": 1.0,
+              "activation": "cos",
+              "aggregation": "sum"
+            }
+          },
+          "connections": {
+            "-3_0": {
+              "innovation": 8,
+              "weight": 1.2472594437272475,
+              "enabled": true
+            },
+            "-4_52": {
+              "innovation": 171,
+              "weight": 3.9342560553755583,
+              "enabled": true
+            },
+            "-5_52": {
+              "innovation": 172,
+              "weight": 0.4015599176940181,
+              "enabled": true
+            },
+            "-2_0": {
+              "innovation": 24,
+              "weight": 1.356548679694289,
+              "enabled": true
+            },
+            "-3_52": {
+              "innovation": 173,
+              "weight": -1.730069158130445,
+              "enabled": true
+            },
+            "-1_0": {
+              "innovation": 2,
+              "weight": 1.0386148863308593,
+              "enabled": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "Seed 3",
+      "genome": {
+        "key": 2,
+        "visual": {
+          "key": 2,
+          "fitness": null,
+          "nodes": {
+            "0": {
+              "bias": -1.1690277236281619,
+              "response": 1.0,
+              "activation": "sigmoid",
+              "aggregation": "sum"
+            },
+            "1": {
+              "bias": 0.9245671108964523,
+              "response": 1.0,
+              "activation": "square",
+              "aggregation": "sum"
+            },
+            "2": {
+              "bias": 6.2613114301829675,
+              "response": 1.0,
+              "activation": "gauss",
+              "aggregation": "sum"
+            },
+            "107": {
+              "bias": -0.055223870202395914,
+              "response": 1.0,
+              "activation": "square",
+              "aggregation": "sum"
+            },
+            "108": {
+              "bias": 0.5750483432668674,
+              "response": 1.0,
+              "activation": "identity",
+              "aggregation": "sum"
+            }
+          },
+          "connections": {
+            "107_1": {
+              "innovation": 594,
+              "weight": 0.5920416150515804,
+              "enabled": true
+            },
+            "-6_2": {
+              "innovation": 17,
+              "weight": 10.21595780276909,
+              "enabled": true
+            },
+            "-3_107": {
+              "innovation": 595,
+              "weight": -4.08103098823572,
+              "enabled": true
+            },
+            "-5_1": {
+              "innovation": 1,
+              "weight": -3.6516398736424396,
+              "enabled": true
+            },
+            "-4_107": {
+              "innovation": 596,
+              "weight": 0.6377147329720414,
+              "enabled": true
+            },
+            "-1_108": {
+              "innovation": 597,
+              "weight": -3.783986363252306,
+              "enabled": true
+            },
+            "-8_0": {
+              "innovation": 22,
+              "weight": 8.994577798722014,
+              "enabled": true
+            },
+            "-3_2": {
+              "innovation": 34,
+              "weight": 0.8775358077989023,
+              "enabled": true
+            },
+            "-5_0": {
+              "innovation": 2,
+              "weight": 2.2726470227079574,
+              "enabled": true
+            },
+            "108_0": {
+              "innovation": 598,
+              "weight": -1.087201150906505,
+              "enabled": true
+            },
+            "108_2": {
+              "innovation": 599,
+              "weight": -3.853438746386578,
+              "enabled": true
+            },
+            "-1_2": {
+              "innovation": 98,
+              "weight": 0.33260744984746404,
+              "enabled": true
+            },
+            "-5_107": {
+              "innovation": 600,
+              "weight": -3.6377990537760247,
+              "enabled": true
+            },
+            "-7_107": {
+              "innovation": 601,
+              "weight": -4.113379615691018,
+              "enabled": true
+            },
+            "107_0": {
+              "innovation": 602,
+              "weight": -3.5513761044017964,
+              "enabled": true
+            },
+            "-8_108": {
+              "innovation": 603,
+              "weight": 3.027323633949756,
+              "enabled": true
+            },
+            "-3_1": {
+              "innovation": 20,
+              "weight": 4.8097827909873025,
+              "enabled": true
+            },
+            "-7_0": {
+              "innovation": 29,
+              "weight": -4.886653101649244,
+              "enabled": true
+            },
+            "-7_1": {
+              "innovation": 12,
+              "weight": -0.6448547741315445,
+              "enabled": true
+            },
+            "-3_0": {
+              "innovation": 42,
+              "weight": 8.586047166918345,
+              "enabled": true
+            },
+            "-4_2": {
+              "innovation": 8,
+              "weight": -1.329535078531954,
+              "enabled": true
+            },
+            "-7_108": {
+              "innovation": 604,
+              "weight": 1.5279402437348137,
+              "enabled": true
+            },
+            "-7_2": {
+              "innovation": 6,
+              "weight": -2.992957705992646,
+              "enabled": true
+            }
+          }
+        },
+        "time_signal": {
+          "key": 2,
+          "fitness": null,
+          "nodes": {
+            "0": {
+              "bias": 1.3956172704517948,
+              "response": 1.0,
+              "activation": "cos",
+              "aggregation": "sum"
+            },
+            "53": {
+              "bias": 2.223566492912041,
+              "response": 1.0,
+              "activation": "square",
+              "aggregation": "sum"
+            }
+          },
+          "connections": {
+            "-2_0": {
+              "innovation": 24,
+              "weight": -0.5865852636178234,
+              "enabled": true
+            },
+            "-2_53": {
+              "innovation": 174,
+              "weight": -2.190237958100475,
+              "enabled": true
+            },
+            "-4_53": {
+              "innovation": 175,
+              "weight": -3.688563924518326,
+              "enabled": true
+            },
+            "-3_53": {
+              "innovation": 176,
+              "weight": 2.577267439841742,
+              "enabled": true
+            },
+            "-1_53": {
+              "innovation": 177,
+              "weight": 1.9779499048757936,
+              "enabled": true
+            },
+            "-1_0": {
+              "innovation": 2,
+              "weight": 0.24031455878817243,
+              "enabled": true
+            }
+          }
+        }
+      }
+    }
+  ]
+}
