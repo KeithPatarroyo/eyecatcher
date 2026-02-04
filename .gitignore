@@ -1,4 +1,13 @@
 .python-version
-main.py
-pyproject.toml
 .venv/
+.eyecatcher-venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+output/
+*.pkl
+.pytest_cache/
+uv.lock
