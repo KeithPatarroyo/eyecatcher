@@ -1133,7 +1133,7 @@
                 submitCommunityBtn.textContent = 'Submit to Community';
                 submitCommunityBtn.onclick = (e) => {
                     e.stopPropagation();
-                    openSubmitCommunityModal(pattern.id);
+                    CommunityUI.openSubmitCommunityModal(pattern.id);
                 };
                 card.appendChild(canvas);
                 card.appendChild(info);
@@ -1407,29 +1407,6 @@
             return { genomes, generation };
         }
 
-        async function startNewRandomPopulation() {
-            document.getElementById('loading').style.display = 'block';
-            try {
-                const r = await fetch(`${API_URL}/random`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ size: 12 })
-                });
-                if (!r.ok) {
-                    const d = await r.json().catch(() => ({}));
-                    alert(d.error || 'Failed to create random population');
-                    return;
-                }
-                const d = await r.json();
-                await loadFromStatelessGenomes(d.genomes || [], 0);
-            } catch (error) {
-                console.error('Error starting random population:', error);
-                alert('Error: ' + (error.message || String(error)));
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
-        
         async function savePattern(id) {
             try {
                 // Build request body - include genome JSON for stateless mode
@@ -1473,46 +1450,6 @@
             return d.genome || null;
         }
 
-        let _submitCommunityGenome = null;
-        async function openSubmitCommunityModal(patternId) {
-            document.getElementById('loading').style.display = 'block';
-            const genome = await getGenomeForPattern(patternId);
-            document.getElementById('loading').style.display = 'none';
-            if (!genome) {
-                alert('Could not get pattern data.');
-                return;
-            }
-            _submitCommunityGenome = genome;
-            document.getElementById('community-submit-name').value = '';
-            document.getElementById('community-submit-creator').value = '';
-            document.getElementById('community-submit-modal').classList.add('show');
-        }
-        function closeSubmitCommunityModal() {
-            _submitCommunityGenome = null;
-            document.getElementById('community-submit-modal').classList.remove('show');
-        }
-        async function submitCommunityForm() {
-            if (!_submitCommunityGenome) return;
-            const name = (document.getElementById('community-submit-name').value || '').trim() || 'Unnamed';
-            const creator = (document.getElementById('community-submit-creator').value || '').trim() || 'Anonymous';
-            try {
-                const r = await fetch(`${API_URL}/community/submit`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ genome: _submitCommunityGenome, name, creator })
-                });
-                const d = await r.json().catch(() => ({}));
-                if (!r.ok) {
-                    alert(d.error || 'Submit failed');
-                    return;
-                }
-                alert('Submitted! It will be reviewed before appearing in Community.');
-                closeSubmitCommunityModal();
-            } catch (e) {
-                alert('Error: ' + (e.message || String(e)));
-            }
-        }
-        
         function updateStats() {
             const selected = Array.from(patterns.values()).filter(p => p.clicks > 0).length;
             const totalClicks = Array.from(patterns.values()).reduce((sum, p) => sum + p.clicks, 0);
@@ -1617,8 +1554,8 @@
         const breedBtnEl = document.getElementById('breed-btn');
         breedBtnEl.addEventListener('click', breedGeneration);
         breedBtnEl.addEventListener('keydown', (e) => onRoleButtonKeydown(e, breedGeneration));
-        document.getElementById('new-random-btn').addEventListener('click', startNewRandomPopulation);
-        document.getElementById('new-random-btn').addEventListener('keydown', (e) => onRoleButtonKeydown(e, startNewRandomPopulation));
+        document.getElementById('new-random-btn').addEventListener('click', PopulationUI.startNewRandomPopulation);
+        document.getElementById('new-random-btn').addEventListener('keydown', (e) => onRoleButtonKeydown(e, PopulationUI.startNewRandomPopulation));
         document.getElementById('zoom-in').addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -1632,322 +1569,20 @@
             }
         });
         
-        // Population panel handlers
-        async function onNewFromSeedsClick() {
-            const el = document.getElementById('loading');
-            if (el) el.style.display = 'block';
-            try {
-                const r = await fetch(API_URL + '/seeds');
-                if (!r.ok) { alert('Failed to load seeds'); return; }
-                const d = await r.json();
-                const seeds = d.seeds || [];
-                if (!seeds.length) { alert('No seeds available.'); return; }
-                await loadFromStatelessGenomes(seeds.slice(0, 12).map(s => s.genome || s), 0);
-            } catch (e) { alert('Error: ' + (e.message || e)); }
-            finally { if (el) el.style.display = 'none'; }
-        }
-        async function onLoadSavedClick() {
-            try {
-                if (typeof EyecatcherStorage === 'undefined') { alert('Storage not loaded. Check that storage.js is served.'); return; }
-                await EyecatcherStorage.init();
-                const list = await EyecatcherStorage.listPopulations();
-                const ul = document.getElementById('load-list');
-                if (!ul) return;
-                ul.innerHTML = '';
-                if (!list.length) ul.innerHTML = '<li style="color:#888;">No saved populations</li>';
-                else list.forEach(pop => {
-                    const li = document.createElement('li');
-                    li.textContent = (pop.name || 'Unnamed') + ' (gen ' + (pop.generation || 0) + ', ' + (pop.genomes || []).length + ' patterns)';
-                    li.onclick = async () => {
-                        document.getElementById('load-list-modal').classList.remove('show');
-                        await loadFromStatelessGenomes(pop.genomes || [], pop.generation || 0);
-                    };
-                    ul.appendChild(li);
-                });
-                document.getElementById('load-list-modal').classList.add('show');
-            } catch (e) { alert('Error: ' + (e.message || e)); }
-        }
-        let _communityPatternsList = [];
-        async function onNewFromCommunityClick() {
-            document.getElementById('loading').style.display = 'block';
-            try {
-                const r = await fetch(API_URL + '/community');
-                if (!r.ok) { alert('Failed to load community.'); return; }
-                const d = await r.json();
-                _communityPatternsList = d.patterns || [];
-                const ul = document.getElementById('community-list');
-                if (!ul) return;
-                ul.innerHTML = '';
-                const loadSelectedBtn = document.getElementById('community-load-selected-btn');
-                const load12Btn = document.getElementById('community-load-12-btn');
-                const selectAllBtn = document.getElementById('community-select-all-btn');
-                const deselectAllBtn = document.getElementById('community-deselect-all-btn');
-                if (!_communityPatternsList.length) {
-                    ul.innerHTML = '<li style="color:#888;">No approved community patterns yet.</li>';
-                    if (loadSelectedBtn) loadSelectedBtn.style.display = 'none';
-                    if (load12Btn) load12Btn.style.display = 'none';
-                    if (selectAllBtn) selectAllBtn.style.display = 'none';
-                    if (deselectAllBtn) deselectAllBtn.style.display = 'none';
-                } else {
-                    if (loadSelectedBtn) loadSelectedBtn.style.display = 'inline-block';
-                    if (load12Btn) load12Btn.style.display = 'inline-block';
-                    if (selectAllBtn) selectAllBtn.style.display = 'inline-block';
-                    if (deselectAllBtn) deselectAllBtn.style.display = 'inline-block';
-                    let shadersByKey = {};
-                    try {
-                        const compilePayload = _communityPatternsList.map(pat => ({ ...pat.genome, key: pat.id, clicks: 0 }));
-                        const comp = await fetch(API_URL + '/compile', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ genomes: compilePayload })
-                        });
-                        if (comp.ok) {
-                            const compData = await comp.json();
-                            (compData.shaders || []).forEach(sh => { shadersByKey[sh.id] = sh; });
-                        }
-                    } catch (e) { console.warn('Could not compile community previews:', e); }
-                    const previewPatternData = [];
-                    _communityPatternsList.forEach((pat, idx) => {
-                        const li = document.createElement('li');
-                        li.className = 'community-item';
-                        li.dataset.idx = String(idx);
-                        const checkWrap = document.createElement('div');
-                        checkWrap.className = 'check-wrap';
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.checked = false;
-                        checkWrap.appendChild(checkbox);
-                        const previewWrap = document.createElement('div');
-                        previewWrap.className = 'preview-wrap';
-                        const canvas = document.createElement('canvas');
-                        canvas.width = 80;
-                        canvas.height = 80;
-                        previewWrap.appendChild(canvas);
-                        const info = document.createElement('div');
-                        info.className = 'info';
-                        info.textContent = (pat.name || 'Unnamed') + ' by ' + (pat.creator || '?');
-                        li.appendChild(checkWrap);
-                        li.appendChild(previewWrap);
-                        li.appendChild(info);
-                        li.onclick = (e) => {
-                            if (e.target.type === 'checkbox') return;
-                            checkbox.checked = !checkbox.checked;
-                        };
-                        checkbox.onclick = (e) => e.stopPropagation();
-                        ul.appendChild(li);
-                        const shaderInfo = shadersByKey[pat.id];
-                        if (shaderInfo && shaderInfo.shader) {
-                            const pd = setupPattern(canvas, shaderInfo.shader);
-                            if (pd) previewPatternData.push(pd);
-                        }
-                    });
-                    requestAnimationFrame(() => {
-                        previewPatternData.forEach(pd => renderPattern(pd, 0.5, 0, 0, 0));
-                    });
-                }
-                document.getElementById('community-list-modal').classList.add('show');
-            } catch (e) { alert('Error: ' + (e.message || e)); }
-            finally { document.getElementById('loading').style.display = 'none'; }
-        }
-        function getCommunitySelectedGenomes() {
-            const ul = document.getElementById('community-list');
-            if (!ul) return [];
-            const checked = ul.querySelectorAll('.community-item input[type="checkbox"]:checked');
-            return Array.from(checked).map(cb => {
-                const li = cb.closest('.community-item');
-                const idx = parseInt(li.dataset.idx, 10);
-                return _communityPatternsList[idx] ? _communityPatternsList[idx].genome : null;
-            }).filter(Boolean);
-        }
-        function onCommunityLoadSelected() {
-            const genomes = getCommunitySelectedGenomes();
-            if (!genomes.length) {
-                alert('Select at least one pattern (click rows or checkboxes).');
-                return;
-            }
-            document.getElementById('community-list-modal').classList.remove('show');
-            loadFromStatelessGenomes(genomes, 0);
-        }
-        function onCommunityLoad12() {
-            const first12 = _communityPatternsList.slice(0, 12).map(p => p.genome);
-            if (!first12.length) return;
-            document.getElementById('community-list-modal').classList.remove('show');
-            loadFromStatelessGenomes(first12, 0);
-        }
-        function onCommunitySelectAll() {
-            document.querySelectorAll('#community-list .community-item input[type="checkbox"]').forEach(cb => { cb.checked = true; });
-        }
-        function onCommunityDeselectAll() {
-            document.querySelectorAll('#community-list .community-item input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-        }
-        async function onSaveCurrentClick() {
-            if (typeof EyecatcherStorage === 'undefined') { alert('Storage not loaded.'); return; }
-            const data = await getCurrentGenomesForSave();
-            if (!data || !data.genomes.length) {
-                alert('No population to save. Start with New random population or Load Saved.');
-                return;
-            }
-            const name = prompt('Name this population:', 'Session ' + new Date().toLocaleDateString());
-            if (name == null) return;
-            try {
-                await EyecatcherStorage.init();
-                await EyecatcherStorage.savePopulation((name.trim() || 'Unnamed'), data.genomes, data.generation);
-                alert('Saved.');
-            } catch (e) {
-                alert('Error: ' + (e.message || e));
-            }
-        }
-        async function onExportClick() {
-            const data = await getCurrentGenomesForSave();
-            if (!data || !data.genomes.length) {
-                alert('No population to export. Start with New random population or Load Saved.');
-                return;
-            }
-            const blob = new Blob([JSON.stringify({ name: 'Exported', generation: data.generation, genomes: data.genomes, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'eyecatcher-population.json';
-            a.click();
-            URL.revokeObjectURL(a.href);
-        }
-        function onImportClick() {
-            const input = document.getElementById('import-file');
-            if (input) input.click();
-        }
+        // Initialize modules (must run before event listeners that use them)
+        PopulationUI.init({
+            apiUrl: API_URL,
+            loadFromStatelessGenomes: loadFromStatelessGenomes,
+            getCurrentGenomesForSave: getCurrentGenomesForSave
+        });
+        CommunityUI.init({
+            apiUrl: API_URL,
+            loadFromStatelessGenomes: loadFromStatelessGenomes,
+            getGenomeForPattern: getGenomeForPattern,
+            setupPattern: setupPattern,
+            renderPattern: renderPattern
+        });
 
-        let _adminKey = '';
-        function openAdminModal() {
-            _adminKey = '';
-            document.getElementById('admin-key-input').value = '';
-            document.getElementById('admin-key-error').style.display = 'none';
-            document.getElementById('admin-key-error').textContent = '';
-            document.getElementById('admin-step-key').style.display = 'block';
-            document.getElementById('admin-step-list').style.display = 'none';
-            document.getElementById('admin-modal').classList.add('show');
-        }
-        function closeAdminModal() {
-            _adminKey = '';
-            document.getElementById('admin-modal').classList.remove('show');
-        }
-        async function submitAdminKey() {
-            const key = (document.getElementById('admin-key-input').value || '').trim();
-            const errEl = document.getElementById('admin-key-error');
-            if (!key) {
-                errEl.textContent = 'Please enter the API key.';
-                errEl.style.display = 'block';
-                return;
-            }
-            try {
-                const r = await fetch(API_URL + '/admin/submissions?admin_key=' + encodeURIComponent(key), {
-                    headers: { 'X-Admin-Key': key }
-                });
-                if (r.status === 403) {
-                    errEl.textContent = 'Invalid API key.';
-                    errEl.style.display = 'block';
-                    return;
-                }
-                if (!r.ok) {
-                    errEl.textContent = 'Request failed (status ' + r.status + ').';
-                    errEl.style.display = 'block';
-                    return;
-                }
-                _adminKey = key;
-                const d = await r.json();
-                const list = d.submissions || [];
-                document.getElementById('admin-step-key').style.display = 'none';
-                document.getElementById('admin-step-list').style.display = 'block';
-                await renderAdminPendingList(list);
-            } catch (e) {
-                errEl.textContent = 'Error: ' + (e.message || String(e));
-                errEl.style.display = 'block';
-            }
-        }
-        async function renderAdminPendingList(submissions) {
-            const ul = document.getElementById('admin-pending-list');
-            ul.innerHTML = '';
-            if (!submissions.length) {
-                ul.innerHTML = '<li style="color:#888;padding:12px;">No pending submissions.</li>';
-                return;
-            }
-            let shadersByKey = {};
-            try {
-                const compilePayload = submissions.map(s => ({ ...s.genome, key: s.id, clicks: 0 }));
-                const comp = await fetch(API_URL + '/compile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ genomes: compilePayload })
-                });
-                if (comp.ok) {
-                    const compData = await comp.json();
-                    (compData.shaders || []).forEach(sh => { shadersByKey[sh.id] = sh; });
-                }
-            } catch (e) {
-                console.warn('Could not compile previews:', e);
-            }
-            const previewPatternData = [];
-            submissions.forEach(sub => {
-                const li = document.createElement('li');
-                li.className = 'pending-item';
-                const previewWrap = document.createElement('div');
-                previewWrap.className = 'preview-wrap';
-                const canvas = document.createElement('canvas');
-                canvas.width = 80;
-                canvas.height = 80;
-                previewWrap.appendChild(canvas);
-                const info = document.createElement('div');
-                info.className = 'info';
-                info.innerHTML = '<strong>' + (sub.name || 'Unnamed') + '</strong> by ' + (sub.creator || '?');
-                const actions = document.createElement('div');
-                actions.className = 'actions';
-                actions.innerHTML = '<button type="button" class="approve-btn">Approve</button><button type="button" class="reject-btn">Reject</button>';
-                li.appendChild(previewWrap);
-                li.appendChild(info);
-                li.appendChild(actions);
-                li.querySelector('.approve-btn').addEventListener('click', () => adminApprove(sub.id, li));
-                li.querySelector('.reject-btn').addEventListener('click', () => adminReject(sub.id, li));
-                ul.appendChild(li);
-                const shaderInfo = shadersByKey[sub.id];
-                if (shaderInfo && shaderInfo.shader) {
-                    const pd = setupPattern(canvas, shaderInfo.shader);
-                    if (pd) previewPatternData.push(pd);
-                }
-            });
-            requestAnimationFrame(() => {
-                previewPatternData.forEach(pd => renderPattern(pd, 0.5, 0, 0, 0));
-            });
-        }
-        async function adminApprove(id, rowEl) {
-            try {
-                const r = await fetch(API_URL + '/admin/approve?admin_key=' + encodeURIComponent(_adminKey), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': _adminKey },
-                    body: JSON.stringify({ id })
-                });
-                if (r.status === 403) { alert('Invalid API key.'); return; }
-                if (!r.ok) { alert('Approve failed.'); return; }
-                rowEl.remove();
-            } catch (e) { alert('Error: ' + (e.message || e)); }
-        }
-        async function adminReject(id, rowEl) {
-            try {
-                const r = await fetch(API_URL + '/admin/reject?admin_key=' + encodeURIComponent(_adminKey), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': _adminKey },
-                    body: JSON.stringify({ id })
-                });
-                if (r.status === 403) { alert('Invalid API key.'); return; }
-                if (!r.ok) { alert('Reject failed.'); return; }
-                rowEl.remove();
-            } catch (e) { alert('Error: ' + (e.message || e)); }
-        }
-        window.onNewFromSeedsClick = onNewFromSeedsClick;
-        window.onNewFromCommunityClick = onNewFromCommunityClick;
-        window.onModerateClick = openAdminModal;
-        window.onLoadSavedClick = onLoadSavedClick;
-        window.onSaveCurrentClick = onSaveCurrentClick;
-        window.onExportClick = onExportClick;
-        window.onImportClick = onImportClick;
-        
         // Population panel: keyboard support for span-buttons
         const populationPanel = document.getElementById('population-panel');
         if (populationPanel) {
@@ -1960,53 +1595,45 @@
         }
         
         const newFromSeedsBtn = document.getElementById('new-from-seeds-btn');
-        if (newFromSeedsBtn) newFromSeedsBtn.addEventListener('click', onNewFromSeedsClick);
+        if (newFromSeedsBtn) newFromSeedsBtn.addEventListener('click', PopulationUI.onNewFromSeedsClick);
         const loadSavedBtn = document.getElementById('load-saved-btn');
-        if (loadSavedBtn) loadSavedBtn.addEventListener('click', onLoadSavedClick);
+        if (loadSavedBtn) loadSavedBtn.addEventListener('click', PopulationUI.onLoadSavedClick);
         const loadModalClose = document.getElementById('load-modal-close');
         if (loadModalClose) loadModalClose.addEventListener('click', () => { document.getElementById('load-list-modal').classList.remove('show'); });
-        document.getElementById('community-submit-do').addEventListener('click', submitCommunityForm);
-        document.getElementById('community-submit-cancel').addEventListener('click', closeSubmitCommunityModal);
+        document.getElementById('community-submit-do').addEventListener('click', CommunityUI.submitCommunityForm);
+        document.getElementById('community-submit-cancel').addEventListener('click', CommunityUI.closeSubmitCommunityModal);
         document.getElementById('community-list-close').addEventListener('click', () => document.getElementById('community-list-modal').classList.remove('show'));
-        document.getElementById('community-load-selected-btn').addEventListener('click', onCommunityLoadSelected);
-        document.getElementById('community-load-12-btn').addEventListener('click', onCommunityLoad12);
-        document.getElementById('community-select-all-btn').addEventListener('click', onCommunitySelectAll);
-        document.getElementById('community-deselect-all-btn').addEventListener('click', onCommunityDeselectAll);
+        document.getElementById('community-load-selected-btn').addEventListener('click', CommunityUI.onCommunityLoadSelected);
+        document.getElementById('community-load-12-btn').addEventListener('click', CommunityUI.onCommunityLoad12);
+        document.getElementById('community-select-all-btn').addEventListener('click', CommunityUI.onCommunitySelectAll);
+        document.getElementById('community-deselect-all-btn').addEventListener('click', CommunityUI.onCommunityDeselectAll);
         const newFromCommunityBtn = document.getElementById('new-from-community-btn');
         if (newFromCommunityBtn) {
-            newFromCommunityBtn.addEventListener('click', onNewFromCommunityClick);
-            newFromCommunityBtn.addEventListener('keydown', (e) => onRoleButtonKeydown(e, onNewFromCommunityClick));
+            newFromCommunityBtn.addEventListener('click', CommunityUI.onNewFromCommunityClick);
+            newFromCommunityBtn.addEventListener('keydown', (e) => onRoleButtonKeydown(e, CommunityUI.onNewFromCommunityClick));
         }
         const moderateBtn = document.getElementById('moderate-community-btn');
         if (moderateBtn) {
-            moderateBtn.addEventListener('click', openAdminModal);
-            moderateBtn.addEventListener('keydown', (e) => onRoleButtonKeydown(e, openAdminModal));
+            moderateBtn.addEventListener('click', CommunityUI.openAdminModal);
+            moderateBtn.addEventListener('keydown', (e) => onRoleButtonKeydown(e, CommunityUI.openAdminModal));
         }
-        document.getElementById('admin-key-submit').addEventListener('click', submitAdminKey);
-        document.getElementById('admin-modal-cancel').addEventListener('click', closeAdminModal);
-        document.getElementById('admin-list-close').addEventListener('click', closeAdminModal);
-        document.getElementById('admin-key-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAdminKey(); });
+        document.getElementById('admin-key-submit').addEventListener('click', CommunityUI.submitAdminKey);
+        document.getElementById('admin-modal-cancel').addEventListener('click', CommunityUI.closeAdminModal);
+        document.getElementById('admin-list-close').addEventListener('click', CommunityUI.closeAdminModal);
+        document.getElementById('admin-key-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') CommunityUI.submitAdminKey(); });
         const saveCurrentBtn = document.getElementById('save-current-btn');
-        if (saveCurrentBtn) saveCurrentBtn.addEventListener('click', onSaveCurrentClick);
+        if (saveCurrentBtn) saveCurrentBtn.addEventListener('click', PopulationUI.onSaveCurrentClick);
         const exportBtn = document.getElementById('export-btn');
-        if (exportBtn) exportBtn.addEventListener('click', onExportClick);
+        if (exportBtn) exportBtn.addEventListener('click', PopulationUI.onExportClick);
         const importBtn = document.getElementById('import-btn');
         const importFile = document.getElementById('import-file');
-        if (importBtn && importFile) importBtn.addEventListener('click', onImportClick);
+        if (importBtn && importFile) importBtn.addEventListener('click', PopulationUI.onImportClick);
         if (importFile) importFile.addEventListener('change', async (e) => {
             const file = e.target.files && e.target.files[0];
             e.target.value = '';
-            if (!file) return;
-            try {
-                const json = JSON.parse(await file.text());
-                const genomes = json.genomes || [];
-                if (!genomes.length) { alert('No genomes in file'); return; }
-                if (typeof EyecatcherStorage !== 'undefined') {
-                    await EyecatcherStorage.init();
-                    await EyecatcherStorage.importPopulation(json);
-                }
-                await loadFromStatelessGenomes(genomes, json.generation != null ? json.generation : 0);
-            } catch (err) { alert('Import failed: ' + (err.message || err)); }
+            if (file && typeof PopulationUI.handleImportFile === 'function') {
+                await PopulationUI.handleImportFile(file);
+            }
         });
         
         // Initialize
