@@ -185,9 +185,9 @@ def save_individual():
         if individual['id'] == individual_id:
             os.makedirs('output/saved', exist_ok=True)
             
-            # Save genome
+            # Save genome (with visualization)
             genome_path = f'output/saved/genome_{individual_id}.pkl'
-            engine.save_genome(individual['genome'], genome_path)
+            engine.save_genome(individual['genome'], genome_path, visualize=True)
             
             # Save shader
             shader_code = compiler.compile_to_glsl(individual['genome'], engine.config)
@@ -201,11 +201,16 @@ def save_individual():
             img_path = f'output/saved/pattern_{individual_id}.png'
             Image.fromarray(img).save(img_path)
             
+            # Check for network visualization
+            network_path = f'output/saved/genome_{individual_id}_network.pdf'
+            has_network = os.path.exists(network_path)
+            
             return jsonify({
                 'id': individual_id,
                 'genome_path': genome_path,
                 'shader_path': shader_path,
                 'image_path': img_path,
+                'network_path': network_path if has_network else None,
                 'status': 'saved'
             })
     

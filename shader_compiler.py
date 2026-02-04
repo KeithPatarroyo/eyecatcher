@@ -18,7 +18,6 @@ class ShaderCompiler:
         'sigmoid': 'sigmoid',
         'tanh': 'tanh',
         'sin': 'sin',
-        'cos': 'cos',
         'gauss': 'gauss',
         'relu': 'relu',
         'abs': 'abs',

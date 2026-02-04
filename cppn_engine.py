@@ -7,6 +7,7 @@ import numpy as np
 from typing import Tuple, Optional
 import pickle
 from custom_activations import register_custom_activations
+import os
 
 
 class CPPNEngine:
@@ -132,10 +133,29 @@ class CPPNEngine:
             
         return frames
     
-    def save_genome(self, genome: neat.DefaultGenome, filepath: str):
-        """Save a genome to file."""
+    def save_genome(self, genome: neat.DefaultGenome, filepath: str, visualize: bool = False):
+        """
+        Save a genome to file.
+        
+        Args:
+            genome: NEAT genome to save
+            filepath: Path for .pkl file
+            visualize: If True, also creates a network visualization PNG
+        """
         with open(filepath, 'wb') as f:
             pickle.dump(genome, f)
+        
+        # Optionally create visualization
+        if visualize:
+            viz_path = filepath.replace('.pkl', '_network.pdf')
+            try:
+                from genome_visualizer import GenomeVisualizer
+                visualizer = GenomeVisualizer(self.config)
+                visualizer.visualize_genome(genome, viz_path)
+            except ImportError as e:
+                print(f"Warning: Could not visualize genome. Install matplotlib: pip install matplotlib")
+            except Exception as e:
+                print(f"Warning: Genome visualization failed: {e}")
     
     def load_genome(self, filepath: str) -> neat.DefaultGenome:
         """Load a genome from file."""
