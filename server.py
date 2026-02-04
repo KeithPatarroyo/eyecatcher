@@ -161,6 +161,18 @@ def serve_community_css():
     return send_from_directory(APP_DIR, 'community.css', mimetype='text/css')
 
 
+@app.route('/viewer.css')
+def serve_viewer_css():
+    """Serve the interactive viewer main styles."""
+    return send_from_directory(APP_DIR, 'viewer.css', mimetype='text/css')
+
+
+@app.route('/pattern_renderer.js')
+def serve_pattern_renderer_js():
+    """Serve the pattern renderer WebGL module."""
+    return send_from_directory(APP_DIR, 'pattern_renderer.js', mimetype='application/javascript')
+
+
 @app.route('/api/init', methods=['POST'])
 def init_population():
     """Initialize new population."""
