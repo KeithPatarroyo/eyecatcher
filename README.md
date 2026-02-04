@@ -170,6 +170,13 @@ python server.py
 # Open http://localhost:5001
 ```
 
+### Docker
+```bash
+docker compose up --build
+# Open http://localhost:5001
+```
+Set `PORT` (default 5001) and `CORS_ORIGINS` (default `*`) via environment if needed.
+
 ### Basic Demos (Single CPPN)
 ```bash
 python main.py
@@ -187,6 +194,8 @@ eyecatcher/
 ├── cppn_engine.py          # Core CPPN engine with dual-genome support
 ├── shader_compiler.py      # GLSL shader compiler
 ├── server.py               # Interactive evolution web server
+├── Dockerfile              # Container build
+├── docker-compose.yml      # Local Docker run
 ├── interactive_viewer.html # Web interface for evolution
 ├── debug.js                # Debug overlay module (signal monitoring)
 ├── debug.css               # Debug overlay styles

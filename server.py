@@ -16,7 +16,13 @@ from cppn_engine import CPPNEngine, DualGenome, create_random_dual_genome
 from shader_compiler import ShaderCompiler
 
 app = Flask(__name__)
-CORS(app)
+
+# CORS: allow all in dev, or set CORS_ORIGINS env for production
+_cors_origins = os.environ.get("CORS_ORIGINS", "*")
+if _cors_origins == "*":
+    CORS(app)
+else:
+    CORS(app, origins=[o.strip() for o in _cors_origins.split(",")])
 
 # Global state
 engine = CPPNEngine()
@@ -365,15 +371,18 @@ def get_stats():
 
 if __name__ == '__main__':
     print("=" * 60)
+    port = int(os.environ.get("PORT", 5001))
+    debug = os.environ.get("FLASK_ENV") == "development"
+
     print("EYECATCHER - Interactive Evolution Server")
     print("Dual-CPPN Mode: Visual + Time Signal Networks")
     print("=" * 60)
     print("\nStarting server...")
-    print("Open http://localhost:5001 in your browser")
+    print(f"Open http://localhost:{port} in your browser")
     print("\nPress Ctrl+C to stop")
     print("=" * 60)
-    
+
     # Initialize first population
     create_population()
-    
-    app.run(debug=True, port=5001)
+
+    app.run(debug=debug, port=port, host="0.0.0.0")
