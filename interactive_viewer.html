@@ -439,9 +439,9 @@
     
     <button id="debug-toggle">Debug</button>
     <div id="debug-overlay" class="hidden">
-        <h4>Input Signals</h4>
+        <h4>Global Signals</h4>
         <div class="debug-row">
-            <span class="debug-label">Time:</span>
+            <span class="debug-label">Raw Time:</span>
             <span class="debug-value" id="dbg-time">0.000</span>
         </div>
         <div class="debug-row">
@@ -456,39 +456,18 @@
             <span class="debug-label">Mouse Pos:</span>
             <span class="debug-value" id="dbg-mousePos">0, 0</span>
         </div>
-        <h4 style="margin-top: 10px;">Time CPPN Inputs</h4>
-        <div class="debug-row">
-            <span class="debug-label">Raw Time:</span>
-            <span class="debug-value" id="dbg-t-rawTime">0.000</span>
-        </div>
-        <div class="debug-row">
-            <span class="debug-label">Mouse Speed:</span>
-            <span class="debug-value" id="dbg-t-mouseSpeed">0.000</span>
-        </div>
+        <h4 style="margin-top: 10px;">Hovered Pattern <span id="dbg-pattern-id" style="color: #0a0;">(none)</span></h4>
         <div class="debug-row">
             <span class="debug-label">Mouse Dist:</span>
-            <span class="debug-value" id="dbg-t-mouseDist">0.000</span>
+            <span class="debug-value" id="dbg-mouseDist">-</span>
         </div>
-        <div class="debug-row">
-            <span class="debug-label">Activity:</span>
-            <span class="debug-value" id="dbg-t-activity">0.000</span>
-        </div>
-        <h4 style="margin-top: 10px;">Visual CPPN Inputs</h4>
+        <h4 style="margin-top: 8px; font-size: 9px; color: #666;">Time CPPN → Visual CPPN</h4>
         <div class="debug-row">
             <span class="debug-label" style="color: #6ca0dc;">Time (output):</span>
-            <span class="debug-value" id="dbg-v-time" style="color: #6ca0dc;">0.000</span>
+            <span class="debug-value" id="dbg-v-time" style="color: #6ca0dc;">varies</span>
         </div>
-        <div class="debug-row">
-            <span class="debug-label">Mouse Speed:</span>
-            <span class="debug-value" id="dbg-v-mouseSpeed">0.000</span>
-        </div>
-        <div class="debug-row">
-            <span class="debug-label">Mouse Dist:</span>
-            <span class="debug-value" id="dbg-v-mouseDist">0.000</span>
-        </div>
-        <div class="debug-row">
-            <span class="debug-label">Activity:</span>
-            <span class="debug-value" id="dbg-v-activity">0.000</span>
+        <div style="font-size: 9px; color: #555; margin-top: 4px; font-style: italic;">
+            Each pattern's Time CPPN transforms raw time uniquely
         </div>
     </div>
 
@@ -553,45 +532,36 @@
         }
         
         // Update debug overlay with current signal values
-        function updateDebugOverlay(time, mouseSpd, avgMouseDist, activityLevel) {
+        function updateDebugOverlay(time, mouseSpd, activityLevel) {
             // Skip if hidden
             if (document.getElementById('debug-overlay').classList.contains('hidden')) return;
             
             const fmt = (v) => v.toFixed(3);
             
-            // Raw signals
+            // Global signals
             document.getElementById('dbg-time').textContent = fmt(time);
             document.getElementById('dbg-mouseSpeed').textContent = fmt(mouseSpd);
             document.getElementById('dbg-activity').textContent = fmt(activityLevel);
             document.getElementById('dbg-mousePos').textContent = `${Math.round(mouseX)}, ${Math.round(mouseY)}`;
             
-            // Time CPPN effective values (after enable gating)
-            const tRawTime = signalState.time.rawTime ? time : 0;
-            const tMouseSpeed = signalState.time.mouseSpeed ? mouseSpd : 0;
-            const tMouseDist = signalState.time.mouseDist ? avgMouseDist : 0;
-            const tActivity = signalState.time.inactivity ? activityLevel : 0;
-            
-            setDebugValue('dbg-t-rawTime', tRawTime, signalState.time.rawTime);
-            setDebugValue('dbg-t-mouseSpeed', tMouseSpeed, signalState.time.mouseSpeed);
-            setDebugValue('dbg-t-mouseDist', tMouseDist, signalState.time.mouseDist);
-            setDebugValue('dbg-t-activity', tActivity, signalState.time.inactivity);
-            
-            // Visual CPPN effective values
-            const vTime = signalState.visual.time ? time : 0;
-            const vMouseSpeed = signalState.visual.mouseSpeed ? mouseSpd : 0;
-            const vMouseDist = signalState.visual.mouseDist ? avgMouseDist : 0;
-            const vActivity = signalState.visual.inactivity ? activityLevel : 0;
-            
-            setDebugValue('dbg-v-time', vTime, signalState.visual.time);
-            setDebugValue('dbg-v-mouseSpeed', vMouseSpeed, signalState.visual.mouseSpeed);
-            setDebugValue('dbg-v-mouseDist', vMouseDist, signalState.visual.mouseDist);
-            setDebugValue('dbg-v-activity', vActivity, signalState.visual.inactivity);
-        }
-        
-        function setDebugValue(id, value, enabled) {
-            const el = document.getElementById(id);
-            el.textContent = value.toFixed(3);
-            el.classList.toggle('disabled', !enabled);
+            // Hovered pattern info
+            if (hoveredPatternId !== null && patterns.has(hoveredPatternId)) {
+                const patternData = patterns.get(hoveredPatternId);
+                const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
+                
+                document.getElementById('dbg-pattern-id').textContent = `#${hoveredPatternId}`;
+                document.getElementById('dbg-mouseDist').textContent = fmt(mouseDist);
+                
+                // Time output note - this is computed per-pattern in shader
+                const timeEnabled = signalState.visual.time;
+                const timeEl = document.getElementById('dbg-v-time');
+                timeEl.textContent = timeEnabled ? 'unique' : 'disabled';
+                timeEl.classList.toggle('disabled', !timeEnabled);
+            } else {
+                document.getElementById('dbg-pattern-id').textContent = '(hover to see)';
+                document.getElementById('dbg-mouseDist').textContent = '-';
+                document.getElementById('dbg-v-time').textContent = '-';
+            }
         }
         
         // Mouse tracking
@@ -649,6 +619,7 @@
         
         // WebGL setup for each canvas
         const patterns = new Map();
+        let hoveredPatternId = null;  // Track which pattern is being hovered
         
         function createWebGLContext(canvas) {
             const gl = canvas.getContext('webgl2');
@@ -827,6 +798,16 @@
                         e.preventDefault();
                         unclickPattern(pattern.id, card);
                     });
+                    
+                    // Hover tracking for debug overlay
+                    card.addEventListener('mouseenter', () => {
+                        hoveredPatternId = pattern.id;
+                    });
+                    card.addEventListener('mouseleave', () => {
+                        if (hoveredPatternId === pattern.id) {
+                            hoveredPatternId = null;
+                        }
+                    });
                 }
                 
                 document.getElementById('loading').style.display = 'none';
@@ -993,21 +974,14 @@
                 // Decay activity when not moving
                 activity *= ACTIVITY_DECAY;
                 
-                // Track avg mouse distance for debug display
-                let totalMouseDist = 0;
-                let patternCount = 0;
-                
                 patterns.forEach((patternData) => {
                     // Compute distance from mouse to this pattern's canvas center
                     const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
                     renderPattern(patternData, animationTime, mouseSpeed, mouseDist, activity);
-                    totalMouseDist += mouseDist;
-                    patternCount++;
                 });
                 
                 // Update debug overlay
-                const avgMouseDist = patternCount > 0 ? totalMouseDist / patternCount : 0;
-                updateDebugOverlay(animationTime, mouseSpeed, avgMouseDist, activity);
+                updateDebugOverlay(animationTime, mouseSpeed, activity);
             }
             
             requestAnimationFrame(animate);
