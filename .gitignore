@@ -2,3 +2,7 @@
 main.py
 pyproject.toml
 .venv/
+uv.lock
+__pycache__/
+output/
+eyecatcher.egg-info
