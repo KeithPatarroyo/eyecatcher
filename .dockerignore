@@ -1,0 +1,13 @@
+.git
+.gitignore
+.eyecatcher-venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.cursor
+*.md
+output/saved/*
+!output/saved/.gitkeep
+data/*
+!data/.gitkeep

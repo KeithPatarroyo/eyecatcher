@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  eyecatcher:
+    build: .
+    ports:
+      - "5001:8080"
+    environment:
+      - PORT=8080
+      - FLASK_ENV=development
+    volumes:
+      - ./output:/app/output
+      - ./data:/app/data
