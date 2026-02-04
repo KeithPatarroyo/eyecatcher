@@ -434,7 +434,8 @@
             document.getElementById('grid').innerHTML = '';
             patterns.clear();
             try {
-                const response = await fetch(`${API_URL}/population`);
+                // include_genomes=1 so we have genomes for Submit to Community (avoids load-balancer hitting different instance)
+                const response = await fetch(`${API_URL}/population?include_genomes=1`);
                 if (!response.ok) {
                     showGridError('Server returned ' + response.status + '. Is the server running?', true);
                     return;
@@ -446,6 +447,7 @@
                     return;
                 }
                 currentPopulation = population;
+                currentGenomes = Array.isArray(data.genomes) ? data.genomes : null;
                 currentGenerationNum = data.generation;
                 document.getElementById('gen-num').textContent = currentGenerationNum;
                 renderGridFromPopulation(currentPopulation);
@@ -661,7 +663,18 @@
                     alert('Save failed: ' + data.error);
                     return;
                 }
-                alert(`Saved!\nShader: ${data.shader_path}\nImage: ${data.image_path}`);
+                let msg = `Saved!\nShader: ${data.shader_path}\nImage: ${data.image_path}`;
+                if (data.network_path) {
+                    msg += '\n\nNetwork diagram was generated (view link below).';
+                }
+                alert(msg);
+                if (data.network_path) {
+                    const baseUrl = API_URL.replace('/api', '');
+                    const networkUrl = `${baseUrl}/api/saved/${data.id}/network`;
+                    if (confirm('Open network diagram in a new tab?')) {
+                        window.open(networkUrl, '_blank');
+                    }
+                }
 
             } catch (error) {
                 console.error('Error saving:', error);

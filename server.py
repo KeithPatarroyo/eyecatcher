@@ -119,6 +119,12 @@ if not current_population:
     create_population(12)
 
 
+@app.route('/health')
+def health():
+    """Lightweight health check for Railway/deploy (no app state)."""
+    return '', 200
+
+
 @app.route('/')
 def index():
     """Serve the viewer HTML."""
@@ -192,23 +198,25 @@ def init_population():
 
 @app.route('/api/population', methods=['GET'])
 def get_population():
-    """Get current population as shaders."""
+    """Get current population as shaders. Optionally include genomes (for Submit to Community when load-balanced)."""
+    include_genomes = request.args.get('include_genomes', '').lower() in ('1', 'true', 'yes')
     shaders = []
-    
+    genomes_out = [] if include_genomes else None
+
     for individual in current_population:
         dual_genome = individual['genome']
-        
+
         # Compile dual CPPN to shader
         shader_code = compiler.compile_dual_to_glsl(
             dual_genome, engine.config, engine.time_config
         )
-        
+
         # Count nodes and connections for both networks
         visual_nodes = len(dual_genome.visual.nodes)
         visual_conns = len([c for c in dual_genome.visual.connections.values() if c.enabled])
         time_nodes = len(dual_genome.time_signal.nodes)
         time_conns = len([c for c in dual_genome.time_signal.connections.values() if c.enabled])
-        
+
         shaders.append({
             'id': individual['id'],
             'shader': shader_code,
@@ -220,11 +228,16 @@ def get_population():
             'time_nodes': time_nodes,
             'time_connections': time_conns
         })
-    
-    return jsonify({
+        if include_genomes:
+            genomes_out.append(dual_genome_to_json(dual_genome))
+
+    out = {
         'generation': current_generation,
         'population': shaders
-    })
+    }
+    if genomes_out is not None:
+        out['genomes'] = genomes_out
+    return jsonify(out)
 
 
 @app.route('/api/population/genomes', methods=['GET'])
@@ -457,9 +470,12 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
     """Internal helper to save a dual genome and return paths."""
     os.makedirs('output/saved', exist_ok=True)
 
-    # Save dual genome
+    # Save dual genome (and optional network visualization PDF)
     genome_path = f'output/saved/dual_genome_{individual_id}.pkl'
     engine.save_dual_genome(dual_genome, genome_path, visualize=visualize)
+
+    network_path = f'output/saved/dual_genome_{individual_id}_network.pdf'
+    has_network = os.path.isfile(network_path)
 
     # Save shader
     shader_code = compiler.compile_dual_to_glsl(
@@ -481,14 +497,45 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
     img_path = f'output/saved/pattern_{individual_id}.png'
     Image.fromarray(img).save(img_path)
 
-    return jsonify({
+    out = {
         'id': individual_id,
         'genome_path': genome_path,
         'shader_path': shader_path,
         'bundle_path': bundle_path,
         'image_path': img_path,
         'status': 'saved'
-    })
+    }
+    if has_network:
+        out['network_path'] = network_path
+    return jsonify(out)
+
+
+@app.route('/api/saved/<int:individual_id>/network')
+def serve_saved_network(individual_id):
+    """Serve the network visualization PDF for a saved pattern (from genome visualizer)."""
+    path = os.path.join(APP_DIR, 'output', 'saved', f'dual_genome_{individual_id}_network.pdf')
+    if not os.path.isfile(path):
+        return jsonify({'error': 'Network visualization not found'}), 404
+    return send_from_directory(
+        os.path.dirname(path),
+        os.path.basename(path),
+        mimetype='application/pdf',
+        as_attachment=False
+    )
+
+
+@app.route('/api/saved/<int:individual_id>/image')
+def serve_saved_image(individual_id):
+    """Serve the rendered PNG for a saved pattern."""
+    path = os.path.join(APP_DIR, 'output', 'saved', f'pattern_{individual_id}.png')
+    if not os.path.isfile(path):
+        return jsonify({'error': 'Image not found'}), 404
+    return send_from_directory(
+        os.path.dirname(path),
+        os.path.basename(path),
+        mimetype='image/png',
+        as_attachment=False
+    )
 
 
 @app.route('/api/stats', methods=['GET'])
