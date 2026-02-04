@@ -1,90 +1,156 @@
 # Eyecatcher
 
-Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Like Picbreeder, but patterns change over time.
+Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Like Picbreeder, but patterns change over time and react to user input.
 
 ## Features
 
-- **CPPN Evolution**: Uses NEAT-Python to evolve neural networks that generate patterns
-- **Time Dimension**: Patterns animate smoothly over time
-- **Shader Compilation**: Convert CPPNs to GLSL shaders for GPU rendering
-- **Mutation & Crossover**: Breed new patterns from existing ones
+- **Dual-CPPN Architecture**: Each individual has two evolved networks:
+  - **Visual CPPN**: Generates RGB colors from spatial coordinates and time
+  - **Time Signal CPPN**: Transforms raw time into a unique temporal rhythm
+- **Interactive Input**: Patterns react to mouse movement speed in real-time
+- **GPU Rendering**: Compiles CPPNs to GLSL shaders for real-time WebGL rendering
+- **Interactive Evolution**: Web interface for selecting and breeding patterns
+- **NEAT Evolution**: Uses NEAT-Python for evolving network topology and weights
 
 ## Quick Start
 
 ```bash
+# Create virtual environment
+python -m venv .eyecatcher-venv
+source .eyecatcher-venv/bin/activate  # On Windows: .eyecatcher-venv\Scripts\activate
+
 # Install dependencies
 pip install -e .
 
-# Run demos
-python main.py
+# Run interactive evolution server
+python server.py
 ```
 
-This will generate:
-- Static patterns
-- Animation frames
-- GLSL shader code
-- Mutation examples
-- Crossover (breeding) examples
+Then open **http://localhost:5001** in your browser.
 
-All outputs go to the `output/` folder.
+## Interactive Evolution
 
-## Core Components
+The web interface allows you to:
 
-### CPPN Engine (`cppn_engine.py`)
-- Creates and evolves CPPNs
-- Renders patterns as images
-- Handles mutation and crossover
-- Saves/loads genomes
+1. **View patterns**: 12 animated CPPN patterns rendered in real-time
+2. **Click to select**: Click patterns you like to increase their fitness
+3. **Breed**: Create a new generation from selected parents
+4. **Save**: Download favorite patterns as shaders and images
+5. **Interact**: Move your mouse to see patterns react differently
 
-### Shader Compiler (`shader_compiler.py`)
-- Converts CPPN networks to GLSL code
-- Enables real-time GPU rendering
-- Exports shader bundles (JSON)
+## Architecture
 
-### Configuration (`neat_config.txt`)
-- NEAT evolution parameters
-- Network structure settings
-- Mutation rates
+### Dual-CPPN System
 
-## How It Works
+Each individual consists of two CPPNs that evolve together:
 
-1. **Input**: CPPN receives (x, y, distance, time, bias)
-2. **Network**: Evolved neural network processes inputs
-3. **Output**: RGB color values for that pixel at that time
-4. **Animation**: Time changes → colors change → animation!
+```
+[raw_time, mouseSpeed, bias] → Time Signal CPPN → modified_time
+[x, y, dist, modified_time, mouseSpeed, bias] → Visual CPPN → RGB
+```
 
-## CPPN Inputs (5)
+This allows each pattern to have its own unique "heartbeat" - how it perceives and responds to time.
+
+### Visual CPPN Inputs (6)
 - `x`: Horizontal position (-1 to 1)
-- `y`: Vertical position (-1 to 1)  
+- `y`: Vertical position (-1 to 1)
 - `distance`: Distance from center
-- `time`: Animation time (-1 to 1)
+- `time`: Modified time from Time Signal CPPN (-1 to 1)
+- `mouseSpeed`: Mouse movement speed (0 to 1)
 - `bias`: Constant 1.0
 
-## CPPN Outputs (3)
+### Visual CPPN Outputs (3)
 - `R`: Red channel (0-1)
 - `G`: Green channel (0-1)
 - `B`: Blue channel (0-1)
 
+### Time Signal CPPN Inputs (3)
+- `rawTime`: Linear animation time (-1 to 1)
+- `mouseSpeed`: Mouse movement speed (0 to 1)
+- `bias`: Constant 1.0
+
+### Time Signal CPPN Outputs (1)
+- `modifiedTime`: Transformed time signal (-1 to 1)
+
+## Core Components
+
+### CPPN Engine (`cppn_engine.py`)
+- `CPPNEngine`: Main engine class supporting dual-CPPN individuals
+- `DualGenome`: Dataclass holding paired visual and time signal genomes
+- Mutation and crossover for both single and dual genomes
+- Save/load functionality for dual genomes
+
+### Shader Compiler (`shader_compiler.py`)
+- Converts CPPN networks to GLSL fragment shaders
+- `compile_to_glsl()`: Single CPPN compilation
+- `compile_dual_to_glsl()`: Dual CPPN compilation (time signal + visual)
+- Exports shader bundles as JSON
+
+### Server (`server.py`)
+- Flask-based web server for interactive evolution
+- REST API for population management, breeding, and saving
+- Serves the interactive viewer HTML
+
+### Configuration Files
+- `neat_config.txt`: Visual CPPN parameters (6 inputs, 3 outputs)
+- `neat_config_time.txt`: Time Signal CPPN parameters (3 inputs, 1 output)
+
 ## Activation Functions
 
-Available in the network:
+Available in both networks:
 - `sin`, `cos` - Periodic patterns
 - `sigmoid`, `tanh` - Smooth gradients
 - `gauss` - Gaussian bumps
 - `relu` - Rectified linear
 - `abs`, `square`, `cube` - Non-linear transforms
+- `identity`, `clamped`, `hat`, `inv`, `exp`
 
-## Evolution Workflow
+## API Usage
 
-1. Generate random CPPNs
-2. Render and evaluate patterns
-3. Select favorites (manual or fitness function)
-4. Breed new generation (mutation + crossover)
-5. Repeat
+### Create Dual-CPPN Individual
+```python
+from cppn_engine import CPPNEngine, create_random_dual_genome
 
-## Usage Examples
+engine = CPPNEngine()
+engine.create_population()
 
-### Run All Demos
+# Create random dual genome
+dual_genome = create_random_dual_genome(engine, genome_id=0)
+
+# Query the dual CPPN
+r, g, b = engine.query_dual_cppn(dual_genome, x=0.5, y=0.5, raw_time=0.5, mouse_speed=0.2)
+```
+
+### Compile to Shader
+```python
+from shader_compiler import ShaderCompiler
+
+compiler = ShaderCompiler()
+shader_code = compiler.compile_dual_to_glsl(
+    dual_genome, 
+    engine.config, 
+    engine.time_config
+)
+```
+
+### Evolution Operations
+```python
+# Mutate a dual genome
+child = engine.mutate_dual_genome(dual_genome, new_key=1)
+
+# Crossover two dual genomes
+offspring = engine.crossover_dual_genomes(parent1, parent2, new_key=2)
+```
+
+## Running Demos
+
+### Interactive Evolution Server
+```bash
+python server.py
+# Open http://localhost:5001
+```
+
+### Basic Demos (Single CPPN)
 ```bash
 python main.py
 ```
@@ -94,88 +160,23 @@ python main.py
 python evolution_demo.py
 ```
 
-### Test System
-```bash
-python test_basic.py
-```
-
-### View Shaders in Browser
-1. Generate shaders: `python main.py` or `python evolution_demo.py`
-2. Open `viewer.html` in a web browser
-3. Click "Choose Shader File" and load from `output/` folder
-4. Watch the pattern animate in real-time on GPU!
-
-## API Usage
-
-### Create and Render a Pattern
-```python
-from cppn_engine import CPPNEngine, create_random_genome
-from PIL import Image
-
-engine = CPPNEngine()
-engine.create_population()
-
-# Create random pattern
-genome = create_random_genome(engine.config)
-
-# Render at specific time
-img = engine.render_image(genome, resolution=512, time=0.5)
-
-# Save
-Image.fromarray(img).save("pattern.png")
-```
-
-### Generate Animation
-```python
-frames = engine.render_animation_frames(
-    genome, 
-    resolution=256, 
-    num_frames=60
-)
-```
-
-### Compile to Shader
-```python
-from shader_compiler import ShaderCompiler
-
-compiler = ShaderCompiler()
-shader_code = compiler.compile_to_glsl(genome, engine.config)
-
-with open("pattern.glsl", 'w') as f:
-    f.write(shader_code)
-```
-
-### Evolution
-```python
-from evolution_demo import InteractiveEvolution
-
-evo = InteractiveEvolution(population_size=16)
-evo.initialize_population()
-
-# Select best patterns
-parents = evo.select_parents(num_parents=4)
-
-# Create new generation
-evo.breed_new_generation(parents)
-```
-
 ## File Structure
 
 ```
 eyecatcher/
-├── cppn_engine.py          # Core CPPN engine
+├── cppn_engine.py          # Core CPPN engine with dual-genome support
 ├── shader_compiler.py      # GLSL shader compiler
+├── server.py               # Interactive evolution web server
+├── interactive_viewer.html # Web interface for evolution
 ├── evolution_demo.py       # Evolution simulation
 ├── main.py                 # Basic demos
-├── test_basic.py          # System tests
-├── viewer.html            # WebGL shader viewer
-├── neat_config.txt        # NEAT parameters
-├── pyproject.toml         # Dependencies
-└── output/                # Generated content
-    ├── *.png              # Rendered images
-    ├── *.glsl             # Shader code
-    ├── *.json             # Shader bundles
-    └── evolution/         # Evolution results
+├── neat_config.txt         # Visual CPPN parameters
+├── neat_config_time.txt    # Time Signal CPPN parameters
+├── pyproject.toml          # Dependencies
+└── output/                 # Generated content
+    ├── saved/              # Saved patterns
+    ├── frames/             # Animation frames
+    └── *.glsl              # Shader code
 ```
 
 ## Creating Videos
@@ -190,13 +191,23 @@ ffmpeg -i output/frames/frame_%03d.png -c:v libx264 -pix_fmt yuv420p output.mp4
 ffmpeg -i output/frames/frame_%03d.png -vf "fps=30,scale=512:-1:flags=lanczos" output.gif
 ```
 
+## Requirements
+
+- Python 3.9+
+- neat-python >= 0.92
+- numpy >= 1.24.0
+- pillow >= 10.0.0
+- flask >= 3.0.0
+- flask-cors >= 4.0.0
+
 ## Future Work
 
-- [ ] Interactive web-based selection interface
+- [x] Interactive web-based selection interface
+- [x] Mouse speed reactivity
+- [x] Dual-CPPN architecture (visual + time signal)
 - [ ] Direct video export (MP4/GIF)
 - [ ] Multiple fitness functions for aesthetic properties
 - [ ] 3D patterns (add z coordinate)
 - [ ] Multi-resolution rendering
 - [ ] Save/load evolution sessions
-- [ ] Batch shader compilation
 - [ ] Real-time shader editing

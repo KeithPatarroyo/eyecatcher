@@ -244,10 +244,41 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:5000/api';
+        // Use same origin when page is served over HTTP (e.g. by Flask); fallback for file://
+        const API_URL = (window.location.origin && window.location.protocol.startsWith('http'))
+            ? `${window.location.origin}/api`
+            : 'http://localhost:5001/api';
         let currentPopulation = [];
         let animationTime = 0;
         let animating = true;
+        
+        // Mouse speed tracking
+        let mouseSpeed = 0;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let lastMouseTime = performance.now();
+        const MOUSE_SPEED_DECAY = 0.95;  // How fast mouse speed decays
+        const MOUSE_SPEED_SCALE = 0.005;  // Scale factor for mouse movement
+        
+        // Track mouse movement globally
+        document.addEventListener('mousemove', (e) => {
+            const now = performance.now();
+            const dt = now - lastMouseTime;
+            
+            if (dt > 0) {
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const instantSpeed = distance / dt;
+                
+                // Smooth the speed with exponential moving average
+                mouseSpeed = Math.min(1.0, mouseSpeed * 0.7 + instantSpeed * MOUSE_SPEED_SCALE * 0.3);
+            }
+            
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            lastMouseTime = now;
+        });
         
         // WebGL setup for each canvas
         const patterns = new Map();
@@ -327,7 +358,7 @@
             return { gl, program, positionBuffer };
         }
         
-        function renderPattern(patternData, time) {
+        function renderPattern(patternData, time, mouseSpd) {
             const { gl, program, positionBuffer } = patternData;
             
             gl.useProgram(program);
@@ -335,6 +366,10 @@
             // Set time uniform
             const timeLocation = gl.getUniformLocation(program, 'uTime');
             gl.uniform1f(timeLocation, time);
+            
+            // Set mouse speed uniform
+            const mouseSpeedLocation = gl.getUniformLocation(program, 'uMouseSpeed');
+            gl.uniform1f(mouseSpeedLocation, mouseSpd);
             
             // Setup attributes
             const positionLocation = gl.getAttribLocation(program, 'position');
@@ -410,9 +445,13 @@
                 
             } catch (error) {
                 console.error('Error loading population:', error);
+                const openUrl = (window.location.protocol || '').startsWith('http')
+                    ? 'Refresh this page.'
+                    : 'Open <a href="http://localhost:5001" style="color: #0066cc;">http://localhost:5001</a> in your browser (do not open the HTML file directly).';
                 document.getElementById('loading').innerHTML = `
                     <div style="color: #dc3545;">Error: ${error.message}</div>
-                    <div style="margin-top: 10px; font-size: 14px;">Make sure the server is running: python server.py</div>
+                    <div style="margin-top: 10px; font-size: 14px;">Make sure the server is running: <code>python server.py</code></div>
+                    <div style="margin-top: 8px; font-size: 14px;">${openUrl}</div>
                 `;
             }
         }
@@ -528,8 +567,11 @@
             if (animating) {
                 animationTime = (animationTime + 0.005) % 1.0;
                 
+                // Decay mouse speed when not moving
+                mouseSpeed *= MOUSE_SPEED_DECAY;
+                
                 patterns.forEach((patternData) => {
-                    renderPattern(patternData, animationTime);
+                    renderPattern(patternData, animationTime, mouseSpeed);
                 });
             }
             

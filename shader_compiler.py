@@ -1,10 +1,16 @@
 """
 CPPN to GLSL Shader Compiler.
 Converts NEAT genomes into GPU-executable shader code.
+
+Supports dual-CPPN compilation where a time signal CPPN modulates
+the time input to a visual CPPN.
 """
 import neat
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
 import json
+
+if TYPE_CHECKING:
+    from cppn_engine import DualGenome
 
 
 class ShaderCompiler:
@@ -122,7 +128,9 @@ class ShaderCompiler:
                            genome: neat.DefaultGenome,
                            connections: List[Tuple],
                            nodes: List[int],
-                           config: neat.Config) -> str:
+                           config: neat.Config,
+                           input_names: Optional[Dict[int, str]] = None,
+                           prefix: str = "") -> str:
         """Generate GLSL code for all node computations."""
         
         # Build connection map: node_id -> [(input_node, weight), ...]
@@ -134,14 +142,16 @@ class ShaderCompiler:
         
         code_lines = []
         
-        # Input nodes are already defined as vX, vY, vDist, vTime, vBias
-        input_names = {
-            -5: 'vX',
-            -4: 'vY', 
-            -3: 'vDist',
-            -2: 'vTime',
-            -1: 'vBias'
-        }
+        # Default input names for visual CPPN
+        if input_names is None:
+            input_names = {
+                -6: 'vX',
+                -5: 'vY', 
+                -4: 'vDist',
+                -3: 'vTime',
+                -2: 'vMouseSpeed',
+                -1: 'vBias'
+            }
         
         node_vars = input_names.copy()
         
@@ -163,15 +173,18 @@ class ShaderCompiler:
                 bias = 0.0
                 response = 1.0
             
-            # Generate variable name
-            var_name = f"node_{node_id}" if node_id >= config.genome_config.num_outputs else f"output_{node_id}"
+            # Generate variable name with optional prefix
+            if node_id >= config.genome_config.num_outputs:
+                var_name = f"{prefix}node_{node_id}"
+            else:
+                var_name = f"{prefix}output_{node_id}"
             node_vars[node_id] = var_name
             
             # Compute weighted sum of inputs
             if node_id in node_inputs:
                 input_terms = []
                 for src_id, weight in node_inputs[node_id]:
-                    src_var = node_vars.get(src_id, f"node_{src_id}")
+                    src_var = node_vars.get(src_id, f"{prefix}node_{src_id}")
                     input_terms.append(f"{src_var} * {weight:.6f}")
                 
                 weighted_sum = " + ".join(input_terms)
@@ -191,8 +204,28 @@ class ShaderCompiler:
         
         return "\n".join(code_lines)
     
+    def _generate_time_signal_code(self,
+                                   time_genome: neat.DefaultGenome,
+                                   time_config: neat.Config) -> str:
+        """Generate GLSL code for the time signal CPPN."""
+        connections = self._get_enabled_connections(time_genome)
+        nodes = self._topological_sort(time_genome, connections, time_config)
+        
+        # Time signal input names: raw_time, mouseSpeed, bias
+        time_input_names = {
+            -3: 'vRawTime',
+            -2: 'vMouseSpeed',
+            -1: 'vBias'
+        }
+        
+        return self._generate_node_code(
+            time_genome, connections, nodes, time_config,
+            input_names=time_input_names,
+            prefix="time_"
+        )
+    
     def _build_shader_template(self, node_code: str, config: neat.Config) -> str:
-        """Build the complete GLSL shader with node computations."""
+        """Build the complete GLSL shader with node computations (single CPPN)."""
         
         shader = f"""#version 300 es
 precision highp float;
@@ -200,6 +233,7 @@ precision highp float;
 // Inputs from vertex shader
 in vec2 vUV;  // UV coordinates (0-1)
 uniform float uTime;  // Time uniform (0-1)
+uniform float uMouseSpeed;  // Mouse movement speed (0-1)
 
 // Output color
 out vec4 fragColor;
@@ -248,10 +282,132 @@ void main() {{
     float vY = vUV.y * 2.0 - 1.0;
     float vDist = sqrt(vX * vX + vY * vY);
     float vTime = uTime * 2.0 - 1.0;
+    float vMouseSpeed = uMouseSpeed * 2.0 - 1.0;  // Mouse speed input
     float vBias = 1.0;
     
     // Network computations
 {node_code}
+    
+    // Output RGB (clamp to 0-1)
+    float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
+    float g = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);
+    float b = clamp((output_2 + 1.0) * 0.5, 0.0, 1.0);
+    
+    fragColor = vec4(r, g, b, 1.0);
+}}
+"""
+        return shader
+    
+    def compile_dual_to_glsl(self,
+                             dual_genome: 'DualGenome',
+                             visual_config: neat.Config,
+                             time_config: neat.Config) -> str:
+        """
+        Compile a dual CPPN (time signal + visual) into GLSL shader code.
+        
+        The time signal CPPN transforms the raw time based on mouse speed,
+        then the visual CPPN uses this modified time to generate colors.
+        
+        Args:
+            dual_genome: DualGenome containing visual and time_signal genomes
+            visual_config: NEAT configuration for visual CPPN
+            time_config: NEAT configuration for time signal CPPN
+            
+        Returns:
+            Complete GLSL fragment shader code as string
+        """
+        # Generate time signal network code
+        time_code = self._generate_time_signal_code(
+            dual_genome.time_signal, time_config
+        )
+        
+        # Generate visual network code  
+        visual_connections = self._get_enabled_connections(dual_genome.visual)
+        visual_nodes = self._topological_sort(
+            dual_genome.visual, visual_connections, visual_config
+        )
+        visual_code = self._generate_node_code(
+            dual_genome.visual, visual_connections, visual_nodes, visual_config
+        )
+        
+        # Build the dual shader
+        shader = self._build_dual_shader_template(time_code, visual_code)
+        
+        return shader
+    
+    def _build_dual_shader_template(self, time_code: str, visual_code: str) -> str:
+        """Build the complete GLSL shader for dual CPPN (time signal + visual)."""
+        
+        shader = f"""#version 300 es
+precision highp float;
+
+// Inputs from vertex shader
+in vec2 vUV;  // UV coordinates (0-1)
+uniform float uTime;  // Time uniform (0-1)
+uniform float uMouseSpeed;  // Mouse movement speed (0-1)
+
+// Output color
+out vec4 fragColor;
+
+// Activation functions
+float sigmoid(float x) {{
+    return 1.0 / (1.0 + exp(-x));
+}}
+
+float gauss(float x) {{
+    return exp(-x * x);
+}}
+
+float relu(float x) {{
+    return max(0.0, x);
+}}
+
+float square(float x) {{
+    return x * x;
+}}
+
+float cube(float x) {{
+    return x * x * x;
+}}
+
+float identity(float x) {{
+    return x;
+}}
+
+float clamped(float x) {{
+    return clamp(x, -1.0, 1.0);
+}}
+
+float hat(float x) {{
+    return max(0.0, 1.0 - abs(x));
+}}
+
+float inv(float x) {{
+    if (abs(x) < 0.001) return 0.0;
+    return 1.0 / x;
+}}
+
+void main() {{
+    // Raw inputs
+    float vRawTime = uTime * 2.0 - 1.0;
+    float vMouseSpeed = uMouseSpeed * 2.0 - 1.0;
+    float vBias = 1.0;
+    
+    // === TIME SIGNAL NETWORK ===
+    // Transforms raw time based on mouse speed
+{time_code}
+    
+    // Get modified time from time signal network (clamped to valid range)
+    float vTime = clamp(time_output_0, -1.0, 1.0);
+    
+    // === VISUAL NETWORK ===
+    // Convert UV to CPPN coordinate space (-1 to 1)
+    float vX = vUV.x * 2.0 - 1.0;
+    float vY = vUV.y * 2.0 - 1.0;
+    float vDist = sqrt(vX * vX + vY * vY);
+    
+    // Visual network computations (using modified time)
+{visual_code}
     
     // Output RGB (clamp to 0-1)
     float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
@@ -283,6 +439,41 @@ void main() {{
                 "num_nodes": len(genome.nodes),
                 "num_connections": len([c for c in genome.connections.values() if c.enabled]),
                 "fitness": getattr(genome, 'fitness', None)
+            }
+        }
+        
+        with open(filepath, 'w') as f:
+            json.dump(bundle, f, indent=2)
+    
+    def export_dual_shader_bundle(self,
+                                  dual_genome: 'DualGenome',
+                                  visual_config: neat.Config,
+                                  time_config: neat.Config,
+                                  filepath: str):
+        """
+        Export dual CPPN shader code and metadata as a JSON bundle.
+        
+        Args:
+            dual_genome: DualGenome containing visual and time_signal genomes
+            visual_config: NEAT configuration for visual CPPN
+            time_config: NEAT configuration for time signal CPPN
+            filepath: Output file path
+        """
+        shader_code = self.compile_dual_to_glsl(dual_genome, visual_config, time_config)
+        
+        bundle = {
+            "shader": shader_code,
+            "metadata": {
+                "type": "dual_cppn",
+                "visual": {
+                    "num_nodes": len(dual_genome.visual.nodes),
+                    "num_connections": len([c for c in dual_genome.visual.connections.values() if c.enabled])
+                },
+                "time_signal": {
+                    "num_nodes": len(dual_genome.time_signal.nodes),
+                    "num_connections": len([c for c in dual_genome.time_signal.connections.values() if c.enabled])
+                },
+                "fitness": dual_genome.fitness
             }
         }
         
