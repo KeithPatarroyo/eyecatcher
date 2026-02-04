@@ -1,13 +1,58 @@
-.git
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
 .gitignore
-.eyecatcher-venv
-__pycache__
-*.pyc
-*.pyo
-.pytest_cache
-.cursor
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Output and data (mounted as volumes)
+output/
+data/community.db
+
+# Documentation
 *.md
-output/saved/*
-!output/saved/.gitkeep
-data/*
-!data/.gitkeep
+*.plan.md
+.cursor/
+
+# Tests
+tests/
+*_test.py
+test_*.py
+
+# Misc
+.DS_Store
+*.log

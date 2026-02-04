@@ -12,7 +12,8 @@ RUN pip install --no-cache-dir gunicorn
 # Application code and config
 COPY cppn_engine.py shader_compiler.py server.py .
 COPY neat_config.txt neat_config_time.txt .
-COPY interactive_viewer.html debug.js debug.css .
+COPY interactive_viewer.html debug.js debug.css storage.js .
+COPY data/ data/
 
 # Output directory for saved patterns
 RUN mkdir -p output/saved data
