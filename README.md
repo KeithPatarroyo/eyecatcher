@@ -8,9 +8,9 @@ Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Li
   - **Visual CPPN**: Generates RGB colors from spatial coordinates and time
   - **Time Signal CPPN**: Transforms raw time into a unique temporal rhythm
 - **Rich Input Signals**: Patterns react to multiple real-time inputs:
-  - Mouse movement speed
+  - Mouse movement speed (instantaneous)
   - Distance from mouse to each pattern
-  - User inactivity (time since mouse moved)
+  - User activity (smoothed, boosted by speed, decays when still)
 - **Signal Controls**: Toggle which inputs affect each CPPN via interactive checkboxes
 - **GPU Rendering**: Compiles CPPNs to GLSL shaders for real-time WebGL rendering
 - **Interactive Evolution**: Web interface for selecting and breeding patterns
@@ -53,18 +53,18 @@ The web interface allows you to:
 Each individual consists of two CPPNs that evolve together:
 
 ```
-[rawTime, mouseSpeed, mouseDist, inactivity, bias] → Time Signal CPPN → modifiedTime
-                                                                              ↓
-[x, y, dist, modifiedTime, mouseSpeed, mouseDist, inactivity, bias] → Visual CPPN → RGB
+[rawTime, mouseSpeed, mouseDist, activity, bias] → Time Signal CPPN → modifiedTime
+                                                                            ↓
+[x, y, dist, modifiedTime, mouseSpeed, mouseDist, activity, bias] → Visual CPPN → RGB
 ```
 
 This allows each pattern to have its own unique "heartbeat" - how it perceives and responds to time.
 
 ### Time Signal CPPN Inputs (5)
 - `rawTime`: Linear animation time (-1 to 1)
-- `mouseSpeed`: Mouse movement speed (0 to 1)
+- `mouseSpeed`: Instantaneous mouse movement speed (0 to 1)
 - `mouseDist`: Distance from mouse to pattern center (0 to 1)
-- `inactivity`: Time since mouse last moved (0 to 1)
+- `activity`: Smoothed activity level, boosted by speed, decays when still (0 to 1)
 - `bias`: Constant 1.0
 
 ### Time Signal CPPN Outputs (1)
@@ -75,9 +75,9 @@ This allows each pattern to have its own unique "heartbeat" - how it perceives a
 - `y`: Vertical position (-1 to 1)
 - `distance`: Distance from center
 - `time`: Modified time from Time Signal CPPN (-1 to 1)
-- `mouseSpeed`: Mouse movement speed (0 to 1)
+- `mouseSpeed`: Instantaneous mouse movement speed (0 to 1)
 - `mouseDist`: Distance from mouse to pattern center (0 to 1)
-- `inactivity`: Time since mouse last moved (0 to 1)
+- `activity`: Smoothed activity level (0 to 1)
 - `bias`: Constant 1.0
 
 ### Visual CPPN Outputs (3)
@@ -226,7 +226,7 @@ ffmpeg -i output/frames/frame_%03d.png -vf "fps=30,scale=512:-1:flags=lanczos" o
 - [x] Mouse speed reactivity
 - [x] Dual-CPPN architecture (visual + time signal)
 - [x] Mouse distance reactivity (per-pattern)
-- [x] Inactivity signal (time since mouse moved)
+- [x] Activity signal (smoothed, speed-boosted engagement)
 - [x] Signal enable/disable controls
 - [x] Debug overlay for signal visualization
 - [x] Right-click to remove clicks

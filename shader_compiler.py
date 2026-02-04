@@ -213,7 +213,7 @@ class ShaderCompiler:
         connections = self._get_enabled_connections(time_genome)
         nodes = self._topological_sort(time_genome, connections, time_config)
         
-        # Time signal input names: raw_time, mouseSpeed, mouseDistance, inactivity, bias (5 inputs)
+        # Time signal input names: raw_time, mouseSpeed, mouseDistance, activity, bias (5 inputs)
         time_input_names = {
             -5: 'vRawTime',
             -4: 'vMouseSpeed',
@@ -239,7 +239,7 @@ in vec2 vUV;  // UV coordinates (0-1)
 uniform float uTime;  // Time uniform (0-1)
 uniform float uMouseSpeed;  // Mouse movement speed (0-1)
 uniform float uMouseDist;  // Distance from mouse to this pattern's center (0-1)
-uniform float uInactivity;  // Time since mouse last moved (0-1)
+uniform float uInactivity;  // Activity level - boosted by speed, decays when still (0-1)
 
 // Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
 uniform float uTimeEnableRawTime;
@@ -366,7 +366,7 @@ in vec2 vUV;  // UV coordinates (0-1)
 uniform float uTime;  // Time uniform (0-1)
 uniform float uMouseSpeed;  // Mouse movement speed (0-1)
 uniform float uMouseDist;  // Distance from mouse to this pattern's center (0-1)
-uniform float uInactivity;  // Time since mouse last moved (0-1)
+uniform float uInactivity;  // Activity level - boosted by speed, decays when still (0-1)
 
 // Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
 uniform float uTimeEnableRawTime;

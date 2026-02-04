@@ -402,7 +402,7 @@
                 </div>
                 <div class="signal-checkbox">
                     <input type="checkbox" id="time-inactivity" checked>
-                    <label for="time-inactivity">Inactivity</label>
+                    <label for="time-inactivity">Activity</label>
                 </div>
             </div>
         </div>
@@ -424,7 +424,7 @@
                 </div>
                 <div class="signal-checkbox">
                     <input type="checkbox" id="visual-inactivity" checked>
-                    <label for="visual-inactivity">Inactivity</label>
+                    <label for="visual-inactivity">Activity</label>
                 </div>
             </div>
         </div>
@@ -449,8 +449,8 @@
             <span class="debug-value" id="dbg-mouseSpeed">0.000</span>
         </div>
         <div class="debug-row">
-            <span class="debug-label">Inactivity:</span>
-            <span class="debug-value" id="dbg-inactivity">0.000</span>
+            <span class="debug-label">Activity:</span>
+            <span class="debug-value" id="dbg-activity">0.000</span>
         </div>
         <div class="debug-row">
             <span class="debug-label">Mouse Pos:</span>
@@ -470,8 +470,8 @@
             <span class="debug-value" id="dbg-t-mouseDist">0.000</span>
         </div>
         <div class="debug-row">
-            <span class="debug-label">Inactivity:</span>
-            <span class="debug-value" id="dbg-t-inactivity">0.000</span>
+            <span class="debug-label">Activity:</span>
+            <span class="debug-value" id="dbg-t-activity">0.000</span>
         </div>
         <h4 style="margin-top: 10px;">Visual CPPN Inputs</h4>
         <div class="debug-row">
@@ -487,8 +487,8 @@
             <span class="debug-value" id="dbg-v-mouseDist">0.000</span>
         </div>
         <div class="debug-row">
-            <span class="debug-label">Inactivity:</span>
-            <span class="debug-value" id="dbg-v-inactivity">0.000</span>
+            <span class="debug-label">Activity:</span>
+            <span class="debug-value" id="dbg-v-activity">0.000</span>
         </div>
     </div>
 
@@ -553,7 +553,7 @@
         }
         
         // Update debug overlay with current signal values
-        function updateDebugOverlay(time, mouseSpd, avgMouseDist, inact) {
+        function updateDebugOverlay(time, mouseSpd, avgMouseDist, activityLevel) {
             // Skip if hidden
             if (document.getElementById('debug-overlay').classList.contains('hidden')) return;
             
@@ -562,30 +562,30 @@
             // Raw signals
             document.getElementById('dbg-time').textContent = fmt(time);
             document.getElementById('dbg-mouseSpeed').textContent = fmt(mouseSpd);
-            document.getElementById('dbg-inactivity').textContent = fmt(inact);
+            document.getElementById('dbg-activity').textContent = fmt(activityLevel);
             document.getElementById('dbg-mousePos').textContent = `${Math.round(mouseX)}, ${Math.round(mouseY)}`;
             
             // Time CPPN effective values (after enable gating)
             const tRawTime = signalState.time.rawTime ? time : 0;
             const tMouseSpeed = signalState.time.mouseSpeed ? mouseSpd : 0;
             const tMouseDist = signalState.time.mouseDist ? avgMouseDist : 0;
-            const tInactivity = signalState.time.inactivity ? inact : 0;
+            const tActivity = signalState.time.inactivity ? activityLevel : 0;
             
             setDebugValue('dbg-t-rawTime', tRawTime, signalState.time.rawTime);
             setDebugValue('dbg-t-mouseSpeed', tMouseSpeed, signalState.time.mouseSpeed);
             setDebugValue('dbg-t-mouseDist', tMouseDist, signalState.time.mouseDist);
-            setDebugValue('dbg-t-inactivity', tInactivity, signalState.time.inactivity);
+            setDebugValue('dbg-t-activity', tActivity, signalState.time.inactivity);
             
             // Visual CPPN effective values
             const vTime = signalState.visual.time ? time : 0;
             const vMouseSpeed = signalState.visual.mouseSpeed ? mouseSpd : 0;
             const vMouseDist = signalState.visual.mouseDist ? avgMouseDist : 0;
-            const vInactivity = signalState.visual.inactivity ? inact : 0;
+            const vActivity = signalState.visual.inactivity ? activityLevel : 0;
             
             setDebugValue('dbg-v-time', vTime, signalState.visual.time);
             setDebugValue('dbg-v-mouseSpeed', vMouseSpeed, signalState.visual.mouseSpeed);
             setDebugValue('dbg-v-mouseDist', vMouseDist, signalState.visual.mouseDist);
-            setDebugValue('dbg-v-inactivity', vInactivity, signalState.visual.inactivity);
+            setDebugValue('dbg-v-activity', vActivity, signalState.visual.inactivity);
         }
         
         function setDebugValue(id, value, enabled) {
@@ -600,13 +600,13 @@
         let mouseY = 0;
         let lastMouseX = 0;
         let lastMouseY = 0;
-        let lastMouseMoveTime = performance.now();  // When mouse last moved
         let lastMouseTime = performance.now();
-        let inactivity = 0;  // Time since mouse last moved (0-1)
+        let activity = 0;  // User activity level (0-1), boosted by mouse speed, decays when still
         const MOUSE_SPEED_DECAY = 0.95;  // How fast mouse speed decays
         const MOUSE_SPEED_SCALE = 0.005;  // Scale factor for mouse movement
         const MOUSE_DIST_SCALE = 300;  // Pixels for max distance (1.0) - smaller for compact grid
-        const INACTIVITY_MAX_MS = 3000;  // 3 seconds = max inactivity (1.0)
+        const ACTIVITY_DECAY = 0.985;  // How fast activity decays when still
+        const ACTIVITY_BOOST = 0.15;  // How much mouse speed boosts activity
         
         // Track mouse movement globally
         document.addEventListener('mousemove', (e) => {
@@ -630,7 +630,9 @@
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
             lastMouseTime = now;
-            lastMouseMoveTime = now;  // Reset inactivity timer
+            
+            // Boost activity based on mouse speed
+            activity = Math.min(1.0, activity + mouseSpeed * ACTIVITY_BOOST);
         });
         
         // Compute distance from mouse to a canvas center (normalized 0-1)
@@ -643,13 +645,6 @@
             const dist = Math.sqrt(dx * dx + dy * dy);
             // Normalize: 0 = on center, 1 = far away
             return Math.min(1.0, dist / MOUSE_DIST_SCALE);
-        }
-        
-        // Compute inactivity (time since mouse last moved, normalized 0-1)
-        function getInactivity() {
-            const now = performance.now();
-            const timeSinceMove = now - lastMouseMoveTime;
-            return Math.min(1.0, timeSinceMove / INACTIVITY_MAX_MS);
         }
         
         // WebGL setup for each canvas
@@ -995,8 +990,8 @@
                 // Decay mouse speed when not moving
                 mouseSpeed *= MOUSE_SPEED_DECAY;
                 
-                // Compute current inactivity level
-                inactivity = getInactivity();
+                // Decay activity when not moving
+                activity *= ACTIVITY_DECAY;
                 
                 // Track avg mouse distance for debug display
                 let totalMouseDist = 0;
@@ -1005,14 +1000,14 @@
                 patterns.forEach((patternData) => {
                     // Compute distance from mouse to this pattern's canvas center
                     const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
-                    renderPattern(patternData, animationTime, mouseSpeed, mouseDist, inactivity);
+                    renderPattern(patternData, animationTime, mouseSpeed, mouseDist, activity);
                     totalMouseDist += mouseDist;
                     patternCount++;
                 });
                 
                 // Update debug overlay
                 const avgMouseDist = patternCount > 0 ? totalMouseDist / patternCount : 0;
-                updateDebugOverlay(animationTime, mouseSpeed, avgMouseDist, inactivity);
+                updateDebugOverlay(animationTime, mouseSpeed, avgMouseDist, activity);
             }
             
             requestAnimationFrame(animate);

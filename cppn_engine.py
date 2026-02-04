@@ -114,7 +114,7 @@ class CPPNEngine:
             raw_time: Raw time value (normalized -1 to 1)
             mouse_speed: Mouse movement speed (normalized -1 to 1)
             mouse_distance: Distance from mouse to pattern center (normalized -1 to 1)
-            inactivity: Time since mouse last moved (normalized -1 to 1)
+            inactivity: Activity level - boosted by speed, decays when still (normalized -1 to 1)
             
         Returns:
             Modified time value (normalized -1 to 1)
@@ -148,7 +148,7 @@ class CPPNEngine:
             time: Time value (normalized -1 to 1)
             mouse_speed: Mouse movement speed (normalized -1 to 1)
             mouse_distance: Distance from mouse to pattern center (normalized -1 to 1)
-            inactivity: Time since mouse last moved (normalized -1 to 1)
+            inactivity: Activity level - boosted by speed, decays when still (normalized -1 to 1)
             distance: Distance from center (computed if None)
             
         Returns:
@@ -184,7 +184,7 @@ class CPPNEngine:
         Query a dual CPPN (time signal + visual) for RGB values.
         
         The time signal CPPN first transforms the raw time based on mouse speed,
-        distance and inactivity, then the visual CPPN uses this modified time.
+        distance and activity, then the visual CPPN uses this modified time.
         
         Args:
             dual_genome: DualGenome containing visual and time_signal genomes
@@ -193,7 +193,7 @@ class CPPNEngine:
             raw_time: Raw time value (normalized -1 to 1)
             mouse_speed: Mouse movement speed (normalized -1 to 1)
             mouse_distance: Distance from mouse to pattern center (normalized -1 to 1)
-            inactivity: Time since mouse last moved (normalized -1 to 1)
+            inactivity: Activity level - boosted by speed, decays when still (normalized -1 to 1)
             distance: Distance from center (computed if None)
             
         Returns:
