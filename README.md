@@ -188,6 +188,8 @@ eyecatcher/
 ├── shader_compiler.py      # GLSL shader compiler
 ├── server.py               # Interactive evolution web server
 ├── interactive_viewer.html # Web interface for evolution
+├── debug.js                # Debug overlay module (signal monitoring)
+├── debug.css               # Debug overlay styles
 ├── evolution_demo.py       # Evolution simulation
 ├── main.py                 # Basic demos
 ├── neat_config.txt         # Visual CPPN parameters
