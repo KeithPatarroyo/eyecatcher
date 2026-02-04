@@ -419,6 +419,16 @@
                 </div>
             </div>
         </div>
+        <div class="signal-flow">|</div>
+        <div class="signal-group">
+            <div class="signal-group-title">Effects</div>
+            <div class="signal-checkboxes">
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="enable-perturbation">
+                    <label for="enable-perturbation">Mouse Perturbation <span class="signal-hint">(ripple effect)</span></label>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div id="grid"></div>
@@ -457,8 +467,14 @@
                 mouseSpeed: true,
                 mouseDist: true,
                 inactivity: true
+            },
+            effects: {
+                perturbation: false  // Mouse perturbation effect (ripples)
             }
         };
+
+        // Per-canvas mouse state for perturbation: canvasId -> {x, y, active, perturbStrength}
+        const canvasMouseState = new Map();
         
         // Wire up signal checkboxes
         function initSignalControls() {
@@ -480,6 +496,13 @@
                     });
                 }
             });
+            // Effects
+            const perturbCheckbox = document.getElementById('enable-perturbation');
+            if (perturbCheckbox) {
+                perturbCheckbox.addEventListener('change', (e) => {
+                    signalState.effects.perturbation = e.target.checked;
+                });
+            }
         }
         
         // Mouse tracking
@@ -614,43 +637,51 @@
         }
         
         function renderPattern(patternData, time, mouseSpd, mouseDist, inact) {
-            const { gl, program, positionBuffer } = patternData;
-            
+            const { gl, program, positionBuffer, id } = patternData;
+
             gl.useProgram(program);
-            
+
             // Set base signal uniforms
             gl.uniform1f(gl.getUniformLocation(program, 'uTime'), time);
             gl.uniform1f(gl.getUniformLocation(program, 'uMouseSpeed'), mouseSpd);
             gl.uniform1f(gl.getUniformLocation(program, 'uMouseDist'), mouseDist);
             gl.uniform1f(gl.getUniformLocation(program, 'uInactivity'), inact);
-            
+
             // Set time CPPN signal enable uniforms
             // Raw Time can be enabled/disabled via checkbox (disabled when time mode is "none")
-            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableRawTime'), 
+            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableRawTime'),
                 signalState.time.rawTime ? 1.0 : 0.0);
-            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableMouseSpeed'), 
+            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableMouseSpeed'),
                 signalState.time.mouseSpeed ? 1.0 : 0.0);
-            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableMouseDist'), 
+            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableMouseDist'),
                 signalState.time.mouseDist ? 1.0 : 0.0);
-            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableInactivity'), 
+            gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableInactivity'),
                 signalState.time.inactivity ? 1.0 : 0.0);
-            
+
             // Set visual CPPN signal enable uniforms
-            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableTime'), 
+            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableTime'),
                 signalState.visual.time ? 1.0 : 0.0);
-            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableMouseSpeed'), 
+            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableMouseSpeed'),
                 signalState.visual.mouseSpeed ? 1.0 : 0.0);
-            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableMouseDist'), 
+            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableMouseDist'),
                 signalState.visual.mouseDist ? 1.0 : 0.0);
-            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableInactivity'), 
+            gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableInactivity'),
                 signalState.visual.inactivity ? 1.0 : 0.0);
-            
+
+            // Set mouse perturbation uniforms
+            const mouseState = canvasMouseState.get(id) || { x: 0.5, y: 0.5, active: false, perturbStrength: 0 };
+            gl.uniform1f(gl.getUniformLocation(program, 'uMouseX'), mouseState.x);
+            gl.uniform1f(gl.getUniformLocation(program, 'uMouseY'), mouseState.y);
+            // Only apply perturbation if the effect is enabled
+            const perturbStrength = signalState.effects.perturbation ? mouseState.perturbStrength : 0.0;
+            gl.uniform1f(gl.getUniformLocation(program, 'uPerturbStrength'), perturbStrength);
+
             // Setup attributes
             const positionLocation = gl.getAttribLocation(program, 'position');
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.enableVertexAttribArray(positionLocation);
             gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-            
+
             // Draw
             gl.clearColor(0, 0, 0, 1);
             gl.clear(gl.COLOR_BUFFER_BIT);
@@ -707,16 +738,42 @@
                     // Setup WebGL
                     const patternData = setupPattern(canvas, pattern.shader);
                     if (patternData) {
-                        patterns.set(pattern.id, { canvas, ...patternData, clicks: pattern.clicks });
+                        patterns.set(pattern.id, { canvas, ...patternData, clicks: pattern.clicks, id: pattern.id });
+
+                        // Initialize mouse state for this canvas (for perturbation effect)
+                        canvasMouseState.set(pattern.id, { x: 0.5, y: 0.5, active: false, perturbStrength: 0 });
+
+                        // Mouse tracking for this canvas (perturbation effect)
+                        canvas.addEventListener('mousemove', (e) => {
+                            const rect = canvas.getBoundingClientRect();
+                            const x = (e.clientX - rect.left) / rect.width;
+                            const y = 1.0 - (e.clientY - rect.top) / rect.height; // Flip Y for GL coords
+                            const state = canvasMouseState.get(pattern.id);
+                            state.x = x;
+                            state.y = y;
+                            state.active = true;
+                            // Build up perturbation strength while mouse is over canvas
+                            state.perturbStrength = Math.min(1.0, state.perturbStrength + 0.05);
+                        });
+
+                        canvas.addEventListener('mouseenter', () => {
+                            const state = canvasMouseState.get(pattern.id);
+                            state.active = true;
+                        });
+
+                        canvas.addEventListener('mouseleave', () => {
+                            const state = canvasMouseState.get(pattern.id);
+                            state.active = false;
+                        });
                     }
-                    
+
                     // Click handler (left click to add, right click to remove)
                     card.addEventListener('click', () => clickPattern(pattern.id, card));
                     card.addEventListener('contextmenu', (e) => {
                         e.preventDefault();
                         unclickPattern(pattern.id, card);
                     });
-                    
+
                     // Hover tracking for debug overlay
                     card.addEventListener('mouseenter', () => {
                         EyecatcherDebug.setHoveredPatternId(pattern.id);
@@ -927,10 +984,17 @@
                 
                 // Decay mouse speed when not moving
                 mouseSpeed *= MOUSE_SPEED_DECAY;
-                
+
                 // Decay activity when not moving
                 activity *= ACTIVITY_DECAY;
-                
+
+                // Decay perturbation strength for inactive canvases
+                canvasMouseState.forEach((state, id) => {
+                    if (!state.active) {
+                        state.perturbStrength *= 0.95; // Smooth decay when mouse leaves
+                    }
+                });
+
                 patterns.forEach((patternData) => {
                     // Compute distance from mouse to this pattern's canvas center
                     const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
