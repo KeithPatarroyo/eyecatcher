@@ -6,6 +6,7 @@ import neat
 import numpy as np
 from typing import Tuple, Optional
 import pickle
+from custom_activations import register_custom_activations
 
 
 class CPPNEngine:
@@ -23,6 +24,8 @@ class CPPNEngine:
             neat.DefaultStagnation,
             config_path
         )
+        # Register custom activation functions
+        register_custom_activations(self.config)
         self.population = None
         self.generation = 0
         

@@ -9,7 +9,8 @@ no_fitness_termination = True
 # node activation options
 activation_default      = random
 activation_mutate_rate  = 0.3
-activation_options      = sigmoid sin gauss tanh relu abs square cube identity cos
+# All 18 native + 8 custom = 26 total functions
+activation_options      = sigmoid tanh sin gauss relu elu lelu selu softplus identity clamped inv log exp abs hat square cube cos sawtooth triangle step smooth_step quantize wave pulse
 
 # structural mutation
 single_structural_mutation = false

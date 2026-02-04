@@ -88,7 +88,7 @@
         
         #grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(var(--min-card-width, 300px), 1fr));
             gap: 20px;
             padding: 20px;
             max-width: 1800px;
@@ -244,9 +244,39 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:5000/api';
+        // ============================================
+        // CONFIGURATION CONSTANTS
+        // ============================================
+        const CONFIG = {
+            // Server
+            API_URL: 'http://localhost:5000/api',
+            
+            // Animation Time Modes:
+            // 'loop'      - Loops from 0 to max, then back to 0 (sawtooth wave)
+            // 'oscillate' - Smooth sine wave: 0 to max to 0 (breathing effect)
+            // 'infinite'  - Keeps increasing forever (never loops)
+            TIME_MODE: 'oscillate',            // Options: 'loop', 'oscillate', 'infinite'
+            
+            ANIMATION_SPEED: 0.005,       // Time increment per frame (0.001 = slow, 0.01 = fast)
+            TIME_LOOP_DURATION: 3.0,      // Max value before loop/oscillate (only for 'loop' and 'oscillate' modes)
+            
+            // Population
+            POPULATION_SIZE: 12,          // Number of patterns per generation
+            
+            // Rendering
+            CANVAS_RESOLUTION: 512,       // WebGL canvas size (512, 1024, etc.)
+            
+            // Grid
+            MIN_CARD_WIDTH: 300,          // Minimum width of pattern cards (px)
+        };
+        
+        // ============================================
+        // STATE
+        // ============================================
+        const API_URL = CONFIG.API_URL;  // Keep for backwards compatibility
         let currentPopulation = [];
         let animationTime = 0;
+        let oscillatePhase = 0;          // For oscillate mode: phase of sine wave
         let animating = true;
         
         // WebGL setup for each canvas
@@ -370,8 +400,8 @@
                     
                     const canvas = document.createElement('canvas');
                     canvas.className = 'pattern-canvas';
-                    canvas.width = 512;
-                    canvas.height = 512;
+                    canvas.width = CONFIG.CANVAS_RESOLUTION;
+                    canvas.height = CONFIG.CANVAS_RESOLUTION;
                     
                     const info = document.createElement('div');
                     info.className = 'pattern-info';
@@ -484,7 +514,7 @@
                 await fetch(`${API_URL}/init`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ size: 12 })
+                    body: JSON.stringify({ size: CONFIG.POPULATION_SIZE })
                 });
                 
                 await loadPopulation();
@@ -526,8 +556,33 @@
         // Animation loop
         function animate() {
             if (animating) {
-                animationTime = (animationTime + 0.005) % 1.0;
+                // Update time based on mode
+                switch (CONFIG.TIME_MODE) {
+                    case 'loop':
+                        // Sawtooth: 0 -> max -> 0 -> max (loop/wrap around)
+                        animationTime = (animationTime + CONFIG.ANIMATION_SPEED) % CONFIG.TIME_LOOP_DURATION;
+                        break;
+                    
+                    case 'oscillate':
+                        // Smooth sine wave: 0 -> max -> 0 -> max (smooth breathing)
+                        oscillatePhase += CONFIG.ANIMATION_SPEED;
+                        
+                        // Map sine wave to 0-1 range
+                        // sin goes from -1 to 1, we map it to 0 to TIME_LOOP_DURATION
+                        animationTime = (Math.sin(oscillatePhase * Math.PI * 2) + 1) * 0.5 * CONFIG.TIME_LOOP_DURATION;
+                        break;
+                    
+                    case 'infinite':
+                        // Linear: keeps increasing forever (truly infinite, no loop)
+                        animationTime += CONFIG.ANIMATION_SPEED;
+                        break;
+                    
+                    default:
+                        console.error('Unknown TIME_MODE:', CONFIG.TIME_MODE);
+                        animationTime = (animationTime + CONFIG.ANIMATION_SPEED) % CONFIG.TIME_LOOP_DURATION;
+                }
                 
+                // Render all patterns with current time
                 patterns.forEach((patternData) => {
                     renderPattern(patternData, animationTime);
                 });
