@@ -102,6 +102,18 @@ def index():
     return send_from_directory('.', 'interactive_viewer.html')
 
 
+@app.route('/debug.js')
+def serve_debug_js():
+    """Serve the debug module JavaScript."""
+    return send_from_directory('.', 'debug.js')
+
+
+@app.route('/debug.css')
+def serve_debug_css():
+    """Serve the debug module CSS."""
+    return send_from_directory('.', 'debug.css')
+
+
 @app.route('/api/init', methods=['POST'])
 def init_population():
     """Initialize new population."""
@@ -197,6 +209,63 @@ def remove_click():
             })
     
     return jsonify({'error': 'Individual not found'}), 404
+
+
+@app.route('/api/time-output', methods=['GET'])
+def get_time_output():
+    """
+    Query the Time CPPN for a specific individual with given inputs.
+    Used for debug sampling to show the actual time signal output.
+    
+    Query params:
+        id: pattern ID
+        time: raw animation time (0-1)
+        mouseSpeed: mouse speed (0-1)
+        mouseDist: distance from mouse to pattern (0-1)
+        activity: activity level (0-1)
+    """
+    try:
+        individual_id = int(request.args.get('id', -1))
+        raw_time = float(request.args.get('time', 0))
+        mouse_speed = float(request.args.get('mouseSpeed', 0))
+        mouse_dist = float(request.args.get('mouseDist', 0))
+        activity = float(request.args.get('activity', 0))
+        
+        # Find the individual
+        for individual in current_population:
+            if individual['id'] == individual_id:
+                dual_genome = individual['genome']
+                
+                # Convert 0-1 inputs to -1 to 1 range (matching shader)
+                raw_time_normalized = raw_time * 2.0 - 1.0
+                mouse_speed_normalized = mouse_speed * 2.0 - 1.0
+                mouse_dist_normalized = mouse_dist * 2.0 - 1.0
+                activity_normalized = activity * 2.0 - 1.0
+                
+                # Query the time signal CPPN
+                time_output = engine.query_time_signal(
+                    dual_genome.time_signal,
+                    raw_time_normalized,
+                    mouse_speed_normalized,
+                    mouse_dist_normalized,
+                    activity_normalized
+                )
+                
+                return jsonify({
+                    'id': individual_id,
+                    'timeOutput': time_output,
+                    'inputs': {
+                        'rawTime': raw_time,
+                        'mouseSpeed': mouse_speed,
+                        'mouseDist': mouse_dist,
+                        'activity': activity
+                    }
+                })
+        
+        return jsonify({'error': 'Individual not found'}), 404
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/breed', methods=['POST'])
