@@ -103,7 +103,9 @@ class CPPNEngine:
     def query_time_signal(self,
                           time_genome: neat.DefaultGenome,
                           raw_time: float,
-                          mouse_speed: float) -> float:
+                          mouse_speed: float,
+                          mouse_distance: float = 0.0,
+                          inactivity: float = 0.0) -> float:
         """
         Query the time signal CPPN to get a modified time value.
         
@@ -111,12 +113,14 @@ class CPPNEngine:
             time_genome: Time signal NEAT genome
             raw_time: Raw time value (normalized -1 to 1)
             mouse_speed: Mouse movement speed (normalized -1 to 1)
+            mouse_distance: Distance from mouse to pattern center (normalized -1 to 1)
+            inactivity: Time since mouse last moved (normalized -1 to 1)
             
         Returns:
             Modified time value (normalized -1 to 1)
         """
-        # Time signal inputs: raw_time, mouse_speed, bias
-        inputs = [raw_time, mouse_speed, 1.0]
+        # Time signal inputs: raw_time, mouse_speed, mouse_distance, inactivity, bias
+        inputs = [raw_time, mouse_speed, mouse_distance, inactivity, 1.0]
         
         # Create network and activate
         net = neat.nn.FeedForwardNetwork.create(time_genome, self.time_config)
@@ -131,6 +135,8 @@ class CPPNEngine:
                    y: float, 
                    time: float = 0.0,
                    mouse_speed: float = 0.0,
+                   mouse_distance: float = 0.0,
+                   inactivity: float = 0.0,
                    distance: Optional[float] = None) -> Tuple[float, float, float]:
         """
         Query a visual CPPN for RGB values at given coordinates and time.
@@ -141,6 +147,8 @@ class CPPNEngine:
             y: Y coordinate (normalized -1 to 1)
             time: Time value (normalized -1 to 1)
             mouse_speed: Mouse movement speed (normalized -1 to 1)
+            mouse_distance: Distance from mouse to pattern center (normalized -1 to 1)
+            inactivity: Time since mouse last moved (normalized -1 to 1)
             distance: Distance from center (computed if None)
             
         Returns:
@@ -149,8 +157,8 @@ class CPPNEngine:
         if distance is None:
             distance = np.sqrt(x**2 + y**2)
         
-        # CPPN inputs: x, y, distance, time, mouse_speed, bias
-        inputs = [x, y, distance, time, mouse_speed, 1.0]
+        # CPPN inputs: x, y, distance, time, mouse_speed, mouse_distance, inactivity, bias
+        inputs = [x, y, distance, time, mouse_speed, mouse_distance, inactivity, 1.0]
         
         # Create network and activate
         net = neat.nn.FeedForwardNetwork.create(genome, self.config)
@@ -169,12 +177,14 @@ class CPPNEngine:
                         y: float,
                         raw_time: float = 0.0,
                         mouse_speed: float = 0.0,
+                        mouse_distance: float = 0.0,
+                        inactivity: float = 0.0,
                         distance: Optional[float] = None) -> Tuple[float, float, float]:
         """
         Query a dual CPPN (time signal + visual) for RGB values.
         
         The time signal CPPN first transforms the raw time based on mouse speed,
-        then the visual CPPN uses this modified time to generate colors.
+        distance and inactivity, then the visual CPPN uses this modified time.
         
         Args:
             dual_genome: DualGenome containing visual and time_signal genomes
@@ -182,6 +192,8 @@ class CPPNEngine:
             y: Y coordinate (normalized -1 to 1)
             raw_time: Raw time value (normalized -1 to 1)
             mouse_speed: Mouse movement speed (normalized -1 to 1)
+            mouse_distance: Distance from mouse to pattern center (normalized -1 to 1)
+            inactivity: Time since mouse last moved (normalized -1 to 1)
             distance: Distance from center (computed if None)
             
         Returns:
@@ -189,12 +201,12 @@ class CPPNEngine:
         """
         # First, get the modified time from the time signal CPPN
         modified_time = self.query_time_signal(
-            dual_genome.time_signal, raw_time, mouse_speed
+            dual_genome.time_signal, raw_time, mouse_speed, mouse_distance, inactivity
         )
         
         # Then query the visual CPPN with the modified time
         return self.query_cppn(
-            dual_genome.visual, x, y, modified_time, mouse_speed, distance
+            dual_genome.visual, x, y, modified_time, mouse_speed, mouse_distance, inactivity, distance
         )
     
     def render_image(self, 
