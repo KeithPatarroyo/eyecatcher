@@ -20,7 +20,7 @@ import zipfile
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
-from cppn_engine import CPPNEngine, DualGenome, dual_genome_from_json
+from cppn_engine import CPPNEngine, DualGenome, dual_genome_from_json, dual_genome_to_json
 from shader_compiler import ShaderCompiler
 from stateless_api import stateless_bp, init_stateless_api
 from community_routes import community_bp
@@ -221,6 +221,7 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
         },
     }
     bundle_json = json.dumps(bundle, indent=2)
+    genome_json = json.dumps(dual_genome_to_json(dual_genome), indent=2)
 
     # PNG image
     from PIL import Image
@@ -255,6 +256,7 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
         zf.writestr(f"pattern_{individual_id}.png", base64.b64decode(img_base64))
         zf.writestr(f"pattern_{individual_id}.glsl", shader_code.encode("utf-8"))
         zf.writestr(f"pattern_{individual_id}_bundle.json", bundle_json.encode("utf-8"))
+        zf.writestr(f"genome_{individual_id}.json", genome_json.encode("utf-8"))
         zf.writestr(f"dual_genome_{individual_id}.pkl", base64.b64decode(pkl_base64))
         if pdf_bytes:
             zf.writestr(f"dual_genome_{individual_id}_network.pdf", pdf_bytes)
@@ -273,6 +275,8 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
             f.write(shader_code)
         with open(f"output/saved/pattern_{individual_id}_bundle.json", "w") as f:
             f.write(bundle_json)
+        with open(f"output/saved/genome_{individual_id}.json", "w") as f:
+            f.write(genome_json)
         with open(f"output/saved/dual_genome_{individual_id}.pkl", "wb") as f:
             f.write(base64.b64decode(pkl_base64))
         if pdf_bytes:
