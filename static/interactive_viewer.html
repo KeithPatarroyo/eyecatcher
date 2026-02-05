@@ -186,7 +186,7 @@
             ? `${window.location.origin}/api`
             : 'http://localhost:5001/api';
         let currentPopulation = [];
-        let currentGenomes = null;  // When set, we're in stateless mode (client holds genomes)
+        let currentGenomes = null;  // Client-held genomes; set whenever grid is populated
         let currentGenerationNum = 0;
         let animationTime = 0;
         let oscillatePhase = 0;  // For oscillate mode: phase of sine wave
@@ -542,21 +542,21 @@
         }
 
         async function savePattern(id) {
+            if (!currentGenomes || !currentGenomes.length) {
+                alert('No pattern data to save. Start with New random population or Load Saved.');
+                return;
+            }
+            const idx = currentPopulation.findIndex(p => p.id === id);
+            const genome = idx >= 0 && currentGenomes[idx] ? currentGenomes[idx] : null;
+            if (!genome) {
+                alert('Could not get pattern data for saving.');
+                return;
+            }
             try {
-                // Build request body - include genome JSON for stateless mode
-                const body = { id };
-                if (currentGenomes) {
-                    // Find the genome by matching currentPopulation index to currentGenomes
-                    const idx = currentPopulation.findIndex(p => p.id === id);
-                    if (idx >= 0 && currentGenomes[idx]) {
-                        body.genome = currentGenomes[idx];
-                    }
-                }
-
                 const response = await fetch(`${API_URL}/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({ id, genome })
                 });
 
                 const data = await response.json();

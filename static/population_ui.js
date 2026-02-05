@@ -8,7 +8,7 @@
  * - EyecatcherStorage (from storage.js)
  * - API_URL global
  * - loadFromStatelessGenomes function
- * - getCurrentGenomesForSave function (if not provided, we fetch from server)
+ * - getCurrentGenomesForSave function (returns client-held genomes + generation, or null)
  */
 
 (function() {
