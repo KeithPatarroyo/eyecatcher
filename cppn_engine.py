@@ -6,9 +6,10 @@ Supports dual-CPPN individuals where each individual has:
 - A visual CPPN: (x, y, dist, time, mouseSpeed, bias) -> (R, G, B)
 - A time signal CPPN: (rawTime, mouseSpeed, bias) -> (modifiedTime)
 """
+import json
 import math
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Any, Dict, Tuple, Optional
 
 import neat
 import numpy as np
@@ -52,8 +53,8 @@ class CPPNEngine:
     """
     
     def __init__(self, 
-                 config_path: str = "neat_config.txt",
-                 time_config_path: str = "neat_config_time.txt"):
+                 config_path: str = "config/neat_config.txt",
+                 time_config_path: str = "config/neat_config_time.txt"):
         """Initialize CPPN engine with NEAT configurations."""
         # Visual CPPN config
         self.config = neat.Config(
@@ -268,6 +269,52 @@ class CPPNEngine:
             
         return frames
     
+    def render_dual_image(self,
+                          dual_genome: DualGenome,
+                          resolution: int = 256,
+                          raw_time: float = 0.5,
+                          mouse_speed: float = 0.0,
+                          mouse_distance: float = 0.0,
+                          inactivity: float = 0.0) -> np.ndarray:
+        """
+        Render a complete image from a dual CPPN at a given raw time.
+        Uses query_dual_cppn so the time-signal CPPN shapes the visual output.
+        """
+        img = np.zeros((resolution, resolution, 3), dtype=np.uint8)
+        for i in range(resolution):
+            for j in range(resolution):
+                x = -1.0 + (i / resolution) * 2.0
+                y = -1.0 + (j / resolution) * 2.0
+                r, g, b = self.query_dual_cppn(
+                    dual_genome, x, y, raw_time,
+                    mouse_speed, mouse_distance, inactivity
+                )
+                img[j, i] = [int(r * 255), int(g * 255), int(b * 255)]
+        return img
+    
+    def render_dual_animation_frames(self,
+                                     dual_genome: DualGenome,
+                                     resolution: int = 256,
+                                     num_frames: int = 30,
+                                     time_range: Tuple[float, float] = (0.0, 1.0),
+                                     mouse_speed: float = 0.0,
+                                     mouse_distance: float = 0.0,
+                                     inactivity: float = 0.0) -> list:
+        """
+        Render multiple frames for a dual CPPN animation.
+        raw_time sweeps over time_range; time-signal CPPN is applied per frame.
+        """
+        frames = []
+        start_time, end_time = time_range
+        for frame_idx in range(num_frames):
+            raw_t = start_time + (end_time - start_time) * (frame_idx / max(1, num_frames - 1))
+            frame = self.render_dual_image(
+                dual_genome, resolution, raw_time=raw_t,
+                mouse_speed=mouse_speed, mouse_distance=mouse_distance, inactivity=inactivity
+            )
+            frames.append(frame)
+        return frames
+    
     def save_genome(self, genome: neat.DefaultGenome, filepath: str, visualize: bool = False):
         """
         Save a genome to file.
@@ -445,3 +492,16 @@ def create_random_dual_genome(engine: CPPNEngine, genome_id: int = 0) -> DualGen
         time_signal=time_genome,
         key=genome_id
     )
+
+
+# ---------------------------------------------------------------------------
+# JSON serialization - re-exported from genome_serialization module
+# ---------------------------------------------------------------------------
+from genome_serialization import (
+    genome_to_json,
+    genome_from_json,
+    dual_genome_to_json,
+    dual_genome_from_json,
+    copy_genome,
+    copy_dual_genome,
+)

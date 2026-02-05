@@ -1,0 +1,227 @@
+/**
+ * Community UI Styles for Eyecatcher
+ * 
+ * Styles for community submit, browse, and admin moderation modals.
+ */
+
+/* Submit to Community button: layout and scaling in viewer.css (in-flow .pattern-actions) */
+.submit-community-btn:hover {
+    background: rgba(34, 136, 56, 0.95);
+}
+
+/* Modal base styles */
+#community-submit-modal, #community-list-modal, #admin-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+#community-submit-modal.show, #community-list-modal.show, #admin-modal.show {
+    display: flex;
+}
+
+/* Admin modal */
+#admin-modal .modal-content {
+    background: #1a1a1a;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 420px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: auto;
+}
+#admin-modal label {
+    display: block;
+    margin-top: 10px;
+    color: #aaa;
+    font-size: 13px;
+}
+#admin-modal input[type="password"], #admin-modal input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    margin-top: 4px;
+    background: #252525;
+    border: 1px solid #444;
+    color: #eee;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+#admin-modal .modal-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 10px;
+}
+#admin-modal .modal-actions button, #admin-modal .modal-close {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #252525;
+    color: #ccc;
+}
+#admin-modal .modal-actions button.primary {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+#admin-modal ul {
+    list-style: none;
+    margin-top: 12px;
+}
+#admin-modal .pending-item {
+    padding: 12px;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+#admin-modal .pending-item .preview-wrap {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    background: #0d0d0d;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #333;
+}
+#admin-modal .pending-item .preview-wrap canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+#admin-modal .pending-item .info {
+    flex: 1;
+    min-width: 0;
+}
+#admin-modal .pending-item .actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+#admin-modal .pending-item button {
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background: #252525;
+    color: #ccc;
+}
+#admin-modal .pending-item button.approve-btn {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+#admin-modal .pending-item button.reject-btn {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+#admin-modal .modal-close {
+    margin-top: 12px;
+    cursor: pointer;
+    color: #0066cc;
+}
+
+/* Community submit modal */
+#community-submit-modal .modal-content, #community-list-modal .modal-content {
+    background: #1a1a1a;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 380px;
+    width: 90%;
+    max-height: 70vh;
+    overflow: auto;
+}
+#community-submit-modal h3, #community-list-modal h3 {
+    margin-bottom: 12px;
+    color: #ccc;
+}
+#community-submit-modal label {
+    display: block;
+    margin-top: 10px;
+    color: #aaa;
+    font-size: 13px;
+}
+#community-submit-modal input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    margin-top: 4px;
+    background: #252525;
+    border: 1px solid #444;
+    color: #eee;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+#community-submit-modal .modal-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 10px;
+}
+#community-submit-modal .modal-actions button, #community-list-modal .modal-close {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #252525;
+    color: #ccc;
+}
+#community-submit-modal .modal-actions button.primary {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+/* Community list modal */
+#community-list-modal ul {
+    list-style: none;
+}
+#community-list-modal li {
+    padding: 10px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+#community-list-modal li:hover {
+    background: #252525;
+}
+#community-list-modal .community-item .preview-wrap {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    background: #0d0d0d;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #333;
+}
+#community-list-modal .community-item .preview-wrap canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+#community-list-modal .community-item .info {
+    flex: 1;
+    min-width: 0;
+}
+#community-list-modal .community-item .check-wrap {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+#community-list-modal .community-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #28a745;
+}
+#community-list-modal .modal-close {
+    margin-top: 12px;
+    cursor: pointer;
+    color: #0066cc;
+}

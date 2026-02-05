@@ -1,6 +1,7 @@
 .python-version
 .venv/
 .eyecatcher-venv/
+.env
 __pycache__/
 *.pyc
 *.pyo
@@ -11,3 +12,4 @@ output/
 *.pkl
 .pytest_cache/
 uv.lock
+data/community.db
