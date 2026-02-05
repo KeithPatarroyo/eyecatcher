@@ -20,9 +20,9 @@ Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Li
 ## Quick Start
 
 ```bash
-# Create virtual environment
-python -m venv .eyecatcher-venv
-source .eyecatcher-venv/bin/activate  # On Windows: .eyecatcher-venv\Scripts\activate
+# Create and activate a virtual environment (name is up to you)
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # Install dependencies
 pip install -e .
@@ -162,27 +162,124 @@ child = engine.mutate_dual_genome(dual_genome, new_key=1)
 offspring = engine.crossover_dual_genomes(parent1, parent2, new_key=2)
 ```
 
-## Running Demos
+## Running the project
 
-### Interactive Evolution Server
-```bash
-python server.py
-# Open http://localhost:5001
-```
+### 1. Run with Docker locally (test the website)
 
-### Docker
+Use this to test the full stack as it runs in production, without installing Python or dependencies on your machine.
+
+**Environment setup**
+
+- Install [Docker](https://docs.docker.com/get-docker/) and Docker Compose.
+- No `.env` file is required: `docker-compose.yml` sets `PORT=8080`, `FLASK_ENV=development`, and `ADMIN_KEY=ALICE` for local use. Optionally copy [.env.example](.env.example) to `.env` and override (e.g. `ADMIN_KEY`) if you want; docker-compose will use it when you pass `env_file: .env` or set variables there.
+- `data/seeds.json` is in the repo; the community DB (`data/community.db`) is created at first run.
+
+**Commands**
+
 ```bash
+# From the repo root
 docker compose up --build
-# Open http://localhost:5001
 ```
-Set `PORT` (default 5001) and `CORS_ORIGINS` (default `*`) via environment if needed.
 
-### Basic Demos (Single CPPN)
+Then open **http://localhost:5001** in your browser. The app listens on 8080 inside the container; compose maps host 5001 → 8080.
+
+To stop: `Ctrl+C`, or `docker compose down`.
+
+---
+
+### 2. Deploy to Railway (from terminal)
+
+Deploy the current project to [Railway](https://railway.app) using the Railway CLI. The repo already contains [railway.json](railway.json) and [Dockerfile](Dockerfile); Railway will build the image and run `./run.sh` (Gunicorn). No config files need to be edited for deploy.
+
+**Environment setup**
+
+- Install the [Railway CLI](https://docs.railway.app/develop/cli) and log in:
+  ```bash
+  npm i -g @railway/cli
+  railway login
+  ```
+- Link this repo to a Railway project (first time only):
+  ```bash
+  cd /path/to/eyecatcher
+  railway link
+  ```
+  If you don’t have a project yet, create one in the [Railway dashboard](https://railway.app/dashboard) or run `railway init` and follow the prompts.
+
+**Constants / variables to set in Railway**
+
+In the Railway project dashboard (or via CLI), set:
+
+| Variable        | Description                          | Example / note                    |
+| --------------- | ------------------------------------ | --------------------------------- |
+| `ADMIN_KEY`     | Secret for community moderation API  | Pick a strong secret; e.g. not `ALICE` |
+| `CORS_ORIGINS`  | Allowed origins (comma-separated)    | Your app URL, or `*` for dev      |
+| `DATABASE_PATH` | Optional; SQLite path in container    | Default `data/community.db`       |
+
+`PORT` is set by Railway automatically; do not override it.
+
+**Commands**
+
+```bash
+# From the repo root (after railway link)
+railway up
+```
+
+Railway will build from the Dockerfile and deploy. The dashboard shows the public URL. Health checks use `/health` (see [railway.json](railway.json)).
+
+---
+
+### 3. Run local tests (no Docker)
+
+Run tests on your machine with Python. No server or browser required.
+
+**Environment setup**
+
+- Python 3.9+.
+- Create a virtual environment and install the project plus dev dependencies:
+  ```bash
+  python -m venv .venv
+  source .venv/bin/activate   # Windows: .venv\Scripts\activate
+  pip install -e ".[dev]"
+  ```
+  This installs pytest (and black); no `.env` or other config is needed for tests.
+- NEAT config files ([neat_config.txt](neat_config.txt), [neat_config_time.txt](neat_config_time.txt)) must exist at repo root; they are in the repo already.
+
+**Commands**
+
+```bash
+# From the repo root, with venv activated
+pytest
+```
+
+To run a specific test file:
+
+```bash
+pytest test_visualization.py -v
+```
+
+No constants or templates need to be filled beforehand; tests use the default config paths and in-memory state.
+
+---
+
+### Other ways to run
+
+**Interactive evolution server (plain Python, no Docker)**
+
+```bash
+# After creating a venv, activating it, and running: pip install -e .
+python server.py
+```
+
+Then open **http://localhost:5001**. Optional: copy [.env.example](.env.example) to `.env` and set `PORT`, `CORS_ORIGINS`, `ADMIN_KEY`, `DATABASE_PATH` if you want to override defaults.
+
+**Basic demos (single CPPN)**
+
 ```bash
 python main.py
 ```
 
-### Evolution Demo
+**Evolution demo**
+
 ```bash
 python evolution_demo.py
 ```
