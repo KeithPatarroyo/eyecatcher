@@ -171,9 +171,11 @@ Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. See [config/
 
 The server does not hold population state. The client (web UI) stores genomes (e.g. in IndexedDB) and sends them when needed.
 
-- **Endpoints:** `POST /api/compile` (genomes → shaders), `POST /api/random` (size → new genome JSONs), `GET /api/seeds` (curated seeds), `POST /api/breed` (body: `parents` + optional `population_size` → `children`), `POST /api/save` (body: `genome`), `POST /api/time-output` (body: genome + inputs, for debug).
+- **Endpoints:** `POST /api/compile` (genomes → shaders), `POST /api/random` (size → new genome JSONs), `GET /api/seeds` (curated seeds), `POST /api/breed` (body: `parents`, optional `population_size`, optional `elitism` → `children`), `POST /api/save` (body: `genome`, optional `visualize` for network PDF), `POST /api/time-output` (body: genome + inputs, for debug).
 - **Flow:** Open the page → "New random population" (or "New from Seeds" / "Load Saved") → client receives and stores genomes; compile, breed, and save all send or use those genomes. No server-side lookup by id.
-- **Consequences:** Works with load balancing and multiple instances; sessions survive server restarts via client storage; local testing needs only the stateless endpoints.
+- **Consequences:** Works with load balancing and multiple instances; sessions survive server restarts via client storage; local testing needs only the stateless endpoints. You can run multiple Gunicorn workers (no in-memory population to share).
+- **Breeding options:** `elitism` (default `false`) keeps the best parent unchanged in the next generation; set to `true` to preserve top performers.
+- **Save options:** `visualize` (default `true`) generates a network PDF alongside pkl, glsl, bundle, and PNG; set to `false` to skip the PDF.
 
 ### Core components
 
