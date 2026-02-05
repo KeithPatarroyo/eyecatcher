@@ -9,7 +9,7 @@ no_fitness_termination = True
 # node activation options
 activation_default      = random
 activation_mutate_rate  = 0.3
-activation_options      = sigmoid sin gauss tanh relu abs square cube identity cos
+activation_options      = sigmoid tanh sin gauss relu elu lelu selu softplus identity clamped inv log exp abs hat square cube cos
 
 # structural mutation
 single_structural_mutation = false
@@ -53,7 +53,7 @@ node_delete_prob        = 0.2
 
 # network parameters
 num_hidden              = 2
-num_inputs              = 6
+num_inputs              = 8
 num_outputs             = 3
 
 # node response options
