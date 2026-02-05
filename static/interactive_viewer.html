@@ -219,6 +219,25 @@
             setTimeout(() => toast.remove(), 300);
         }
         
+        function base64ToBlob(base64, mime) {
+            const bin = atob(base64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return new Blob([bytes], { type: mime });
+        }
+        
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
         let currentPopulation = [];
         let currentGenomes = null;  // Client-held genomes; set whenever grid is populated
         let currentGenerationNum = 0;
@@ -400,6 +419,8 @@
                 const saveBtn = document.createElement('button');
                 saveBtn.className = 'save-btn';
                 saveBtn.textContent = '💾 Save';
+                saveBtn.setAttribute('title', 'Save pattern (compiling may take a moment before download)');
+                saveBtn.setAttribute('aria-label', 'Save pattern; compiling may take a moment before download');
                 saveBtn.onclick = (e) => {
                     e.stopPropagation();
                     savePattern(pattern.id, saveBtn);
@@ -587,10 +608,10 @@
                 return;
             }
             
-            // Show saving state on button
+            // Show compiling state on button (save compiles shader + image + optional PDF before download)
             const originalText = buttonEl ? buttonEl.textContent : null;
             if (buttonEl) {
-                buttonEl.textContent = 'Saving...';
+                buttonEl.textContent = 'Compiling...';
                 buttonEl.classList.add('saving');
             }
             
@@ -607,15 +628,17 @@
                     return;
                 }
                 
-                // Build success message
-                let body = `Image: ${data.image_path}`;
-                const options = {};
-                if (data.network_path) {
-                    const baseUrl = API_URL.replace('/api', '');
-                    options.linkText = 'Open network diagram';
-                    options.linkUrl = `${baseUrl}/api/saved/${data.id}/network`;
+                // Trigger download (server returns a single zip with all assets)
+                if (Array.isArray(data.downloads) && data.downloads.length) {
+                    const file = data.downloads[0];
+                    const blob = file.content_base64
+                        ? base64ToBlob(file.content_base64, file.mime)
+                        : new Blob([file.content], { type: file.mime });
+                    triggerDownload(blob, file.filename);
+                    showToast('Pattern saved!', 'Zip downloaded to your computer.', 'success', { duration: 5000 });
+                } else {
+                    showToast('Pattern saved!', 'No download in response.', 'success');
                 }
-                showToast('Pattern saved!', body, 'success', options);
 
             } catch (error) {
                 console.error('Error saving:', error);
