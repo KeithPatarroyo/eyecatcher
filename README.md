@@ -175,7 +175,7 @@ The server does not hold population state. The client (web UI) stores genomes (e
 - **Flow:** Open the page → "New random population" (or "New from Seeds" / "Load Saved") → client receives and stores genomes; compile, breed, and save all send or use those genomes. No server-side lookup by id.
 - **Consequences:** Works with load balancing and multiple instances; sessions survive server restarts via client storage; local testing needs only the stateless endpoints. You can run multiple Gunicorn workers (no in-memory population to share).
 - **Breeding options:** `elitism` (default `false`) keeps the best parent unchanged in the next generation; set to `true` to preserve top performers.
-- **Save options:** `visualize` (default `true`) generates a network PDF alongside pkl, glsl, bundle, and PNG; set to `false` to skip the PDF.
+- **Save options:** `visualize` (default `true`) generates a network PDF alongside pkl, glsl, bundle, and PNG; set to `false` to skip the PDF. The server packages PNG, GLSL, bundle JSON, genome pickle, and optional network PDF into a single zip and returns it in the response; the client triggers one download, so save works on Railway and other hostings with no server filesystem. Set `SAVE_TO_DISK=1` in the environment to also write files under `output/saved/` (e.g. for local dev).
 
 ### Core components
 
