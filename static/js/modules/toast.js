@@ -1,37 +1,44 @@
 /**
  * Toast notifications and download helpers.
- * Defines: showToast, dismissToast, base64ToBlob, triggerDownload (global).
+ * Exposes: window.Toast (show, dismiss, error, base64ToBlob, triggerDownload).
+ * Also exposes legacy globals: showToast, dismissToast, base64ToBlob, triggerDownload.
  */
 (function () {
     'use strict';
 
-    function showToast(title, body, type = 'success', options = {}) {
+    function show(title, body, type, options) {
+        type = type || 'success';
+        options = options || {};
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
+        toast.className = 'toast ' + type;
         toast.style.position = 'relative';
 
         let html = '<button class="toast-close" aria-label="Close">&times;</button>';
-        html += `<div class="toast-title">${title}</div>`;
-        if (body) html += `<div class="toast-body">${body}</div>`;
+        html += '<div class="toast-title">' + title + '</div>';
+        if (body) html += '<div class="toast-body">' + body + '</div>';
         if (options.linkText && options.linkUrl) {
-            html += `<a class="toast-link" href="${options.linkUrl}" target="_blank">${options.linkText}</a>`;
+            html += '<a class="toast-link" href="' + options.linkUrl + '" target="_blank">' + options.linkText + '</a>';
         }
         toast.innerHTML = html;
 
-        toast.querySelector('.toast-close').onclick = () => dismissToast(toast);
+        toast.querySelector('.toast-close').onclick = function () { dismiss(toast); };
         container.appendChild(toast);
 
         const duration = options.duration || (options.linkUrl ? 10000 : 6000);
-        setTimeout(() => dismissToast(toast), duration);
+        setTimeout(function () { dismiss(toast); }, duration);
 
         return toast;
     }
 
-    function dismissToast(toast) {
+    function dismiss(toast) {
         if (!toast.parentNode) return;
         toast.style.animation = 'toast-out 0.3s ease-in forwards';
-        setTimeout(() => toast.remove(), 300);
+        setTimeout(function () { toast.remove(); }, 300);
+    }
+
+    function error(message) {
+        return show('Error', message, 'error');
     }
 
     function base64ToBlob(base64, mime) {
@@ -53,8 +60,17 @@
         URL.revokeObjectURL(url);
     }
 
-    window.showToast = showToast;
-    window.dismissToast = dismissToast;
+    var Toast = {
+        show: show,
+        dismiss: dismiss,
+        error: error,
+        base64ToBlob: base64ToBlob,
+        triggerDownload: triggerDownload
+    };
+
+    window.Toast = Toast;
+    window.showToast = show;
+    window.dismissToast = dismiss;
     window.base64ToBlob = base64ToBlob;
     window.triggerDownload = triggerDownload;
 })();
