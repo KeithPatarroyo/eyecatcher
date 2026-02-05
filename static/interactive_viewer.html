@@ -24,6 +24,7 @@
                 <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Generation:</span><span id="gen-num" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
                 <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Selected:</span><span id="selected-count" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
                 <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Total Clicks:</span><span id="total-clicks" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
+                <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><label for="population-size-input" style="color:#888;">Pop. size:</label><input type="number" id="population-size-input" class="population-size-input" min="2" max="50" value="12" title="Number of individuals per generation (used when breeding)" aria-label="Population size per generation"></span>
             </span>
         </div>
     </div>
@@ -54,10 +55,9 @@
     
     <div id="population-panel">
         <span class="panel-label">Population:</span>
-        <span id="new-from-seeds-btn" class="pop-btn" role="button" tabindex="0">New from Seeds</span>
         <span id="new-from-community-btn" class="pop-btn" role="button" tabindex="0">New from Community</span>
-        <span id="load-saved-btn" class="pop-btn" role="button" tabindex="0">Load Saved</span>
-        <span id="save-current-btn" class="pop-btn" role="button" tabindex="0">Save Current</span>
+        <span id="load-saved-btn" class="pop-btn" role="button" tabindex="0">Load Saved Generation</span>
+        <span id="save-current-btn" class="pop-btn" role="button" tabindex="0">Save This Generation</span>
         <span id="import-btn" class="pop-btn" role="button" tabindex="0">Import</span>
         <span id="moderate-community-btn" class="pop-btn" role="button" tabindex="0" title="Accept community submissions (admin)">Moderate</span>
         <input type="file" id="import-file" accept=".json,.zip" style="display:none;">
@@ -648,10 +648,12 @@
                         updateStats();
                         return;
                     }
+                    const sizeInput = document.getElementById('population-size-input');
+                    const populationSize = Math.max(2, Math.min(50, parseInt(sizeInput && sizeInput.value, 10) || 12));
                     const response = await fetch(`${API_URL}/breed`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ parents, population_size: currentPopulation.length || 12 })
+                        body: JSON.stringify({ parents, population_size: populationSize })
                     });
                     let data;
                     try {
@@ -683,7 +685,7 @@
                 }
                 return;
             }
-            alert('No population loaded. Start with New random population, New from Seeds, or Load Saved.');
+            alert('No population loaded. Start with New random population or Load Saved.');
             document.getElementById('loading').style.display = 'none';
             setBreedButtonDisabled(false);
             updateStats();
@@ -907,8 +909,6 @@
             });
         }
         
-        const newFromSeedsBtn = document.getElementById('new-from-seeds-btn');
-        if (newFromSeedsBtn) newFromSeedsBtn.addEventListener('click', PopulationUI.onNewFromSeedsClick);
         const loadSavedBtn = document.getElementById('load-saved-btn');
         if (loadSavedBtn) loadSavedBtn.addEventListener('click', PopulationUI.onLoadSavedClick);
         const loadModalClose = document.getElementById('load-modal-close');
