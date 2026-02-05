@@ -134,3 +134,135 @@ def api_time_output():
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@stateless_bp.route('/api/network', methods=['POST'])
+def api_network():
+    """
+    Stateless: get network visualization data for a genome.
+    Body: { "genome": { "key", "visual", "time_signal" } }
+    Returns: { "id": key, "nodes": [...], "connections": [...] }
+    """
+    try:
+        data = request.json or {}
+        genome_data = data.get('genome')
+        if not genome_data:
+            return jsonify({'error': 'genome required'}), 400
+        
+        dual = dual_genome_from_json(genome_data, _engine)
+        individual_id = genome_data.get('key', dual.key if dual else 0)
+        
+        all_nodes = []
+        all_connections = []
+        
+        # Extract visual network
+        if dual.visual:
+            from server import extract_network_data
+            visual_nodes, visual_conns = extract_network_data(dual.visual, 'visual', _engine.config)
+            all_nodes.extend(visual_nodes)
+            all_connections.extend(visual_conns)
+        
+        # Extract time signal network
+        if dual.time_signal:
+            from server import extract_network_data
+            time_nodes, time_conns = extract_network_data(dual.time_signal, 'time', _engine.time_config)
+            all_nodes.extend(time_nodes)
+            all_connections.extend(time_conns)
+        
+        return jsonify({
+            'id': individual_id,
+            'nodes': all_nodes,
+            'connections': all_connections,
+            'status': 'success'
+        })
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@stateless_bp.route('/api/adjust-weight', methods=['POST'])
+def api_adjust_weight():
+    """
+    Stateless: adjust a connection weight in a genome and return updated shader.
+    Body: { 
+        "genome": { "key", "visual", "time_signal" },
+        "network": "visual" or "time",
+        "source": source_node_id (string like "visual_input_-1"),
+        "target": target_node_id (string like "visual_hidden_5"),
+        "weight": new_weight_value (float)
+    }
+    Returns: { "status": "success", "shader": "...", "genome": {...} }
+    """
+    try:
+        data = request.json or {}
+        genome_data = data.get('genome')
+        if not genome_data:
+            return jsonify({'error': 'genome required'}), 400
+        
+        network_type = data.get('network')  # 'visual' or 'time'
+        source_node = data.get('source')
+        target_node = data.get('target')
+        new_weight = float(data.get('weight', 0))
+        
+        # Parse the genome
+        dual = dual_genome_from_json(genome_data, _engine)
+        
+        # Select the appropriate network
+        if network_type == 'visual':
+            genome = dual.visual
+            config = _engine.config
+        elif network_type == 'time':
+            genome = dual.time_signal
+            config = _engine.time_config
+        else:
+            return jsonify({'error': f'Unknown network type: {network_type}'}), 400
+        
+        # Convert node IDs from strings to integers
+        # Frontend sends IDs like "visual_input_-1" or "time_hidden_5"
+        def extract_node_id(node_id_str):
+            parts = node_id_str.split('_')
+            if len(parts) >= 3:
+                return int(parts[-1])  # Last part is the numeric ID
+            return int(node_id_str)
+        
+        try:
+            source_id = extract_node_id(source_node)
+            target_id = extract_node_id(target_node)
+        except (ValueError, IndexError) as e:
+            return jsonify({
+                'error': f'Invalid node ID format: {source_node} or {target_node}'
+            }), 400
+        
+        # Update the weight in the connection
+        conn_key = (source_id, target_id)
+        if conn_key in genome.connections:
+            genome.connections[conn_key].weight = new_weight
+            
+            # Recompile shader with updated weights
+            shader_code = _compiler.compile_dual_to_glsl(
+                dual, _engine.config, _engine.time_config
+            )
+            
+            # Return updated genome as JSON so client can update its state
+            from genome_serialization import dual_genome_to_json
+            updated_genome = dual_genome_to_json(dual)
+            
+            return jsonify({
+                'status': 'success',
+                'shader': shader_code,
+                'genome': updated_genome,
+                'network': network_type,
+                'source': source_node,
+                'target': target_node,
+                'weight': new_weight
+            })
+        else:
+            return jsonify({
+                'error': f'Connection not found: {conn_key} (from {source_node} -> {target_node})'
+            }), 404
+        
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

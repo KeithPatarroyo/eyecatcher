@@ -1,13 +1,372 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>Eyecatcher - Interactive Evolution</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="debug.css">
     <link rel="stylesheet" href="community.css">
     <link rel="stylesheet" href="viewer.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        .network-btn {
+            padding: 0.2em 0.4em;
+            background: rgba(0, 102, 204, 0.9);
+            border: 1px solid rgba(0, 102, 204, 0.5);
+            color: white;
+            border-radius: 4px;
+            font-size: clamp(6px, 8cqw, 12px);
+            line-height: 1.2;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 1.8em;
+            min-width: 1.8em;
+            max-width: 1.8em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .network-btn:hover {
+            background: rgba(0, 102, 204, 1);
+        }
+
+        #main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            flex-direction: row;
+        }
+
+        #content-area {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .network-container {
+            position: fixed;
+            top: 0;
+            right: 0;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            padding: 15px;
+            padding-top: 50px;
+            background: #0f0f0f;
+            border-left: 2px solid #333;
+            width: 0;
+            min-width: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            height: 100vh;
+            z-index: 200;
+            transition: width 0.3s ease, min-width 0.3s ease;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .network-container.open {
+            display: flex;
+            width: 420px;
+            min-width: 420px;
+        }
+
+        .network-container-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #333;
+            border: none;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 210;
+        }
+
+        .network-container-close:hover {
+            background: #444;
+        }
+
+        .network-labels-header {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px 12px;
+            padding-right: 70px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            margin-bottom: 0;
+        }
+
+        .network-labels-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .network-legend-header {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-size: 10px;
+            color: #888;
+        }
+
+        .network-label-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+        }
+
+        .network-label-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #0066cc;
+        }
+
+        .network-label-description {
+            font-size: 10px;
+            color: #666;
+        }
+
+        .network-label-divider {
+            font-size: 16px;
+            color: #444;
+            margin: 0 5px;
+        }
+
+        .network-visualization {
+            flex: 0 0 350px;
+            background: #000;
+            border-radius: 6px;
+            border: 1px solid #333;
+            overflow: hidden;
+            position: relative;
+            min-height: 300px;
+            height: 350px;
+            width: 100%;
+        }
+
+        .network-inline-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 100px;
+        }
+
+        .network-inline-controls button {
+            padding: 8px 12px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .network-inline-controls button:hover {
+            background: #0052a3;
+        }
+
+        .network-info-panel {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            font-size: 11px;
+            padding: 8px 12px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            border: 1px solid #333;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .network-info-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .network-info-label {
+            color: #888;
+        }
+
+        .network-info-value {
+            color: #0066cc;
+            font-weight: bold;
+        }
+
+        .network-legend-inline {
+            display: flex;
+            flex-direction: row;
+            gap: 12px;
+            font-size: 10px;
+            align-items: center;
+        }
+
+        .legend-item-inline {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .weight-adjustment-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            min-height: 0;
+            max-height: 240px;
+            overflow: hidden;
+        }
+
+        .weight-adjustment-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #0066cc;
+            flex-shrink: 0;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #333;
+        }
+
+        #weight-sliders-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .weight-slider-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px;
+            background: #0f0f0f;
+            border-radius: 4px;
+            border-left: 2px solid #0066cc;
+            transition: all 0.3s;
+            min-width: 0;
+            flex-shrink: 0;
+        }
+
+        .weight-slider-item.time-network {
+            border-left-color: #0096c8;
+        }
+
+        .weight-slider-item.highlighted {
+            background: #1a2a3a;
+            border-left-width: 4px;
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
+        }
+
+        .weight-slider-item.time-network.highlighted {
+            box-shadow: 0 2px 8px rgba(0, 150, 200, 0.3);
+        }
+
+        .weight-slider-label {
+            font-size: 10px;
+            color: #999;
+            font-family: monospace;
+        }
+
+        .weight-slider-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .weight-slider-input {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .weight-slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #0066cc;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .weight-slider-input::-webkit-slider-thumb:hover {
+            background: #0080ff;
+            transform: scale(1.2);
+        }
+
+        .weight-slider-input::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #0066cc;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .weight-slider-input::-moz-range-thumb:hover {
+            background: #0080ff;
+            transform: scale(1.2);
+        }
+
+        .weight-slider-item.time-network .weight-slider-input {
+            background: #1a2a3a;
+        }
+
+        .weight-slider-item.time-network .weight-slider-input::-webkit-slider-thumb {
+            background: #0096c8;
+        }
+
+        .weight-slider-item.time-network .weight-slider-input::-moz-range-thumb {
+            background: #0096c8;
+        }
+
+        .weight-value {
+            min-width: 40px;
+            text-align: right;
+            font-size: 10px;
+            color: #0066cc;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        .weight-slider-item.time-network .weight-value {
+            color: #0096c8;
+        }
+    </style>
 </head>
+
 <body>
     <div id="header">
         <h1>Eyecatcher</h1>
@@ -189,9 +548,59 @@
         <div class="spinner"></div>
         <div>Loading patterns...</div>
     </div>
-    
+
+    <!-- Network Sidebar (CPPN visualization) -->
+    <div id="network-sidebar" class="network-container">
+        <button class="network-container-close" onclick="closeNetworkSidebar()">Close</button>
+        <div class="network-labels-header">
+            <div class="network-labels-main">
+                <div class="network-label-item">
+                    <span class="network-label-title">Visual Network</span>
+                    <span class="network-label-description">(Left)</span>
+                </div>
+                <div class="network-label-divider">→</div>
+                <div class="network-label-item">
+                    <span class="network-label-title">Time Signal Network</span>
+                    <span class="network-label-description">(Right)</span>
+                </div>
+            </div>
+            <div class="network-legend-header">
+                <div class="legend-item-inline">
+                    <div class="legend-dot" style="background: #0066cc;"></div>
+                    <span>Input</span>
+                </div>
+                <div class="legend-item-inline">
+                    <div class="legend-dot" style="background: #28a745;"></div>
+                    <span>Hidden</span>
+                </div>
+                <div class="legend-item-inline">
+                    <div class="legend-dot" style="background: #dc3545;"></div>
+                    <span>Output</span>
+                </div>
+            </div>
+        </div>
+        <div class="network-visualization"></div>
+        <div class="network-inline-controls">
+            <button id="network-fit-btn" onclick="fitNetworkToViewInline(currentNetworkId)">Fit View</button>
+            <button id="network-export-btn" onclick="exportNetworkInline(currentNetworkId)">Export JSON</button>
+        </div>
+        <div class="weight-adjustment-panel" id="weight-adjustment-panel" style="display: none;">
+            <div class="weight-adjustment-title">Adjust Connection Weights</div>
+            <div id="weight-sliders-container"></div>
+        </div>
+        <div class="network-info-panel">
+            <div class="network-info-item">
+                <span class="network-info-label">Hidden Nodes:</span>
+                <span class="network-info-value" data-nodes>0</span>
+            </div>
+            <div class="network-info-item">
+                <span class="network-info-label">Connections:</span>
+                <span class="network-info-value" data-connections>0</span>
+            </div>
+        </div>
+    </div>
     <div id="toast-container"></div>
-    
+
     <script src="storage.js"></script>
     <script src="population_ui.js"></script>
     <script src="community.js"></script>
@@ -203,6 +612,13 @@
     <script src="toolbar_ui.js"></script>
 
     <script>
+        // Check if vis.js is available
+        if (typeof vis === 'undefined') {
+            console.error('ERROR: vis.js library not loaded! Network visualization will not work.');
+        } else {
+            console.log('✓ vis.js library loaded successfully');
+        }
+
         // Use same origin when page is served over HTTP (e.g. by Flask); fallback for file://
         const API_URL = (window.location.origin && window.location.protocol.startsWith('http'))
             ? `${window.location.origin}/api`
@@ -214,7 +630,7 @@
         let animationTime = 0;
         let oscillatePhase = 0;  // For oscillate mode: phase of sine wave
         let animating = true;
-        
+
         // Time mode configuration
         const ANIMATION_SPEED = 0.005;  // Time increment per frame (0.001 = slow, 0.01 = fast)
 
@@ -231,34 +647,34 @@
         const MOUSE_DIST_SCALE = 300;  // Pixels for max distance (1.0) - smaller for compact grid
         const ACTIVITY_DECAY = 0.985;  // How fast activity decays when still
         const ACTIVITY_BOOST = 0.15;  // How much mouse speed boosts activity
-        
+
         // Track mouse movement globally
         document.addEventListener('mousemove', (e) => {
             const now = performance.now();
             const dt = now - lastMouseTime;
-            
+
             // Update current mouse position
             mouseX = e.clientX;
             mouseY = e.clientY;
-            
+
             if (dt > 0) {
                 const dx = e.clientX - lastMouseX;
                 const dy = e.clientY - lastMouseY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const instantSpeed = distance / dt;
-                
+
                 // Smooth the speed with exponential moving average
                 mouseSpeed = Math.min(1.0, mouseSpeed * 0.7 + instantSpeed * MOUSE_SPEED_SCALE * 0.3);
             }
-            
+
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
             lastMouseTime = now;
-            
+
             // Boost activity based on mouse speed
             activity = Math.min(1.0, activity + mouseSpeed * ACTIVITY_BOOST);
         });
-        
+
         // Compute distance from mouse to a canvas center (normalized 0-1)
         function getMouseDistanceToCanvas(canvas) {
             const rect = canvas.getBoundingClientRect();
@@ -270,7 +686,7 @@
             // Normalize: 0 = on center, 1 = far away
             return Math.min(1.0, dist / MOUSE_DIST_SCALE);
         }
-        
+
         // Pattern grid and WebGL (setup/render delegate to PatternRenderer)
         const patterns = new Map();
         function setupPattern(canvas, shaderCode) {
@@ -281,7 +697,7 @@
                 PatternRenderer.renderPattern(patternData, time, mouseSpd, mouseDist, inact, ZoomSignals.signalState);
             }
         }
-        
+
         function showGridError(message, showRetry) {
             const grid = document.getElementById('grid');
             grid.innerHTML = '<div class="grid-error">' +
@@ -295,7 +711,7 @@
                 document.getElementById('grid-retry-btn').onclick = () => PopulationUI.startNewRandomPopulation();
             }
         }
-        
+
         function renderGridFromPopulation(population) {
             document.getElementById('grid').innerHTML = '';
             patterns.clear();
@@ -322,14 +738,23 @@
                 submitCommunityBtn.className = 'submit-community-btn';
                 submitCommunityBtn.setAttribute('title', 'Share to Community');
                 submitCommunityBtn.setAttribute('aria-label', 'Share to Community');
-                submitCommunityBtn.textContent = 'Share';
+                submitCommunityBtn.textContent = '↗';
                 submitCommunityBtn.onclick = (e) => {
                     e.stopPropagation();
                     CommunityUI.openSubmitCommunityModal(pattern.id);
                 };
+                const networkBtn = document.createElement('button');
+                networkBtn.className = 'network-btn';
+                networkBtn.textContent = '🧠';
+                networkBtn.setAttribute('title', 'View network visualization');
+                networkBtn.setAttribute('aria-label', 'View network visualization');
+                networkBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleNetworkVisualization(pattern.id, card);
+                };
                 const saveBtn = document.createElement('button');
                 saveBtn.className = 'save-btn';
-                saveBtn.textContent = 'Download';
+                saveBtn.textContent = '↓';
                 saveBtn.setAttribute('title', 'Download pattern (compiling may take a moment)');
                 saveBtn.setAttribute('aria-label', 'Download pattern; compiling may take a moment');
                 saveBtn.onclick = (e) => {
@@ -337,6 +762,7 @@
                     savePattern(pattern.id, saveBtn);
                 };
                 actions.appendChild(submitCommunityBtn);
+                actions.appendChild(networkBtn);
                 actions.appendChild(saveBtn);
                 card.appendChild(canvas);
                 card.appendChild(actions);
@@ -367,7 +793,7 @@
             }
             updateStats();
         }
-        
+
         async function loadFromStatelessGenomes(genomes, generationNum) {
             if (!genomes || !genomes.length) return;
             document.getElementById('loading').style.display = 'block';
@@ -398,7 +824,7 @@
                 document.getElementById('loading').style.display = 'none';
             }
         }
-        
+
         /**
          * Append pattern cards to the existing grid without clearing. Used by Import and Community Load.
          */
@@ -453,6 +879,15 @@
                         e.stopPropagation();
                         CommunityUI.openSubmitCommunityModal(pattern.id);
                     };
+                    const networkBtn = document.createElement('button');
+                    networkBtn.className = 'network-btn';
+                    networkBtn.textContent = '🧠';
+                    networkBtn.setAttribute('title', 'View network visualization');
+                    networkBtn.setAttribute('aria-label', 'View network visualization');
+                    networkBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleNetworkVisualization(pattern.id, card);
+                    };
                     const saveBtn = document.createElement('button');
                     saveBtn.className = 'save-btn';
                     saveBtn.textContent = 'Download';
@@ -463,6 +898,7 @@
                         savePattern(pattern.id, saveBtn);
                     };
                     actions.appendChild(submitCommunityBtn);
+                    actions.appendChild(networkBtn);
                     actions.appendChild(saveBtn);
                     card.appendChild(canvas);
                     card.appendChild(actions);
@@ -499,7 +935,7 @@
                 document.getElementById('loading').style.display = 'none';
             }
         }
-        
+
         async function clickPattern(id, card) {
             const pattern = patterns.get(id);
             if (pattern) {
@@ -511,7 +947,7 @@
                 updateStats();
             }
         }
-        
+
         async function unclickPattern(id, card) {
             const pattern = patterns.get(id);
             if (pattern && pattern.clicks > 0) {
@@ -525,7 +961,7 @@
                 updateStats();
             }
         }
-        
+
         function setBreedButtonDisabled(disabled) {
             const el = document.getElementById('breed-btn');
             if (disabled) {
@@ -536,12 +972,12 @@
                 el.setAttribute('aria-disabled', 'false');
             }
         }
-        
+
         async function breedGeneration() {
             if (document.getElementById('breed-btn').classList.contains('disabled')) return;
             setBreedButtonDisabled(true);
             document.getElementById('loading').style.display = 'block';
-            
+
             if (currentGenomes) {
                 try {
                     const parents = currentPopulation
@@ -601,7 +1037,7 @@
             setBreedButtonDisabled(false);
             updateStats();
         }
-        
+
         /** Get current genomes and generation (client state only). */
         async function getCurrentGenomesForSave() {
             if (currentGenomes && currentGenomes.length) {
@@ -621,14 +1057,14 @@
                 showToast('Cannot save', 'Could not get pattern data.', 'error');
                 return;
             }
-            
+
             // Show compiling state on button (save compiles shader + image + optional PDF before download)
             const originalText = buttonEl ? buttonEl.textContent : null;
             if (buttonEl) {
                 buttonEl.textContent = 'Compiling...';
                 buttonEl.classList.add('saving');
             }
-            
+
             try {
                 const response = await fetch(`${API_URL}/save`, {
                     method: 'POST',
@@ -641,7 +1077,7 @@
                     showToast('Save failed', data.error, 'error');
                     return;
                 }
-                
+
                 // Trigger download (server returns a single zip with all assets)
                 if (Array.isArray(data.downloads) && data.downloads.length) {
                     const file = data.downloads[0];
@@ -680,13 +1116,13 @@
             document.getElementById('total-clicks').textContent = totalClicks;
             setBreedButtonDisabled(!hasFitness);
         }
-        
+
         // Animation loop
         function animate() {
             if (animating) {
                 // Get selected time mode (default to 'oscillate')
                 const timeMode = document.querySelector('input[name="timeMode"]:checked')?.value || 'oscillate';
-                
+
                 // Update time based on mode
                 // Time mode generates BASE time (0-1), which Time Signal CPPN will then modify
                 // If mode is "none", time stays at 0 (no automatic animation)
@@ -696,7 +1132,7 @@
                         // This creates a linear ramp that resets to 0
                         animationTime = (animationTime + ANIMATION_SPEED) % 1.0;
                         break;
-                    
+
                     case 'oscillate':
                         // Smooth sine wave: 0 -> 1 -> 0 -> 1 (smooth breathing)
                         // This creates a smooth oscillation
@@ -705,39 +1141,39 @@
                         // sin(phase) goes from -1 to 1, we map it to 0 to 1
                         animationTime = (Math.sin(oscillatePhase * Math.PI * 2) + 1) * 0.5;
                         break;
-                    
+
                     case 'infinite':
                         // Linear: keeps increasing forever (truly infinite, no wrapping)
                         // Time grows unbounded - shader can handle values > 1.0
                         animationTime += ANIMATION_SPEED;
                         // No wrapping - let it grow infinitely
                         break;
-                    
+
                     default:
                         console.error('Unknown TIME_MODE:', timeMode);
                         animationTime = (animationTime + ANIMATION_SPEED) % 1.0;
                 }
-                
+
                 // Prepare time for shader
                 // For loop/oscillate: time is already 0-1
                 // For infinite: time can be > 1.0 (truly infinite growth)
                 // Shader converts uTime to -1 to 1 range, so values > 1.0 become > 1.0 in that range
                 // This BASE time will be modified by Time Signal CPPN (if Raw Time is enabled)
                 const normalizedTime = animationTime;
-                
+
                 // Decay mouse speed when not moving
                 mouseSpeed *= MOUSE_SPEED_DECAY;
-                
+
                 // Decay activity when not moving
                 activity *= ACTIVITY_DECAY;
-                
+
                 patterns.forEach((patternData) => {
                     // Compute distance from mouse to this pattern's canvas center
                     const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
                     // Pass normalized time (0-1) to shader
                     renderPattern(patternData, normalizedTime, mouseSpeed, mouseDist, activity);
                 });
-                
+
                 // Update debug overlay (guard against missing debug.js)
                 if (typeof EyecatcherDebug !== 'undefined') {
                     EyecatcherDebug.update({
@@ -748,7 +1184,7 @@
                         mouseY: mouseY
                     });
                 }
-                
+
                 // Debug: Log time mode changes (only once per mode change)
                 if (typeof animate.lastTimeMode === 'undefined') {
                     animate.lastTimeMode = timeMode;
@@ -758,10 +1194,516 @@
                     animate.lastTimeMode = timeMode;
                 }
             }
-            
+
             requestAnimationFrame(animate);
         }
-        
+
+        // Network visualization
+        let networkVisualizations = new Map();  // Store vis.Network instances per pattern
+        let networkEdges = new Map();            // Store edges DataSet per pattern
+        let networkPhysicsState = new Map();     // Track physics state per pattern
+        let currentNetworkId = null;
+
+        const nodeColors = {
+            input: { background: '#0066cc', border: '#0052a3', highlight: { background: '#0080ff', border: '#0052a3' } },
+            hidden: { background: '#28a745', border: '#1e7e34', highlight: { background: '#34c759', border: '#1e7e34' } },
+            output: { background: '#dc3545', border: '#c82333', highlight: { background: '#ff3d4d', border: '#c82333' } }
+        };
+
+        const networkColors = {
+            visual: { opacity: 1.0 },
+            time: { opacity: 0.5 }
+        };
+
+        async function toggleNetworkVisualization(individualId, card) {
+            currentNetworkId = individualId;
+            const sidebar = document.getElementById('network-sidebar');
+
+            // Get genome data from client state
+            const genome = await getGenomeForPattern(individualId);
+            if (!genome) {
+                showToast('Network error', 'Could not find genome data for this pattern', 'error');
+                return;
+            }
+
+            // Load and visualize network
+            try {
+                console.log(`Loading network for individual ${individualId}`);
+                const response = await fetch(`${API_URL}/network`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ genome })
+                });
+                const data = await response.json();
+
+                console.log('Network data received:', data);
+
+                if (data.error) {
+                    console.error('Error:', data.error);
+                    showToast('Network error', data.error, 'error');
+                    return;
+                }
+
+                // Update info panel
+                const infoPanel = sidebar.querySelector('.network-info-panel');
+                const visualNodes = data.nodes.filter(n => n.network === 'visual' && n.type === 'hidden').length;
+                const timeNodes = data.nodes.filter(n => n.network === 'time' && n.type === 'hidden').length;
+                const visualConns = data.connections.filter(c => c.network === 'visual').length;
+                const timeConns = data.connections.filter(c => c.network === 'time').length;
+
+                infoPanel.querySelector('[data-nodes]').textContent = `V:${visualNodes} T:${timeNodes}`;
+                infoPanel.querySelector('[data-connections]').textContent = `V:${visualConns} T:${timeConns}`;
+
+                console.log(`Visualizing network with ${data.nodes.length} nodes and ${data.connections.length} connections`);
+                visualizeNetworkInline(individualId, data, sidebar);
+
+                // Show sidebar
+                sidebar.classList.add('open');
+
+            } catch (error) {
+                console.error('Error loading network:', error);
+                showToast('Network error', error.message || 'Failed to load network', 'error');
+            }
+        }
+
+        function closeNetworkSidebar() {
+            const sidebar = document.getElementById('network-sidebar');
+            sidebar.classList.remove('open');
+
+            // Destroy visualization
+            if (currentNetworkId && networkVisualizations.has(currentNetworkId)) {
+                networkVisualizations.get(currentNetworkId).destroy();
+                networkVisualizations.delete(currentNetworkId);
+                networkEdges.delete(currentNetworkId);
+            }
+            currentNetworkId = null;
+        }
+
+        function visualizeNetworkInline(individualId, data, container) {
+            try {
+                const vizContainer = container.querySelector('.network-visualization');
+                console.log('Visualization container:', vizContainer);
+                console.log('Container dimensions:', vizContainer.offsetWidth, 'x', vizContainer.offsetHeight);
+
+                vizContainer.innerHTML = '';  // Clear previous
+
+                // Ensure container has dimensions for vis.js
+                vizContainer.style.width = '100%';
+                vizContainer.style.height = '100%';
+
+                console.log('Creating vis.js DataSet for nodes:', data.nodes.length);
+
+                // Create nodes
+                const nodes = new vis.DataSet();
+
+                data.nodes.forEach(node => {
+                    const color = nodeColors[node.type];
+                    const network = node.network || 'visual';
+                    const opacity = networkColors[network].opacity;
+                    let label = node.label;
+
+                    if (node.type === 'hidden') {
+                        label += `\nBias: ${node.bias.toFixed(2)}`;
+                        if (node.activation) {
+                            label += `\n${node.activation}`;
+                        }
+                    }
+
+                    // Add network prefix to label
+                    label += `\n[${network}]`;
+
+                    // Adjust color opacity based on network
+                    const adjustedColor = {
+                        ...color,
+                        background: color.background + Math.round(opacity * 255).toString(16).padStart(2, '0'),
+                        border: color.border + Math.round(opacity * 255).toString(16).padStart(2, '0'),
+                        highlight: {
+                            background: color.highlight.background + Math.round(opacity * 255).toString(16).padStart(2, '0'),
+                            border: color.highlight.border + Math.round(opacity * 255).toString(16).padStart(2, '0')
+                        }
+                    };
+
+                    nodes.add({
+                        id: node.id,
+                        label: label,
+                        color: adjustedColor,
+                        shape: 'dot',
+                        size: node.type === 'hidden' ? 20 : 25,
+                        font: { size: 9, color: '#fff', face: 'monospace' },
+                        physics: false,
+                        x: node.x || undefined,
+                        y: node.y || undefined,
+                        title: `${network.toUpperCase()} Node ${node.id} (${node.type})`
+                    });
+                });
+
+                console.log('Creating vis.js DataSet for edges:', data.connections.length);
+
+                // Create edges (connections)
+                const edges = new vis.DataSet();
+
+                data.connections.forEach((conn) => {
+                    const network = conn.network || 'visual';
+                    const width = Math.max(0.5, Math.abs(conn.weight));
+                    const isPositive = conn.weight > 0;
+
+                    // Different colors for visual vs time signal networks
+                    let color;
+                    if (network === 'time') {
+                        color = isPositive ? 'rgba(0, 150, 200, 0.3)' : 'rgba(200, 150, 0, 0.3)';  // Cyan/Orange
+                    } else {
+                        color = isPositive ? 'rgba(0, 200, 100, 0.5)' : 'rgba(255, 100, 100, 0.5)';  // Green/Red
+                    }
+
+                    edges.add({
+                        from: conn.source,
+                        to: conn.target,
+                        label: '',
+                        width: width,
+                        color: color,
+                        font: { size: 8, color: '#999' },
+                        title: `${network.toUpperCase()} Weight: ${conn.weight.toFixed(3)}`,
+                        arrows: 'to',
+                        smooth: { type: 'continuous' }
+                    });
+                });
+
+                // Create network visualization
+                const options = {
+                    physics: {
+                        enabled: false
+                    },
+                    layout: {
+                        randomSeed: 42,
+                        improvedLayout: true
+                    },
+                    interaction: {
+                        hover: true,
+                        navigationButtons: false,
+                        keyboard: false,
+                        zoomView: true,
+                        dragView: true
+                    },
+                    nodes: {
+                        font: { face: 'monospace', size: 9 }
+                    },
+                    edges: {
+                        font: { size: 8, align: 'middle' },
+                        smooth: {
+                            enabled: true,
+                            type: 'cubicBezier',
+                            forceDirection: 'vertical'
+                        }
+                    }
+                };
+
+                console.log('Creating vis.Network with', nodes.length, 'nodes and', edges.length, 'edges');
+                console.log('Container:', vizContainer);
+
+                const network = new vis.Network(vizContainer, { nodes, edges }, options);
+                networkVisualizations.set(individualId, network);
+                networkEdges.set(individualId, edges);  // Store edges DataSet for updates
+                networkPhysicsState.set(individualId, false);
+
+                console.log('Network created successfully');
+
+                // Setup weight sliders
+                setupWeightSliders(individualId, data);
+
+                // Add edge click handler to scroll to corresponding slider
+                network.on('selectEdge', (params) => {
+                    if (params.edges.length > 0) {
+                        const edge = edges.get(params.edges[0]);
+                        if (edge) {
+                            scrollToWeightSlider(edge.from, edge.to);
+                        }
+                    }
+                });
+
+                // Fit to view
+                setTimeout(() => {
+                    fitNetworkToViewInline(individualId);
+                }, 100);
+            } catch (error) {
+                console.error('Error in visualizeNetworkInline:', error);
+                showToast('Visualization error', error.message || 'Failed to visualize network', 'error');
+            }
+        }
+
+        function fitNetworkToViewInline(individualId) {
+            const network = networkVisualizations.get(individualId);
+            if (network) {
+                network.fit({ animation: { duration: 500 } });
+            }
+        }
+
+        function setupWeightSliders(individualId, data) {
+            const panel = document.getElementById('weight-adjustment-panel');
+            const container = document.getElementById('weight-sliders-container');
+
+            if (!data.connections || data.connections.length === 0) {
+                panel.style.display = 'none';
+                return;
+            }
+
+            container.innerHTML = '';
+            panel.style.display = 'flex';
+
+            // Group connections by network type
+            const visualConns = data.connections.filter(c => c.network === 'visual');
+            const timeConns = data.connections.filter(c => c.network === 'time');
+
+            // Create sliders for visual network
+            if (visualConns.length > 0) {
+                visualConns.forEach(conn => {
+                    createWeightSlider(individualId, conn, 'visual', container);
+                });
+            }
+
+            // Create sliders for time signal network
+            if (timeConns.length > 0) {
+                timeConns.forEach(conn => {
+                    createWeightSlider(individualId, conn, 'time', container);
+                });
+            }
+        }
+
+        function createWeightSlider(individualId, connection, networkType, container) {
+            const isTimeNetwork = networkType === 'time';
+            const sliderDiv = document.createElement('div');
+            sliderDiv.className = `weight-slider-item ${isTimeNetwork ? 'time-network' : ''}`;
+
+            // Extract node names from IDs
+            const sourceLabel = extractNodeLabel(connection.source);
+            const targetLabel = extractNodeLabel(connection.target);
+
+            const minWeight = -5;
+            const maxWeight = 5;
+            const currentWeight = connection.weight;
+
+            sliderDiv.setAttribute('data-source', connection.source);
+            sliderDiv.setAttribute('data-target', connection.target);
+
+            sliderDiv.innerHTML = `
+                <div class="weight-slider-label">${sourceLabel} → ${targetLabel}</div>
+                <div class="weight-slider-row">
+                    <input 
+                        type="range" 
+                        class="weight-slider-input"
+                        min="${minWeight}"
+                        max="${maxWeight}"
+                        step="0.05"
+                        value="${currentWeight}"
+                        data-individual="${individualId}"
+                        data-network="${networkType}"
+                        data-source="${connection.source}"
+                        data-target="${connection.target}"
+                    />
+                    <span class="weight-value">${currentWeight.toFixed(2)}</span>
+                </div>
+            `;
+
+            const slider = sliderDiv.querySelector('input');
+            const valueDisplay = sliderDiv.querySelector('.weight-value');
+
+            // Update value display and send to server
+            slider.addEventListener('input', async (e) => {
+                const newWeight = parseFloat(e.target.value);
+                valueDisplay.textContent = newWeight.toFixed(2);
+
+                // Get genome data for this pattern
+                const genome = await getGenomeForPattern(individualId);
+                if (!genome) {
+                    showToast('Weight update failed', 'Could not find genome data', 'error');
+                    return;
+                }
+
+                // Send weight adjustment to server
+                try {
+                    const response = await fetch(`${API_URL}/adjust-weight`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            genome: genome,
+                            network: networkType,
+                            source: connection.source,
+                            target: connection.target,
+                            weight: newWeight
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        // Update the pattern with the new shader
+                        updatePatternShader(individualId, data.shader);
+
+                        // Update client-side genome state with the modified genome
+                        if (data.genome && currentGenomes) {
+                            const idx = currentPopulation.findIndex(p => p.id === individualId);
+                            if (idx >= 0) {
+                                currentGenomes[idx] = data.genome;
+                            }
+                        }
+
+                        // Update the network visualization edge thickness
+                        updateNetworkEdgeWeight(individualId, connection.source, connection.target, newWeight, networkType);
+
+                        console.log(`Updated weight: ${sourceLabel} → ${targetLabel} = ${newWeight}`);
+                    } else {
+                        console.error('Error updating weight:', data.error);
+                        showToast('Weight update failed', data.error || 'Server error', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error sending weight adjustment:', error);
+                    showToast('Weight update failed', error.message || 'Network error', 'error');
+                }
+            });
+
+            container.appendChild(sliderDiv);
+        }
+
+        function extractNodeLabel(nodeId) {
+            // Extract human-readable label from node ID like "visual_input_-1" or "time_hidden_5"
+            const parts = nodeId.split('_');
+            if (parts.length >= 3) {
+                const network = parts[0]; // 'visual' or 'time'
+                const type = parts[1];
+                const id = parts.slice(2).join('_');
+
+                // Map input node IDs to names - different for each network
+                if (type === 'input') {
+                    if (network === 'time') {
+                        // Time Signal CPPN inputs: raw_time, mouse_speed, mouse_distance, inactivity, bias
+                        const timeInputNames = {
+                            '-1': 'rawTime', '-2': 'mSpeed', '-3': 'mDist',
+                            '-4': 'inact', '-5': 'bias'
+                        };
+                        return timeInputNames[id] || `in${id}`;
+                    } else {
+                        // Visual CPPN inputs: x, y, distance, time, mouse_speed, mouse_distance, inactivity, bias
+                        const visualInputNames = {
+                            '-1': 'x', '-2': 'y', '-3': 'dist', '-4': 'time',
+                            '-5': 'mSpeed', '-6': 'mDist', '-7': 'inact', '-8': 'bias'
+                        };
+                        return visualInputNames[id] || `in${id}`;
+                    }
+                } else if (type === 'output') {
+                    if (network === 'time') {
+                        return 'timeOut';
+                    } else {
+                        const outputNames = { '0': 'R', '1': 'G', '2': 'B' };
+                        return outputNames[id] || `out${id}`;
+                    }
+                } else if (type === 'hidden') {
+                    return `h${id}`;
+                }
+                return id;
+            }
+            return nodeId;
+        }
+
+        function updatePatternShader(individualId, newShader) {
+            // Find the pattern and update its shader
+            const pattern = patterns.get(individualId);
+            if (pattern && window.PatternRenderer) {
+                // Update using PatternRenderer if available
+                const newPatternData = PatternRenderer.setupPattern(pattern.canvas, newShader);
+                if (newPatternData) {
+                    // Preserve clicks count
+                    const clicks = pattern.clicks;
+                    patterns.set(individualId, { canvas: pattern.canvas, ...newPatternData, clicks });
+                    console.log('Shader updated for pattern', individualId);
+                }
+            }
+        }
+
+        function updateNetworkEdgeWeight(individualId, sourceId, targetId, newWeight, networkType) {
+            const edges = networkEdges.get(individualId);
+            if (!edges) return;
+
+            // Find the edge by iterating through all edges
+            const allEdges = edges.get();
+            for (const edge of allEdges) {
+                if (edge.from === sourceId && edge.to === targetId) {
+                    // Update the edge width based on new weight
+                    const width = Math.max(0.5, Math.abs(newWeight));
+                    const isPositive = newWeight > 0;
+
+                    // Different colors for visual vs time signal networks
+                    let color;
+                    if (networkType === 'time') {
+                        color = isPositive ? 'rgba(0, 150, 200, 0.3)' : 'rgba(200, 150, 0, 0.3)';  // Cyan/Orange
+                    } else {
+                        color = isPositive ? 'rgba(0, 200, 100, 0.5)' : 'rgba(255, 100, 100, 0.5)';  // Green/Red
+                    }
+
+                    edges.update({
+                        id: edge.id,
+                        width: width,
+                        color: color,
+                        title: `${networkType.toUpperCase()} Weight: ${newWeight.toFixed(3)}`
+                    });
+
+                    console.log(`Updated edge visualization: ${sourceId} → ${targetId}, width: ${width}`);
+                    break;
+                }
+            }
+        }
+
+        function scrollToWeightSlider(sourceNodeId, targetNodeId) {
+            // Find the slider with matching source and target
+            const sliderItems = document.querySelectorAll('.weight-slider-item');
+
+            // Clear previous highlights
+            sliderItems.forEach(item => item.classList.remove('highlighted'));
+
+            // Find and scroll to the matching slider
+            for (const item of sliderItems) {
+                const source = item.getAttribute('data-source');
+                const target = item.getAttribute('data-target');
+
+                if (source === sourceNodeId && target === targetNodeId) {
+                    // Highlight the slider
+                    item.classList.add('highlighted');
+
+                    // Scroll to make it visible
+                    item.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+
+                    // Remove highlight after 2 seconds
+                    setTimeout(() => {
+                        item.classList.remove('highlighted');
+                    }, 2000);
+
+                    break;
+                }
+            }
+        }
+
+        function exportNetworkInline(individualId) {
+            const network = networkVisualizations.get(individualId);
+            if (!network) return;
+
+            // Get the data from the network
+            const data = network.body.data;
+            const exportData = {
+                id: individualId,
+                nodes: Array.from(data.nodes.get()),
+                edges: Array.from(data.edges.get())
+            };
+
+            const json = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `network_${individualId}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         // Keyboard support for span-based buttons
         function onRoleButtonKeydown(e, onClick) {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -769,11 +1711,12 @@
                 onClick();
             }
         }
-        
+
         // Event listeners
         const breedBtnEl = document.getElementById('breed-btn');
         breedBtnEl.addEventListener('click', breedGeneration);
         breedBtnEl.addEventListener('keydown', (e) => onRoleButtonKeydown(e, breedGeneration));
+
         // Initialize modules (must run before event listeners that use them)
         PopulationUI.init({
             apiUrl: API_URL,
@@ -822,27 +1765,27 @@
                 await PopulationUI.handleImportFile(file);
             }
         });
-        
+
         // Initialize
         ZoomSignals.init();
-        
+
         // Wire up time mode radio buttons to reset time on change
         function initTimeModeControls() {
             const timeModeRadios = document.querySelectorAll('input[name="timeMode"]');
-            
+
             timeModeRadios.forEach(radio => {
                 radio.addEventListener('change', (e) => {
                     const mode = e.target.value;
-                    
+
                     // Reset time when switching modes for clearer transition
                     animationTime = 0;
                     oscillatePhase = 0;
-                    
+
                     console.log(`⏱️ Time mode set to: ${mode}`);
                 });
             });
         }
-        
+
         // Initialize debug module (guard against missing debug.js)
         if (typeof EyecatcherDebug !== 'undefined') {
             EyecatcherDebug.init({
@@ -853,12 +1796,13 @@
                 getGenomeForPattern: getGenomeForPattern
             });
         }
-        
+
         initTimeModeControls();
         PopulationUI.startNewRandomPopulation();
         animate();
-        
+
         console.log('🎨 Eyecatcher Interactive Evolution ready!');
     </script>
 </body>
+
 </html>
