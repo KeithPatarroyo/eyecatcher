@@ -359,6 +359,7 @@
                     <span id="breed-btn" class="btn-action breed disabled" role="button" tabindex="0"
                         aria-disabled="true">Continue Generation</span>
                     <span id="new-random-btn" class="btn-action" role="button" tabindex="0">New random population</span>
+                    <a href="/genealogy" class="btn-action" style="text-decoration: none; display: inline-block;">🌳 Genealogy Tree</a>
                     <span class="zoom-controls" title="Pattern size">
                         <span class="zoom-controls-label">Zoom</span>
                         <span id="zoom-out" class="btn-zoom" role="button" tabindex="0" title="Zoom out"
@@ -671,6 +672,8 @@
         let currentPopulation = [];
         let currentGenomes = null;  // Client-held genomes; set whenever grid is populated
         let currentGenerationNum = 0;
+        let currentPopulationId = null;  // Genealogy: current population ID
+        let currentBranchName = 'main';  // Genealogy: current branch name
         let animationTime = 0;
         let oscillatePhase = 0;  // For oscillate mode: phase of sine wave
         let animating = true;
@@ -897,7 +900,34 @@
             updateStats();
         }
 
-        async function loadFromStatelessGenomes(genomes, generationNum) {
+        async function savePopulationToGenealogy(genomes, generationNum, parentId = null, branchName = 'main', description = '') {
+            try {
+                const response = await fetch(`${API_URL}/genealogy/save-population`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        genomes: genomes,
+                        parent_id: parentId,
+                        generation_num: generationNum,
+                        branch_name: branchName,
+                        description: description || `Generation ${generationNum}`,
+                        user_id: 'user'
+                    })
+                });
+                const data = await response.json();
+                if (data.population_id) {
+                    currentPopulationId = data.population_id;
+                    sessionStorage.setItem('current_population_id', currentPopulationId);
+                    console.log(`Saved to genealogy: population ${data.population_id}`);
+                    return data.population_id;
+                }
+            } catch (e) {
+                console.error('Failed to save to genealogy:', e);
+            }
+            return null;
+        }
+
+        async function loadFromStatelessGenomes(genomes, generationNum, saveToGenealogy = false) {
             if (!genomes || !genomes.length) return;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('grid').innerHTML = '';
@@ -920,6 +950,30 @@
                 currentPopulation = compData.shaders || [];
                 document.getElementById('gen-num').textContent = currentGenerationNum;
                 renderGridFromPopulation(currentPopulation);
+                
+                // Persist population state for navigation (mark as having population and save data)
+                sessionStorage.setItem('has_population', 'true');
+                sessionStorage.setItem('current_population_id', currentPopulationId || '');
+                sessionStorage.setItem('current_branch_name', currentBranchName || 'main');
+                
+                // Store the actual population data for restoration after navigation
+                sessionStorage.setItem('current_population_data', JSON.stringify({
+                    genomes: genomes,
+                    generation_num: generationNum,
+                    population_id: currentPopulationId,
+                    branch_name: currentBranchName
+                }));
+                
+                // Auto-save to genealogy if requested (for new random populations)
+                if (saveToGenealogy) {
+                    await savePopulationToGenealogy(
+                        genomes, 
+                        generationNum, 
+                        currentPopulationId,  // parent (null for new random)
+                        currentBranchName, 
+                        generationNum === 0 ? 'Random initial population' : `Generation ${generationNum}`
+                    );
+                }
             } catch (e) {
                 console.error(e);
                 showGridError(e.message || 'Failed to compile', true);
@@ -1098,22 +1152,33 @@
                         updateStats();
                         return;
                     }
+                    console.log('Breeding with parents:', parents.length);
+                    console.log('Parent population ID:', currentPopulationId);
+                    console.log('Branch name:', currentBranchName);
                     const response = await fetch(`${API_URL}/breed`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ parents, population_size: currentPopulation.length || 12 })
+                        body: JSON.stringify({ 
+                            parents, 
+                            population_size: currentPopulation.length || 12,
+                            parent_population_id: currentPopulationId,
+                            generation_num: currentGenerationNum + 1,
+                            branch_name: currentBranchName
+                        })
                     });
                     let data;
                     try {
                         data = await response.json();
-                    } catch (_) {
+                    } catch (parseError) {
+                        console.error('Failed to parse breed response:', parseError);
                         alert('Breed failed: server returned invalid response (status ' + response.status + ')');
                         document.getElementById('loading').style.display = 'none';
                         updateStats();
                         return;
                     }
                     if (!response.ok || data.error) {
-                        alert(data.error || 'Breed failed (status ' + response.status + ')');
+                        console.error('Breed failed:', data.error || 'Unknown error', 'Status:', response.status);
+                        alert(data.error || 'Breed failed (status ' + response.status + '). Check console for details.');
                         document.getElementById('loading').style.display = 'none';
                         updateStats();
                         return;
@@ -1124,6 +1189,12 @@
                         updateStats();
                         return;
                     }
+                    // Update genealogy tracking
+                    if (data.population_id) {
+                        currentPopulationId = data.population_id;
+                        sessionStorage.setItem('current_population_id', currentPopulationId);
+                    }
+                    // loadFromStatelessGenomes will automatically persist the new population data
                     await loadFromStatelessGenomes(data.children, currentGenerationNum + 1);
                 } catch (e) {
                     console.error('Error breeding:', e);
@@ -1935,7 +2006,83 @@
         }
 
         initTimeModeControls();
-        PopulationUI.startNewRandomPopulation();
+        
+        // Check if we're loading from genealogy
+        // NOTE: localStorage is used for cross-tab communication (genealogy viewer -> main viewer)
+        // sessionStorage is used for tab-specific state (current_population_id within this tab)
+        const genealogyLoad = localStorage.getItem('genealogy_load');
+        if (genealogyLoad) {
+            try {
+                const data = JSON.parse(genealogyLoad);
+                localStorage.removeItem('genealogy_load');
+                
+                // Load the population from genealogy
+                currentPopulationId = data.population_id;
+                currentBranchName = data.branch_name || 'main';
+                
+                // Validate genome structure
+                const validGenomes = data.genomes.filter(g => {
+                    if (!g || !g.visual || !g.time_signal) {
+                        console.warn('Invalid genome structure:', g);
+                        return false;
+                    }
+                    return true;
+                });
+                
+                if (validGenomes.length === 0) {
+                    throw new Error('No valid genomes in genealogy data');
+                }
+                
+                console.log(`Loading ${validGenomes.length} genomes from genealogy (population ${currentPopulationId})`);
+                loadFromStatelessGenomes(validGenomes, data.generation_num);
+                
+                showToast('Genealogy Load', `Loaded ${data.branch_name} Gen ${data.generation_num}`, 'success');
+            } catch (e) {
+                console.error('Failed to load from genealogy:', e);
+                PopulationUI.startNewRandomPopulation();
+            }
+        } else {
+            // Check if returning from tree view with existing session
+            const hasExistingSession = sessionStorage.getItem('has_population');
+            const savedPopulationData = sessionStorage.getItem('current_population_data');
+            
+            if (hasExistingSession && savedPopulationData) {
+                // Restore the saved population
+                try {
+                    const data = JSON.parse(savedPopulationData);
+                    currentPopulationId = data.population_id;
+                    currentBranchName = data.branch_name || 'main';
+                    
+                    // Validate genome structure
+                    const validGenomes = (data.genomes || []).filter(g => {
+                        if (!g || !g.visual || !g.time_signal) {
+                            console.warn('Invalid genome in session storage:', g);
+                            return false;
+                        }
+                        return true;
+                    });
+                    
+                    if (validGenomes.length === 0) {
+                        throw new Error('No valid genomes in session storage');
+                    }
+                    
+                    console.log(`Restoring ${validGenomes.length} genomes from session (population ${currentPopulationId})`);
+                    loadFromStatelessGenomes(validGenomes, data.generation_num);
+                } catch (e) {
+                    console.error('Failed to restore population from session:', e);
+                    // Clear corrupted session data
+                    sessionStorage.removeItem('has_population');
+                    sessionStorage.removeItem('current_population_data');
+                    PopulationUI.startNewRandomPopulation();
+                }
+            } else if (!hasExistingSession) {
+                // First time loading - start fresh
+                PopulationUI.startNewRandomPopulation();
+            }
+            // If has existing session but no data, page was refreshed mid-evolution
+            // Keep empty state rather than auto-starting new population
+        }
+        
         animate();
 
         console.log('🎨 Eyecatcher Interactive Evolution ready!');

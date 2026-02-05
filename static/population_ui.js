@@ -43,6 +43,11 @@
         const loadingEl = document.getElementById('loading');
         if (loadingEl) loadingEl.style.display = 'block';
         try {
+            // Clear any existing session data when starting fresh
+            sessionStorage.removeItem('current_population_data');
+            sessionStorage.removeItem('current_population_id');
+            sessionStorage.removeItem('has_population');
+            
             const r = await fetch(`${_apiUrl}/random`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -55,7 +60,8 @@
             }
             const d = await r.json();
             if (_loadFromStatelessGenomes) {
-                await _loadFromStatelessGenomes(d.genomes || [], 0);
+                // Pass saveToGenealogy = true to auto-save new random populations
+                await _loadFromStatelessGenomes(d.genomes || [], 0, true);
             }
         } catch (error) {
             console.error('Error starting random population:', error);
@@ -72,13 +78,19 @@
         const loadingEl = document.getElementById('loading');
         if (loadingEl) loadingEl.style.display = 'block';
         try {
+            // Clear any existing session data when starting fresh
+            sessionStorage.removeItem('current_population_data');
+            sessionStorage.removeItem('current_population_id');
+            sessionStorage.removeItem('has_population');
+            
             const r = await fetch(_apiUrl + '/seeds');
             if (!r.ok) { alert('Failed to load seeds'); return; }
             const d = await r.json();
             const seeds = d.seeds || [];
             if (!seeds.length) { alert('No seeds available.'); return; }
             if (_loadFromStatelessGenomes) {
-                await _loadFromStatelessGenomes(seeds.slice(0, 12).map(s => s.genome || s), 0);
+                // Pass saveToGenealogy = true for seeds too (creates new branch)
+                await _loadFromStatelessGenomes(seeds.slice(0, 12).map(s => s.genome || s), 0, true);
             }
         } catch (e) {
             alert('Error: ' + (e.message || e));
