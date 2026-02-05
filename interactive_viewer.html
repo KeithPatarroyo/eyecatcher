@@ -1281,6 +1281,7 @@
 
         // Network visualization
         let networkVisualizations = new Map();  // Store vis.Network instances per pattern
+        let networkEdges = new Map();            // Store edges DataSet per pattern
         let networkPhysicsState = new Map();     // Track physics state per pattern
 
         let currentNetworkId = null;
@@ -1342,6 +1343,7 @@
             if (currentNetworkId && networkVisualizations.has(currentNetworkId)) {
                 networkVisualizations.get(currentNetworkId).destroy();
                 networkVisualizations.delete(currentNetworkId);
+                networkEdges.delete(currentNetworkId);
             }
             currentNetworkId = null;
         }
@@ -1469,6 +1471,7 @@
 
                 const network = new vis.Network(vizContainer, { nodes, edges }, options);
                 networkVisualizations.set(individualId, network);
+                networkEdges.set(individualId, edges);  // Store edges DataSet for updates
                 networkPhysicsState.set(individualId, false);
 
                 console.log('Network created successfully');
@@ -1594,6 +1597,10 @@
                     if (data.status === 'success') {
                         // Update the pattern with the new shader
                         updatePatternShader(individualId, data.shader);
+
+                        // Update the network visualization edge thickness
+                        updateNetworkEdgeWeight(individualId, connection.source, connection.target, newWeight, networkType);
+
                         console.log(`Updated weight: ${sourceLabel} → ${targetLabel} = ${newWeight}`);
                     } else {
                         console.error('Error updating weight:', data.error);
@@ -1610,20 +1617,34 @@
             // Extract human-readable label from node ID like "visual_input_-1" or "time_hidden_5"
             const parts = nodeId.split('_');
             if (parts.length >= 3) {
+                const network = parts[0]; // 'visual' or 'time'
                 const type = parts[1];
                 const id = parts.slice(2).join('_');
 
-                // Map input node IDs to names
-                const inputNames = {
-                    '-1': 'x', '-2': 'y', '-3': 'dist', '-4': 'time',
-                    '-5': 'mSpeed', '-6': 'mDist', '-7': 'inact', '-8': 'bias'
-                };
-
-                if (type === 'input' && inputNames[id]) {
-                    return inputNames[id];
+                // Map input node IDs to names - different for each network
+                if (type === 'input') {
+                    if (network === 'time') {
+                        // Time Signal CPPN inputs: raw_time, mouse_speed, mouse_distance, inactivity, bias
+                        const timeInputNames = {
+                            '-1': 'rawTime', '-2': 'mSpeed', '-3': 'mDist',
+                            '-4': 'inact', '-5': 'bias'
+                        };
+                        return timeInputNames[id] || `in${id}`;
+                    } else {
+                        // Visual CPPN inputs: x, y, distance, time, mouse_speed, mouse_distance, inactivity, bias
+                        const visualInputNames = {
+                            '-1': 'x', '-2': 'y', '-3': 'dist', '-4': 'time',
+                            '-5': 'mSpeed', '-6': 'mDist', '-7': 'inact', '-8': 'bias'
+                        };
+                        return visualInputNames[id] || `in${id}`;
+                    }
                 } else if (type === 'output') {
-                    const outputNames = { '0': 'R', '1': 'G', '2': 'B' };
-                    return outputNames[id] || `out${id}`;
+                    if (network === 'time') {
+                        return 'timeOut';
+                    } else {
+                        const outputNames = { '0': 'R', '1': 'G', '2': 'B' };
+                        return outputNames[id] || `out${id}`;
+                    }
                 } else if (type === 'hidden') {
                     return `h${id}`;
                 }
@@ -1646,6 +1667,39 @@
                     }
                     pattern.program = newProgram;
                     console.log('Shader updated for pattern', individualId);
+                }
+            }
+        }
+
+        function updateNetworkEdgeWeight(individualId, sourceId, targetId, newWeight, networkType) {
+            const edges = networkEdges.get(individualId);
+            if (!edges) return;
+
+            // Find the edge by iterating through all edges
+            const allEdges = edges.get();
+            for (const edge of allEdges) {
+                if (edge.from === sourceId && edge.to === targetId) {
+                    // Update the edge width based on new weight
+                    const width = Math.max(0.5, Math.abs(newWeight));
+                    const isPositive = newWeight > 0;
+
+                    // Different colors for visual vs time signal networks
+                    let color;
+                    if (networkType === 'time') {
+                        color = isPositive ? 'rgba(0, 150, 200, 0.3)' : 'rgba(200, 150, 0, 0.3)';  // Cyan/Orange
+                    } else {
+                        color = isPositive ? 'rgba(0, 200, 100, 0.5)' : 'rgba(255, 100, 100, 0.5)';  // Green/Red
+                    }
+
+                    edges.update({
+                        id: edge.id,
+                        width: width,
+                        color: color,
+                        title: `${networkType.toUpperCase()} Weight: ${newWeight.toFixed(3)}`
+                    });
+
+                    console.log(`Updated edge visualization: ${sourceId} → ${targetId}, width: ${width}`);
+                    break;
                 }
             }
         }
