@@ -7,9 +7,15 @@ Each individual has two CPPNs:
 - Time Signal CPPN: (rawTime, mouseSpeed, bias) -> (modifiedTime)
 
 Population state lives on the client; server provides compile, random, seeds, breed, save.
+Save returns file contents for client-side download (works on Railway / no server filesystem).
 """
+import base64
+import io
+import json
 import os
+import pickle
 import random
+import zipfile
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -192,47 +198,92 @@ def save_individual():
 
 
 def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bool = True):
-    """Internal helper to save a dual genome and return paths."""
-    os.makedirs('output/saved', exist_ok=True)
-
-    # Save dual genome (and optional network visualization PDF)
-    genome_path = f'output/saved/dual_genome_{individual_id}.pkl'
-    engine.save_dual_genome(dual_genome, genome_path, visualize=visualize)
-
-    network_path = f'output/saved/dual_genome_{individual_id}_network.pdf'
-    has_network = os.path.isfile(network_path)
-
-    # Save shader
+    """
+    Build save assets in memory and return them for client-side download.
+    Works on Railway (no server filesystem). Optionally write to disk if SAVE_TO_DISK=1.
+    """
     shader_code = compiler.compile_dual_to_glsl(
         dual_genome, engine.config, engine.time_config
     )
-    shader_path = f'output/saved/pattern_{individual_id}.glsl'
-    with open(shader_path, 'w') as f:
-        f.write(shader_code)
+    bundle = {
+        "shader": shader_code,
+        "metadata": {
+            "type": "dual_cppn",
+            "visual": {
+                "num_nodes": len(dual_genome.visual.nodes),
+                "num_connections": len([c for c in dual_genome.visual.connections.values() if c.enabled]),
+            },
+            "time_signal": {
+                "num_nodes": len(dual_genome.time_signal.nodes),
+                "num_connections": len([c for c in dual_genome.time_signal.connections.values() if c.enabled]),
+            },
+            "fitness": dual_genome.fitness,
+        },
+    }
+    bundle_json = json.dumps(bundle, indent=2)
 
-    # Save shader bundle
-    bundle_path = f'output/saved/pattern_{individual_id}_bundle.json'
-    compiler.export_dual_shader_bundle(
-        dual_genome, engine.config, engine.time_config, bundle_path
-    )
-
-    # Save image (using visual CPPN with linear time for static image)
+    # PNG image
     from PIL import Image
     img = engine.render_image(dual_genome.visual, resolution=512, time=0.5)
-    img_path = f'output/saved/pattern_{individual_id}.png'
-    Image.fromarray(img).save(img_path)
+    img_buffer = io.BytesIO()
+    Image.fromarray(img).save(img_buffer, format="PNG")
+    img_base64 = base64.b64encode(img_buffer.getvalue()).decode("ascii")
 
-    out = {
-        'id': individual_id,
-        'genome_path': genome_path,
-        'shader_path': shader_path,
-        'bundle_path': bundle_path,
-        'image_path': img_path,
-        'status': 'saved'
-    }
-    if has_network:
-        out['network_path'] = network_path
-    return jsonify(out)
+    # Pickle genome
+    pkl_buffer = io.BytesIO()
+    pickle.dump(
+        {"visual": dual_genome.visual, "time_signal": dual_genome.time_signal, "key": dual_genome.key},
+        pkl_buffer,
+    )
+    pkl_base64 = base64.b64encode(pkl_buffer.getvalue()).decode("ascii")
+
+    # Optional: network PDF
+    pdf_bytes = None
+    if visualize:
+        try:
+            from genome_visualizer import GenomeVisualizer
+            visualizer = GenomeVisualizer(engine.config)
+            pdf_buffer = io.BytesIO()
+            visualizer.visualize_genome(dual_genome.visual, pdf_buffer)
+            pdf_bytes = pdf_buffer.getvalue()
+        except Exception as e:
+            print(f"Warning: Genome visualization failed: {e}")
+
+    # Package all assets into a single zip
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(f"pattern_{individual_id}.png", base64.b64decode(img_base64))
+        zf.writestr(f"pattern_{individual_id}.glsl", shader_code.encode("utf-8"))
+        zf.writestr(f"pattern_{individual_id}_bundle.json", bundle_json.encode("utf-8"))
+        zf.writestr(f"dual_genome_{individual_id}.pkl", base64.b64decode(pkl_base64))
+        if pdf_bytes:
+            zf.writestr(f"dual_genome_{individual_id}_network.pdf", pdf_bytes)
+    zip_base64 = base64.b64encode(zip_buffer.getvalue()).decode("ascii")
+
+    downloads = [
+        {"filename": f"pattern_{individual_id}.zip", "mime": "application/zip", "content_base64": zip_base64},
+    ]
+
+    # Optional: write to disk for local dev (e.g. SAVE_TO_DISK=1)
+    if os.environ.get("SAVE_TO_DISK", "").strip() in ("1", "true", "yes"):
+        os.makedirs("output/saved", exist_ok=True)
+        with open(f"output/saved/pattern_{individual_id}.png", "wb") as f:
+            f.write(base64.b64decode(img_base64))
+        with open(f"output/saved/pattern_{individual_id}.glsl", "w") as f:
+            f.write(shader_code)
+        with open(f"output/saved/pattern_{individual_id}_bundle.json", "w") as f:
+            f.write(bundle_json)
+        with open(f"output/saved/dual_genome_{individual_id}.pkl", "wb") as f:
+            f.write(base64.b64decode(pkl_base64))
+        if pdf_bytes:
+            with open(f"output/saved/dual_genome_{individual_id}_network.pdf", "wb") as f:
+                f.write(pdf_bytes)
+
+    return jsonify({
+        "id": individual_id,
+        "status": "saved",
+        "downloads": downloads,
+    })
 
 
 @app.route('/api/saved/<int:individual_id>/network')
