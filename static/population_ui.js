@@ -8,6 +8,7 @@
  * - EyecatcherStorage (from storage.js)
  * - API_URL global
  * - loadFromStatelessGenomes function
+ * - addToGrid function (append patterns to current grid)
  * - getCurrentGenomesForSave function (returns client-held genomes + generation, or null)
  */
 
@@ -17,18 +18,21 @@
     // Module state
     let _apiUrl = '';
     let _loadFromStatelessGenomes = null;
+    let _addToGrid = null;
     let _getCurrentGenomesForSave = null;
 
     /**
      * Initialize the population UI module.
      * @param {Object} options
      * @param {string} options.apiUrl - Base API URL
-     * @param {Function} options.loadFromStatelessGenomes - Function to load genomes into the grid
+     * @param {Function} options.loadFromStatelessGenomes - Function to load genomes into the grid (replace)
+     * @param {Function} options.addToGrid - Function to append genomes to the current grid
      * @param {Function} options.getCurrentGenomesForSave - Function to get current genomes for saving
      */
     function init(options) {
         _apiUrl = options.apiUrl || '';
         _loadFromStatelessGenomes = options.loadFromStatelessGenomes;
+        _addToGrid = options.addToGrid;
         _getCurrentGenomesForSave = options.getCurrentGenomesForSave;
     }
 
@@ -143,28 +147,6 @@
     }
 
     /**
-     * Export current population to JSON file.
-     */
-    async function onExportClick() {
-        const data = _getCurrentGenomesForSave ? await _getCurrentGenomesForSave() : null;
-        if (!data || !data.genomes.length) {
-            alert('No population to export. Start with New random population or Load Saved.');
-            return;
-        }
-        const blob = new Blob([JSON.stringify({
-            name: 'Exported',
-            generation: data.generation,
-            genomes: data.genomes,
-            exportedAt: new Date().toISOString()
-        }, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'eyecatcher-population.json';
-        a.click();
-        URL.revokeObjectURL(a.href);
-    }
-
-    /**
      * Trigger file input for import.
      */
     function onImportClick() {
@@ -174,23 +156,47 @@
 
     /**
      * Handle imported file (call this from the file input's change handler).
+     * Supports .zip (saved pattern with genome_*.json) or .json (population with genomes array).
+     * Adds patterns to the current grid without replacing.
      * @param {File} file - The imported file
      */
     async function handleImportFile(file) {
         if (!file) return;
+        const name = (file.name || '').toLowerCase();
         try {
-            const json = JSON.parse(await file.text());
-            const genomes = json.genomes || [];
+            let genomes = [];
+            if (name.endsWith('.zip')) {
+                if (typeof JSZip === 'undefined') {
+                    alert('Import failed: JSZip not loaded. Check script for jszip.min.js.');
+                    return;
+                }
+                const zip = await JSZip.loadAsync(file);
+                const genomeFiles = Object.keys(zip.files).filter(n => /^genome_.*\.json$/i.test(n));
+                if (!genomeFiles.length) {
+                    alert('No genome JSON found in zip (expected genome_*.json).');
+                    return;
+                }
+                for (const entry of genomeFiles) {
+                    const text = await zip.files[entry].async('string');
+                    const genome = JSON.parse(text);
+                    if (genome && genome.visual && genome.time_signal) {
+                        genomes.push(genome);
+                    }
+                }
+            } else {
+                const json = JSON.parse(await file.text());
+                genomes = json.genomes || [];
+                if (genomes.length && typeof EyecatcherStorage !== 'undefined') {
+                    await EyecatcherStorage.init();
+                    await EyecatcherStorage.importPopulation(json);
+                }
+            }
             if (!genomes.length) {
                 alert('No genomes in file');
                 return;
             }
-            if (typeof EyecatcherStorage !== 'undefined') {
-                await EyecatcherStorage.init();
-                await EyecatcherStorage.importPopulation(json);
-            }
-            if (_loadFromStatelessGenomes) {
-                await _loadFromStatelessGenomes(genomes, json.generation != null ? json.generation : 0);
+            if (_addToGrid) {
+                await _addToGrid(genomes);
             }
         } catch (err) {
             alert('Import failed: ' + (err.message || err));
@@ -204,7 +210,6 @@
         onNewFromSeedsClick: onNewFromSeedsClick,
         onLoadSavedClick: onLoadSavedClick,
         onSaveCurrentClick: onSaveCurrentClick,
-        onExportClick: onExportClick,
         onImportClick: onImportClick,
         handleImportFile: handleImportFile
     };
