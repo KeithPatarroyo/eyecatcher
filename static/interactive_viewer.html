@@ -173,6 +173,8 @@
         <div style="text-align: center; margin-top: 10px;">Loading patterns...</div>
     </div>
     
+    <div id="toast-container"></div>
+    
     <script src="storage.js"></script>
     <script src="population_ui.js"></script>
     <script src="community.js"></script>
@@ -185,6 +187,38 @@
         const API_URL = (window.location.origin && window.location.protocol.startsWith('http'))
             ? `${window.location.origin}/api`
             : 'http://localhost:5001/api';
+        
+        // Toast notification system
+        function showToast(title, body, type = 'success', options = {}) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.style.position = 'relative';
+            
+            let html = `<button class="toast-close" aria-label="Close">&times;</button>`;
+            html += `<div class="toast-title">${title}</div>`;
+            if (body) html += `<div class="toast-body">${body}</div>`;
+            if (options.linkText && options.linkUrl) {
+                html += `<a class="toast-link" href="${options.linkUrl}" target="_blank">${options.linkText}</a>`;
+            }
+            toast.innerHTML = html;
+            
+            toast.querySelector('.toast-close').onclick = () => dismissToast(toast);
+            container.appendChild(toast);
+            
+            // Auto-dismiss after duration (default 6s, longer if there's a link)
+            const duration = options.duration || (options.linkUrl ? 10000 : 6000);
+            setTimeout(() => dismissToast(toast), duration);
+            
+            return toast;
+        }
+        
+        function dismissToast(toast) {
+            if (!toast.parentNode) return;
+            toast.style.animation = 'toast-out 0.3s ease-in forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+        
         let currentPopulation = [];
         let currentGenomes = null;  // Client-held genomes; set whenever grid is populated
         let currentGenerationNum = 0;
@@ -368,7 +402,7 @@
                 saveBtn.textContent = '💾 Save';
                 saveBtn.onclick = (e) => {
                     e.stopPropagation();
-                    savePattern(pattern.id);
+                    savePattern(pattern.id, saveBtn);
                 };
                 actions.appendChild(submitCommunityBtn);
                 actions.appendChild(saveBtn);
@@ -541,17 +575,25 @@
             return null;
         }
 
-        async function savePattern(id) {
+        async function savePattern(id, buttonEl) {
             if (!currentGenomes || !currentGenomes.length) {
-                alert('No pattern data to save. Start with New random population or Load Saved.');
+                showToast('Cannot save', 'No pattern data. Start with New random population or Load Saved.', 'error');
                 return;
             }
             const idx = currentPopulation.findIndex(p => p.id === id);
             const genome = idx >= 0 && currentGenomes[idx] ? currentGenomes[idx] : null;
             if (!genome) {
-                alert('Could not get pattern data for saving.');
+                showToast('Cannot save', 'Could not get pattern data.', 'error');
                 return;
             }
+            
+            // Show saving state on button
+            const originalText = buttonEl ? buttonEl.textContent : null;
+            if (buttonEl) {
+                buttonEl.textContent = 'Saving...';
+                buttonEl.classList.add('saving');
+            }
+            
             try {
                 const response = await fetch(`${API_URL}/save`, {
                     method: 'POST',
@@ -561,25 +603,29 @@
 
                 const data = await response.json();
                 if (data.error) {
-                    alert('Save failed: ' + data.error);
+                    showToast('Save failed', data.error, 'error');
                     return;
                 }
-                let msg = `Saved!\nShader: ${data.shader_path}\nImage: ${data.image_path}`;
-                if (data.network_path) {
-                    msg += '\n\nNetwork diagram was generated (view link below).';
-                }
-                alert(msg);
+                
+                // Build success message
+                let body = `Image: ${data.image_path}`;
+                const options = {};
                 if (data.network_path) {
                     const baseUrl = API_URL.replace('/api', '');
-                    const networkUrl = `${baseUrl}/api/saved/${data.id}/network`;
-                    if (confirm('Open network diagram in a new tab?')) {
-                        window.open(networkUrl, '_blank');
-                    }
+                    options.linkText = 'Open network diagram';
+                    options.linkUrl = `${baseUrl}/api/saved/${data.id}/network`;
                 }
+                showToast('Pattern saved!', body, 'success', options);
 
             } catch (error) {
                 console.error('Error saving:', error);
-                alert('Error saving pattern');
+                showToast('Save failed', error.message || 'Network error', 'error');
+            } finally {
+                // Restore button state
+                if (buttonEl) {
+                    buttonEl.textContent = originalText;
+                    buttonEl.classList.remove('saving');
+                }
             }
         }
 
