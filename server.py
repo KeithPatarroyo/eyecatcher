@@ -125,6 +125,18 @@ def serve_toolbar_ui_js():
     return send_from_directory(STATIC_DIR, 'toolbar_ui.js', mimetype='application/javascript')
 
 
+@app.route('/network_visualizer.js')
+def serve_network_visualizer_js():
+    """Serve network visualization module (CPPN sidebar, vis.js, weight sliders)."""
+    return send_from_directory(STATIC_DIR, 'network_visualizer.js', mimetype='application/javascript')
+
+
+@app.route('/network.css')
+def serve_network_css():
+    """Serve network sidebar and weight slider styles."""
+    return send_from_directory(STATIC_DIR, 'network.css', mimetype='text/css')
+
+
 @app.route('/api/breed', methods=['POST'])
 def breed():
     """
