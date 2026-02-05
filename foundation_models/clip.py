@@ -1,12 +1,10 @@
 """
-CLIP model integration for image embedding using JAX/Flax.
-Used to convert CPPN-generated images to latent representations
-for computing open-endedness scores.
+CLIP model integration for image embedding.
+Uses PyTorch CLIP and converts outputs to JAX arrays for ASAL metrics.
 """
-import jax
 import jax.numpy as jnp
 import numpy as np
-from typing import Optional, Union
+from typing import Union
 from PIL import Image
 
 
@@ -14,8 +12,9 @@ class CLIPEmbedder:
     """
     CLIP image embedder for computing latent representations.
 
-    Uses OpenAI's CLIP model via transformers Flax implementation to embed images
-    into a shared latent space where semantic similarity can be computed.
+    Uses OpenAI's CLIP model via transformers (PyTorch) to embed images
+    into a shared latent space. Outputs are converted to JAX arrays
+    for compatibility with ASAL metrics.
     """
 
     def __init__(self, model_name: str = "openai/clip-vit-base-patch32"):
@@ -30,7 +29,7 @@ class CLIPEmbedder:
         self.model_name = model_name
         self._model = None
         self._processor = None
-        self._params = None
+        self._device = None
 
     def _load_model(self):
         """Lazy load the model on first use."""
@@ -38,15 +37,20 @@ class CLIPEmbedder:
             return
 
         try:
-            from transformers import FlaxCLIPModel, CLIPProcessor
+            import torch
+            from transformers import CLIPModel, CLIPProcessor
 
-            self._model = FlaxCLIPModel.from_pretrained(self.model_name)
+            self._model = CLIPModel.from_pretrained(self.model_name)
             self._processor = CLIPProcessor.from_pretrained(self.model_name)
-            self._params = self._model.params
+
+            # Use CUDA if available
+            self._device = "cuda" if torch.cuda.is_available() else "cpu"
+            self._model = self._model.to(self._device)
+            self._model.eval()
         except ImportError as e:
             raise ImportError(
-                "CLIP requires jax, flax and transformers. "
-                "Install with: pip install jax jaxlib flax transformers"
+                "CLIP requires torch and transformers. "
+                "Install with: pip install torch transformers"
             ) from e
 
     def embed_image(self, image: Union[np.ndarray, Image.Image]) -> jnp.ndarray:
@@ -66,6 +70,7 @@ class CLIPEmbedder:
             (512 for ViT-B/32, 768 for ViT-L/14).
         """
         self._load_model()
+        import torch
 
         # Convert numpy array to PIL Image if needed
         if isinstance(image, np.ndarray):
@@ -75,19 +80,17 @@ class CLIPEmbedder:
             image = Image.fromarray(image)
 
         # Process image through CLIP
-        inputs = self._processor(images=image, return_tensors="jax")
+        inputs = self._processor(images=image, return_tensors="pt")
+        inputs = {k: v.to(self._device) for k, v in inputs.items()}
 
-        # Get image features
-        outputs = self._model.get_image_features(
-            pixel_values=inputs["pixel_values"],
-            params=self._params,
-        )
+        with torch.no_grad():
+            outputs = self._model.get_image_features(**inputs)
 
-        # L2 normalize
-        embedding = outputs.squeeze()
-        embedding = embedding / jnp.linalg.norm(embedding)
+        # Convert to numpy, then JAX, and L2 normalize
+        embedding = outputs.cpu().numpy().squeeze()
+        embedding = embedding / np.linalg.norm(embedding)
 
-        return embedding
+        return jnp.array(embedding)
 
     def embed_images(self, images: list) -> jnp.ndarray:
         """
@@ -104,6 +107,7 @@ class CLIPEmbedder:
             L2-normalized embeddings of shape (N, D) where N is number of images.
         """
         self._load_model()
+        import torch
 
         # Convert all images to PIL
         pil_images = []
@@ -115,19 +119,18 @@ class CLIPEmbedder:
             pil_images.append(img)
 
         # Batch process
-        inputs = self._processor(images=pil_images, return_tensors="jax")
+        inputs = self._processor(images=pil_images, return_tensors="pt")
+        inputs = {k: v.to(self._device) for k, v in inputs.items()}
 
-        # Get image features
-        outputs = self._model.get_image_features(
-            pixel_values=inputs["pixel_values"],
-            params=self._params,
-        )
+        with torch.no_grad():
+            outputs = self._model.get_image_features(**inputs)
 
-        # L2 normalize
-        norms = jnp.linalg.norm(outputs, axis=-1, keepdims=True)
-        embeddings = outputs / norms
+        # Convert to numpy, L2 normalize, then to JAX
+        embeddings = outputs.cpu().numpy()
+        norms = np.linalg.norm(embeddings, axis=-1, keepdims=True)
+        embeddings = embeddings / norms
 
-        return embeddings
+        return jnp.array(embeddings)
 
     def embed_text(self, text: str) -> jnp.ndarray:
         """
@@ -144,20 +147,18 @@ class CLIPEmbedder:
             L2-normalized embedding vector of shape (D,).
         """
         self._load_model()
+        import torch
 
-        inputs = self._processor(text=[text], return_tensors="jax", padding=True)
+        inputs = self._processor(text=[text], return_tensors="pt", padding=True)
+        inputs = {k: v.to(self._device) for k, v in inputs.items()}
 
-        # Get text features
-        outputs = self._model.get_text_features(
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            params=self._params,
-        )
+        with torch.no_grad():
+            outputs = self._model.get_text_features(**inputs)
 
-        embedding = outputs.squeeze()
-        embedding = embedding / jnp.linalg.norm(embedding)
+        embedding = outputs.cpu().numpy().squeeze()
+        embedding = embedding / np.linalg.norm(embedding)
 
-        return embedding
+        return jnp.array(embedding)
 
     def embed_texts(self, texts: list) -> jnp.ndarray:
         """
@@ -174,20 +175,19 @@ class CLIPEmbedder:
             L2-normalized embeddings of shape (N, D).
         """
         self._load_model()
+        import torch
 
-        inputs = self._processor(text=texts, return_tensors="jax", padding=True)
+        inputs = self._processor(text=texts, return_tensors="pt", padding=True)
+        inputs = {k: v.to(self._device) for k, v in inputs.items()}
 
-        # Get text features
-        outputs = self._model.get_text_features(
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            params=self._params,
-        )
+        with torch.no_grad():
+            outputs = self._model.get_text_features(**inputs)
 
-        norms = jnp.linalg.norm(outputs, axis=-1, keepdims=True)
-        embeddings = outputs / norms
+        embeddings = outputs.cpu().numpy()
+        norms = np.linalg.norm(embeddings, axis=-1, keepdims=True)
+        embeddings = embeddings / norms
 
-        return embeddings
+        return jnp.array(embeddings)
 
     @property
     def embedding_dim(self) -> int:
