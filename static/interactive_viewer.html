@@ -49,7 +49,7 @@
         <span class="toolbar-end">
             <span id="settings-btn" class="settings-btn" role="button" tabindex="0" aria-expanded="false" title="Settings" aria-label="Open settings">⚙ Settings</span>
         </span>
-        <input type="file" id="import-file" accept=".json,.zip" style="display:none;">
+        <input type="file" id="import-file" accept=".json,.zip">
     </div>
     
     <div id="instructions" class="collapsible-help" hidden>
@@ -130,17 +130,17 @@
         <div class="modal-content">
             <div id="admin-step-key">
                 <h3>Community moderation</h3>
-                <p style="color:#888;font-size:13px;">Enter the admin API key to review pending submissions.</p>
+                <p>Enter the admin API key to review pending submissions.</p>
                 <label>API key <input type="password" id="admin-key-input" placeholder="Admin key" autocomplete="off"></label>
-                <p id="admin-key-error" style="color:#dc3545;font-size:13px;margin-top:8px;display:none;"></p>
+                <p id="admin-key-error"></p>
                 <div class="modal-actions">
                     <button type="button" class="primary" id="admin-key-submit">Continue</button>
                     <button type="button" id="admin-modal-cancel">Cancel</button>
                 </div>
             </div>
-            <div id="admin-step-list" style="display:none;">
+            <div id="admin-step-list">
                 <h3>Pending submissions</h3>
-                <p style="color:#888;font-size:13px;">Approve to publish in Community, or reject to remove.</p>
+                <p>Approve to publish in Community, or reject to remove.</p>
                 <ul id="admin-pending-list"></ul>
                 <span class="modal-close" id="admin-list-close">Close</span>
             </div>
@@ -150,7 +150,7 @@
     <div id="community-submit-modal">
         <div class="modal-content">
             <h3>Submit to Community</h3>
-            <p style="color:#888;font-size:13px;">Share this pattern for others to use. It will be reviewed before appearing in Community.</p>
+            <p>Share this pattern for others to use. It will be reviewed before appearing in Community.</p>
             <label>Pattern name <input type="text" id="community-submit-name" placeholder="e.g. Sunset spiral"></label>
             <label>Your name <input type="text" id="community-submit-creator" placeholder="e.g. Anonymous"></label>
             <div class="modal-actions">
@@ -162,16 +162,16 @@
     <div id="community-list-modal">
         <div class="modal-content">
             <h3>Load from Community</h3>
-            <p style="color:#888;font-size:13px;">Select one or more patterns (click row or checkbox), then "Load selected". Or use the shortcuts below.</p>
+            <p>Select one or more patterns (click row or checkbox), then "Load selected". Or use the shortcuts below.</p>
             <ul id="community-list"></ul>
-            <div class="community-modal-actions" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <div class="community-modal-actions">
                 <button type="button" class="pop-btn primary" id="community-load-selected-btn">Load selected</button>
                 <button type="button" class="pop-btn" id="community-load-12-btn">Load first 12</button>
-                <span style="color:#666;font-size:12px;">|</span>
-                <button type="button" class="pop-btn" id="community-select-all-btn" style="font-size:12px;">Select all</button>
-                <button type="button" class="pop-btn" id="community-deselect-all-btn" style="font-size:12px;">Deselect all</button>
+                <span class="community-modal-sep">|</span>
+                <button type="button" class="pop-btn" id="community-select-all-btn">Select all</button>
+                <button type="button" class="pop-btn" id="community-deselect-all-btn">Deselect all</button>
             </div>
-            <span class="modal-close" id="community-list-close" style="display:block;margin-top:12px;">Cancel</span>
+            <span class="modal-close" id="community-list-close">Cancel</span>
         </div>
     </div>
     
@@ -183,11 +183,11 @@
         </div>
     </div>
     
-    <div id="grid" style="min-height:280px;padding:10px;background:#0d0d0d;"></div>
+    <div id="grid"></div>
     
-    <div id="loading" style="display: none;">
+    <div id="loading">
         <div class="spinner"></div>
-        <div style="text-align: center; margin-top: 10px;">Loading patterns...</div>
+        <div>Loading patterns...</div>
     </div>
     
     <div id="toast-container"></div>
@@ -198,63 +198,16 @@
     <!-- Debug overlay module (creates its own DOM elements) -->
     <script src="debug.js"></script>
     <script src="pattern_renderer.js"></script>
+    <script src="toast.js"></script>
+    <script src="zoom_signals.js"></script>
+    <script src="toolbar_ui.js"></script>
 
     <script>
         // Use same origin when page is served over HTTP (e.g. by Flask); fallback for file://
         const API_URL = (window.location.origin && window.location.protocol.startsWith('http'))
             ? `${window.location.origin}/api`
             : 'http://localhost:5001/api';
-        
-        // Toast notification system
-        function showToast(title, body, type = 'success', options = {}) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.style.position = 'relative';
-            
-            let html = `<button class="toast-close" aria-label="Close">&times;</button>`;
-            html += `<div class="toast-title">${title}</div>`;
-            if (body) html += `<div class="toast-body">${body}</div>`;
-            if (options.linkText && options.linkUrl) {
-                html += `<a class="toast-link" href="${options.linkUrl}" target="_blank">${options.linkText}</a>`;
-            }
-            toast.innerHTML = html;
-            
-            toast.querySelector('.toast-close').onclick = () => dismissToast(toast);
-            container.appendChild(toast);
-            
-            // Auto-dismiss after duration (default 6s, longer if there's a link)
-            const duration = options.duration || (options.linkUrl ? 10000 : 6000);
-            setTimeout(() => dismissToast(toast), duration);
-            
-            return toast;
-        }
-        
-        function dismissToast(toast) {
-            if (!toast.parentNode) return;
-            toast.style.animation = 'toast-out 0.3s ease-in forwards';
-            setTimeout(() => toast.remove(), 300);
-        }
-        
-        function base64ToBlob(base64, mime) {
-            const bin = atob(base64);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            return new Blob([bytes], { type: mime });
-        }
-        
-        function triggerDownload(blob, filename) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-        
+
         let currentPopulation = [];
         let currentGenomes = null;  // Client-held genomes; set whenever grid is populated
         let currentGenerationNum = 0;
@@ -264,66 +217,7 @@
         
         // Time mode configuration
         const ANIMATION_SPEED = 0.005;  // Time increment per frame (0.001 = slow, 0.01 = fast)
-        
-        // Signal enable states (which inputs are fed to the CPPNs)
-        const signalState = {
-            time: {
-                rawTime: true,
-                mouseSpeed: true,
-                mouseDist: true,
-                inactivity: true
-            },
-            visual: {
-                time: true,
-                mouseSpeed: true,
-                mouseDist: true,
-                inactivity: true
-            }
-        };
-        
-        // Pattern grid zoom
-        let patternZoom = 1.0;
-        const ZOOM_MIN = 0.5;
-        const ZOOM_MAX = 2.0;
-        const ZOOM_STEP = 0.25;
-        function applyZoom() {
-            document.documentElement.style.setProperty('--pattern-zoom', String(patternZoom));
-            const label = document.getElementById('zoom-label');
-            if (label) label.textContent = Math.round(patternZoom * 100) + '%';
-        }
-        
-        // Wire up signal checkboxes and zoom
-        function initSignalControls() {
-            // Time CPPN signals (including rawTime)
-            ['rawTime', 'mouseSpeed', 'mouseDist', 'inactivity'].forEach(sig => {
-                const checkbox = document.getElementById(`time-${sig}`);
-                if (checkbox) {
-                    checkbox.addEventListener('change', (e) => {
-                        signalState.time[sig] = e.target.checked;
-                    });
-                }
-            });
-            // Visual CPPN signals
-            ['time', 'mouseSpeed', 'mouseDist', 'inactivity'].forEach(sig => {
-                const checkbox = document.getElementById(`visual-${sig}`);
-                if (checkbox) {
-                    checkbox.addEventListener('change', (e) => {
-                        signalState.visual[sig] = e.target.checked;
-                    });
-                }
-            });
-            // Zoom controls
-            document.getElementById('zoom-in').addEventListener('click', () => {
-                patternZoom = Math.min(ZOOM_MAX, patternZoom + ZOOM_STEP);
-                applyZoom();
-            });
-            document.getElementById('zoom-out').addEventListener('click', () => {
-                patternZoom = Math.max(ZOOM_MIN, patternZoom - ZOOM_STEP);
-                applyZoom();
-            });
-            applyZoom();
-        }
-        
+
         // Mouse tracking
         let mouseSpeed = 0;
         let mouseX = 0;  // Current mouse position
@@ -384,7 +278,7 @@
         }
         function renderPattern(patternData, time, mouseSpd, mouseDist, inact) {
             if (window.PatternRenderer) {
-                PatternRenderer.renderPattern(patternData, time, mouseSpd, mouseDist, inact, signalState);
+                PatternRenderer.renderPattern(patternData, time, mouseSpd, mouseDist, inact, ZoomSignals.signalState);
             }
         }
         
@@ -880,41 +774,6 @@
         const breedBtnEl = document.getElementById('breed-btn');
         breedBtnEl.addEventListener('click', breedGeneration);
         breedBtnEl.addEventListener('keydown', (e) => onRoleButtonKeydown(e, breedGeneration));
-        (function initStartFreshDropdown() {
-            const btn = document.getElementById('start-fresh-btn');
-            const menu = document.getElementById('start-fresh-dropdown');
-            if (!btn || !menu) return;
-            function close() { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
-            function open() { menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); }
-            function toggle() { if (menu.hidden) open(); else close(); }
-            btn.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
-            btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
-            menu.querySelectorAll('[data-action]').forEach(item => {
-                item.addEventListener('click', () => {
-                    if (item.dataset.action === 'random') PopulationUI.startNewRandomPopulation();
-                    else if (item.dataset.action === 'load') PopulationUI.onLoadSavedClick();
-                    close();
-                });
-                item.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); item.click(); }
-                });
-            });
-            document.addEventListener('click', () => close());
-            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-        })();
-        document.getElementById('zoom-in').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                document.getElementById('zoom-in').click();
-            }
-        });
-        document.getElementById('zoom-out').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                document.getElementById('zoom-out').click();
-            }
-        });
-        
         // Initialize modules (must run before event listeners that use them)
         PopulationUI.init({
             apiUrl: API_URL,
@@ -931,31 +790,8 @@
             renderPattern: renderPattern
         });
 
-        // Toolbar: keyboard support for span-buttons
-        const toolbarEl = document.getElementById('toolbar');
-        if (toolbarEl) {
-            toolbarEl.addEventListener('keydown', (e) => {
-                if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute && e.target.getAttribute('role') === 'button') {
-                    e.preventDefault();
-                    e.target.click();
-                }
-            });
-        }
+        initToolbarUI();
 
-        (function initPopulationSizeControls() {
-            const input = document.getElementById('population-size-input');
-            const downBtn = document.getElementById('population-size-down');
-            const upBtn = document.getElementById('population-size-up');
-            if (!input || !downBtn || !upBtn) return;
-            function clamp(v) { return Math.max(2, Math.min(50, isNaN(v) ? 12 : v)); }
-            function update(val) { input.value = clamp(Number(val)); }
-            downBtn.addEventListener('click', () => { update(Number(input.value) - 1); });
-            upBtn.addEventListener('click', () => { update(Number(input.value) + 1); });
-            downBtn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); downBtn.click(); } });
-            upBtn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); upBtn.click(); } });
-            input.addEventListener('change', () => update(input.value));
-        })();
-        
         const loadModalClose = document.getElementById('load-modal-close');
         if (loadModalClose) loadModalClose.addEventListener('click', () => { document.getElementById('load-list-modal').classList.remove('show'); });
         document.getElementById('community-submit-do').addEventListener('click', CommunityUI.submitCommunityForm);
@@ -970,30 +806,6 @@
             newFromCommunityBtn.addEventListener('click', CommunityUI.onNewFromCommunityClick);
             newFromCommunityBtn.addEventListener('keydown', (e) => onRoleButtonKeydown(e, CommunityUI.onNewFromCommunityClick));
         }
-        (function initHelpToggle() {
-            const helpBtn = document.getElementById('help-btn');
-            const instructions = document.getElementById('instructions');
-            if (helpBtn && instructions) {
-                helpBtn.addEventListener('click', () => { instructions.hidden = !instructions.hidden; helpBtn.setAttribute('title', instructions.hidden ? 'Show help' : 'Hide help'); });
-                helpBtn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); helpBtn.click(); } });
-            }
-        })();
-        (function initSettingsPanel() {
-            const btn = document.getElementById('settings-btn');
-            const panel = document.getElementById('settings-panel');
-            if (!btn || !panel) return;
-            function toggle() {
-                panel.hidden = !panel.hidden;
-                const open = !panel.hidden;
-                btn.setAttribute('aria-expanded', String(open));
-                btn.setAttribute('title', open ? 'Close settings' : 'Settings');
-            }
-            btn.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
-            btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
-            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); } });
-            const moderateBtn = document.getElementById('settings-moderate-btn');
-            if (moderateBtn) moderateBtn.addEventListener('click', () => CommunityUI.openAdminModal());
-        })();
         document.getElementById('admin-key-submit').addEventListener('click', CommunityUI.submitAdminKey);
         document.getElementById('admin-modal-cancel').addEventListener('click', CommunityUI.closeAdminModal);
         document.getElementById('admin-list-close').addEventListener('click', CommunityUI.closeAdminModal);
@@ -1012,7 +824,7 @@
         });
         
         // Initialize
-        initSignalControls();
+        ZoomSignals.init();
         
         // Wire up time mode radio buttons to reset time on change
         function initTimeModeControls() {
@@ -1037,7 +849,7 @@
                 apiUrl: API_URL,
                 getMouseDistance: getMouseDistanceToCanvas,
                 getPatterns: () => patterns,
-                getSignalState: () => signalState,
+                getSignalState: () => ZoomSignals.signalState,
                 getGenomeForPattern: getGenomeForPattern
             });
         }
