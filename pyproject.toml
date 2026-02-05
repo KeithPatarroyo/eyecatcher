@@ -20,6 +20,9 @@ dev = [
 vlm = [
     "torch>=2.0.0",
     "transformers>=4.30.0",
+    "jax>=0.4.0",
+    "jaxlib>=0.4.0",
+    "einops>=0.6.0",
 ]
 
 [build-system]

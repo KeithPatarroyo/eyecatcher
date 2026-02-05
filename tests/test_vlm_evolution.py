@@ -11,6 +11,8 @@ import tempfile
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import jax.numpy as jnp
+
 from asal_metrics import (
     calc_open_endedness_score,
     calc_illumination_score,
@@ -32,54 +34,54 @@ class TestASALMetrics:
         """Identical frames should have high (bad) open-endedness score."""
         # All identical embeddings -> high similarity -> high score
         T, D = 10, 512
-        z = np.ones((T, D)) / np.sqrt(D)  # Unit vectors
+        z = jnp.ones((T, D)) / jnp.sqrt(D)  # Unit vectors
         score = calc_open_endedness_score(z)
 
         # Should be close to 1 (high similarity to previous frames)
-        assert score > 0.9
+        assert float(score) >= 0.9 - 1e-6
 
     def test_open_endedness_diverse_frames(self):
         """Diverse frames should have low (good) open-endedness score."""
         # Orthogonal embeddings -> zero similarity -> low score
         T, D = 10, 512
-        z = np.eye(T, D)  # Orthogonal vectors
+        z = jnp.eye(T, D)  # Orthogonal vectors
         # Normalize
-        z = z / np.linalg.norm(z, axis=-1, keepdims=True)
+        z = z / jnp.linalg.norm(z, axis=-1, keepdims=True)
         score = calc_open_endedness_score(z)
 
         # Should be close to 0 (low similarity to previous frames)
-        assert score < 0.1
+        assert float(score) < 0.1
 
     def test_open_endedness_shape(self):
         """Test that open-endedness works with different shapes."""
         for T in [5, 10, 20]:
-            z = np.random.randn(T, 512)
-            z = z / np.linalg.norm(z, axis=-1, keepdims=True)
+            z = jnp.array(np.random.randn(T, 512))
+            z = z / jnp.linalg.norm(z, axis=-1, keepdims=True)
             score = calc_open_endedness_score(z)
-            assert 0 <= score <= 1
+            assert 0 <= float(score) <= 1
 
     def test_illumination_score_identical(self):
         """Identical individuals should have high illumination score."""
         N, D = 5, 512
-        zs = np.ones((N, D)) / np.sqrt(D)
+        zs = jnp.ones((N, D)) / jnp.sqrt(D)
         score = calc_illumination_score(zs)
-        assert score > 0.9
+        assert float(score) >= 0.9 - 1e-6
 
     def test_illumination_score_diverse(self):
         """Diverse individuals should have low illumination score."""
         N, D = 5, 512
-        zs = np.eye(N, D)
-        zs = zs / np.linalg.norm(zs, axis=-1, keepdims=True)
+        zs = jnp.eye(N, D)
+        zs = zs / jnp.linalg.norm(zs, axis=-1, keepdims=True)
         score = calc_illumination_score(zs)
-        assert score < 0.1
+        assert float(score) < 0.1
 
     def test_interestingness_score(self):
         """Test combined interestingness score."""
         T, D = 10, 512
-        z = np.random.randn(T, D)
-        z = z / np.linalg.norm(z, axis=-1, keepdims=True)
+        z = jnp.array(np.random.randn(T, D))
+        z = z / jnp.linalg.norm(z, axis=-1, keepdims=True)
         score = calc_interestingness_score(z)
-        assert isinstance(score, float)
+        assert isinstance(float(score), float)
 
 
 class TestSelectTopK:

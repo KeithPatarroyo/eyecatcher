@@ -5,121 +5,103 @@ Based on: https://github.com/SakanaAI/asal
 These metrics are used to compute interestingness/open-endedness scores
 for evolved CPPN patterns based on their temporal evolution.
 """
-import numpy as np
-from typing import Optional
+import jax
+import jax.numpy as jnp
+
+from einops import repeat
 
 
-def calc_open_endedness_score(z: np.ndarray) -> float:
+def calc_supervised_target_score(z, z_txt):
     """
-    Calculate the open-endedness score from ASAL.
-
-    This metric measures temporal diversity by computing pairwise similarities
-    between frame embeddings. A lower score indicates more diverse/interesting
-    evolution over time (each frame is different from previous frames).
-
-    The score is computed by:
-    1. Computing the similarity matrix z @ z.T
-    2. Taking the lower triangular portion (excluding diagonal)
-    3. For each frame, finding the maximum similarity to any previous frame
-    4. Averaging these maximum similarities
-
-    A pattern with high temporal diversity will have low maximum similarities
-    (each new frame is different from all previous), resulting in a low score.
+    Calculates the supervised target score from ASAL.
+    The returned score should be minimized, since we add a minus sign here.
 
     Parameters
     ----------
-    z : np.ndarray of shape (T, D)
-        L2-normalized latent representations of images over time.
-        T is the number of timesteps, D is the embedding dimension.
-
-    Returns
-    -------
-    float
-        Open-endedness score (lower is more diverse/interesting).
-    """
-    # Compute similarity matrix (cosine similarity since z is L2-normalized)
-    kernel = z @ z.T  # Shape: (T, T)
-
-    # Keep only lower triangular (similarities to previous frames)
-    # k=-1 excludes the diagonal (self-similarity)
-    kernel = np.tril(kernel, k=-1)
-
-    # For each frame (row), find max similarity to any previous frame
-    # Then average across all frames
-    # Note: First row will be all zeros (no previous frames), contributing 0 to mean
-    return kernel.max(axis=-1).mean()
-
-
-def calc_illumination_score(zs: np.ndarray) -> float:
-    """
-    Calculate the illumination score from ASAL.
-
-    This metric measures diversity across different individuals/parameters
-    by computing pairwise similarities and penalizing high similarities.
-
-    Parameters
-    ----------
-    zs : np.ndarray of shape (N, D)
-        L2-normalized latent representations of images from different
-        simulation parameters/individuals.
-
-    Returns
-    -------
-    float
-        Illumination score (lower is more diverse).
-    """
-    N, D = zs.shape
-    kernel = zs @ zs.T  # Shape: (N, N)
-
-    # Set diagonal to -inf to exclude self-similarity
-    np.fill_diagonal(kernel, -np.inf)
-
-    # For each individual, find max similarity to any other
-    return kernel.max(axis=-1).mean()
-
-
-def calc_supervised_target_score(z: np.ndarray, z_txt: np.ndarray) -> float:
-    """
-    Calculate the supervised target score from ASAL.
-
-    This metric measures how well the generated images align with
-    target text embeddings over time.
-
-    Parameters
-    ----------
-    z : np.ndarray of shape (T, D)
-        L2-normalized latent representations of images over time.
-    z_txt : np.ndarray of shape (T2, D)
-        L2-normalized latent representations of text prompts.
-        If T2 < T, prompts are repeated to match.
-
-    Returns
-    -------
-    float
-        Supervised target score (lower means better alignment).
-        Note: Returns negative of diagonal mean, so minimizing this
-        maximizes alignment.
+    z : jnp.ndarray of shape (T, D)
+        The latent representation of the images over time.
+    z_txt : jnp.ndarray of shape (T2, D)
+        The latent representation of the text prompts over time.
     """
     T, T2 = z.shape[0], z_txt.shape[0]
-    assert T % T2 == 0, f"T ({T}) must be divisible by T2 ({T2})"
+    assert T % T2 == 0
+    z_txt = repeat(z_txt, "T2 D -> (k T2) D", k=T // T2)
 
-    # Repeat text embeddings to match image count
-    repeat_count = T // T2
-    z_txt_expanded = np.tile(z_txt, (repeat_count, 1))
+    kernel = z_txt @ z.T
+    return -jnp.diag(kernel).mean()
 
-    # Compute alignment (text-to-image similarity)
-    kernel = z_txt_expanded @ z.T  # Shape: (T, T)
 
-    # Return negative diagonal mean (minimize to maximize alignment)
-    return -np.diag(kernel).mean()
+def calc_supervised_target_softmax_score(z, z_txt, temperature_softmax=0.01):
+    """
+    Calculates the supervised target score from ASAL with softmax.
+    This isn't part of the original ASAL, but it's a useful extension.
+    This score helps incentivize the simulation to find unique images for each prompt
+    rather than one static image satisfying all prompts.
+    The returned score should be minimized.
 
+    Parameters
+    ----------
+    z : jnp.ndarray of shape (T, D)
+        The latent representation of the images over time.
+    z_txt : jnp.ndarray of shape (T2, D)
+        The latent representation of the text prompts over time.
+    temperature_softmax : float
+        The temperature for the softmax function. For CLIP, leave it at 0.01,
+        since that is default CLIP softmax temperature.
+    """
+    T, T2 = z.shape[0], z_txt.shape[0]
+    assert T % T2 == 0
+    z_txt = repeat(z_txt, "T2 D -> (k T2) D", k=T // T2)
+
+    kernel = z_txt @ z.T
+    loss_sm1 = jax.nn.softmax(kernel / temperature_softmax, axis=-1)
+    loss_sm2 = jax.nn.softmax(kernel / temperature_softmax, axis=-2)
+    loss_sm1 = -jnp.log(jnp.diag(loss_sm1))
+    loss_sm2 = -jnp.log(jnp.diag(loss_sm2))
+    return (loss_sm1.mean() + loss_sm2.mean()) / 2.0
+
+
+def calc_open_endedness_score(z):
+    """
+    Calculates the open-endedness score from ASAL.
+    The returned score should be minimized.
+
+    Parameters
+    ----------
+    z : jnp.ndarray of shape (T, D)
+        The latent representation of the images over time.
+    """
+    kernel = z @ z.T
+    kernel = jnp.tril(kernel, k=-1)
+    return kernel.max(axis=-1).mean()
+
+
+def calc_illumination_score(zs):
+    """
+    Calculates the illumination score from ASAL.
+    The returned score should be minimized.
+
+    Parameters
+    ----------
+    zs : jnp.ndarray of shape (N, D)
+        The latent representation of the images from different simulation parameters.
+    """
+    N, D = zs.shape
+    kernel = zs @ zs.T
+    kernel = jnp.where(jnp.eye(N, dtype=bool), -jnp.inf, kernel)
+    return kernel.max(axis=-1).mean()
+
+
+# ---------------------------------------------------------------------------
+# Utility functions for integration with the evolution system
+# ---------------------------------------------------------------------------
 
 def calc_interestingness_score(
-    z: np.ndarray,
-    z_txt: Optional[np.ndarray] = None,
+    z,
+    z_txt=None,
     open_endedness_weight: float = 1.0,
     target_weight: float = 0.0,
-) -> float:
+):
     """
     Calculate a combined interestingness score.
 
@@ -128,9 +110,9 @@ def calc_interestingness_score(
 
     Parameters
     ----------
-    z : np.ndarray of shape (T, D)
+    z : jnp.ndarray of shape (T, D)
         L2-normalized latent representations of images over time.
-    z_txt : np.ndarray of shape (T2, D), optional
+    z_txt : jnp.ndarray of shape (T2, D), optional
         L2-normalized text embeddings for target guidance.
     open_endedness_weight : float
         Weight for open-endedness score (default: 1.0).
@@ -151,17 +133,20 @@ def calc_interestingness_score(
 
 
 def select_top_k(
-    scores: np.ndarray,
+    scores,
     k: int = 3,
     temperature: float = 0.0,
     lower_is_better: bool = True,
-) -> np.ndarray:
+):
     """
     Select top k individuals based on scores, with optional temperature sampling.
 
+    Note: This function uses numpy for compatibility with the evolution system,
+    since it needs to return indices for Python list indexing.
+
     Parameters
     ----------
-    scores : np.ndarray of shape (N,)
+    scores : array-like of shape (N,)
         Scores for each individual.
     k : int
         Number of individuals to select.
@@ -176,6 +161,11 @@ def select_top_k(
     np.ndarray
         Indices of selected individuals.
     """
+    import numpy as np
+
+    # Convert JAX arrays to numpy if needed
+    scores = np.asarray(scores)
+
     if lower_is_better:
         # Sort ascending (best = lowest score first)
         sorted_indices = np.argsort(scores)

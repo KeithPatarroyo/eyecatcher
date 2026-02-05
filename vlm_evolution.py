@@ -167,10 +167,16 @@ class VLMEvolution:
         np.ndarray
             Open-endedness scores for each individual (lower = more interesting).
         """
+        import jax.numpy as jnp
+
         scores = []
         for rollout in rollouts:
             if rollout.embeddings is not None:
-                score = calc_open_endedness_score(rollout.embeddings)
+                # Convert numpy embeddings to JAX array for ASAL metrics
+                z = jnp.array(rollout.embeddings)
+                score = calc_open_endedness_score(z)
+                # Convert JAX scalar back to Python float
+                score = float(score)
             else:
                 # Fallback: high score (not interesting) if no embeddings
                 score = 1.0
