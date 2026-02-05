@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="debug.css">
     <link rel="stylesheet" href="community.css">
     <link rel="stylesheet" href="viewer.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
     <div id="header">
@@ -57,10 +58,9 @@
         <span id="new-from-community-btn" class="pop-btn" role="button" tabindex="0">New from Community</span>
         <span id="load-saved-btn" class="pop-btn" role="button" tabindex="0">Load Saved</span>
         <span id="save-current-btn" class="pop-btn" role="button" tabindex="0">Save Current</span>
-        <span id="export-btn" class="pop-btn" role="button" tabindex="0">Export</span>
         <span id="import-btn" class="pop-btn" role="button" tabindex="0">Import</span>
         <span id="moderate-community-btn" class="pop-btn" role="button" tabindex="0" title="Accept community submissions (admin)">Moderate</span>
-        <input type="file" id="import-file" accept=".json" style="display:none;">
+        <input type="file" id="import-file" accept=".json,.zip" style="display:none;">
     </div>
     
     <div id="admin-modal">
@@ -488,6 +488,107 @@
             }
         }
         
+        /**
+         * Append pattern cards to the existing grid without clearing. Used by Import and Community Load.
+         */
+        async function addToGrid(genomes) {
+            if (!genomes || !genomes.length) return;
+            document.getElementById('loading').style.display = 'block';
+            try {
+                const compilePayload = genomes.map(g => ({ ...g, clicks: 0 }));
+                const comp = await fetch(`${API_URL}/compile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ genomes: compilePayload })
+                });
+                if (!comp.ok) {
+                    const err = await comp.json().catch(() => ({}));
+                    showToast('Add failed', err.error || 'Compile failed', 'error');
+                    return;
+                }
+                const compData = await comp.json();
+                const newShaders = compData.shaders || [];
+                if (!currentGenomes) currentGenomes = [];
+                if (!currentPopulation) currentPopulation = [];
+                currentGenomes.push(...genomes);
+                currentPopulation.push(...newShaders);
+                const grid = document.getElementById('grid');
+                for (let i = 0; i < newShaders.length; i++) {
+                    const pattern = newShaders[i];
+                    const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;
+                    const card = document.createElement('div');
+                    card.className = 'pattern-card';
+                    card.dataset.id = pattern.id;
+                    const canvas = document.createElement('canvas');
+                    canvas.className = 'pattern-canvas';
+                    canvas.width = 256;
+                    canvas.height = 256;
+                    const info = document.createElement('div');
+                    info.className = 'pattern-info';
+                    info.innerHTML = `
+                        <div class="pattern-meta">
+                            ID: ${pattern.id} | Nodes: ${pattern.nodes} | Connections: ${pattern.connections}
+                        </div>
+                        <div class="click-count ${clicks === 0 ? 'zero' : ''}">${clicks}</div>
+                    `;
+                    const actions = document.createElement('div');
+                    actions.className = 'pattern-actions';
+                    const submitCommunityBtn = document.createElement('button');
+                    submitCommunityBtn.className = 'submit-community-btn';
+                    submitCommunityBtn.setAttribute('title', 'Submit to Community');
+                    submitCommunityBtn.setAttribute('aria-label', 'Submit to Community');
+                    submitCommunityBtn.textContent = '↗';
+                    submitCommunityBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        CommunityUI.openSubmitCommunityModal(pattern.id);
+                    };
+                    const saveBtn = document.createElement('button');
+                    saveBtn.className = 'save-btn';
+                    saveBtn.textContent = '💾 Save';
+                    saveBtn.setAttribute('title', 'Save pattern (compiling may take a moment before download)');
+                    saveBtn.setAttribute('aria-label', 'Save pattern; compiling may take a moment before download');
+                    saveBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        savePattern(pattern.id, saveBtn);
+                    };
+                    actions.appendChild(submitCommunityBtn);
+                    actions.appendChild(saveBtn);
+                    card.appendChild(canvas);
+                    card.appendChild(actions);
+                    card.appendChild(info);
+                    grid.appendChild(card);
+                    const patternData = setupPattern(canvas, pattern.shader);
+                    if (patternData) {
+                        patterns.set(pattern.id, { canvas, ...patternData, clicks });
+                    } else {
+                        const fallback = document.createElement('div');
+                        fallback.className = 'pattern-canvas-fallback';
+                        fallback.textContent = 'WebGL not available';
+                        card.replaceChild(fallback, canvas);
+                    }
+                    card.addEventListener('click', () => clickPattern(pattern.id, card));
+                    card.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        unclickPattern(pattern.id, card);
+                    });
+                    card.addEventListener('mouseenter', () => {
+                        if (typeof EyecatcherDebug !== 'undefined') EyecatcherDebug.setHoveredPatternId(pattern.id);
+                    });
+                    card.addEventListener('mouseleave', () => {
+                        if (typeof EyecatcherDebug !== 'undefined' && EyecatcherDebug.getHoveredPatternId() === pattern.id) {
+                            EyecatcherDebug.setHoveredPatternId(null);
+                        }
+                    });
+                }
+                updateStats();
+            } catch (e) {
+                console.error(e);
+                showToast('Add failed', e.message || 'Failed to compile', 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
         async function clickPattern(id, card) {
             const pattern = patterns.get(id);
             if (pattern) {
@@ -783,11 +884,13 @@
         PopulationUI.init({
             apiUrl: API_URL,
             loadFromStatelessGenomes: loadFromStatelessGenomes,
+            addToGrid: addToGrid,
             getCurrentGenomesForSave: getCurrentGenomesForSave
         });
         CommunityUI.init({
             apiUrl: API_URL,
             loadFromStatelessGenomes: loadFromStatelessGenomes,
+            addToGrid: addToGrid,
             getGenomeForPattern: getGenomeForPattern,
             setupPattern: setupPattern,
             renderPattern: renderPattern
@@ -833,8 +936,6 @@
         document.getElementById('admin-key-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') CommunityUI.submitAdminKey(); });
         const saveCurrentBtn = document.getElementById('save-current-btn');
         if (saveCurrentBtn) saveCurrentBtn.addEventListener('click', PopulationUI.onSaveCurrentClick);
-        const exportBtn = document.getElementById('export-btn');
-        if (exportBtn) exportBtn.addEventListener('click', PopulationUI.onExportClick);
         const importBtn = document.getElementById('import-btn');
         const importFile = document.getElementById('import-file');
         if (importBtn && importFile) importBtn.addEventListener('click', PopulationUI.onImportClick);
