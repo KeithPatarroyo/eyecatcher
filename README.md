@@ -187,28 +187,13 @@ python main.py
 python evolution_demo.py
 ```
 
-## File Structure
+## Project layout
 
-```
-eyecatcher/
-├── cppn_engine.py          # Core CPPN engine with dual-genome support
-├── shader_compiler.py      # GLSL shader compiler
-├── server.py               # Interactive evolution web server
-├── Dockerfile              # Container build
-├── docker-compose.yml      # Local Docker run
-├── interactive_viewer.html # Web interface for evolution
-├── debug.js                # Debug overlay module (signal monitoring)
-├── debug.css               # Debug overlay styles
-├── evolution_demo.py       # Evolution simulation
-├── main.py                 # Basic demos
-├── neat_config.txt         # Visual CPPN parameters
-├── neat_config_time.txt    # Time Signal CPPN parameters
-├── pyproject.toml          # Dependencies
-└── output/                 # Generated content
-    ├── saved/              # Saved patterns
-    ├── frames/             # Animation frames
-    └── *.glsl              # Shader code
-```
+- **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). All browser-loaded files live here.
+- **data/** – Runtime data: curated seeds (`seeds.json`) and community DB. Git tracks seeds; `community.db` is gitignored.
+- **Root** – Backend and config: Python modules (`server.py`, `cppn_engine.py`, etc.), NEAT config files, `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`, `run.sh`). Entrypoint: `server:app`.
+
+Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
 
 ## Creating Videos
 
