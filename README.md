@@ -91,7 +91,7 @@ Run tests on your machine with Python. No server or browser required.
   pip install -e ".[dev]"
   ```
   This installs pytest (and black); no `.env` or other config is needed for tests.
-- NEAT config files ([neat_config.txt](neat_config.txt), [neat_config_time.txt](neat_config_time.txt)) must exist at repo root; they are in the repo already.
+- NEAT config files in [config/](config/) (`neat_config.txt`, `neat_config_time.txt`) are in the repo already.
 
 **Commands**
 
@@ -103,7 +103,7 @@ pytest
 To run a specific test file:
 
 ```bash
-pytest test_visualization.py -v
+pytest tests/test_visualization.py -v
 ```
 
 No constants or templates need to be filled beforehand; tests use the default config paths and in-memory state.
@@ -150,7 +150,9 @@ The web interface lets you:
 
 - **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). All browser-loaded files live here.
 - **data/** – Runtime data: curated seeds (`seeds.json`) and community DB. Git tracks seeds; `community.db` is gitignored.
-- **Root** – Backend and config: Python modules (`server.py`, `cppn_engine.py`, etc.), NEAT config files, `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`, `run.sh`). Entrypoint: `server:app`.
+- **tests/** – Test suite (pytest). Run with `pytest` from repo root.
+- **config/** – NEAT config files (`neat_config.txt`, `neat_config_time.txt`) for visual and time-signal CPPNs.
+- **Root** – Backend and deploy: Python modules (`server.py`, `cppn_engine.py`, etc.), `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`, `run.sh`). Entrypoint: `server:app`.
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
 
@@ -166,7 +168,7 @@ Each individual has two CPPNs that evolve together:
 [x, y, dist, modifiedTime, mouseSpeed, mouseDist, activity, bias] → Visual CPPN → RGB
 ```
 
-Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. See [neat_config_time.txt](neat_config_time.txt) and [neat_config.txt](neat_config.txt) for exact parameters and activation options.
+Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. See [config/neat_config_time.txt](config/neat_config_time.txt) and [config/neat_config.txt](config/neat_config.txt) for exact parameters and activation options.
 
 ### Core components
 
