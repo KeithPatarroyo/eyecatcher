@@ -26,6 +26,7 @@ from community_routes import community_bp
 
 app = Flask(__name__)
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(APP_DIR, 'static')
 
 # CORS: allow all in dev, or set CORS_ORIGINS env for production
 _cors_origins = os.environ.get("CORS_ORIGINS", "*")
@@ -128,55 +129,55 @@ def health():
 @app.route('/')
 def index():
     """Serve the viewer HTML."""
-    return send_from_directory(APP_DIR, 'interactive_viewer.html')
+    return send_from_directory(STATIC_DIR, 'interactive_viewer.html')
 
 
 @app.route('/debug.js')
 def serve_debug_js():
     """Serve the debug module JavaScript."""
-    return send_from_directory(APP_DIR, 'debug.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'debug.js', mimetype='application/javascript')
 
 
 @app.route('/debug.css')
 def serve_debug_css():
     """Serve the debug module CSS."""
-    return send_from_directory(APP_DIR, 'debug.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, 'debug.css', mimetype='text/css')
 
 
 @app.route('/storage.js')
 def serve_storage_js():
     """Serve the IndexedDB storage module."""
-    return send_from_directory(APP_DIR, 'storage.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'storage.js', mimetype='application/javascript')
 
 
 @app.route('/population_ui.js')
 def serve_population_ui_js():
     """Serve the population UI module."""
-    return send_from_directory(APP_DIR, 'population_ui.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'population_ui.js', mimetype='application/javascript')
 
 
 @app.route('/community.js')
 def serve_community_js():
     """Serve the community UI module."""
-    return send_from_directory(APP_DIR, 'community.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'community.js', mimetype='application/javascript')
 
 
 @app.route('/community.css')
 def serve_community_css():
     """Serve the community UI styles."""
-    return send_from_directory(APP_DIR, 'community.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, 'community.css', mimetype='text/css')
 
 
 @app.route('/viewer.css')
 def serve_viewer_css():
     """Serve the interactive viewer main styles."""
-    return send_from_directory(APP_DIR, 'viewer.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, 'viewer.css', mimetype='text/css')
 
 
 @app.route('/pattern_renderer.js')
 def serve_pattern_renderer_js():
     """Serve the pattern renderer WebGL module."""
-    return send_from_directory(APP_DIR, 'pattern_renderer.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'pattern_renderer.js', mimetype='application/javascript')
 
 
 @app.route('/api/init', methods=['POST'])
