@@ -59,82 +59,106 @@ def index():
     return send_from_directory(STATIC_DIR, 'interactive_viewer.html')
 
 
-@app.route('/debug.js')
+@app.route('/js/modules/debug.js')
 def serve_debug_js():
     """Serve the debug module JavaScript."""
-    return send_from_directory(STATIC_DIR, 'debug.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'js/modules/debug.js', mimetype='application/javascript')
 
 
-@app.route('/debug.css')
+@app.route('/css/debug.css')
 def serve_debug_css():
     """Serve the debug module CSS."""
-    return send_from_directory(STATIC_DIR, 'debug.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, 'css/debug.css', mimetype='text/css')
 
 
-@app.route('/storage.js')
+@app.route('/js/modules/storage.js')
 def serve_storage_js():
     """Serve the IndexedDB storage module."""
-    return send_from_directory(STATIC_DIR, 'storage.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'js/modules/storage.js', mimetype='application/javascript')
 
 
-@app.route('/population_ui.js')
+@app.route('/js/modules/population_ui.js')
 def serve_population_ui_js():
     """Serve the population UI module."""
-    return send_from_directory(STATIC_DIR, 'population_ui.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'js/modules/population_ui.js', mimetype='application/javascript')
 
 
-@app.route('/community.js')
+@app.route('/js/modules/community.js')
 def serve_community_js():
     """Serve the community UI module."""
-    return send_from_directory(STATIC_DIR, 'community.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'js/modules/community.js', mimetype='application/javascript')
 
 
-@app.route('/community.css')
+@app.route('/css/community.css')
 def serve_community_css():
     """Serve the community UI styles."""
-    return send_from_directory(STATIC_DIR, 'community.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, 'css/community.css', mimetype='text/css')
 
 
-@app.route('/viewer.css')
+@app.route('/css/viewer.css')
 def serve_viewer_css():
     """Serve the interactive viewer main styles."""
-    return send_from_directory(STATIC_DIR, 'viewer.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, 'css/viewer.css', mimetype='text/css')
 
 
-@app.route('/pattern_renderer.js')
+@app.route('/js/modules/pattern_renderer.js')
 def serve_pattern_renderer_js():
     """Serve the pattern renderer WebGL module."""
-    return send_from_directory(STATIC_DIR, 'pattern_renderer.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'js/modules/pattern_renderer.js', mimetype='application/javascript')
 
 
-@app.route('/toast.js')
+@app.route('/js/modules/toast.js')
 def serve_toast_js():
     """Serve toast and download helpers."""
-    return send_from_directory(STATIC_DIR, 'toast.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'js/modules/toast.js', mimetype='application/javascript')
 
 
-@app.route('/zoom_signals.js')
+@app.route('/js/modules/zoom_signals.js')
 def serve_zoom_signals_js():
     """Serve zoom and signal controls module."""
-    return send_from_directory(STATIC_DIR, 'zoom_signals.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'js/modules/zoom_signals.js', mimetype='application/javascript')
 
 
-@app.route('/toolbar_ui.js')
+@app.route('/js/modules/toolbar_ui.js')
 def serve_toolbar_ui_js():
     """Serve toolbar UI (start fresh, help, settings, population size)."""
-    return send_from_directory(STATIC_DIR, 'toolbar_ui.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'js/modules/toolbar_ui.js', mimetype='application/javascript')
 
 
-@app.route('/network_visualizer.js')
+@app.route('/js/modules/network_visualizer.js')
 def serve_network_visualizer_js():
     """Serve network visualization module (CPPN sidebar, vis.js, weight sliders)."""
-    return send_from_directory(STATIC_DIR, 'network_visualizer.js', mimetype='application/javascript')
+    return send_from_directory(STATIC_DIR, 'js/modules/network_visualizer.js', mimetype='application/javascript')
 
 
-@app.route('/network.css')
+@app.route('/css/network.css')
 def serve_network_css():
     """Serve network sidebar and weight slider styles."""
-    return send_from_directory(STATIC_DIR, 'network.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, 'css/network.css', mimetype='text/css')
+
+
+@app.route('/css/base.css')
+def serve_base_css():
+    """Serve base CSS (variables, reset, typography)."""
+    return send_from_directory(STATIC_DIR, 'css/base.css', mimetype='text/css')
+
+
+@app.route('/js/app.js')
+def serve_app_js():
+    """Serve main app entry (state, grid, module wiring)."""
+    return send_from_directory(STATIC_DIR, 'js/app.js', mimetype='application/javascript')
+
+
+@app.route('/js/modules/api_client.js')
+def serve_api_client_js():
+    """Serve API client module."""
+    return send_from_directory(STATIC_DIR, 'js/modules/api_client.js', mimetype='application/javascript')
+
+
+@app.route('/js/modules/animation_loop.js')
+def serve_animation_loop_js():
+    """Serve animation loop (mouse, time mode, render loop)."""
+    return send_from_directory(STATIC_DIR, 'js/modules/animation_loop.js', mimetype='application/javascript')
 
 
 @app.route('/api/breed', methods=['POST'])
