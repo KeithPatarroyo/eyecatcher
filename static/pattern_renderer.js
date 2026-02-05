@@ -137,8 +137,109 @@
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
 
+    /**
+     * Create a pattern card DOM element with canvas, info, action buttons, and event binding.
+     * @param {Object} options
+     * @param {Object} options.pattern - { id, shader, nodes, connections, clicks }
+     * @param {function(number)} options.onShare - (id) => {}
+     * @param {function(number, HTMLElement)} options.onNetwork - (id, card) => {}
+     * @param {function(number, HTMLButtonElement)} options.onSave - (id, buttonEl) => {}
+     * @param {function(number, HTMLElement)} options.onClick - (id, card) => {}
+     * @param {function(number, HTMLElement)} options.onUnclick - (id, card) => {}
+     * @param {function(number)} [options.onMouseEnter] - (id) => {}
+     * @param {function(number)} [options.onMouseLeave] - (id) => {}
+     * @returns {{ card: HTMLElement, canvas: HTMLCanvasElement|null, patternData: Object|null }}
+     */
+    function createPatternCard(options) {
+        const pattern = options.pattern;
+        const id = pattern.id;
+        const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;
+        const card = document.createElement('div');
+        card.className = 'pattern-card';
+        card.dataset.id = id;
+
+        const canvas = document.createElement('canvas');
+        canvas.className = 'pattern-canvas';
+        canvas.width = 256;
+        canvas.height = 256;
+
+        const info = document.createElement('div');
+        info.className = 'pattern-info';
+        info.innerHTML =
+            '<div class="pattern-meta">ID: ' + id + ' | Nodes: ' + pattern.nodes + ' | Connections: ' + pattern.connections + '</div>' +
+            '<div class="click-count' + (clicks === 0 ? ' zero' : '') + '">' + clicks + '</div>';
+
+        const actions = document.createElement('div');
+        actions.className = 'pattern-actions';
+
+        const submitCommunityBtn = document.createElement('button');
+        submitCommunityBtn.className = 'submit-community-btn';
+        submitCommunityBtn.setAttribute('title', 'Share to Community');
+        submitCommunityBtn.setAttribute('aria-label', 'Share to Community');
+        submitCommunityBtn.textContent = '\u2197';
+        submitCommunityBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (options.onShare) options.onShare(id);
+        };
+
+        const networkBtn = document.createElement('button');
+        networkBtn.className = 'network-btn';
+        networkBtn.textContent = '\uD83E\uDDE0';
+        networkBtn.setAttribute('title', 'View network visualization');
+        networkBtn.setAttribute('aria-label', 'View network visualization');
+        networkBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (options.onNetwork) options.onNetwork(id, card);
+        };
+
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'save-btn';
+        saveBtn.textContent = '\u2193';
+        saveBtn.setAttribute('title', 'Download pattern (compiling may take a moment)');
+        saveBtn.setAttribute('aria-label', 'Download pattern; compiling may take a moment');
+        saveBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (options.onSave) options.onSave(id, saveBtn);
+        };
+
+        actions.appendChild(submitCommunityBtn);
+        actions.appendChild(networkBtn);
+        actions.appendChild(saveBtn);
+        card.appendChild(canvas);
+        card.appendChild(actions);
+        card.appendChild(info);
+
+        let patternData = setupPattern(canvas, pattern.shader);
+        if (!patternData) {
+            const fallback = document.createElement('div');
+            fallback.className = 'pattern-canvas-fallback';
+            fallback.textContent = 'WebGL not available';
+            card.replaceChild(fallback, canvas);
+            return { card: card, canvas: null, patternData: null };
+        }
+
+        if (options.onClick) {
+            card.addEventListener('click', function () { options.onClick(id, card); });
+        }
+        if (options.onUnclick) {
+            card.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                options.onUnclick(id, card);
+            });
+        }
+        if (options.onMouseEnter) {
+            card.addEventListener('mouseenter', function () { options.onMouseEnter(id); });
+        }
+        if (options.onMouseLeave) {
+            card.addEventListener('mouseleave', function () { options.onMouseLeave(id); });
+        }
+
+        return { card: card, canvas: canvas, patternData: patternData };
+    }
+
     window.PatternRenderer = {
         setupPattern,
         renderPattern,
+        createPatternCard,
     };
 })();
