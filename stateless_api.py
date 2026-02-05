@@ -4,10 +4,7 @@ Stateless API Blueprint for Eyecatcher.
 Provides endpoints that don't depend on server-side population state:
 - /api/compile: Compile genome JSON to GLSL shaders
 - /api/random: Generate random population as genome JSON
-- /api/seeds: Return curated seed patterns
 """
-import json
-import os
 from flask import Blueprint, jsonify, request
 
 from cppn_engine import CPPNEngine, DualGenome, create_random_dual_genome
@@ -21,26 +18,16 @@ stateless_bp = Blueprint('stateless', __name__)
 # Module-level references (set by init_stateless_api)
 _engine: CPPNEngine = None
 _compiler: ShaderCompiler = None
-_curated_seeds: list = []
 
 
-def init_stateless_api(engine: CPPNEngine, compiler: ShaderCompiler, seeds_path: str = None):
+def init_stateless_api(engine: CPPNEngine, compiler: ShaderCompiler):
     """
     Initialize the stateless API with engine and compiler references.
     Call this before registering the blueprint with the app.
     """
-    global _engine, _compiler, _curated_seeds
+    global _engine, _compiler
     _engine = engine
     _compiler = compiler
-    
-    # Load curated seeds
-    if seeds_path and os.path.isfile(seeds_path):
-        try:
-            with open(seeds_path, 'r') as f:
-                data = json.load(f)
-                _curated_seeds = data.get('seeds', [])
-        except Exception:
-            _curated_seeds = []
 
 
 def _shader_response_for_dual(dual_genome: DualGenome, individual_id: int, clicks: int = 0):
@@ -108,12 +95,6 @@ def api_random():
         return jsonify({'genomes': genomes})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
-@stateless_bp.route('/api/seeds', methods=['GET'])
-def api_seeds():
-    """Return curated seed genomes (from data/seeds.json)."""
-    return jsonify({'seeds': _curated_seeds})
 
 
 @stateless_bp.route('/api/time-output', methods=['POST'])

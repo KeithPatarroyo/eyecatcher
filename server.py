@@ -6,7 +6,7 @@ Each individual has two CPPNs:
 - Visual CPPN: (x, y, dist, time, mouseSpeed, bias) -> (R, G, B)
 - Time Signal CPPN: (rawTime, mouseSpeed, bias) -> (modifiedTime)
 
-Population state lives on the client; server provides compile, random, seeds, breed, save.
+Population state lives on the client; server provides compile, random, breed, save.
 Save returns file contents for client-side download (works on Railway / no server filesystem).
 """
 import base64
@@ -42,8 +42,7 @@ engine.create_population()  # Initialize NEAT populations for mutation/crossover
 compiler = ShaderCompiler()
 
 # Initialize and register API blueprints
-_seeds_path = os.path.join(os.path.dirname(__file__), 'data', 'seeds.json')
-init_stateless_api(engine, compiler, _seeds_path)
+init_stateless_api(engine, compiler)
 app.register_blueprint(stateless_bp)
 app.register_blueprint(community_bp)
 
