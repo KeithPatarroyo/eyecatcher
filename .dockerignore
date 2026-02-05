@@ -53,6 +53,11 @@ tests/
 *_test.py
 test_*.py
 
+# Env (do not bake dev secrets into image)
+.env
+.env.*
+!.env.example
+
 # Misc
 .DS_Store
 *.log
