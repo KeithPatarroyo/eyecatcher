@@ -107,6 +107,24 @@ def serve_pattern_renderer_js():
     return send_from_directory(STATIC_DIR, 'pattern_renderer.js', mimetype='application/javascript')
 
 
+@app.route('/toast.js')
+def serve_toast_js():
+    """Serve toast and download helpers."""
+    return send_from_directory(STATIC_DIR, 'toast.js', mimetype='application/javascript')
+
+
+@app.route('/zoom_signals.js')
+def serve_zoom_signals_js():
+    """Serve zoom and signal controls module."""
+    return send_from_directory(STATIC_DIR, 'zoom_signals.js', mimetype='application/javascript')
+
+
+@app.route('/toolbar_ui.js')
+def serve_toolbar_ui_js():
+    """Serve toolbar UI (start fresh, help, settings, population size)."""
+    return send_from_directory(STATIC_DIR, 'toolbar_ui.js', mimetype='application/javascript')
+
+
 @app.route('/api/breed', methods=['POST'])
 def breed():
     """
