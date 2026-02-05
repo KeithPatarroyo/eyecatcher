@@ -8,6 +8,7 @@ const EyecatcherDebug = (function() {
     let getMouseDistanceFn = null;  // Function to get mouse distance to a pattern
     let getPatternsMapFn = null;    // Function to get the patterns Map
     let getSignalStateFn = null;    // Function to get signal state
+    let getGenomeForPatternFn = null;  // Async function(patternId) => genome JSON for stateless time-output
     
     // State
     let hoveredPatternId = null;
@@ -115,20 +116,36 @@ const EyecatcherDebug = (function() {
     }
     
     /**
-     * Fetch time output from server (sparse sampling)
+     * Fetch time output from server (stateless: send genome in body)
      */
     async function sampleTimeOutput(patternId, time, mouseSpd, mouseDist, activityLevel) {
-        if (pendingSampleRequest) return;
+        if (pendingSampleRequest || !getGenomeForPatternFn) return;
         
         pendingSampleRequest = true;
         lastSampleTime = performance.now();
         
         try {
-            const url = `${apiUrl}/time-output?id=${patternId}&time=${time}&mouseSpeed=${mouseSpd}&mouseDist=${mouseDist}&activity=${activityLevel}`;
-            const response = await fetch(url);
+            const genome = await getGenomeForPatternFn(patternId);
+            if (!genome) {
+                pendingSampleRequest = false;
+                return;
+            }
+            const response = await fetch(`${apiUrl}/time-output`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    genome,
+                    time,
+                    mouseSpeed: mouseSpd,
+                    mouseDist,
+                    activity: activityLevel
+                })
+            });
             const data = await response.json();
-            
-            // Only update if still hovering the same pattern
+            if (data.error) {
+                pendingSampleRequest = false;
+                return;
+            }
             if (hoveredPatternId === patternId && timeSamplingEnabled) {
                 lastSampledTimeOutput = data.timeOutput;
             }
@@ -155,12 +172,14 @@ const EyecatcherDebug = (function() {
          * @param {Function} config.getMouseDistance Function(canvas) that returns mouse distance to canvas center
          * @param {Function} config.getPatterns Function() that returns the patterns Map
          * @param {Function} config.getSignalState Function() that returns signalState object
+         * @param {Function} config.getGenomeForPattern Async function(patternId) that returns genome JSON (for time-output)
          */
         init: function(config) {
             apiUrl = config.apiUrl || '';
             getMouseDistanceFn = config.getMouseDistance || (() => 0);
             getPatternsMapFn = config.getPatterns || (() => new Map());
             getSignalStateFn = config.getSignalState || (() => ({ visual: { time: true } }));
+            getGenomeForPatternFn = config.getGenomeForPattern || null;
             
             createDOM();
             setupEventListeners();
