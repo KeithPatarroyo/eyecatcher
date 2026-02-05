@@ -268,11 +268,30 @@ class CPPNEngine:
             
         return frames
     
-    def save_genome(self, genome: neat.DefaultGenome, filepath: str):
-        """Save a genome to file."""
+    def save_genome(self, genome: neat.DefaultGenome, filepath: str, visualize: bool = False):
+        """
+        Save a genome to file.
+
+        Args:
+            genome: NEAT genome to save
+            filepath: Path for .pkl file
+            visualize: If True, also creates a network visualization PNG
+        """
         with open(filepath, 'wb') as f:
             pickle.dump(genome, f)
-    
+
+        # Optionally create visualization
+        if visualize:
+            viz_path = filepath.replace('.pkl', '_network.pdf')
+            try:
+                from genome_visualizer import GenomeVisualizer
+                visualizer = GenomeVisualizer(self.config)
+                visualizer.visualize_genome(genome, viz_path)
+            except ImportError as e:
+                print(f"Warning: Could not visualize genome. Install matplotlib: pip install matplotlib")
+            except Exception as e:
+                print(f"Warning: Genome visualization failed: {e}")
+
     def load_genome(self, filepath: str) -> neat.DefaultGenome:
         """Load a genome from file."""
         with open(filepath, 'rb') as f:
@@ -352,15 +371,34 @@ class CPPNEngine:
             key=new_key
         )
     
-    def save_dual_genome(self, dual_genome: DualGenome, filepath: str):
-        """Save a dual genome to file."""
+    def save_dual_genome(self, dual_genome: DualGenome, filepath: str, visualize: bool = False):
+        """
+        Save a dual genome to file.
+
+        Args:
+            dual_genome: DualGenome to save
+            filepath: Path for .pkl file
+            visualize: If True, also creates a network visualization PDF of the visual genome
+        """
         with open(filepath, 'wb') as f:
             pickle.dump({
                 'visual': dual_genome.visual,
                 'time_signal': dual_genome.time_signal,
                 'key': dual_genome.key
             }, f)
-    
+
+        # Optionally create visualization of the visual genome
+        if visualize:
+            viz_path = filepath.replace('.pkl', '_network.pdf')
+            try:
+                from genome_visualizer import GenomeVisualizer
+                visualizer = GenomeVisualizer(self.config)
+                visualizer.visualize_genome(dual_genome.visual, viz_path)
+            except ImportError as e:
+                print(f"Warning: Could not visualize genome. Install matplotlib: pip install matplotlib")
+            except Exception as e:
+                print(f"Warning: Genome visualization failed: {e}")
+
     def load_dual_genome(self, filepath: str) -> DualGenome:
         """Load a dual genome from file."""
         with open(filepath, 'rb') as f:

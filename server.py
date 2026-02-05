@@ -313,7 +313,7 @@ def save_individual():
             
             # Save dual genome
             genome_path = f'output/saved/dual_genome_{individual_id}.pkl'
-            engine.save_dual_genome(dual_genome, genome_path)
+            engine.save_dual_genome(dual_genome, genome_path, visualize=True)
             
             # Save shader
             shader_code = compiler.compile_dual_to_glsl(
