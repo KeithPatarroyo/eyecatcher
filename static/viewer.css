@@ -13,16 +13,112 @@ body {
 
 #header {
     background: #1a1a1a;
-    padding: 20px;
-    border-bottom: 2px solid #333;
+    padding: 12px 20px;
+    border-bottom: 1px solid #333;
     position: sticky;
     top: 0;
     z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#header h1 {
+    font-size: 24px;
+    margin: 0 12px 0 0;
+}
+
+.header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: #252525;
+    border: 1px solid #444;
+    color: #888;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.header-icon:hover {
+    color: #fff;
+    background: #333;
+}
+
+#header #help-btn {
+    margin-left: auto;
 }
 
 h1 {
     font-size: 24px;
     margin-bottom: 15px;
+}
+
+#instructions.collapsible-help {
+    margin: 12px 20px;
+    padding: 12px 16px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #ccc;
+}
+
+#instructions.collapsible-help[hidden] {
+    display: none;
+}
+
+.settings-panel {
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+    padding: 16px 20px;
+}
+
+.settings-panel[hidden] {
+    display: none;
+}
+
+.settings-panel #time-mode-controls {
+    margin-bottom: 16px;
+}
+
+.settings-panel #signal-controls {
+    margin-bottom: 12px;
+}
+
+.settings-panel-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #333;
+}
+
+.settings-panel-actions .pop-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    background: #252525;
+    color: #ccc;
+    border: 1px solid #444;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.settings-panel-actions .pop-btn:hover {
+    background: #333;
+    color: #fff;
+}
+
+.settings-panel-actions .moderate-btn {
+    background: #8b3a3a;
+    color: #fff;
+    border-color: #a04545;
+}
+
+.settings-panel-actions .moderate-btn:hover {
+    background: #a04545;
+    color: #fff;
 }
 
 #controls {
@@ -138,12 +234,28 @@ button:disabled {
     text-align: center;
 }
 
-.population-size-input {
-    width: 4em;
-    min-width: 4em;
-    min-height: 32px;
-    padding: 6px 10px;
-    font-size: 15px;
+.population-size-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background: #252525;
+    border-radius: 6px;
+    border: 1px solid #444;
+}
+
+.population-size-label {
+    font-size: 12px;
+    color: #aaa;
+    margin-right: 2px;
+}
+
+.population-size-value {
+    width: 3em;
+    min-width: 3em;
+    box-sizing: border-box;
+    padding: 4px 8px;
+    font-size: 13px;
     font-weight: 600;
     color: #0066cc;
     background: #252525;
@@ -152,14 +264,57 @@ button:disabled {
     text-align: center;
     -moz-appearance: textfield;
 }
-.population-size-input::-webkit-outer-spin-button,
-.population-size-input::-webkit-inner-spin-button {
+
+.population-size-value::-webkit-outer-spin-button,
+.population-size-value::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
-.population-size-input:focus {
+
+.population-size-value:focus {
     outline: none;
     border-color: #0066cc;
+}
+
+.toolbar-sep {
+    color: #555;
+    margin: 0 4px;
+    user-select: none;
+}
+
+.start-fresh-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.start-fresh-wrap .dropdown-content {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    min-width: 160px;
+    background: #252525;
+    border: 1px solid #444;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    z-index: 200;
+    padding: 4px 0;
+}
+
+.start-fresh-wrap .dropdown-content[hidden] {
+    display: none;
+}
+
+.start-fresh-wrap .dropdown-content span[role="menuitem"] {
+    display: block;
+    padding: 8px 14px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.start-fresh-wrap .dropdown-content span[role="menuitem"]:hover {
+    background: #333;
 }
 
 #stats.stats-row {
@@ -579,24 +734,17 @@ button:disabled {
     color: #0066cc;
     font-weight: 600;
 }
-#population-panel {
+#toolbar {
     background: #1a1a1a;
-    padding: 12px 20px;
-    margin: 0 20px 20px;
-    border-radius: 8px;
-    border-left: 4px solid #28a745;
+    padding: 10px 20px;
+    border-bottom: 1px solid #333;
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
 }
-#population-panel .panel-label {
-    font-size: 13px;
-    color: #aaa;
-    font-weight: 600;
-    margin-right: 4px;
-}
-#population-panel .pop-btn {
+
+#toolbar .pop-btn {
     display: inline-block;
     padding: 8px 14px;
     font-size: 13px;
@@ -607,17 +755,89 @@ button:disabled {
     cursor: pointer;
     user-select: none;
 }
-#population-panel .pop-btn:hover {
+
+#toolbar .pop-btn:hover {
     background: #333;
     color: #fff;
 }
-#population-panel .pop-btn.primary {
+
+#toolbar .pop-btn.primary {
     background: #28a745;
     color: #fff;
     border-color: #28a745;
 }
-#population-panel .pop-btn.primary:hover {
+
+#toolbar .pop-btn.primary:hover {
     background: #218838;
+}
+
+#toolbar .stats-inline {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    font-size: 14px;
+    color: #888;
+}
+
+#toolbar .stats-inline .stat {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+
+#toolbar .stats-inline .stat-label {
+    color: #888;
+}
+
+#toolbar .stats-inline .stat-value {
+    min-width: 1.5em;
+    padding: 2px 6px;
+    color: #0066cc;
+    font-weight: 600;
+    background: #252525;
+    border: 1px solid #444;
+    border-radius: 4px;
+    text-align: center;
+}
+
+#toolbar .toolbar-end {
+    margin-left: auto;
+}
+
+#toolbar .settings-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ccc;
+    background: #252525;
+    border: 1px solid #555;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+#toolbar .settings-btn:hover {
+    color: #fff;
+    background: #333;
+    border-color: #666;
+}
+
+#toolbar #zoom-label {
+    display: inline-block;
+    min-width: 2.5em;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0066cc;
+    background: #252525;
+    border: 1px solid #444;
+    border-radius: 4px;
+    text-align: center;
 }
 #load-list-modal {
     display: none;
