@@ -17,13 +17,21 @@ dev = [
     "pytest>=7.0.0",
     "black>=23.0.0",
 ]
+vlm = [
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+]
 
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["cppn_engine", "shader_compiler"]
+py-modules = ["cppn_engine", "shader_compiler", "vlm_evolution", "rollout", "asal_metrics"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["foundation_models*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
