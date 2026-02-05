@@ -986,3 +986,44 @@ button:disabled {
     cursor: pointer;
     accent-color: #28a745;
 }
+
+/* Modal and layout styles (moved from inline in interactive_viewer.html) */
+#import-file { display: none; }
+#admin-step-key p,
+#admin-step-list p,
+#community-submit-modal .modal-content > p,
+#community-list-modal .modal-content > p {
+    color: #888;
+    font-size: 13px;
+}
+#admin-key-error {
+    color: #dc3545;
+    font-size: 13px;
+    margin-top: 8px;
+    display: none;
+}
+#admin-step-list { display: none; }
+.community-modal-actions {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.community-modal-sep { color: #666; font-size: 12px; }
+#community-select-all-btn,
+#community-deselect-all-btn { font-size: 12px; }
+#community-list-close {
+    display: block;
+    margin-top: 12px;
+}
+#grid {
+    min-height: 280px;
+    padding: 10px;
+    background: #0d0d0d;
+}
+#loading { display: none; }
+#loading > div {
+    text-align: center;
+    margin-top: 10px;
+}
