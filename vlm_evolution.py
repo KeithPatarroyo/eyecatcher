@@ -160,21 +160,18 @@ class VLMEvolution:
         Parameters
         ----------
         rollouts : list of RolloutResult
-            Video rollouts with CLIP embeddings.
+            Video rollouts with CLIP embeddings (as JAX arrays).
 
         Returns
         -------
         np.ndarray
             Open-endedness scores for each individual (lower = more interesting).
         """
-        import jax.numpy as jnp
-
         scores = []
         for rollout in rollouts:
             if rollout.embeddings is not None:
-                # Convert numpy embeddings to JAX array for ASAL metrics
-                z = jnp.array(rollout.embeddings)
-                score = calc_open_endedness_score(z)
+                # Embeddings are already JAX arrays from CLIPEmbedder
+                score = calc_open_endedness_score(rollout.embeddings)
                 # Convert JAX scalar back to Python float
                 score = float(score)
             else:

@@ -3,7 +3,7 @@ Video rollout module for CPPN pattern evolution.
 Renders animation frames and computes embeddings for open-endedness scoring.
 """
 import numpy as np
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple, Dict, Any, Union
 from dataclasses import dataclass
 
 from cppn_engine import CPPNEngine, DualGenome
@@ -13,7 +13,7 @@ from cppn_engine import CPPNEngine, DualGenome
 class RolloutResult:
     """Result of a video rollout for a single genome."""
     frames: np.ndarray  # Shape: (T, H, W, C) - animation frames
-    embeddings: Optional[np.ndarray] = None  # Shape: (T, D) - CLIP embeddings
+    embeddings: Optional[Any] = None  # Shape: (T, D) - CLIP embeddings (jnp.ndarray)
     genome_key: int = 0
 
 
@@ -69,7 +69,7 @@ def render_video_rollout(
 def compute_video_embeddings(
     frames: np.ndarray,
     embedder,
-) -> np.ndarray:
+):
     """
     Compute CLIP embeddings for video frames.
 
@@ -82,7 +82,7 @@ def compute_video_embeddings(
 
     Returns
     -------
-    np.ndarray
+    jnp.ndarray
         L2-normalized embeddings of shape (T, D).
     """
     # Convert frames to list for batch processing

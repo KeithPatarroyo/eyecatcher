@@ -205,13 +205,14 @@ class TestMockCLIPEvolution:
     """Test full evolution with a mock CLIP embedder."""
 
     class MockEmbedder:
-        """Mock embedder that returns random embeddings."""
+        """Mock embedder that returns random JAX embeddings."""
 
         def embed_images(self, images):
             n = len(images)
             embeddings = np.random.randn(n, 512)
             embeddings = embeddings / np.linalg.norm(embeddings, axis=-1, keepdims=True)
-            return embeddings
+            # Return as JAX array to match real CLIPEmbedder
+            return jnp.array(embeddings)
 
     def test_evolution_with_mock_embedder(self):
         """Test evolution loop with mock embedder."""
