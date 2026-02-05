@@ -324,11 +324,11 @@
                 '<div style="color:#dc3545;font-weight:600;">Could not load CPPN patterns</div>' +
                 '<div style="margin-top:8px;">' + message + '</div>' +
                 '<div style="margin-top:12px;font-size:13px;color:#888;">Start the server: <code>python server.py</code><br>Then open <a href="http://localhost:5001" style="color:#0066cc;">http://localhost:5001</a></div>' +
-                (showRetry ? '<button type="button" class="retry-btn" id="grid-retry-btn">Retry</button>' : '') +
+                (showRetry ? '<button type="button" class="retry-btn" id="grid-retry-btn">New random population</button>' : '') +
                 '</div>';
             document.getElementById('loading').style.display = 'none';
             if (showRetry) {
-                document.getElementById('grid-retry-btn').onclick = loadPopulation;
+                document.getElementById('grid-retry-btn').onclick = () => PopulationUI.startNewRandomPopulation();
             }
         }
         
@@ -433,102 +433,29 @@
             }
         }
         
-        async function loadPopulation() {
-            currentGenomes = null;
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('grid').innerHTML = '';
-            patterns.clear();
-            try {
-                // include_genomes=1 so we have genomes for Submit to Community (avoids load-balancer hitting different instance)
-                const response = await fetch(`${API_URL}/population?include_genomes=1`);
-                if (!response.ok) {
-                    showGridError('Server returned ' + response.status + '. Is the server running?', true);
-                    return;
-                }
-                const data = await response.json();
-                const population = data.population;
-                if (!Array.isArray(population) || population.length === 0) {
-                    showGridError('No patterns in response. Try New random population.', true);
-                    return;
-                }
-                currentPopulation = population;
-                currentGenomes = Array.isArray(data.genomes) ? data.genomes : null;
-                currentGenerationNum = data.generation;
-                document.getElementById('gen-num').textContent = currentGenerationNum;
-                renderGridFromPopulation(currentPopulation);
-            } catch (error) {
-                console.error('Error loading population:', error);
-                showGridError(error.message || 'Network error. Is the server running at ' + API_URL.replace('/api', '') + '?', true);
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
-        
         async function clickPattern(id, card) {
-            if (currentGenomes) {
-                const pattern = patterns.get(id);
-                if (pattern) {
-                    pattern.clicks = (pattern.clicks || 0) + 1;
-                    const clickCount = card.querySelector('.click-count');
-                    clickCount.textContent = pattern.clicks;
-                    clickCount.classList.remove('zero');
-                    card.classList.add('selected');
-                    updateStats();
-                }
-                return;
-            }
-            try {
-                const response = await fetch(`${API_URL}/click`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id })
-                });
-                const data = await response.json();
+            const pattern = patterns.get(id);
+            if (pattern) {
+                pattern.clicks = (pattern.clicks || 0) + 1;
                 const clickCount = card.querySelector('.click-count');
-                clickCount.textContent = data.clicks;
+                clickCount.textContent = pattern.clicks;
                 clickCount.classList.remove('zero');
                 card.classList.add('selected');
-                const pattern = patterns.get(id);
-                if (pattern) pattern.clicks = data.clicks;
                 updateStats();
-            } catch (error) {
-                console.error('Error recording click:', error);
             }
         }
         
         async function unclickPattern(id, card) {
-            if (currentGenomes) {
-                const pattern = patterns.get(id);
-                if (pattern && pattern.clicks > 0) {
-                    pattern.clicks--;
-                    const clickCount = card.querySelector('.click-count');
-                    clickCount.textContent = pattern.clicks;
-                    if (pattern.clicks === 0) {
-                        clickCount.classList.add('zero');
-                        card.classList.remove('selected');
-                    }
-                    updateStats();
-                }
-                return;
-            }
-            try {
-                const response = await fetch(`${API_URL}/unclick`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id })
-                });
-                const data = await response.json();
+            const pattern = patterns.get(id);
+            if (pattern && pattern.clicks > 0) {
+                pattern.clicks--;
                 const clickCount = card.querySelector('.click-count');
-                clickCount.textContent = data.clicks;
-                if (data.clicks === 0) {
+                clickCount.textContent = pattern.clicks;
+                if (pattern.clicks === 0) {
                     clickCount.classList.add('zero');
                     card.classList.remove('selected');
                 }
-                const pattern = patterns.get(id);
-                if (pattern) pattern.clicks = data.clicks;
                 updateStats();
-            } catch (error) {
-                console.error('Error removing click:', error);
             }
         }
         
@@ -600,49 +527,18 @@
                 }
                 return;
             }
-            
-            try {
-                const response = await fetch(`${API_URL}/breed`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
-                });
-                let data;
-                try {
-                    data = await response.json();
-                } catch (_) {
-                    alert('Breed failed: server returned invalid response (status ' + response.status + ')');
-                    document.getElementById('loading').style.display = 'none';
-                    updateStats();
-                    return;
-                }
-                if (!response.ok || data.error) {
-                    alert(data.error || 'Breed failed (status ' + response.status + ')');
-                    document.getElementById('loading').style.display = 'none';
-                    updateStats();
-                    return;
-                }
-                await loadPopulation();
-            } catch (error) {
-                console.error('Error breeding:', error);
-                alert('Breed failed: ' + (error.message || String(error)));
-                document.getElementById('loading').style.display = 'none';
-                updateStats();
-            }
+            alert('No population loaded. Start with New random population, New from Seeds, or Load Saved.');
+            document.getElementById('loading').style.display = 'none';
+            setBreedButtonDisabled(false);
+            updateStats();
         }
         
-        /** Get current genomes and generation (from client state or by fetching server population). */
+        /** Get current genomes and generation (client state only). */
         async function getCurrentGenomesForSave() {
             if (currentGenomes && currentGenomes.length) {
                 return { genomes: currentGenomes, generation: currentGenerationNum };
             }
-            const r = await fetch(`${API_URL}/population/genomes`);
-            if (!r.ok) return null;
-            const d = await r.json();
-            const genomes = d.genomes || [];
-            const generation = d.generation != null ? d.generation : 0;
-            if (!genomes.length) return null;
-            return { genomes, generation };
+            return null;
         }
 
         async function savePattern(id) {
@@ -687,16 +583,12 @@
             }
         }
 
-        /** Get genome JSON for a pattern (from client state or server). */
+        /** Get genome JSON for a pattern (from client state). */
         async function getGenomeForPattern(patternId) {
-            if (currentGenomes) {
-                const idx = currentPopulation.findIndex(p => p.id === patternId);
-                if (idx >= 0 && currentGenomes[idx]) return currentGenomes[idx];
-            }
-            const r = await fetch(`${API_URL}/population/genome/${patternId}`);
-            if (!r.ok) return null;
-            const d = await r.json();
-            return d.genome || null;
+            if (!currentGenomes) return null;
+            const idx = currentPopulation.findIndex(p => p.id === patternId);
+            if (idx >= 0 && currentGenomes[idx]) return currentGenomes[idx];
+            return null;
         }
 
         function updateStats() {
@@ -911,12 +803,13 @@
                 apiUrl: API_URL,
                 getMouseDistance: getMouseDistanceToCanvas,
                 getPatterns: () => patterns,
-                getSignalState: () => signalState
+                getSignalState: () => signalState,
+                getGenomeForPattern: getGenomeForPattern
             });
         }
         
         initTimeModeControls();
-        loadPopulation();
+        PopulationUI.startNewRandomPopulation();
         animate();
         
         console.log('🎨 Eyecatcher Interactive Evolution ready!');
