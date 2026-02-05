@@ -121,16 +121,12 @@ python server.py
 
 Then open **http://localhost:5001**. Optional: copy [.env.example](.env.example) to `.env` and set `PORT`, `CORS_ORIGINS`, `ADMIN_KEY`, `DATABASE_PATH` if you want to override defaults.
 
-**Basic demos (single CPPN)**
+**Demos (batch evolution, API usage, time-signal plot)** – Live in `demos/`. Run from repo root, e.g.:
 
 ```bash
-python main.py
-```
-
-**Evolution demo**
-
-```bash
-python evolution_demo.py
+python demos/api_usage.py            # create, render, compile, mutate, crossover
+python demos/evolution_batch.py      # batch evolution with proxy fitness
+python demos/time_signal_showcase.py # plot time CPPN output (requires matplotlib)
 ```
 
 ## Interactive Evolution (web UI)
@@ -151,6 +147,7 @@ The web interface lets you:
 - **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). All browser-loaded files live here.
 - **data/** – Runtime data: curated seeds (`seeds.json`) and community DB. Git tracks seeds; `community.db` is gitignored.
 - **tests/** – Test suite (pytest). Run with `pytest` from repo root.
+- **demos/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
 - **config/** – NEAT config files (`neat_config.txt`, `neat_config_time.txt`) for visual and time-signal CPPNs.
 - **Root** – Backend and deploy: Python modules (`server.py`, `cppn_engine.py`, etc.), `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`, `run.sh`). Entrypoint: `server:app`.
 
