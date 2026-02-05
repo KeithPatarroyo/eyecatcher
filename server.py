@@ -467,6 +467,90 @@ def get_network_data(individual_id):
     
     return jsonify({'error': 'Individual not found'}), 404
 
+@app.route('/api/adjust-weight', methods=['POST'])
+def adjust_weight():
+    """
+    Adjust a connection weight in a network and return updated shader.
+    
+    POST body:
+    {
+        'id': individual_id,
+        'network': 'visual' or 'time',
+        'source': input_node_id,
+        'target': output_node_id,
+        'weight': new_weight_value
+    }
+    """
+    try:
+        data = request.json
+        individual_id = data.get('id')
+        network_type = data.get('network')  # 'visual' or 'time'
+        source_node = data.get('source')
+        target_node = data.get('target')
+        new_weight = float(data.get('weight', 0))
+        
+        # Find individual
+        for individual in current_population:
+            if individual['id'] == individual_id:
+                dual_genome = individual['genome']
+                
+                # Select the appropriate network
+                if network_type == 'visual':
+                    genome = dual_genome.visual
+                    config = engine.config
+                elif network_type == 'time':
+                    genome = dual_genome.time_signal
+                    config = engine.time_config
+                else:
+                    return jsonify({'error': f'Unknown network type: {network_type}'}), 400
+                
+                # Convert node IDs from strings back to integers
+                # Frontend sends IDs like "visual_input_-1" or "time_hidden_5"
+                # We need to extract the numeric part
+                def extract_node_id(node_id_str):
+                    parts = node_id_str.split('_')
+                    if len(parts) >= 3:
+                        return int(parts[-1])  # Last part is the numeric ID
+                    return int(node_id_str)
+                
+                try:
+                    source_id = extract_node_id(source_node)
+                    target_id = extract_node_id(target_node)
+                except (ValueError, IndexError) as e:
+                    return jsonify({
+                        'error': f'Invalid node ID format: {source_node} or {target_node}'
+                    }), 400
+                
+                # Update the weight in the connection
+                conn_key = (source_id, target_id)
+                if conn_key in genome.connections:
+                    genome.connections[conn_key].weight = new_weight
+                    
+                    # Recompile shader with updated weights
+                    shader_code = compiler.compile_dual_to_glsl(
+                        dual_genome, engine.config, engine.time_config
+                    )
+                    
+                    return jsonify({
+                        'id': individual_id,
+                        'network': network_type,
+                        'source': source_node,
+                        'target': target_node,
+                        'weight': new_weight,
+                        'shader': shader_code,
+                        'status': 'success'
+                    })
+                else:
+                    return jsonify({
+                        'error': f'Connection not found: {conn_key} (converted from {source_node} -> {target_node})'
+                    }), 404
+        
+        return jsonify({'error': 'Individual not found'}), 404
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
     """Get evolution statistics."""

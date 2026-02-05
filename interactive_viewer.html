@@ -129,10 +129,6 @@
             flex-direction: column;
         }
 
-        .pattern-card.expanded {
-            /* No longer needed - expanded state removed */
-        }
-
         .pattern-card:hover {
             transform: scale(1.02);
             border-color: #0066cc;
@@ -268,14 +264,29 @@
         .network-labels-header {
             display: flex;
             align-items: center;
-            justify-content: space-around;
-            gap: 10px;
+            justify-content: space-between;
+            gap: 15px;
             padding: 10px;
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 6px;
             margin-bottom: 10px;
-            text-align: center;
+            flex-wrap: wrap;
+        }
+
+        .network-labels-main {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .network-legend-header {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 9px;
+            color: #666;
         }
 
         .network-label-item {
@@ -303,14 +314,14 @@
         }
 
         .network-visualization {
-            flex: 1;
+            flex: 0 0 350px;
             background: #000;
             border-radius: 6px;
             border: 1px solid #333;
             overflow: hidden;
             position: relative;
-            min-height: 400px;
-            height: 600px;
+            min-height: 300px;
+            height: 350px;
             width: 100%;
         }
 
@@ -338,14 +349,15 @@
 
         .network-info-panel {
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            font-size: 12px;
-            min-width: 140px;
-            padding: 10px;
+            flex-direction: row;
+            gap: 20px;
+            font-size: 11px;
+            padding: 8px 12px;
             background: #1a1a1a;
             border-radius: 6px;
             border: 1px solid #333;
+            flex-wrap: wrap;
+            align-items: center;
         }
 
         .network-info-item {
@@ -365,15 +377,17 @@
 
         .network-legend-inline {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-            font-size: 11px;
+            flex-direction: row;
+            gap: 12px;
+            font-size: 10px;
+            align-items: center;
         }
 
         .legend-item-inline {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
+            white-space: nowrap;
         }
 
         .legend-dot {
@@ -500,6 +514,132 @@
         .signal-derived input:not(:checked)+label {
             color: #555;
         }
+
+        .weight-adjustment-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        .weight-adjustment-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #0066cc;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+        }
+
+        .weight-slider-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px;
+            background: #0f0f0f;
+            border-radius: 4px;
+            border-left: 2px solid #0066cc;
+            transition: all 0.3s;
+        }
+
+        .weight-slider-item.time-network {
+            border-left-color: #0096c8;
+        }
+
+        .weight-slider-item.highlighted {
+            background: #1a2a3a;
+            border-left-width: 4px;
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
+        }
+
+        .weight-slider-item.time-network.highlighted {
+            box-shadow: 0 2px 8px rgba(0, 150, 200, 0.3);
+        }
+
+        .weight-slider-label {
+            font-size: 10px;
+            color: #999;
+            font-family: monospace;
+        }
+
+        .weight-slider-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .weight-slider-input {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .weight-slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #0066cc;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .weight-slider-input::-webkit-slider-thumb:hover {
+            background: #0080ff;
+            transform: scale(1.2);
+        }
+
+        .weight-slider-input::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #0066cc;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .weight-slider-input::-moz-range-thumb:hover {
+            background: #0080ff;
+            transform: scale(1.2);
+        }
+
+        .weight-slider-item.time-network .weight-slider-input {
+            background: #1a2a3a;
+        }
+
+        .weight-slider-item.time-network .weight-slider-input::-webkit-slider-thumb {
+            background: #0096c8;
+        }
+
+        .weight-slider-item.time-network .weight-slider-input::-moz-range-thumb {
+            background: #0096c8;
+        }
+
+        .weight-value {
+            min-width: 40px;
+            text-align: right;
+            font-size: 10px;
+            color: #0066cc;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        .weight-slider-item.time-network .weight-value {
+            color: #0096c8;
+        }
     </style>
 </head>
 
@@ -597,32 +737,18 @@
         <div id="network-sidebar" class="network-container">
             <button class="network-container-close" onclick="closeNetworkSidebar()">Close</button>
             <div class="network-labels-header">
-                <div class="network-label-item">
-                    <span class="network-label-title">Visual Network</span>
-                    <span class="network-label-description">(Left)</span>
+                <div class="network-labels-main">
+                    <div class="network-label-item">
+                        <span class="network-label-title">Visual Network</span>
+                        <span class="network-label-description">(Left)</span>
+                    </div>
+                    <div class="network-label-divider">→</div>
+                    <div class="network-label-item">
+                        <span class="network-label-title">Time Signal Network</span>
+                        <span class="network-label-description">(Right)</span>
+                    </div>
                 </div>
-                <div class="network-label-divider">→</div>
-                <div class="network-label-item">
-                    <span class="network-label-title">Time Signal Network</span>
-                    <span class="network-label-description">(Right)</span>
-                </div>
-            </div>
-            <div class="network-visualization"></div>
-            <div class="network-inline-controls">
-                <button id="network-fit-btn" onclick="fitNetworkToViewInline(currentNetworkId)">Fit View</button>
-                <button id="network-export-btn" onclick="exportNetworkInline(currentNetworkId)">Export JSON</button>
-            </div>
-            <div class="network-info-panel">
-                <div class="network-info-item">
-                    <span class="network-info-label">Hidden Nodes:</span>
-                    <span class="network-info-value" data-nodes>0</span>
-                </div>
-                <div class="network-info-item">
-                    <span class="network-info-label">Connections:</span>
-                    <span class="network-info-value" data-connections>0</span>
-                </div>
-                <div class="network-legend-inline">
-                    <div style="color: #999; font-size: 10px; margin-top: 5px;">Node Types:</div>
+                <div class="network-legend-header">
                     <div class="legend-item-inline">
                         <div class="legend-dot" style="background: #0066cc;"></div>
                         <span>Input</span>
@@ -635,6 +761,25 @@
                         <div class="legend-dot" style="background: #dc3545;"></div>
                         <span>Output</span>
                     </div>
+                </div>
+            </div>
+            <div class="network-visualization"></div>
+            <div class="network-inline-controls">
+                <button id="network-fit-btn" onclick="fitNetworkToViewInline(currentNetworkId)">Fit View</button>
+                <button id="network-export-btn" onclick="exportNetworkInline(currentNetworkId)">Export JSON</button>
+            </div>
+            <div class="weight-adjustment-panel" id="weight-adjustment-panel" style="display: none;">
+                <div class="weight-adjustment-title">Adjust Connection Weights</div>
+                <div id="weight-sliders-container"></div>
+            </div>
+            <div class="network-info-panel">
+                <div class="network-info-item">
+                    <span class="network-info-label">Hidden Nodes:</span>
+                    <span class="network-info-value" data-nodes>0</span>
+                </div>
+                <div class="network-info-item">
+                    <span class="network-info-label">Connections:</span>
+                    <span class="network-info-value" data-connections>0</span>
                 </div>
             </div>
         </div>
@@ -1328,6 +1473,19 @@
 
                 console.log('Network created successfully');
 
+                // Setup weight sliders
+                setupWeightSliders(individualId, data);
+
+                // Add edge click handler to scroll to corresponding slider
+                network.on('selectEdge', (params) => {
+                    if (params.edges.length > 0) {
+                        const edge = edges.get(params.edges[0]);
+                        if (edge) {
+                            scrollToWeightSlider(edge.from, edge.to);
+                        }
+                    }
+                });
+
                 // Fit to view
                 setTimeout(() => {
                     fitNetworkToViewInline(individualId);
@@ -1341,6 +1499,186 @@
             const network = networkVisualizations.get(individualId);
             if (network) {
                 network.fit({ animation: { duration: 500 } });
+            }
+        }
+
+        function setupWeightSliders(individualId, data) {
+            const panel = document.getElementById('weight-adjustment-panel');
+            const container = document.getElementById('weight-sliders-container');
+
+            if (!data.connections || data.connections.length === 0) {
+                panel.style.display = 'none';
+                return;
+            }
+
+            container.innerHTML = '';
+            panel.style.display = 'flex';
+
+            // Group connections by network type
+            const visualConns = data.connections.filter(c => c.network === 'visual');
+            const timeConns = data.connections.filter(c => c.network === 'time');
+
+            // Create sliders for visual network
+            if (visualConns.length > 0) {
+                visualConns.forEach(conn => {
+                    createWeightSlider(individualId, conn, 'visual', container);
+                });
+            }
+
+            // Create sliders for time signal network
+            if (timeConns.length > 0) {
+                timeConns.forEach(conn => {
+                    createWeightSlider(individualId, conn, 'time', container);
+                });
+            }
+        }
+
+        function createWeightSlider(individualId, connection, networkType, container) {
+            const isTimeNetwork = networkType === 'time';
+            const sliderDiv = document.createElement('div');
+            sliderDiv.className = `weight-slider-item ${isTimeNetwork ? 'time-network' : ''}`;
+
+            // Extract node names from IDs
+            const sourceLabel = extractNodeLabel(connection.source);
+            const targetLabel = extractNodeLabel(connection.target);
+
+            const minWeight = -5;
+            const maxWeight = 5;
+            const currentWeight = connection.weight;
+
+            sliderDiv.setAttribute('data-source', connection.source);
+            sliderDiv.setAttribute('data-target', connection.target);
+
+            sliderDiv.innerHTML = `
+                <div class="weight-slider-label">${sourceLabel} → ${targetLabel}</div>
+                <div class="weight-slider-row">
+                    <input 
+                        type="range" 
+                        class="weight-slider-input"
+                        min="${minWeight}"
+                        max="${maxWeight}"
+                        step="0.05"
+                        value="${currentWeight}"
+                        data-individual="${individualId}"
+                        data-network="${networkType}"
+                        data-source="${connection.source}"
+                        data-target="${connection.target}"
+                    />
+                    <span class="weight-value">${currentWeight.toFixed(2)}</span>
+                </div>
+            `;
+
+            const slider = sliderDiv.querySelector('input');
+            const valueDisplay = sliderDiv.querySelector('.weight-value');
+
+            // Update value display and send to server
+            slider.addEventListener('input', async (e) => {
+                const newWeight = parseFloat(e.target.value);
+                valueDisplay.textContent = newWeight.toFixed(2);
+
+                // Send weight adjustment to server
+                try {
+                    const response = await fetch(`${API_URL}/adjust-weight`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            id: individualId,
+                            network: networkType,
+                            source: connection.source,
+                            target: connection.target,
+                            weight: newWeight
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        // Update the pattern with the new shader
+                        updatePatternShader(individualId, data.shader);
+                        console.log(`Updated weight: ${sourceLabel} → ${targetLabel} = ${newWeight}`);
+                    } else {
+                        console.error('Error updating weight:', data.error);
+                    }
+                } catch (error) {
+                    console.error('Error sending weight adjustment:', error);
+                }
+            });
+
+            container.appendChild(sliderDiv);
+        }
+
+        function extractNodeLabel(nodeId) {
+            // Extract human-readable label from node ID like "visual_input_-1" or "time_hidden_5"
+            const parts = nodeId.split('_');
+            if (parts.length >= 3) {
+                const type = parts[1];
+                const id = parts.slice(2).join('_');
+
+                // Map input node IDs to names
+                const inputNames = {
+                    '-1': 'x', '-2': 'y', '-3': 'dist', '-4': 'time',
+                    '-5': 'mSpeed', '-6': 'mDist', '-7': 'inact', '-8': 'bias'
+                };
+
+                if (type === 'input' && inputNames[id]) {
+                    return inputNames[id];
+                } else if (type === 'output') {
+                    const outputNames = { '0': 'R', '1': 'G', '2': 'B' };
+                    return outputNames[id] || `out${id}`;
+                } else if (type === 'hidden') {
+                    return `h${id}`;
+                }
+                return id;
+            }
+            return nodeId;
+        }
+
+        function updatePatternShader(individualId, newShader) {
+            // Find the pattern and update its shader
+            const pattern = patterns.get(individualId);
+            if (pattern) {
+                // Update the WebGL program with the new shader
+                const { gl } = pattern;
+                const newProgram = createProgram(gl, vertexShaderSource, newShader);
+                if (newProgram) {
+                    // Clean up old program
+                    if (pattern.program) {
+                        gl.deleteProgram(pattern.program);
+                    }
+                    pattern.program = newProgram;
+                    console.log('Shader updated for pattern', individualId);
+                }
+            }
+        }
+
+        function scrollToWeightSlider(sourceNodeId, targetNodeId) {
+            // Find the slider with matching source and target
+            const sliderItems = document.querySelectorAll('.weight-slider-item');
+
+            // Clear previous highlights
+            sliderItems.forEach(item => item.classList.remove('highlighted'));
+
+            // Find and scroll to the matching slider
+            for (const item of sliderItems) {
+                const source = item.getAttribute('data-source');
+                const target = item.getAttribute('data-target');
+
+                if (source === sourceNodeId && target === targetNodeId) {
+                    // Highlight the slider
+                    item.classList.add('highlighted');
+
+                    // Scroll to make it visible
+                    item.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+
+                    // Remove highlight after 2 seconds
+                    setTimeout(() => {
+                        item.classList.remove('highlighted');
+                    }, 2000);
+
+                    break;
+                }
             }
         }
 
