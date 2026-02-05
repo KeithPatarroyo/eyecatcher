@@ -60,7 +60,6 @@ class EvolutionConfig:
 
     # Model settings
     clip_model: str = "openai/clip-vit-base-patch32"
-    device: str = "cpu"
 
 
 @dataclass
@@ -111,7 +110,6 @@ class VLMEvolution:
             from foundation_models.clip import CLIPEmbedder
             self._embedder = CLIPEmbedder(
                 model_name=self.config.clip_model,
-                device=self.config.device,
             )
         return self._embedder
 
@@ -454,7 +452,6 @@ def run_vlm_evolution(
     top_k: int = 3,
     output_dir: str = "output/vlm_evolution",
     seeds_path: Optional[str] = None,
-    device: str = "cpu",
 ) -> List[GenerationResult]:
     """
     Convenience function to run VLM-based evolution.
@@ -471,8 +468,6 @@ def run_vlm_evolution(
         Directory for output files.
     seeds_path : str, optional
         Path to JSON file with seed genomes.
-    device : str
-        Device for CLIP model ('cpu' or 'cuda').
 
     Returns
     -------
@@ -484,7 +479,6 @@ def run_vlm_evolution(
         num_generations=num_generations,
         top_k=top_k,
         output_dir=output_dir,
-        device=device,
     )
 
     # Load seeds if provided
@@ -511,7 +505,6 @@ if __name__ == "__main__":
     parser.add_argument("--top-k", type=int, default=3, help="Number of top patterns to select")
     parser.add_argument("--output", type=str, default="output/vlm_evolution", help="Output directory")
     parser.add_argument("--seeds", type=str, default=None, help="Path to seeds JSON file")
-    parser.add_argument("--device", type=str, default="cpu", help="Device for CLIP model")
 
     args = parser.parse_args()
 
@@ -521,5 +514,4 @@ if __name__ == "__main__":
         top_k=args.top_k,
         output_dir=args.output,
         seeds_path=args.seeds,
-        device=args.device,
     )
