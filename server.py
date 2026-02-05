@@ -346,6 +346,126 @@ def save_individual():
     
     return jsonify({'error': 'Individual not found'}), 404
 
+def extract_network_data(genome, network_type, config):
+    """Extract nodes and connections from a genome."""
+    nodes = []
+    node_id_map = {}
+    
+    num_inputs = config.genome_config.num_inputs
+    num_outputs = config.genome_config.num_outputs
+    
+    # X-offset to separate visual and time networks horizontally
+    x_offset = 1000 if network_type == 'time' else 0
+    
+    # Define input labels to match actual CPPN query inputs
+    # Visual CPPN inputs: x, y, distance, time, mouse_speed, mouse_distance, inactivity, bias
+    # Time Signal CPPN inputs: raw_time, mouse_speed, mouse_distance, inactivity, bias
+    if network_type == 'time':
+        input_labels = ['raw_time', 'mouse_speed', 'mouse_distance', 'inactivity', 'bias']
+    else:
+        input_labels = ['x', 'y', 'distance', 'time', 'mouse_speed', 'mouse_distance', 'inactivity', 'bias']
+    
+    # Add input nodes - position on left
+    for i in range(num_inputs):
+        neat_id = -(i + 1)
+        vis_id = f'{network_type}_input_{neat_id}'
+        node_id_map[neat_id] = vis_id
+        label = input_labels[i] if i < len(input_labels) else f'Input {i}'
+        nodes.append({
+            'id': vis_id,
+            'label': label,
+            'type': 'input',
+            'network': network_type,
+            'index': i,
+            'x': -400 + x_offset,
+            'y': (i - num_inputs/2) * 80
+        })
+    
+    # Add hidden nodes - position in middle
+    hidden_list = sorted(genome.nodes.keys())
+    for idx, neat_id in enumerate(hidden_list):
+        node = genome.nodes[neat_id]
+        vis_id = f'{network_type}_hidden_{neat_id}'
+        node_id_map[neat_id] = vis_id
+        nodes.append({
+            'id': vis_id,
+            'label': f'Node {neat_id}',
+            'type': 'hidden',
+            'network': network_type,
+            'activation': node.activation,
+            'bias': float(node.bias),
+            'index': neat_id,
+            'x': 0 + x_offset,
+            'y': (idx - len(hidden_list)/2) * 80
+        })
+    
+    # Add output nodes - position on right
+    if network_type == 'time':
+        output_labels = ['output']
+    else:
+        output_labels = ['red', 'green', 'blue']
+    
+    for i in range(num_outputs):
+        neat_id = i
+        vis_id = f'{network_type}_output_{neat_id}'
+        node_id_map[neat_id] = vis_id
+        label = output_labels[i] if i < len(output_labels) else f'Output {i}'
+        nodes.append({
+            'id': vis_id,
+            'label': label,
+            'type': 'output',
+            'network': network_type,
+            'index': i,
+            'x': 400 + x_offset,
+            'y': (i - num_outputs/2) * 80
+        })
+    
+    # Extract connections
+    connections = []
+    for conn_id, conn in genome.connections.items():
+        if conn.enabled:
+            input_node, output_node = conn_id
+            source_id = node_id_map.get(input_node, str(input_node))
+            target_id = node_id_map.get(output_node, str(output_node))
+            connections.append({
+                'source': source_id,
+                'target': target_id,
+                'weight': float(conn.weight),
+                'network': network_type
+            })
+    
+    return nodes, connections
+
+@app.route('/api/network/<int:individual_id>', methods=['GET'])
+def get_network_data(individual_id):
+    """Get both CPPN networks (visual and time signal) for visualization."""
+    for individual in current_population:
+        if individual['id'] == individual_id:
+            all_nodes = []
+            all_connections = []
+            
+            # Extract visual network
+            if hasattr(individual['genome'], 'visual'):
+                visual_genome = individual['genome'].visual
+                visual_nodes, visual_conns = extract_network_data(visual_genome, 'visual', engine.config)
+                all_nodes.extend(visual_nodes)
+                all_connections.extend(visual_conns)
+            
+            # Extract time signal network
+            if hasattr(individual['genome'], 'time_signal'):
+                time_genome = individual['genome'].time_signal
+                time_nodes, time_conns = extract_network_data(time_genome, 'time', engine.time_config)
+                all_nodes.extend(time_nodes)
+                all_connections.extend(time_conns)
+            
+            return jsonify({
+                'id': individual_id,
+                'nodes': all_nodes,
+                'connections': all_connections,
+                'status': 'success'
+            })
+    
+    return jsonify({'error': 'Individual not found'}), 404
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
