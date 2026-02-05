@@ -66,28 +66,6 @@
     }
 
     /**
-     * Load population from curated seeds.
-     */
-    async function onNewFromSeedsClick() {
-        const loadingEl = document.getElementById('loading');
-        if (loadingEl) loadingEl.style.display = 'block';
-        try {
-            const r = await fetch(_apiUrl + '/seeds');
-            if (!r.ok) { alert('Failed to load seeds'); return; }
-            const d = await r.json();
-            const seeds = d.seeds || [];
-            if (!seeds.length) { alert('No seeds available.'); return; }
-            if (_loadFromStatelessGenomes) {
-                await _loadFromStatelessGenomes(seeds.slice(0, 12).map(s => s.genome || s), 0);
-            }
-        } catch (e) {
-            alert('Error: ' + (e.message || e));
-        } finally {
-            if (loadingEl) loadingEl.style.display = 'none';
-        }
-    }
-
-    /**
      * Open the load saved populations modal.
      */
     async function onLoadSavedClick() {
@@ -207,7 +185,6 @@
     window.PopulationUI = {
         init: init,
         startNewRandomPopulation: startNewRandomPopulation,
-        onNewFromSeedsClick: onNewFromSeedsClick,
         onLoadSavedClick: onLoadSavedClick,
         onSaveCurrentClick: onSaveCurrentClick,
         onImportClick: onImportClick,
