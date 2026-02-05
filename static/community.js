@@ -7,6 +7,7 @@
  * - API_URL global
  * - setupPattern, renderPattern functions for previews
  * - loadFromStatelessGenomes function
+ * - addToGrid function (append patterns to current grid)
  */
 
 (function() {
@@ -15,6 +16,7 @@
     // Module state
     let _apiUrl = '';
     let _loadFromStatelessGenomes = null;
+    let _addToGrid = null;
     let _getGenomeForPattern = null;
     let _setupPattern = null;
     let _renderPattern = null;
@@ -26,7 +28,8 @@
      * Initialize the community UI module.
      * @param {Object} options
      * @param {string} options.apiUrl - Base API URL
-     * @param {Function} options.loadFromStatelessGenomes - Function to load genomes into the grid
+     * @param {Function} options.loadFromStatelessGenomes - Function to load genomes into the grid (replace)
+     * @param {Function} options.addToGrid - Function to append genomes to the current grid
      * @param {Function} options.getGenomeForPattern - Function to get genome for a pattern ID
      * @param {Function} options.setupPattern - Function to setup WebGL pattern (for previews)
      * @param {Function} options.renderPattern - Function to render a pattern (for previews)
@@ -34,6 +37,7 @@
     function init(options) {
         _apiUrl = options.apiUrl || '';
         _loadFromStatelessGenomes = options.loadFromStatelessGenomes;
+        _addToGrid = options.addToGrid;
         _getGenomeForPattern = options.getGenomeForPattern;
         _setupPattern = options.setupPattern;
         _renderPattern = options.renderPattern;
@@ -192,16 +196,16 @@
             return;
         }
         document.getElementById('community-list-modal').classList.remove('show');
-        if (_loadFromStatelessGenomes) {
-            _loadFromStatelessGenomes(genomes, 0);
+        if (_addToGrid) {
+            _addToGrid(genomes);
         }
     }
 
     function onCommunityLoad12() {
         const first12 = _communityPatternsList.slice(0, 12).map(p => p.genome);
         document.getElementById('community-list-modal').classList.remove('show');
-        if (_loadFromStatelessGenomes) {
-            _loadFromStatelessGenomes(first12, 0);
+        if (_addToGrid) {
+            _addToGrid(first12);
         }
     }
 
