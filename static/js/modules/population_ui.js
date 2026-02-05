@@ -43,6 +43,11 @@
         const loadingEl = document.getElementById('loading');
         if (loadingEl) loadingEl.style.display = 'block';
         try {
+            // Clear any existing session data when starting fresh
+            sessionStorage.removeItem('current_population_data');
+            sessionStorage.removeItem('current_population_id');
+            sessionStorage.removeItem('has_population');
+            
             const r = await fetch(`${_apiUrl}/random`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -59,7 +64,7 @@
             }
         } catch (error) {
             console.error('Error starting random population:', error);
-            if (window.Toast) Toast.error('Error: ' + (error.message || String(error))); else alert('Error: ' + (error.message || String(error)));
+            if (window.Toast) window.Toast.error('Error: ' + (error.message || String(error))); else alert('Error: ' + (error.message || String(error)));
         } finally {
             if (loadingEl) loadingEl.style.display = 'none';
         }

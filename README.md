@@ -9,6 +9,7 @@ Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Li
 - **Signal Controls**: Toggle which inputs affect each CPPN via the web UI.
 - **GPU Rendering**: CPPNs compile to GLSL for real-time WebGL in the browser.
 - **Interactive Evolution**: Web interface for selection, breeding, saving, and community submission.
+- **Genealogical Tree**: Track evolutionary history across generations and branches; explore and continue from any point.
 - **Debug Overlay**: Real-time signal values; optional time-output sampling.
 
 ## Running the project
@@ -141,6 +142,19 @@ The web interface lets you:
 6. **Submit to community** – Share patterns for moderation and inclusion in the seed pool.
 7. **Signal controls** – Toggle which inputs (time, mouseSpeed, mouseDist, activity) feed into each CPPN.
 8. **Debug overlay** – Real-time signal values; optional time CPPN output sampling.
+9. **Genealogical tree** – View evolutionary history; branch and continue from any generation.
+
+## Genealogical Tree
+
+The genealogy system automatically tracks all populations across evolution sessions:
+
+- **Auto-save**: Every generation is automatically saved to a tree structure
+- **Branch & explore**: Load any previous generation and continue evolving in a new branch
+- **Tree visualization**: Interactive graph showing all populations, branches, and parent relationships
+- **Time travel**: Click any node to load that population into the main viewer
+- **Multiple branches**: Create parallel evolutionary paths; each "New random population" starts a new branch
+
+Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in the main interface.
 
 ## Project layout
 
