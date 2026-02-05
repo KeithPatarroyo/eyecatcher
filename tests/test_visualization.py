@@ -119,7 +119,7 @@ def test_visualization():
     # Also render the pattern
     print("Rendering pattern image...")
     from PIL import Image
-    img = engine.render_image(genome, resolution=512, time=0.5)
+    img = engine.render_image(genome, resolution=128, time=0.5)
     Image.fromarray(img).save('output/test/test_pattern.png')
     
     print("\n" + "="*60)
