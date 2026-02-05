@@ -1,140 +1,128 @@
+# import os
+# os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 """
 CLIP model integration for image embedding.
-Uses PyTorch CLIP and converts outputs to JAX arrays for ASAL metrics.
+Based on: https://github.com/SakanaAI/asal/blob/main/foundation_models/clip.py
 """
+import jax
 import jax.numpy as jnp
-import numpy as np
-from typing import Union
-from PIL import Image
+from einops import rearrange
+from transformers import AutoProcessor, FlaxCLIPModel
 
 
+class CLIP:
+    def __init__(self, clip_model="clip-vit-base-patch32"):
+        self.processor = AutoProcessor.from_pretrained(f"openai/{clip_model}")
+        self.clip_model = FlaxCLIPModel.from_pretrained(f"openai/{clip_model}")
+
+        self.img_mean = jnp.array(self.processor.image_processor.image_mean)
+        self.img_std = jnp.array(self.processor.image_processor.image_std)
+
+    def embed_img(self, img):
+        """
+        img shape (H W C) and values in [0, 1].
+        returns shape (D)
+        """
+        H, W, C = img.shape
+        if H != 224 or W != 224:
+            img = jax.image.resize(img, (224, 224, C), method='bilinear')
+        img = rearrange((img - self.img_mean) / self.img_std, "H W C -> 1 C H W")
+        z_img = self.clip_model.get_image_features(img)[0]
+        return z_img / jnp.linalg.norm(z_img, axis=-1, keepdims=True)
+
+    def embed_txt(self, prompts):
+        """
+        prompts is list of strings
+        returns shape (B D)
+        """
+        inputs = self.processor(text=prompts, return_tensors="jax", padding=True)
+        z_text = self.clip_model.get_text_features(
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask']
+        )
+        return z_text / jnp.linalg.norm(z_text, axis=-1, keepdims=True)
+
+
+# Wrapper class for compatibility with our evolution code
 class CLIPEmbedder:
     """
-    CLIP image embedder for computing latent representations.
-
-    Uses OpenAI's CLIP model via transformers (PyTorch) to embed images
-    into a shared latent space. Outputs are converted to JAX arrays
-    for compatibility with ASAL metrics.
+    Wrapper around CLIP class for compatibility with vlm_evolution.
     """
 
     def __init__(self, model_name: str = "openai/clip-vit-base-patch32"):
-        """
-        Initialize the CLIP embedder.
-
-        Parameters
-        ----------
-        model_name : str
-            The CLIP model to use. Default is ViT-B/32.
-        """
-        self.model_name = model_name
-        self._model = None
-        self._processor = None
-        self._device = None
+        # Extract model name (e.g., "clip-vit-base-patch32" from "openai/clip-vit-base-patch32")
+        if "/" in model_name:
+            model_name = model_name.split("/")[-1]
+        self._clip = None
+        self._model_name = model_name
 
     def _load_model(self):
-        """Lazy load the model on first use."""
-        if self._model is not None:
-            return
+        if self._clip is None:
+            self._clip = CLIP(clip_model=self._model_name)
 
-        try:
-            import torch
-            from transformers import CLIPModel, CLIPProcessor
-
-            self._model = CLIPModel.from_pretrained(self.model_name)
-            self._processor = CLIPProcessor.from_pretrained(self.model_name)
-
-            # Use CUDA if available
-            self._device = "cuda" if torch.cuda.is_available() else "cpu"
-            self._model = self._model.to(self._device)
-            self._model.eval()
-        except ImportError as e:
-            raise ImportError(
-                "CLIP requires torch and transformers. "
-                "Install with: pip install torch transformers"
-            ) from e
-
-    def embed_image(self, image: Union[np.ndarray, Image.Image]) -> jnp.ndarray:
+    def embed_image(self, image):
         """
-        Embed a single image into CLIP latent space.
+        Embed a single image.
 
         Parameters
         ----------
-        image : np.ndarray or PIL.Image
-            Image to embed. If numpy array, should be (H, W, C) with values in [0, 255]
-            or [0, 1]. Will be converted to PIL Image internally.
+        image : np.ndarray or jnp.ndarray
+            Image of shape (H, W, C) with values in [0, 255] or [0, 1].
 
         Returns
         -------
         jnp.ndarray
-            L2-normalized embedding vector of shape (D,) where D is the embedding dimension
-            (512 for ViT-B/32, 768 for ViT-L/14).
+            L2-normalized embedding of shape (D,).
         """
         self._load_model()
-        import torch
+        import numpy as np
 
-        # Convert numpy array to PIL Image if needed
+        # Convert to JAX array if needed
         if isinstance(image, np.ndarray):
-            # Handle both [0, 1] and [0, 255] ranges
-            if image.max() <= 1.0:
-                image = (image * 255).astype(np.uint8)
-            image = Image.fromarray(image)
+            image = jnp.array(image)
 
-        # Process image through CLIP
-        inputs = self._processor(images=image, return_tensors="pt")
-        inputs = {k: v.to(self._device) for k, v in inputs.items()}
+        # Normalize to [0, 1] if in [0, 255]
+        if image.max() > 1.0:
+            image = image / 255.0
 
-        with torch.no_grad():
-            outputs = self._model.get_image_features(**inputs)
+        return self._clip.embed_img(image)
 
-        # Convert to numpy, then JAX, and L2 normalize
-        embedding = outputs.cpu().numpy().squeeze()
-        embedding = embedding / np.linalg.norm(embedding)
-
-        return jnp.array(embedding)
-
-    def embed_images(self, images: list) -> jnp.ndarray:
+    def embed_images(self, images):
         """
-        Embed multiple images into CLIP latent space.
+        Embed multiple images.
 
         Parameters
         ----------
         images : list
-            List of images (np.ndarray or PIL.Image).
+            List of images (np.ndarray or jnp.ndarray), each of shape (H, W, C).
 
         Returns
         -------
         jnp.ndarray
-            L2-normalized embeddings of shape (N, D) where N is number of images.
+            L2-normalized embeddings of shape (N, D).
         """
         self._load_model()
-        import torch
+        import numpy as np
 
-        # Convert all images to PIL
-        pil_images = []
+        embeddings = []
         for img in images:
+            # Convert to JAX array if needed
             if isinstance(img, np.ndarray):
-                if img.max() <= 1.0:
-                    img = (img * 255).astype(np.uint8)
-                img = Image.fromarray(img)
-            pil_images.append(img)
+                img = jnp.array(img)
 
-        # Batch process
-        inputs = self._processor(images=pil_images, return_tensors="pt")
-        inputs = {k: v.to(self._device) for k, v in inputs.items()}
+            # Normalize to [0, 1] if in [0, 255]
+            if img.max() > 1.0:
+                img = img / 255.0
 
-        with torch.no_grad():
-            outputs = self._model.get_image_features(**inputs)
+            emb = self._clip.embed_img(img)
+            embeddings.append(emb)
 
-        # Convert to numpy, L2 normalize, then to JAX
-        embeddings = outputs.cpu().numpy()
-        norms = np.linalg.norm(embeddings, axis=-1, keepdims=True)
-        embeddings = embeddings / norms
+        return jnp.stack(embeddings)
 
-        return jnp.array(embeddings)
-
-    def embed_text(self, text: str) -> jnp.ndarray:
+    def embed_text(self, text):
         """
-        Embed text into CLIP latent space.
+        Embed a single text string.
 
         Parameters
         ----------
@@ -144,25 +132,14 @@ class CLIPEmbedder:
         Returns
         -------
         jnp.ndarray
-            L2-normalized embedding vector of shape (D,).
+            L2-normalized embedding of shape (D,).
         """
         self._load_model()
-        import torch
+        return self._clip.embed_txt([text])[0]
 
-        inputs = self._processor(text=[text], return_tensors="pt", padding=True)
-        inputs = {k: v.to(self._device) for k, v in inputs.items()}
-
-        with torch.no_grad():
-            outputs = self._model.get_text_features(**inputs)
-
-        embedding = outputs.cpu().numpy().squeeze()
-        embedding = embedding / np.linalg.norm(embedding)
-
-        return jnp.array(embedding)
-
-    def embed_texts(self, texts: list) -> jnp.ndarray:
+    def embed_texts(self, texts):
         """
-        Embed multiple texts into CLIP latent space.
+        Embed multiple text strings.
 
         Parameters
         ----------
@@ -175,25 +152,4 @@ class CLIPEmbedder:
             L2-normalized embeddings of shape (N, D).
         """
         self._load_model()
-        import torch
-
-        inputs = self._processor(text=texts, return_tensors="pt", padding=True)
-        inputs = {k: v.to(self._device) for k, v in inputs.items()}
-
-        with torch.no_grad():
-            outputs = self._model.get_text_features(**inputs)
-
-        embeddings = outputs.cpu().numpy()
-        norms = np.linalg.norm(embeddings, axis=-1, keepdims=True)
-        embeddings = embeddings / norms
-
-        return jnp.array(embeddings)
-
-    @property
-    def embedding_dim(self) -> int:
-        """Get the embedding dimension for the loaded model."""
-        self._load_model()
-        # ViT-B models have 512 dim, ViT-L have 768
-        if "vit-l" in self.model_name.lower() or "large" in self.model_name.lower():
-            return 768
-        return 512
+        return self._clip.embed_txt(texts)
