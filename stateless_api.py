@@ -114,3 +114,42 @@ def api_random():
 def api_seeds():
     """Return curated seed genomes (from data/seeds.json)."""
     return jsonify({'seeds': _curated_seeds})
+
+
+@stateless_bp.route('/api/time-output', methods=['POST'])
+def api_time_output():
+    """
+    Stateless: query the Time CPPN for a genome with given inputs (for debug panel).
+    Body: { "genome": { "key", "visual", "time_signal" }, "time", "mouseSpeed", "mouseDist", "activity" } (0-1).
+    Returns: { "timeOutput": float, "inputs": { ... } }.
+    """
+    try:
+        data = request.json or {}
+        genome_data = data.get('genome')
+        if not genome_data:
+            return jsonify({'error': 'genome required'}), 400
+        raw_time = float(data.get('time', 0))
+        mouse_speed = float(data.get('mouseSpeed', 0))
+        mouse_dist = float(data.get('mouseDist', 0))
+        activity = float(data.get('activity', 0))
+        dual = dual_genome_from_json(genome_data, _engine)
+        raw_time_n = raw_time * 2.0 - 1.0
+        mouse_speed_n = mouse_speed * 2.0 - 1.0
+        mouse_dist_n = mouse_dist * 2.0 - 1.0
+        activity_n = activity * 2.0 - 1.0
+        time_output = _engine.query_time_signal(
+            dual.time_signal, raw_time_n, mouse_speed_n, mouse_dist_n, activity_n
+        )
+        return jsonify({
+            'timeOutput': time_output,
+            'inputs': {
+                'rawTime': raw_time,
+                'mouseSpeed': mouse_speed,
+                'mouseDist': mouse_dist,
+                'activity': activity
+            }
+        })
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
