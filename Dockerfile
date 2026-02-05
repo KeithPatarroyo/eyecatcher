@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir gunicorn
 
 # Application code and config
 COPY cppn_engine.py shader_compiler.py server.py stateless_api.py community_routes.py genome_serialization.py genome_visualizer.py .
-COPY neat_config.txt neat_config_time.txt .
+COPY config/ config/
 COPY static/ static/
 COPY data/ data/
 
