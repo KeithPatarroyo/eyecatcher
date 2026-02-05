@@ -105,7 +105,12 @@ def serve_pattern_renderer_js():
 @app.route('/api/breed', methods=['POST'])
 def breed():
     """
-    Breed next generation (stateless). Body: "parents" array and optional "population_size".
+    Breed next generation (stateless).
+    Body: {
+        "parents": [...],
+        "population_size": 12,  (optional, default 12)
+        "elitism": false        (optional, default false; if true, best parent is copied unchanged)
+    }
     Returns { "children": [genome JSONs] }.
     """
     data = request.json or {}
@@ -120,6 +125,7 @@ def _breed_stateless(data):
     try:
         parents_data = data.get('parents', [])
         population_size = data.get('population_size', 12)
+        elitism = data.get('elitism', False)
         if not parents_data:
             return jsonify({'error': 'parents array required'}), 400
         parents = []
@@ -133,10 +139,12 @@ def _breed_stateless(data):
         max_key = max(p['genome'].key for p in parents)
         next_key = max_key + 1
         children = []
-        best = max(parents, key=lambda x: x['clicks'])
-        elite = copy_dual_genome(best['genome'], engine, next_key)
-        children.append(dual_genome_to_json(elite))
-        next_key += 1
+        # Elitism: optionally keep best parent unchanged
+        if elitism:
+            best = max(parents, key=lambda x: x['clicks'])
+            elite = copy_dual_genome(best['genome'], engine, next_key)
+            children.append(dual_genome_to_json(elite))
+            next_key += 1
         while len(children) < population_size:
             if len(parents) == 1:
                 child = engine.mutate_dual_genome(parents[0]['genome'], next_key)
@@ -161,29 +169,35 @@ def _breed_stateless(data):
 @app.route('/api/save', methods=['POST'])
 def save_individual():
     """
-    Save a dual genome (stateless). Body must include "genome" JSON; "id" optional.
+    Save a dual genome (stateless).
+    Body: {
+        "genome": { ... },       (required)
+        "id": 123,               (optional, defaults to genome.key)
+        "visualize": true        (optional, default true; generate network PDF)
+    }
     """
     data = request.json or {}
     genome_json = data.get('genome')
     individual_id = data.get('id')
+    visualize = data.get('visualize', True)
     if not genome_json:
         return jsonify({'error': 'genome required in request body'}), 400
     try:
         dual_genome = dual_genome_from_json(genome_json, engine)
-        return _save_dual_genome(dual_genome, individual_id or dual_genome.key)
+        return _save_dual_genome(dual_genome, individual_id or dual_genome.key, visualize=visualize)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-def _save_dual_genome(dual_genome: DualGenome, individual_id: int):
+def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bool = True):
     """Internal helper to save a dual genome and return paths."""
     os.makedirs('output/saved', exist_ok=True)
 
     # Save dual genome (and optional network visualization PDF)
     genome_path = f'output/saved/dual_genome_{individual_id}.pkl'
-    engine.save_dual_genome(dual_genome, genome_path, visualize=False)
+    engine.save_dual_genome(dual_genome, genome_path, visualize=visualize)
 
     network_path = f'output/saved/dual_genome_{individual_id}_network.pdf'
     has_network = os.path.isfile(network_path)
