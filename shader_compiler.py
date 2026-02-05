@@ -17,6 +17,9 @@ class ShaderCompiler:
     """
     Compiles CPPN networks into GLSL fragment shader code.
     The shader can then be executed on GPU for real-time rendering.
+    
+    Args:
+        color_mode: 'hsv' (Picbreeder-style) or 'rgb' (direct RGB output)
     """
     
     # Map NEAT activation functions to GLSL
@@ -38,9 +41,10 @@ class ShaderCompiler:
         'log': 'log',
     }
     
-    def __init__(self):
+    def __init__(self, color_mode: str = 'hsv'):
         self.node_order: List[int] = []
         self.node_code: Dict[int, str] = {}
+        self.color_mode = color_mode  # 'hsv' or 'rgb'
         
     def compile_to_glsl(self, genome: neat.DefaultGenome, config: neat.Config) -> str:
         """
@@ -228,8 +232,34 @@ class ShaderCompiler:
             prefix="time_"
         )
     
+    def _get_color_output_code(self) -> str:
+        """Get GLSL code for converting CPPN outputs to RGB based on color_mode."""
+        if self.color_mode == 'rgb':
+            return """    // Output RGB directly (clamp to 0-1)
+    float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
+    float g = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);
+    float b = clamp((output_2 + 1.0) * 0.5, 0.0, 1.0);
+    
+    fragColor = vec4(r, g, b, 1.0);"""
+        else:  # hsv
+            return """    // Interpret outputs as HSV (Hue, Saturation, Value) - Picbreeder style
+    // Hue: gentle sigmoid (0.4x steepness) - red reachable but only at extreme values
+    // output ~0 -> cyan, output ~±5 -> orange/magenta, output ~±10 -> near red
+    float h = 1.0 / (1.0 + exp(-output_0 * 0.4));
+    float s = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);  // Saturation: 0-1
+    float v = clamp(abs(output_2), 0.0, 1.0);  // Value: abs then clip (Picbreeder style)
+    
+    // Branchless HSV to RGB conversion (from lolengine.net)
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(vec3(h, h, h) + K.xyz) * 6.0 - K.www);
+    vec3 rgb = v * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), s);
+    
+    fragColor = vec4(rgb, 1.0);"""
+    
     def _build_shader_template(self, node_code: str, config: neat.Config) -> str:
         """Build the complete GLSL shader with node computations (single CPPN)."""
+        
+        color_output = self._get_color_output_code()
         
         shader = f"""#version 300 es
 precision highp float;
@@ -308,12 +338,7 @@ void main() {{
     // Network computations
 {node_code}
     
-    // Output RGB (clamp to 0-1)
-    float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
-    float g = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);
-    float b = clamp((output_2 + 1.0) * 0.5, 0.0, 1.0);
-    
-    fragColor = vec4(r, g, b, 1.0);
+{color_output}
 }}
 """
         return shader
@@ -357,6 +382,8 @@ void main() {{
     
     def _build_dual_shader_template(self, time_code: str, visual_code: str) -> str:
         """Build the complete GLSL shader for dual CPPN (time signal + visual)."""
+        
+        color_output = self._get_color_output_code()
         
         shader = f"""#version 300 es
 precision highp float;
@@ -455,12 +482,7 @@ void main() {{
     // Visual network computations (using modified time)
 {visual_code}
     
-    // Output RGB (clamp to 0-1)
-    float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
-    float g = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);
-    float b = clamp((output_2 + 1.0) * 0.5, 0.0, 1.0);
-    
-    fragColor = vec4(r, g, b, 1.0);
+{color_output}
 }}
 """
         return shader
