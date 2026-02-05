@@ -1,11 +1,11 @@
-/* Network visualization sidebar and weight sliders (extracted from interactive_viewer.html) */
+/* Network visualization sidebar and weight sliders. Uses variables from base.css. */
 
 .network-btn {
     padding: 0.2em 0.4em;
-    background: rgba(0, 102, 204, 0.9);
-    border: 1px solid rgba(0, 102, 204, 0.5);
-    color: white;
-    border-radius: 4px;
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    color: var(--color-text);
+    border-radius: var(--radius-sm);
     font-size: clamp(6px, 8cqw, 12px);
     line-height: 1.2;
     cursor: pointer;
@@ -20,7 +20,7 @@
 }
 
 .network-btn:hover {
-    background: rgba(0, 102, 204, 1);
+    background: var(--color-primary-hover);
 }
 
 #main-container {
@@ -47,8 +47,8 @@
     gap: 15px;
     padding: 15px;
     padding-top: 50px;
-    background: #0f0f0f;
-    border-left: 2px solid #333;
+    background: var(--color-bg-panel);
+    border-left: 2px solid var(--color-border);
     width: 0;
     min-width: 0;
     overflow-y: auto;
@@ -67,31 +67,31 @@
 
 .network-container-close {
     position: absolute;
-    top: 12px;
-    right: 12px;
-    background: #333;
+    top: var(--space-md);
+    right: var(--space-md);
+    background: var(--color-border);
     border: none;
-    color: #fff;
-    padding: 8px 12px;
-    border-radius: 4px;
+    color: var(--color-text);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 12px;
     z-index: 210;
 }
 
 .network-container-close:hover {
-    background: #444;
+    background: var(--color-border-light);
 }
 
 .network-labels-header {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 10px 12px;
+    padding: 10px var(--space-md);
     padding-right: 70px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 6px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     margin-bottom: 0;
 }
 
@@ -104,10 +104,10 @@
 
 .network-legend-header {
     display: flex;
-    gap: 12px;
+    gap: var(--space-md);
     align-items: center;
     font-size: 10px;
-    color: #888;
+    color: var(--color-text-secondary);
 }
 
 .network-label-item {
@@ -120,25 +120,25 @@
 .network-label-title {
     font-size: 12px;
     font-weight: bold;
-    color: #0066cc;
+    color: var(--color-primary);
 }
 
 .network-label-description {
     font-size: 10px;
-    color: #666;
+    color: var(--color-text-tertiary);
 }
 
 .network-label-divider {
     font-size: 16px;
-    color: #444;
+    color: var(--color-border-light);
     margin: 0 5px;
 }
 
 .network-visualization {
     flex: 0 0 350px;
     background: #000;
-    border-radius: 6px;
-    border: 1px solid #333;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
     overflow: hidden;
     position: relative;
     min-height: 300px;
@@ -154,29 +154,29 @@
 }
 
 .network-inline-controls button {
-    padding: 8px 12px;
-    background: #0066cc;
-    color: white;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-primary);
+    color: var(--color-text);
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     font-size: 11px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .network-inline-controls button:hover {
-    background: #0052a3;
+    background: var(--color-primary-hover);
 }
 
 .network-info-panel {
     display: flex;
     flex-direction: row;
-    gap: 20px;
+    gap: var(--space-xl);
     font-size: 11px;
-    padding: 8px 12px;
-    background: #1a1a1a;
-    border-radius: 6px;
-    border: 1px solid #333;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg-primary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
     flex-wrap: wrap;
     align-items: center;
 }
@@ -188,11 +188,11 @@
 }
 
 .network-info-label {
-    color: #888;
+    color: var(--color-text-secondary);
 }
 
 .network-info-value {
-    color: #0066cc;
+    color: var(--color-primary);
     font-weight: bold;
 }
 
@@ -221,10 +221,10 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    background: #1a1a1a;
-    padding: 12px;
-    border-radius: 6px;
-    border: 1px solid #333;
+    background: var(--color-bg-primary);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
     min-height: 0;
     max-height: 240px;
     overflow: hidden;
@@ -233,10 +233,10 @@
 .weight-adjustment-title {
     font-size: 12px;
     font-weight: bold;
-    color: #0066cc;
+    color: var(--color-primary);
     flex-shrink: 0;
     padding-bottom: 6px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--color-border);
 }
 
 #weight-sliders-container {
@@ -251,22 +251,22 @@
 .weight-slider-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 8px;
-    background: #0f0f0f;
-    border-radius: 4px;
-    border-left: 2px solid #0066cc;
+    gap: var(--space-xs);
+    padding: var(--space-sm);
+    background: var(--color-bg-panel);
+    border-radius: var(--radius-sm);
+    border-left: 2px solid var(--color-primary);
     transition: all 0.3s;
     min-width: 0;
     flex-shrink: 0;
 }
 
 .weight-slider-item.time-network {
-    border-left-color: #0096c8;
+    border-left-color: var(--color-accent);
 }
 
 .weight-slider-item.highlighted {
-    background: #1a2a3a;
+    background: var(--color-bg-input);
     border-left-width: 4px;
     transform: scale(1.02);
     box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
@@ -278,7 +278,7 @@
 
 .weight-slider-label {
     font-size: 10px;
-    color: #999;
+    color: var(--color-text-secondary);
     font-family: monospace;
 }
 
@@ -292,7 +292,7 @@
     flex: 1;
     height: 6px;
     border-radius: 3px;
-    background: #333;
+    background: var(--color-border);
     outline: none;
     -webkit-appearance: none;
     appearance: none;
@@ -304,13 +304,13 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #0066cc;
+    background: var(--color-primary);
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .weight-slider-input::-webkit-slider-thumb:hover {
-    background: #0080ff;
+    background: var(--color-primary-focus);
     transform: scale(1.2);
 }
 
@@ -318,38 +318,38 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #0066cc;
+    background: var(--color-primary);
     cursor: pointer;
     border: none;
     transition: all 0.2s;
 }
 
 .weight-slider-input::-moz-range-thumb:hover {
-    background: #0080ff;
+    background: var(--color-primary-focus);
     transform: scale(1.2);
 }
 
 .weight-slider-item.time-network .weight-slider-input {
-    background: #1a2a3a;
+    background: var(--color-bg-input);
 }
 
 .weight-slider-item.time-network .weight-slider-input::-webkit-slider-thumb {
-    background: #0096c8;
+    background: var(--color-accent);
 }
 
 .weight-slider-item.time-network .weight-slider-input::-moz-range-thumb {
-    background: #0096c8;
+    background: var(--color-accent);
 }
 
 .weight-value {
     min-width: 40px;
     text-align: right;
     font-size: 10px;
-    color: #0066cc;
+    color: var(--color-primary);
     font-weight: bold;
     font-family: monospace;
 }
 
 .weight-slider-item.time-network .weight-value {
-    color: #0096c8;
+    color: var(--color-accent);
 }

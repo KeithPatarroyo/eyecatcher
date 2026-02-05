@@ -1,20 +1,8 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    background: #0a0a0a;
-    color: #fff;
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    overflow-x: hidden;
-}
-
+/* Base reset, body, and button styles are in base.css */
 #header {
-    background: #1a1a1a;
+    background: var(--color-bg-primary);
     padding: 12px 20px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--color-border);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -34,18 +22,18 @@ body {
     justify-content: center;
     width: 28px;
     height: 28px;
-    border-radius: 6px;
-    background: #252525;
-    border: 1px solid #444;
-    color: #888;
+    border-radius: var(--radius-md);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    color: var(--color-text-secondary);
     cursor: pointer;
     font-size: 16px;
     font-weight: bold;
 }
 
 .header-icon:hover {
-    color: #fff;
-    background: #333;
+    color: var(--color-text);
+    background: var(--color-border);
 }
 
 #header #help-btn {
@@ -58,13 +46,13 @@ h1 {
 }
 
 #instructions.collapsible-help {
-    margin: 12px 20px;
-    padding: 12px 16px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 6px;
+    margin: var(--space-md) var(--space-xl);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     font-size: 14px;
-    color: #ccc;
+    color: var(--color-text-muted);
 }
 
 #instructions.collapsible-help[hidden] {
@@ -72,9 +60,9 @@ h1 {
 }
 
 .settings-panel {
-    background: #1a1a1a;
-    border-bottom: 1px solid #333;
-    padding: 16px 20px;
+    background: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-lg) var(--space-xl);
 }
 
 .settings-panel[hidden] {
@@ -90,35 +78,35 @@ h1 {
 }
 
 .settings-panel-actions {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid #333;
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border);
 }
 
 .settings-panel-actions .pop-btn {
-    padding: 8px 14px;
+    padding: var(--space-sm) 14px;
     font-size: 13px;
-    background: #252525;
-    color: #ccc;
-    border: 1px solid #444;
-    border-radius: 6px;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
     cursor: pointer;
 }
 
 .settings-panel-actions .pop-btn:hover {
-    background: #333;
-    color: #fff;
+    background: var(--color-border);
+    color: var(--color-text);
 }
 
 .settings-panel-actions .moderate-btn {
-    background: #8b3a3a;
-    color: #fff;
-    border-color: #a04545;
+    background: var(--color-danger-bg);
+    color: var(--color-text);
+    border-color: var(--color-danger-hover);
 }
 
 .settings-panel-actions .moderate-btn:hover {
-    background: #a04545;
-    color: #fff;
+    background: var(--color-danger-hover);
+    color: var(--color-text);
 }
 
 #controls {
@@ -128,82 +116,26 @@ h1 {
     flex-wrap: wrap;
 }
 
-button {
-    padding: 12px 24px;
-    background: #0066cc;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 600;
-}
-
-button:hover {
-    background: #0052a3;
-    transform: translateY(-1px);
-}
-
-button:disabled {
-    background: #333;
-    cursor: not-allowed;
-    transform: none;
-}
-
 #breed-btn {
-    background: #28a745;
+    background: var(--color-success);
 }
 
 #breed-btn:hover {
-    background: #218838;
+    background: var(--color-success-hover);
 }
 
-/* Span-based controls (render when <button> is stripped by Simple Browser / sanitizers) */
-.btn-action, .btn-zoom {
-    display: inline-block;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 600;
-    user-select: none;
-}
-.btn-action {
-    padding: 12px 24px;
-    background: #0066cc;
-    color: white;
-    border: 2px solid transparent;
-    border-radius: 6px;
-    font-size: 14px;
-}
-.btn-action:hover:not(.disabled) {
-    background: #0052a3;
-    transform: translateY(-1px);
-}
-.btn-action.breed {
-    background: #28a745;
-}
-.btn-action.breed:hover:not(.disabled) {
-    background: #218838;
-}
-.btn-action.disabled {
-    background: #1a2a1a;
-    color: #7cb87c;
-    border-color: #28a745;
-    cursor: not-allowed;
-    transform: none;
-}
 .zoom-controls {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 10px;
-    background: #252525;
-    border-radius: 6px;
-    border: 1px solid #444;
+    gap: var(--space-sm);
+    padding: var(--space-xs) 10px;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-light);
 }
 .zoom-controls-label {
     font-size: 12px;
-    color: #aaa;
+    color: var(--color-text-zoom);
     margin-right: 2px;
 }
 .btn-zoom {
@@ -213,40 +145,40 @@ button:disabled {
     padding: 0;
     font-size: 18px;
     text-align: center;
-    border-radius: 4px;
-    background: #0066cc;
-    color: #fff;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary);
+    color: var(--color-text);
     border: none;
 }
 .btn-zoom:hover {
-    background: #0052a3;
+    background: var(--color-primary-hover);
 }
 #zoom-label {
     display: inline-block;
     min-width: 2.5em;
-    padding: 4px 8px;
+    padding: var(--space-xs) var(--space-sm);
     font-size: 13px;
     font-weight: 600;
-    color: #0066cc;
-    background: #252525;
-    border: 1px solid #444;
-    border-radius: 4px;
+    color: var(--color-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
     text-align: center;
 }
 
 .population-size-controls {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 10px;
-    background: #252525;
-    border-radius: 6px;
-    border: 1px solid #444;
+    gap: var(--space-sm);
+    padding: var(--space-xs) 10px;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-light);
 }
 
 .population-size-label {
     font-size: 12px;
-    color: #aaa;
+    color: var(--color-text-zoom);
     margin-right: 2px;
 }
 
@@ -254,13 +186,13 @@ button:disabled {
     width: 3em;
     min-width: 3em;
     box-sizing: border-box;
-    padding: 4px 8px;
+    padding: var(--space-xs) var(--space-sm);
     font-size: 13px;
     font-weight: 600;
-    color: #0066cc;
-    background: #252525;
-    border: 1px solid #444;
-    border-radius: 4px;
+    color: var(--color-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
     text-align: center;
     -moz-appearance: textfield;
 }
@@ -273,12 +205,12 @@ button:disabled {
 
 .population-size-value:focus {
     outline: none;
-    border-color: #0066cc;
+    border-color: var(--color-primary);
 }
 
 .toolbar-sep {
-    color: #555;
-    margin: 0 4px;
+    color: var(--color-border-muted);
+    margin: 0 var(--space-xs);
     user-select: none;
 }
 
@@ -291,14 +223,14 @@ button:disabled {
     position: absolute;
     top: 100%;
     left: 0;
-    margin-top: 4px;
+    margin-top: var(--space-xs);
     min-width: 160px;
-    background: #252525;
-    border: 1px solid #444;
-    border-radius: 6px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     z-index: 200;
-    padding: 4px 0;
+    padding: var(--space-xs) 0;
 }
 
 .start-fresh-wrap .dropdown-content[hidden] {
@@ -307,22 +239,22 @@ button:disabled {
 
 .start-fresh-wrap .dropdown-content span[role="menuitem"] {
     display: block;
-    padding: 8px 14px;
-    color: #fff;
+    padding: var(--space-sm) 14px;
+    color: var(--color-text);
     cursor: pointer;
     font-size: 14px;
 }
 
 .start-fresh-wrap .dropdown-content span[role="menuitem"]:hover {
-    background: #333;
+    background: var(--color-border);
 }
 
 #stats.stats-row {
     display: inline-flex;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: var(--space-xl);
     font-size: 14px;
-    color: #888;
+    color: var(--color-text-secondary);
 }
 
 #stats .stat {
@@ -332,18 +264,18 @@ button:disabled {
 }
 
 .stat-label {
-    color: #888;
+    color: var(--color-text-secondary);
 }
 
 .stat-value {
     display: inline-block;
     min-width: 1.5em;
     padding: 2px 6px;
-    color: #0066cc;
+    color: var(--color-primary);
     font-weight: bold;
-    background: #252525;
-    border: 1px solid #444;
-    border-radius: 4px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
     text-align: center;
 }
 
@@ -351,12 +283,12 @@ button:disabled {
     display: grid;
     /* Fixed column width scaled by zoom so cards stay square and scale uniformly */
     grid-template-columns: repeat(auto-fill, calc(140px * var(--pattern-zoom, 1)));
-    gap: calc(8px * var(--pattern-zoom, 1));
+    gap: calc(var(--space-sm) * var(--pattern-zoom, 1));
     padding: 10px;
     max-width: 1800px;
     margin: 0 auto;
     min-height: 280px;
-    background: #0d0d0d;
+    background: var(--color-bg-tertiary);
 }
 
 .pattern-canvas-fallback {
@@ -366,8 +298,8 @@ button:disabled {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #1a1a1a;
-    color: #666;
+    background: var(--color-bg-primary);
+    color: var(--color-text-tertiary);
     font-size: 12px;
     text-align: center;
 }
@@ -375,32 +307,32 @@ button:disabled {
 .grid-error {
     grid-column: 1 / -1;
     padding: 24px;
-    background: #1a1a1a;
-    border: 2px solid #333;
-    border-radius: 8px;
-    color: #ccc;
+    background: var(--color-bg-primary);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-muted);
     text-align: center;
 }
 
 .grid-error .retry-btn {
     display: inline-block;
-    margin-top: 12px;
-    padding: 10px 20px;
-    background: #0066cc;
+    margin-top: var(--space-md);
+    padding: 10px var(--space-xl);
+    background: var(--color-primary);
     color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 600;
 }
 
 .grid-error .retry-btn:hover {
-    background: #0052a3;
+    background: var(--color-primary-hover);
 }
 
 .pattern-card {
-    background: #1a1a1a;
-    border-radius: 8px;
+    background: var(--color-bg-primary);
+    border-radius: var(--radius-lg);
     overflow: hidden;
     cursor: pointer;
     transition: all 0.2s;
@@ -411,11 +343,11 @@ button:disabled {
 
 .pattern-card:hover {
     transform: scale(1.02);
-    border-color: #0066cc;
+    border-color: var(--color-primary);
 }
 
 .pattern-card.selected {
-    border-color: #28a745;
+    border-color: var(--color-success);
     box-shadow: 0 0 20px rgba(40, 167, 69, 0.5);
 }
 
@@ -437,11 +369,11 @@ button:disabled {
 
 .pattern-meta {
     font-size: 10px;
-    color: #666;
+    color: var(--color-text-tertiary);
 }
 
 .click-count {
-    background: #28a745;
+    background: var(--color-success);
     color: white;
     padding: 4px 8px;
     border-radius: 12px;
@@ -450,7 +382,7 @@ button:disabled {
 }
 
 .click-count.zero {
-    background: #333;
+    background: var(--color-border);
 }
 
 /* In-flow action row: scales with card (no absolute positioning) */
@@ -463,7 +395,6 @@ button:disabled {
     background: rgba(0, 0, 0, 0.4);
 }
 
-.pattern-actions .save-btn,
 .pattern-actions .submit-community-btn,
 .pattern-actions .network-btn {
     flex-shrink: 0;
@@ -472,6 +403,18 @@ button:disabled {
     max-width: 1.8em;
     padding-left: 0;
     padding-right: 0;
+    justify-content: center;
+    display: inline-flex;
+    align-items: center;
+}
+
+.pattern-actions .save-btn {
+    flex-shrink: 0;
+    min-width: 1.8em;
+    width: auto;
+    max-width: none;
+    padding-left: 0.35em;
+    padding-right: 0.35em;
     justify-content: center;
     display: inline-flex;
     align-items: center;
@@ -516,8 +459,8 @@ button:disabled {
 }
 
 .toast {
-    background: #333;
-    color: #fff;
+    background: var(--color-border);
+    color: var(--color-text);
     padding: 12px 16px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -571,7 +514,7 @@ button:disabled {
 }
 
 .toast-close:hover {
-    color: #fff;
+    color: var(--color-text);
 }
 
 @keyframes toast-in {
@@ -603,22 +546,22 @@ button:disabled {
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: 20px;
-    color: #0066cc;
+    color: var(--color-primary);
 }
 
 #instructions {
-    background: #1a1a1a;
+    background: var(--color-bg-primary);
     padding: 15px 20px;
     margin: 20px;
     border-radius: 8px;
-    border-left: 4px solid #0066cc;
+    border-left: 4px solid var(--color-primary);
     font-size: 14px;
     line-height: 1.6;
 }
 
 .spinner {
-    border: 3px solid #333;
-    border-top: 3px solid #0066cc;
+    border: 3px solid var(--color-border);
+    border-top: 3px solid var(--color-primary);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -632,7 +575,7 @@ button:disabled {
 }
 
 #signal-controls {
-    background: #1a1a1a;
+    background: var(--color-bg-primary);
     padding: 12px 20px;
     margin: 10px 20px;
     border-radius: 8px;
@@ -649,7 +592,7 @@ button:disabled {
 }
 
 .signal-group-title {
-    color: #888;
+    color: var(--color-text-secondary);
     font-weight: 600;
     font-size: 11px;
     text-transform: uppercase;
@@ -675,29 +618,29 @@ button:disabled {
     width: 14px;
     height: 14px;
     cursor: pointer;
-    accent-color: #0066cc;
+    accent-color: var(--color-primary);
 }
 
 .signal-checkbox label {
     cursor: pointer;
-    color: #ccc;
+    color: var(--color-text-muted);
 }
 
 .signal-checkbox input:not(:checked) + label {
-    color: #666;
+    color: var(--color-text-tertiary);
     text-decoration: line-through;
 }
 
 .signal-hint {
     font-size: 10px;
-    color: #666;
+    color: var(--color-text-tertiary);
     font-style: italic;
 }
 
 .signal-flow {
     display: flex;
     align-items: center;
-    color: #0066cc;
+    color: var(--color-primary);
     font-size: 20px;
     font-weight: bold;
     padding: 0 5px;
@@ -712,7 +655,7 @@ button:disabled {
 }
 
 #time-mode-controls {
-    background: #1a1a1a;
+    background: var(--color-bg-primary);
     padding: 12px 20px;
     margin: 10px 20px;
     border-radius: 8px;
@@ -737,23 +680,23 @@ button:disabled {
     width: 16px;
     height: 16px;
     cursor: pointer;
-    accent-color: #0066cc;
+    accent-color: var(--color-primary);
 }
 
 .time-mode-radio label {
     cursor: pointer;
-    color: #ccc;
+    color: var(--color-text-muted);
     font-size: 13px;
 }
 
 .time-mode-radio input:checked + label {
-    color: #0066cc;
+    color: var(--color-primary);
     font-weight: 600;
 }
 #toolbar {
-    background: #1a1a1a;
+    background: var(--color-bg-primary);
     padding: 10px 20px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -764,27 +707,27 @@ button:disabled {
     display: inline-block;
     padding: 8px 14px;
     font-size: 13px;
-    background: #252525;
-    color: #ccc;
-    border: 1px solid #444;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-light);
     border-radius: 6px;
     cursor: pointer;
     user-select: none;
 }
 
 #toolbar .pop-btn:hover {
-    background: #333;
-    color: #fff;
+    background: var(--color-border);
+    color: var(--color-text);
 }
 
 #toolbar .pop-btn.primary {
-    background: #28a745;
-    color: #fff;
-    border-color: #28a745;
+    background: var(--color-success);
+    color: var(--color-text);
+    border-color: var(--color-success);
 }
 
 #toolbar .pop-btn.primary:hover {
-    background: #218838;
+    background: var(--color-success-hover);
 }
 
 #toolbar .stats-inline {
@@ -793,7 +736,7 @@ button:disabled {
     gap: 12px;
     align-items: center;
     font-size: 14px;
-    color: #888;
+    color: var(--color-text-secondary);
 }
 
 #toolbar .stats-inline .stat {
@@ -803,16 +746,16 @@ button:disabled {
 }
 
 #toolbar .stats-inline .stat-label {
-    color: #888;
+    color: var(--color-text-secondary);
 }
 
 #toolbar .stats-inline .stat-value {
     min-width: 1.5em;
     padding: 2px 6px;
-    color: #0066cc;
+    color: var(--color-primary);
     font-weight: 600;
-    background: #252525;
-    border: 1px solid #444;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
     border-radius: 4px;
     text-align: center;
 }
@@ -829,8 +772,8 @@ button:disabled {
     padding: 8px 14px;
     font-size: 13px;
     font-weight: 600;
-    color: #ccc;
-    background: #252525;
+    color: var(--color-text-muted);
+    background: var(--color-bg-secondary);
     border: 1px solid #555;
     border-radius: 6px;
     cursor: pointer;
@@ -838,9 +781,9 @@ button:disabled {
 }
 
 #toolbar .settings-btn:hover {
-    color: #fff;
-    background: #333;
-    border-color: #666;
+    color: var(--color-text);
+    background: var(--color-border);
+    border-color: var(--color-text-tertiary);
 }
 
 #toolbar #zoom-label {
@@ -849,9 +792,9 @@ button:disabled {
     padding: 4px 8px;
     font-size: 13px;
     font-weight: 600;
-    color: #0066cc;
-    background: #252525;
-    border: 1px solid #444;
+    color: var(--color-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
     border-radius: 4px;
     text-align: center;
 }
@@ -866,7 +809,7 @@ button:disabled {
 }
 #load-list-modal.show { display: flex; }
 #load-list-modal .modal-content {
-    background: #1a1a1a;
+    background: var(--color-bg-primary);
     padding: 20px;
     border-radius: 8px;
     max-width: 400px;
@@ -874,17 +817,17 @@ button:disabled {
     max-height: 70vh;
     overflow: auto;
 }
-#load-list-modal h3 { margin-bottom: 12px; color: #ccc; }
+#load-list-modal h3 { margin-bottom: 12px; color: var(--color-text-muted); }
 #load-list-modal ul { list-style: none; }
 #load-list-modal li {
     padding: 10px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--color-border);
     cursor: pointer;
     display: flex;
     justify-content: space-between;
 }
-#load-list-modal li:hover { background: #252525; }
-#load-list-modal .modal-close { margin-top: 12px; cursor: pointer; color: #0066cc; }
+#load-list-modal li:hover { background: var(--color-bg-secondary); }
+#load-list-modal .modal-close { margin-top: 12px; cursor: pointer; color: var(--color-primary); }
 
 /* Modal and layout styles (moved from inline in interactive_viewer.html) */
 #import-file { display: none; }
@@ -892,7 +835,7 @@ button:disabled {
 #admin-step-list p,
 #community-submit-modal .modal-content > p,
 #community-list-modal .modal-content > p {
-    color: #888;
+    color: var(--color-text-secondary);
     font-size: 13px;
 }
 #admin-key-error {
@@ -909,7 +852,7 @@ button:disabled {
     gap: 8px;
     align-items: center;
 }
-.community-modal-sep { color: #666; font-size: 12px; }
+.community-modal-sep { color: var(--color-text-tertiary); font-size: 12px; }
 #community-select-all-btn,
 #community-deselect-all-btn { font-size: 12px; }
 #community-list-close {
@@ -919,7 +862,7 @@ button:disabled {
 #grid {
     min-height: 280px;
     padding: 10px;
-    background: #0d0d0d;
+    background: var(--color-bg-tertiary);
 }
 #loading { display: none; }
 #loading > div {
