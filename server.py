@@ -247,42 +247,45 @@ def _breed_stateless(data):
                 from genealogy_routes import _get_db
                 import traceback
                 conn = _get_db()
-                
-                # Create population node for the new generation
-                cur = conn.execute(
-                    """INSERT INTO populations 
-                       (parent_id, generation_num, created_at, branch_name, description, 
-                        user_id, population_size, metadata_json)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (parent_population_id, generation_num, datetime.utcnow().isoformat(),
-                     branch_name, f'Generation {generation_num}', 'user', len(children), '{}')
-                )
-                new_population_id = cur.lastrowid
-                
-                # Save all children individuals
-                for idx, child_genome in enumerate(children):
-                    genome_json = json.dumps(child_genome)
-                    conn.execute(
-                        """INSERT INTO individuals 
-                           (population_id, genome_key, genome_json, fitness, created_at)
-                           VALUES (?, ?, ?, ?, ?)""",
-                        (new_population_id, child_genome.get('key', idx), genome_json, 
-                         0, datetime.utcnow().isoformat())
+                try:
+                    parent_row = conn.execute(
+                        "SELECT 1 FROM populations WHERE id = ?",
+                        (parent_population_id,)
+                    ).fetchone()
+                    if not parent_row:
+                        return jsonify({'children': children})
+
+                    cur = conn.execute(
+                        """INSERT INTO populations 
+                           (parent_id, generation_num, created_at, branch_name, description, 
+                            user_id, population_size, metadata_json)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (parent_population_id, generation_num, datetime.utcnow().isoformat(),
+                         branch_name, f'Generation {generation_num}', 'user', len(children), '{}')
                     )
-                
-                conn.commit()
-                conn.close()
-                
-                # Return population_id with children
-                return jsonify({
-                    'children': children,
-                    'population_id': new_population_id
-                })
+                    new_population_id = cur.lastrowid
+
+                    for idx, child_genome in enumerate(children):
+                        genome_json = json.dumps(child_genome)
+                        conn.execute(
+                            """INSERT INTO individuals 
+                               (population_id, genome_key, genome_json, fitness, created_at)
+                               VALUES (?, ?, ?, ?, ?)""",
+                            (new_population_id, child_genome.get('key', idx), genome_json,
+                             0, datetime.utcnow().isoformat())
+                        )
+
+                    conn.commit()
+                    return jsonify({
+                        'children': children,
+                        'population_id': new_population_id
+                    })
+                finally:
+                    conn.close()
             except Exception as e:
-                # Don't fail breeding if genealogy save fails
                 print(f"Warning: Failed to save to genealogy: {e}")
+                import traceback
                 traceback.print_exc()
-                # Still return children even if genealogy save failed
                 return jsonify({'children': children})
         
         # Return children without genealogy tracking
