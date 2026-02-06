@@ -53,8 +53,10 @@ class CPPNEngine:
     """
     
     def __init__(self, 
-                 config_path: str = "config/neat_config.txt",
-                 time_config_path: str = "config/neat_config_time.txt"):
+                 #config_path: str = "config/neat_config.txt",
+                 config_path: str = "config/neat_config_experimental.txt",
+                 #time_config_path: str = "config/neat_config_time.txt"):
+                 time_config_path: str = "config/neat_config_time_experimental.txt"):
         """Initialize CPPN engine with NEAT configurations."""
         # Visual CPPN config
         self.config = neat.Config(
