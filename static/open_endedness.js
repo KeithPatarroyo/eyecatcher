@@ -8,23 +8,14 @@
 const OpenEndednessTracker = (function() {
     // State
     let trackingEnabled = false;
-    let isAvailable = null;  // null = unknown, true/false = checked
+    let isAvailable = true;  // Bypass availability check for now
     let trackedSelections = [];  // Array of { genome, score, timestamp, generation }
     let scoreCache = new Map();  // genome_key -> score (to avoid recomputing)
 
     // Check if open-endedness scoring is available on the server
     async function checkAvailability() {
-        if (isAvailable !== null) return isAvailable;
-
-        try {
-            const response = await fetch(`${API_URL}/open-endedness/status`);
-            const data = await response.json();
-            isAvailable = data.available === true;
-        } catch (e) {
-            console.warn('Open-endedness scoring not available:', e);
-            isAvailable = false;
-        }
-
+        // Bypassed for now - assume available
+        isAvailable = true;
         updateToggleState();
         return isAvailable;
     }
