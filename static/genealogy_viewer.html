@@ -1117,30 +1117,40 @@
             }
         }
 
-        // Render thumbnails for all nodes (lazy loading)
+        // Render thumbnails for all nodes (batched parallel to avoid sequential delay)
+        const THUMBNAIL_BATCH_SIZE = 8;
         async function renderAllThumbnails(visNodes) {
             const nodes = visNodes.get();
             const nodeSize = parseInt(document.getElementById('node-size')?.value || 90);
-            
-            for (const node of nodes) {
-                const thumbnail = await renderThumbnail(node.id);
-                if (thumbnail) {
-                    visNodes.update({
+
+            for (let i = 0; i < nodes.length; i += THUMBNAIL_BATCH_SIZE) {
+                const batch = nodes.slice(i, i + THUMBNAIL_BATCH_SIZE);
+                const results = await Promise.all(
+                    batch.map(async (node) => ({
                         id: node.id,
-                        shape: 'circularImage',
-                        image: thumbnail,
-                        size: nodeSize / 2,
-                        borderWidth: 3,
-                        mass: 2,
-                        color: {
-                            border: node.color.border,
-                            background: 'transparent'
-                        },
-                        shapeProperties: {
-                            useBorderWithImage: true
-                        }
-                    });
-                }
+                        color: node.color,
+                        thumbnail: await renderThumbnail(node.id)
+                    }))
+                );
+                results.forEach((r) => {
+                    if (r.thumbnail) {
+                        visNodes.update({
+                            id: r.id,
+                            shape: 'circularImage',
+                            image: r.thumbnail,
+                            size: nodeSize / 2,
+                            borderWidth: 3,
+                            mass: 2,
+                            color: {
+                                border: r.color.border,
+                                background: 'transparent'
+                            },
+                            shapeProperties: {
+                                useBorderWithImage: true
+                            }
+                        });
+                    }
+                });
             }
         }
 
