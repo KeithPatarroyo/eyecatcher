@@ -123,42 +123,46 @@ def save_population():
             return jsonify({'error': 'genomes array required'}), 400
         
         conn = _get_db()
-        
-        # Create population node
-        cur = conn.execute(
-            """INSERT INTO populations 
-               (parent_id, generation_num, created_at, branch_name, description, 
-                user_id, population_size, metadata_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (parent_id, generation_num, datetime.utcnow().isoformat(),
-             branch_name, description, user_id, len(genomes), '{}')
-        )
-        population_id = cur.lastrowid
-        
-        # Save all individuals
-        individual_ids = []
-        for idx, genome in enumerate(genomes):
-            genome_json = json.dumps(genome)
-            fitness = fitness_data[idx] if idx < len(fitness_data) else 0
-            
+        try:
+            if parent_id is not None:
+                parent_row = conn.execute(
+                    "SELECT 1 FROM populations WHERE id = ?", (parent_id,)
+                ).fetchone()
+                if not parent_row:
+                    return jsonify({'error': 'parent_id not found'}), 400
+
             cur = conn.execute(
-                """INSERT INTO individuals 
-                   (population_id, genome_key, genome_json, fitness, created_at)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (population_id, genome.get('key', idx), genome_json, 
-                 fitness, datetime.utcnow().isoformat())
+                """INSERT INTO populations 
+                   (parent_id, generation_num, created_at, branch_name, description, 
+                    user_id, population_size, metadata_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (parent_id, generation_num, datetime.utcnow().isoformat(),
+                 branch_name, description, user_id, len(genomes), '{}')
             )
-            individual_ids.append(cur.lastrowid)
-        
-        conn.commit()
-        conn.close()
-        
-        return jsonify({
-            'population_id': population_id,
-            'individual_ids': individual_ids,
-            'generation_num': generation_num
-        })
-    
+            population_id = cur.lastrowid
+
+            individual_ids = []
+            for idx, genome in enumerate(genomes):
+                genome_json = json.dumps(genome)
+                fitness = fitness_data[idx] if idx < len(fitness_data) else 0
+                cur = conn.execute(
+                    """INSERT INTO individuals 
+                       (population_id, genome_key, genome_json, fitness, created_at)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (population_id, genome.get('key', idx), genome_json,
+                     fitness, datetime.utcnow().isoformat())
+                )
+                individual_ids.append(cur.lastrowid)
+
+            conn.commit()
+            return jsonify({
+                'population_id': population_id,
+                'individual_ids': individual_ids,
+                'generation_num': generation_num
+            })
+        finally:
+            conn.close()
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -180,47 +184,43 @@ def load_population(population_id):
     """
     try:
         conn = _get_db()
-        
-        # Get population metadata
-        pop_row = conn.execute(
-            """SELECT * FROM populations WHERE id = ?""",
-            (population_id,)
-        ).fetchone()
-        
-        if not pop_row:
+        try:
+            pop_row = conn.execute(
+                """SELECT * FROM populations WHERE id = ?""",
+                (population_id,)
+            ).fetchone()
+
+            if not pop_row:
+                return jsonify({'error': 'Population not found'}), 404
+
+            individual_rows = conn.execute(
+                """SELECT genome_json, fitness FROM individuals 
+                   WHERE population_id = ? ORDER BY genome_key""",
+                (population_id,)
+            ).fetchall()
+
+            genomes = []
+            for row in individual_rows:
+                try:
+                    genome = json.loads(row['genome_json'])
+                    genome['clicks'] = row['fitness']
+                    genomes.append(genome)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+            return jsonify({
+                'population_id': pop_row['id'],
+                'parent_id': pop_row['parent_id'],
+                'generation_num': pop_row['generation_num'],
+                'created_at': pop_row['created_at'],
+                'branch_name': pop_row['branch_name'],
+                'description': pop_row['description'],
+                'user_id': pop_row['user_id'],
+                'genomes': genomes
+            })
+        finally:
             conn.close()
-            return jsonify({'error': 'Population not found'}), 404
-        
-        # Get all individuals in this population
-        individual_rows = conn.execute(
-            """SELECT genome_json, fitness FROM individuals 
-               WHERE population_id = ? ORDER BY genome_key""",
-            (population_id,)
-        ).fetchall()
-        
-        conn.close()
-        
-        # Parse genomes
-        genomes = []
-        for row in individual_rows:
-            try:
-                genome = json.loads(row['genome_json'])
-                genome['clicks'] = row['fitness']  # Restore fitness as clicks
-                genomes.append(genome)
-            except (json.JSONDecodeError, TypeError):
-                continue
-        
-        return jsonify({
-            'population_id': pop_row['id'],
-            'parent_id': pop_row['parent_id'],
-            'generation_num': pop_row['generation_num'],
-            'created_at': pop_row['created_at'],
-            'branch_name': pop_row['branch_name'],
-            'description': pop_row['description'],
-            'user_id': pop_row['user_id'],
-            'genomes': genomes
-        })
-    
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -247,30 +247,29 @@ def get_tree():
     """
     try:
         conn = _get_db()
-        
-        rows = conn.execute(
-            """SELECT id, parent_id, generation_num, created_at, branch_name, 
-                      description, user_id, population_size
-               FROM populations ORDER BY created_at ASC"""
-        ).fetchall()
-        
-        conn.close()
-        
-        nodes = []
-        for row in rows:
-            nodes.append({
-                'id': row['id'],
-                'parent_id': row['parent_id'],
-                'generation_num': row['generation_num'],
-                'created_at': row['created_at'],
-                'branch_name': row['branch_name'],
-                'description': row['description'],
-                'user_id': row['user_id'],
-                'population_size': row['population_size']
-            })
-        
-        return jsonify({'nodes': nodes})
-    
+        try:
+            rows = conn.execute(
+                """SELECT id, parent_id, generation_num, created_at, branch_name,
+                          description, user_id, population_size
+                   FROM populations ORDER BY created_at ASC"""
+            ).fetchall()
+
+            nodes = [
+                {
+                    'id': row['id'],
+                    'parent_id': row['parent_id'],
+                    'generation_num': row['generation_num'],
+                    'created_at': row['created_at'],
+                    'branch_name': row['branch_name'],
+                    'description': row['description'],
+                    'user_id': row['user_id'],
+                    'population_size': row['population_size']
+                }
+                for row in rows
+            ]
+            return jsonify({'nodes': nodes})
+        finally:
+            conn.close()
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -294,37 +293,33 @@ def get_branches():
     """
     try:
         conn = _get_db()
-        
-        rows = conn.execute(
-            """SELECT branch_name, 
-                      MAX(generation_num) as latest_gen,
-                      COUNT(*) as node_count
-               FROM populations 
-               GROUP BY branch_name
-               ORDER BY branch_name"""
-        ).fetchall()
-        
-        branches = []
-        for row in rows:
-            # Get the population ID of the latest generation in this branch
-            latest_pop = conn.execute(
-                """SELECT id FROM populations 
-                   WHERE branch_name = ? AND generation_num = ?
-                   ORDER BY created_at DESC LIMIT 1""",
-                (row['branch_name'], row['latest_gen'])
-            ).fetchone()
-            
-            branches.append({
-                'name': row['branch_name'],
-                'latest_generation': row['latest_gen'],
-                'latest_population_id': latest_pop['id'] if latest_pop else None,
-                'node_count': row['node_count']
-            })
-        
-        conn.close()
-        
-        return jsonify({'branches': branches})
-    
+        try:
+            rows = conn.execute(
+                """SELECT branch_name,
+                          MAX(generation_num) as latest_gen,
+                          COUNT(*) as node_count
+                   FROM populations
+                   GROUP BY branch_name
+                   ORDER BY branch_name"""
+            ).fetchall()
+
+            branches = []
+            for row in rows:
+                latest_pop = conn.execute(
+                    """SELECT id FROM populations
+                       WHERE branch_name = ? AND generation_num = ?
+                       ORDER BY created_at DESC LIMIT 1""",
+                    (row['branch_name'], row['latest_gen'])
+                ).fetchone()
+                branches.append({
+                    'name': row['branch_name'],
+                    'latest_generation': row['latest_gen'],
+                    'latest_population_id': latest_pop['id'] if latest_pop else None,
+                    'node_count': row['node_count']
+                })
+            return jsonify({'branches': branches})
+        finally:
+            conn.close()
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -338,11 +333,13 @@ def reset_genealogy():
     """
     try:
         conn = _get_db()
-        conn.execute("DELETE FROM individuals")
-        conn.execute("DELETE FROM populations")
-        conn.commit()
-        conn.close()
-        return jsonify({'status': 'ok'})
+        try:
+            conn.execute("DELETE FROM individuals")
+            conn.execute("DELETE FROM populations")
+            conn.commit()
+            return jsonify({'status': 'ok'})
+        finally:
+            conn.close()
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -361,28 +358,25 @@ def get_stats():
     """
     try:
         conn = _get_db()
-        
-        stats = conn.execute(
-            """SELECT 
-                COUNT(DISTINCT id) as total_pops,
-                COUNT(DISTINCT branch_name) as total_branches,
-                MAX(generation_num) as max_gen
-               FROM populations"""
-        ).fetchone()
-        
-        total_individuals = conn.execute(
-            """SELECT COUNT(*) as total FROM individuals"""
-        ).fetchone()['total']
-        
-        conn.close()
-        
-        return jsonify({
-            'total_populations': stats['total_pops'],
-            'total_individuals': total_individuals,
-            'total_branches': stats['total_branches'],
-            'max_generation': stats['max_gen'] or 0
-        })
-    
+        try:
+            stats = conn.execute(
+                """SELECT
+                    COUNT(DISTINCT id) as total_pops,
+                    COUNT(DISTINCT branch_name) as total_branches,
+                    MAX(generation_num) as max_gen
+                   FROM populations"""
+            ).fetchone()
+            total_individuals = conn.execute(
+                "SELECT COUNT(*) as total FROM individuals"
+            ).fetchone()['total']
+            return jsonify({
+                'total_populations': stats['total_pops'],
+                'total_individuals': total_individuals,
+                'total_branches': stats['total_branches'],
+                'max_generation': stats['max_gen'] or 0
+            })
+        finally:
+            conn.close()
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -399,22 +393,18 @@ def get_population_thumbnail(population_id):
     """
     try:
         conn = _get_db()
-        
-        # Get the individual with highest fitness from this population
-        row = conn.execute(
-            """SELECT genome_json, fitness FROM individuals 
-               WHERE population_id = ? 
-               ORDER BY fitness DESC 
-               LIMIT 1""",
-            (population_id,)
-        ).fetchone()
-        
-        conn.close()
-        
-        if not row:
-            return jsonify({'error': 'No individuals found in this population'}), 404
-        
         try:
+            row = conn.execute(
+                """SELECT genome_json, fitness FROM individuals
+                   WHERE population_id = ?
+                   ORDER BY fitness DESC
+                   LIMIT 1""",
+                (population_id,)
+            ).fetchone()
+
+            if not row:
+                return jsonify({'error': 'No individuals found in this population'}), 404
+
             genome = json.loads(row['genome_json'])
             return jsonify({
                 'genome': genome,
@@ -422,6 +412,7 @@ def get_population_thumbnail(population_id):
             })
         except (json.JSONDecodeError, TypeError):
             return jsonify({'error': 'Invalid genome data'}), 500
-    
+        finally:
+            conn.close()
     except Exception as e:
         return jsonify({'error': str(e)}), 500
