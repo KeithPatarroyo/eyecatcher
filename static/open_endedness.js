@@ -164,11 +164,7 @@ const OpenEndednessTracker = (function() {
 
     // Toggle tracking on/off
     function toggleTracking() {
-        if (!isAvailable) {
-            showToast('Not available', 'Open-endedness scoring requires additional dependencies on the server.', 'error');
-            return;
-        }
-
+        // Availability check bypassed for now
         trackingEnabled = !trackingEnabled;
         updateToggleState();
 
