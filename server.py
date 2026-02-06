@@ -41,7 +41,8 @@ else:
 # Engine and compiler (no server-side population state)
 engine = CPPNEngine()
 engine.create_population()  # Initialize NEAT populations for mutation/crossover
-compiler = ShaderCompiler()
+compiler = ShaderCompiler(color_mode="hsv") # Use HSV output for more vibrant colors (client converts to RGB for display)
+#compiler = ShaderCompiler(color_mode="rgb")  # Use RGB output 
 
 # Initialize and register API blueprints
 init_stateless_api(engine, compiler)
