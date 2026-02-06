@@ -266,3 +266,118 @@ def api_adjust_weight():
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@stateless_bp.route('/api/generate-gif', methods=['POST'])
+def api_generate_single_gif():
+    """
+    Generate animated GIF for a single pattern.
+    Body: { "genome": { genome_data } }
+    Returns: { "id": pattern_id, "filename": "pattern_X.gif", "content_base64": "..." }
+    """
+    try:
+        import base64
+        import io
+        from PIL import Image
+        
+        data = request.json or {}
+        genome_data = data.get('genome')
+        
+        if not genome_data:
+            return jsonify({'error': 'genome required'}), 400
+        
+        dual = dual_genome_from_json(genome_data, _engine)
+        pattern_id = genome_data.get('key', dual.key if dual else 0)
+        
+        # Generate frames (reduced from 20→12 frames and 256→128 resolution for 8x speedup)
+        frames = []
+        num_frames = 12
+        resolution = 128
+        for frame_idx in range(num_frames):
+            time_value = frame_idx / num_frames
+            img_array = _engine.render_image(dual.visual, resolution=resolution, time=time_value)
+            frames.append(Image.fromarray(img_array))
+        
+        # Create animated GIF
+        gif_buffer = io.BytesIO()
+        frames[0].save(
+            gif_buffer,
+            format='GIF',
+            save_all=True,
+            append_images=frames[1:],
+            duration=100,  # 100ms per frame
+            loop=0  # infinite loop
+        )
+        
+        gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('ascii')
+        
+        return jsonify({
+            'id': pattern_id,
+            'filename': f'pattern_{pattern_id}.gif',
+            'content_base64': gif_base64
+        })
+        
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@stateless_bp.route('/api/generate-gifs', methods=['POST'])
+def api_generate_gifs():
+    """
+    Generate animated GIFs for multiple patterns (batch mode).
+    Body: { "genomes": [ { genome_data }, ... ] }
+    Returns: { "gifs": [ { "id": pattern_id, "content_base64": "..." }, ... ] }
+    """
+    try:
+        import base64
+        import io
+        from PIL import Image
+        
+        data = request.json or {}
+        genomes_data = data.get('genomes', [])
+        
+        if not genomes_data:
+            return jsonify({'error': 'genomes array required'}), 400
+        
+        gifs = []
+        
+        for g_data in genomes_data:
+            dual = dual_genome_from_json(g_data, _engine)
+            pattern_id = g_data.get('key', dual.key if dual else 0)
+            
+            # Generate frames (reduced from 20→12 frames and 256→128 resolution for 8x speedup)
+            frames = []
+            num_frames = 12
+            resolution = 128
+            for frame_idx in range(num_frames):
+                time_value = frame_idx / num_frames
+                img_array = _engine.render_image(dual.visual, resolution=resolution, time=time_value)
+                frames.append(Image.fromarray(img_array))
+            
+            # Create animated GIF
+            gif_buffer = io.BytesIO()
+            frames[0].save(
+                gif_buffer,
+                format='GIF',
+                save_all=True,
+                append_images=frames[1:],
+                duration=100,  # 100ms per frame
+                loop=0  # infinite loop
+            )
+            
+            gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('ascii')
+            
+            gifs.append({
+                'id': pattern_id,
+                'filename': f'pattern_{pattern_id}.gif',
+                'content_base64': gif_base64
+            })
+        
+        return jsonify({'gifs': gifs})
+        
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

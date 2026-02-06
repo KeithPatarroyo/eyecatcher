@@ -137,6 +137,12 @@ def serve_network_css():
     return send_from_directory(STATIC_DIR, 'network.css', mimetype='text/css')
 
 
+@app.route('/gif.worker.js')
+def serve_gif_worker_js():
+    """Serve gif.js worker script for client-side GIF generation."""
+    return send_from_directory(STATIC_DIR, 'gif.worker.js', mimetype='application/javascript')
+
+
 @app.route('/api/breed', methods=['POST'])
 def breed():
     """

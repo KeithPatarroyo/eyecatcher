@@ -11,61 +11,77 @@
     <link rel="stylesheet" href="viewer.css">
     <link rel="stylesheet" href="network.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 </head>
 
 <body>
     <div id="header">
         <h1>Eyecatcher</h1>
-        <span id="help-btn" class="header-icon" role="button" tabindex="0" title="Show help" aria-label="Show help">?</span>
+        <span id="help-btn" class="header-icon" role="button" tabindex="0" title="Show help"
+            aria-label="Show help">?</span>
     </div>
 
     <div id="toolbar">
-        <span id="breed-btn" class="btn-action breed disabled" role="button" tabindex="0" aria-disabled="true">Evolve Next Generation</span>
+        <span id="breed-btn" class="btn-action breed disabled" role="button" tabindex="0" aria-disabled="true">Evolve
+            Next Generation</span>
         <span class="toolbar-sep" aria-hidden="true">|</span>
         <span class="start-fresh-wrap">
-            <span id="start-fresh-btn" class="btn-action pop-btn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">Start Fresh ▾</span>
+            <span id="start-fresh-btn" class="btn-action pop-btn" role="button" tabindex="0" aria-haspopup="true"
+                aria-expanded="false">Start Fresh ▾</span>
             <div id="start-fresh-dropdown" class="dropdown-content" role="menu" hidden>
                 <span data-action="random" role="menuitem" tabindex="0">Random</span>
                 <span data-action="load" role="menuitem" tabindex="0">Load population</span>
             </div>
         </span>
-        <span id="new-from-community-btn" class="pop-btn btn-action" role="button" tabindex="0">Add from Community</span>
+        <span id="new-from-community-btn" class="pop-btn btn-action" role="button" tabindex="0">Add from
+            Community</span>
         <span id="import-btn" class="pop-btn btn-action" role="button" tabindex="0">Add from File</span>
         <span id="save-current-btn" class="pop-btn btn-action" role="button" tabindex="0">Save population</span>
+        <span id="download-all-gifs-btn" class="pop-btn btn-action" role="button" tabindex="0">Download All GIFs</span>
         <span class="toolbar-sep" aria-hidden="true">|</span>
         <span id="stats" class="stats-inline">
-            <span class="stat"><span class="stat-label">Generation:</span><span id="gen-num" class="stat-value">0</span></span>
-            <span class="stat"><span class="stat-label">Total clicks:</span><span id="total-clicks" class="stat-value">0</span></span>
+            <span class="stat"><span class="stat-label">Generation:</span><span id="gen-num"
+                    class="stat-value">0</span></span>
+            <span class="stat"><span class="stat-label">Total clicks:</span><span id="total-clicks"
+                    class="stat-value">0</span></span>
             <span class="toolbar-sep" aria-hidden="true">|</span>
             <span class="population-size-controls" title="Number of individuals per generation">
                 <span class="population-size-label">Population size</span>
-                <span id="population-size-down" class="btn-zoom" role="button" tabindex="0" title="Decrease" aria-label="Decrease population size">−</span>
-                <input type="number" id="population-size-input" class="population-size-value" min="2" max="50" value="12" title="Individuals per generation" aria-label="Population size">
-                <span id="population-size-up" class="btn-zoom" role="button" tabindex="0" title="Increase" aria-label="Increase population size">+</span>
+                <span id="population-size-down" class="btn-zoom" role="button" tabindex="0" title="Decrease"
+                    aria-label="Decrease population size">−</span>
+                <input type="number" id="population-size-input" class="population-size-value" min="2" max="50"
+                    value="12" title="Individuals per generation" aria-label="Population size">
+                <span id="population-size-up" class="btn-zoom" role="button" tabindex="0" title="Increase"
+                    aria-label="Increase population size">+</span>
             </span>
         </span>
         <span class="toolbar-sep" aria-hidden="true">|</span>
         <span class="zoom-controls" title="Pattern size">
             <span class="zoom-controls-label">Zoom</span>
-            <span id="zoom-out" class="btn-zoom" role="button" tabindex="0" title="Zoom out" aria-label="Zoom out">−</span>
+            <span id="zoom-out" class="btn-zoom" role="button" tabindex="0" title="Zoom out"
+                aria-label="Zoom out">−</span>
             <span id="zoom-label">100%</span>
             <span id="zoom-in" class="btn-zoom" role="button" tabindex="0" title="Zoom in" aria-label="Zoom in">+</span>
         </span>
         <span class="toolbar-end">
-            <span id="settings-btn" class="settings-btn" role="button" tabindex="0" aria-expanded="false" title="Settings" aria-label="Open settings">⚙ Settings</span>
+            <span id="settings-btn" class="settings-btn" role="button" tabindex="0" aria-expanded="false"
+                title="Settings" aria-label="Open settings">⚙ Settings</span>
         </span>
         <input type="file" id="import-file" accept=".json,.zip">
     </div>
-    
+
     <div id="instructions" class="collapsible-help" hidden>
-        <strong>How to use:</strong> Click on patterns you like (right-click to undo). The more you click, the higher their fitness. 
-        When you're happy with your selection, click "Evolve Next Generation" to breed the next generation from your favorites.
+        <strong>How to use:</strong> Click on patterns you like (right-click to undo). The more you click, the higher
+        their fitness.
+        When you're happy with your selection, click "Evolve Next Generation" to breed the next generation from your
+        favorites.
         Patterns with green borders have fitness (clicks). Hover over a pattern and click "Download" to save it.
     </div>
 
     <div id="settings-panel" class="settings-panel" hidden>
         <div id="time-mode-controls">
-            <div class="signal-group-title">Time signal <span class="signal-hint">(raw input; CPPN modifies it)</span></div>
+            <div class="signal-group-title">Time signal <span class="signal-hint">(raw input; CPPN modifies it)</span>
+            </div>
             <div class="time-mode-radios">
                 <div class="time-mode-radio">
                     <input type="radio" id="time-mode-loop" name="timeMode" value="loop">
@@ -87,7 +103,8 @@
                 <div class="signal-checkboxes">
                     <div class="signal-checkbox">
                         <input type="checkbox" id="time-rawTime" checked>
-                        <label for="time-rawTime">Raw Time <span class="signal-hint">(from Time Mode above)</span></label>
+                        <label for="time-rawTime">Raw Time <span class="signal-hint">(from Time Mode
+                                above)</span></label>
                     </div>
                     <div class="signal-checkbox">
                         <input type="checkbox" id="time-mouseSpeed" checked>
@@ -130,13 +147,14 @@
             <button type="button" id="settings-moderate-btn" class="pop-btn moderate-btn">Moderate</button>
         </div>
     </div>
-    
+
     <div id="admin-modal">
         <div class="modal-content">
             <div id="admin-step-key">
                 <h3>Community moderation</h3>
                 <p>Enter the admin API key to review pending submissions.</p>
-                <label>API key <input type="password" id="admin-key-input" placeholder="Admin key" autocomplete="off"></label>
+                <label>API key <input type="password" id="admin-key-input" placeholder="Admin key"
+                        autocomplete="off"></label>
                 <p id="admin-key-error"></p>
                 <div class="modal-actions">
                     <button type="button" class="primary" id="admin-key-submit">Continue</button>
@@ -151,7 +169,7 @@
             </div>
         </div>
     </div>
-    
+
     <div id="community-submit-modal">
         <div class="modal-content">
             <h3>Submit to Community</h3>
@@ -167,7 +185,8 @@
     <div id="community-list-modal">
         <div class="modal-content">
             <h3>Load from Community</h3>
-            <p>Select one or more patterns (click row or checkbox), then "Load selected". Or use the shortcuts below.</p>
+            <p>Select one or more patterns (click row or checkbox), then "Load selected". Or use the shortcuts below.
+            </p>
             <ul id="community-list"></ul>
             <div class="community-modal-actions">
                 <button type="button" class="pop-btn primary" id="community-load-selected-btn">Load selected</button>
@@ -179,7 +198,7 @@
             <span class="modal-close" id="community-list-close">Cancel</span>
         </div>
     </div>
-    
+
     <div id="load-list-modal">
         <div class="modal-content">
             <h3>Load population</h3>
@@ -187,9 +206,9 @@
             <span class="modal-close" id="load-modal-close">Cancel</span>
         </div>
     </div>
-    
+
     <div id="grid"></div>
-    
+
     <div id="loading">
         <div class="spinner"></div>
         <div>Loading patterns...</div>
@@ -812,6 +831,156 @@
                 await PopulationUI.handleImportFile(file);
             }
         });
+
+        // Download All GIFs button handler (client-side WebGL rendering)
+        const downloadAllGifsBtn = document.getElementById('download-all-gifs-btn');
+        if (downloadAllGifsBtn) {
+            downloadAllGifsBtn.addEventListener('click', async () => {
+                if (!currentGenomes || currentGenomes.length === 0) {
+                    showToast('No patterns to generate GIFs from', 'error');
+                    return;
+                }
+
+                const totalCount = currentGenomes.length;
+                let completedCount = 0;
+
+                showToast(`Compiling shaders...`, 'info');
+
+                try {
+                    // First, compile all shaders
+                    const compileResponse = await fetch(`${API_URL}/compile`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ genomes: currentGenomes })
+                    });
+
+                    if (!compileResponse.ok) {
+                        throw new Error('Failed to compile shaders');
+                    }
+
+                    const compileData = await compileResponse.json();
+                    const shaders = compileData.shaders;
+
+                    // Create offscreen canvas for rendering
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 256;
+                    canvas.height = 256;
+
+                    // Create zip file for all GIFs
+                    const zip = new JSZip();
+                    const gifsFolder = zip.folder('pattern_gifs');
+
+                    // Generate GIF for each pattern
+                    for (let i = 0; i < shaders.length; i++) {
+                        const shader = shaders[i];
+                        const patternId = shader.id;
+
+                        showToast(`Generating GIF ${i + 1}/${totalCount}...`, 'info');
+
+                        // Setup WebGL for this pattern
+                        const patternData = PatternRenderer.setupPattern(canvas, shader.shader);
+                        if (!patternData) {
+                            console.error(`Failed to setup pattern ${patternId}`);
+                            continue;
+                        }
+
+                        // Create GIF encoder
+                        const gif = new GIF({
+                            workers: 2,
+                            quality: 10,
+                            width: 256,
+                            height: 256,
+                            workerScript: 'gif.worker.js'
+                        });
+
+                        // Generate and add frames
+                        const numFrames = 20;
+
+                        // Get current time mode to match on-screen animation
+                        const timeMode = document.querySelector('input[name="timeMode"]:checked')?.value || 'oscillate';
+
+                        for (let frameIdx = 0; frameIdx < numFrames; frameIdx++) {
+                            let time;
+                            const phase = frameIdx / numFrames; // 0 to 1 over the animation
+
+                            // Match the time calculation from animate() function
+                            switch (timeMode) {
+                                case 'loop':
+                                    // Sawtooth: linear ramp 0->1
+                                    time = phase;
+                                    break;
+
+                                case 'oscillate':
+                                    // Smooth sine wave: 0->1->0 over full cycle
+                                    time = (Math.sin(phase * Math.PI * 2) + 1) * 0.5;
+                                    break;
+
+                                case 'infinite':
+                                    // Linear unbounded growth
+                                    time = phase * 2; // Show 2 seconds of infinite growth
+                                    break;
+
+                                default:
+                                    time = phase;
+                            }
+
+                            // Render frame with WebGL
+                            PatternRenderer.renderPattern(
+                                patternData,
+                                time,
+                                0, // mouseSpeed
+                                0, // mouseDist
+                                0, // inactivity (activity)
+                                ZoomSignals.signalState
+                            );
+
+                            // Add frame to GIF (copy canvas to avoid reuse issues)
+                            gif.addFrame(canvas, { copy: true, delay: 100 });
+                        }
+
+                        // Render GIF and add to zip
+                        const gifBlob = await new Promise((resolve, reject) => {
+                            gif.on('finished', resolve);
+                            gif.on('error', reject);
+                            gif.render();
+                        });
+
+                        gifsFolder.file(`pattern_${patternId}.gif`, gifBlob);
+                        completedCount++;
+                    }
+
+                    // Generate and download the zip file
+                    showToast('Creating zip file...', 'info');
+                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+                    const url = URL.createObjectURL(zipBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `pattern_gifs_gen${currentGenerationNum}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    showToast(`✓ Downloaded ${completedCount} GIFs in zip!`, 'success');
+
+                } catch (error) {
+                    console.error('Error generating GIFs:', error);
+                    showToast(`Error: ${error.message} (${completedCount}/${totalCount} completed)`, 'error');
+                }
+            });
+        }
+
+        // Helper function to convert base64 to blob
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: mimeType });
+        }
 
         // Initialize
         ZoomSignals.init();
