@@ -1104,6 +1104,11 @@
 
                 // Convert to data URL
                 const dataUrl = canvas.toDataURL('image/png');
+                const MAX_THUMBNAIL_CACHE = 200;
+                if (thumbnailCache.size >= MAX_THUMBNAIL_CACHE) {
+                    const firstKey = thumbnailCache.keys().next().value;
+                    if (firstKey !== undefined) thumbnailCache.delete(firstKey);
+                }
                 thumbnailCache.set(populationId, dataUrl);
                 return dataUrl;
             } catch (error) {
