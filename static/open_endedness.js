@@ -74,33 +74,33 @@ const OpenEndednessTracker = (function() {
             scoreDisplay.textContent = '...';
         }
 
-        // Compute score
+        // Compute score (may fail if server doesn't have dependencies)
         const score = await computeScore(genome);
 
+        // Always track the selection, even if score is null
+        trackedSelections.push({
+            genome: genome,
+            score: score,  // may be null if computation failed
+            timestamp: new Date().toISOString(),
+            generation: generation,
+            patternId: patternId
+        });
+        updateTrackedCount();
+
         if (score !== null) {
-            // Update display
+            // Update display with computed score
             if (scoreDisplay) {
                 scoreDisplay.className = 'oe-score';
                 scoreDisplay.textContent = score.toFixed(3);
                 scoreDisplay.title = `Open-endedness score: ${score.toFixed(4)} (lower = more diverse)`;
             }
-
-            // Track the selection
-            trackedSelections.push({
-                genome: genome,
-                score: score,
-                timestamp: new Date().toISOString(),
-                generation: generation,
-                patternId: patternId
-            });
-
-            updateTrackedCount();
             return score;
         } else {
+            // Score computation failed, but pattern is still tracked
             if (scoreDisplay) {
                 scoreDisplay.className = 'oe-score error';
-                scoreDisplay.textContent = 'err';
-                scoreDisplay.title = 'Failed to compute score';
+                scoreDisplay.textContent = 'N/A';
+                scoreDisplay.title = 'Score unavailable (check server logs)';
             }
             return null;
         }
@@ -132,17 +132,19 @@ const OpenEndednessTracker = (function() {
     // Export tracked selections
     function exportTrackedSelections() {
         if (trackedSelections.length === 0) {
-            showToast('No selections', 'No patterns have been tracked yet.', 'info');
+            showToast('No selections', 'No patterns have been tracked yet. Enable tracking and click on some patterns.', 'info');
             return;
         }
 
+        const withScores = trackedSelections.filter(s => s.score !== null).length;
         const exportData = {
             name: 'Open-Endedness Tracked Selections',
             exportedAt: new Date().toISOString(),
             totalSelections: trackedSelections.length,
+            selectionsWithScores: withScores,
             selections: trackedSelections.map(s => ({
                 genome: s.genome,
-                score: s.score,
+                score: s.score,  // may be null
                 timestamp: s.timestamp,
                 generation: s.generation
             }))
@@ -152,7 +154,10 @@ const OpenEndednessTracker = (function() {
         const filename = `oe_tracked_${new Date().toISOString().slice(0, 10)}.json`;
         triggerDownload(blob, filename);
 
-        showToast('Exported', `${trackedSelections.length} tracked selections saved to ${filename}`, 'success');
+        const msg = withScores < trackedSelections.length
+            ? `${trackedSelections.length} selections (${withScores} with scores)`
+            : `${trackedSelections.length} selections with scores`;
+        showToast('Exported', `${msg} saved to ${filename}`, 'success');
     }
 
     // Clear tracked selections
