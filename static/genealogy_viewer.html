@@ -6,7 +6,7 @@
     <title>Eyecatcher - Genealogy Tree</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
-    <script src="pattern_renderer.js"></script>
+    <script src="js/modules/pattern_renderer.js"></script>
     <style>
         * {
             margin: 0;
@@ -494,6 +494,7 @@
         <div class="header-actions">
             <a href="/" class="btn secondary">← Back to Evolution</a>
             <button class="btn" id="refresh-btn">🔄 Refresh</button>
+            <button class="btn secondary" id="reset-genealogy-btn" title="Clear all genealogy data (cannot be undone)">Reset genealogy</button>
         </div>
     </div>
 
@@ -1117,7 +1118,7 @@
                         shape: 'circularImage',
                         image: thumbnail,
                         size: nodeSize / 2,
-                        borderWidth: node.borderWidth || 1,
+                        borderWidth: 3,
                         mass: 2,
                         color: {
                             border: node.color.border,
@@ -1134,6 +1135,27 @@
         // Event listeners
         document.getElementById('refresh-btn').onclick = () => {
             loadTree();
+        };
+
+        document.getElementById('reset-genealogy-btn').onclick = async () => {
+            if (!confirm('Clear all genealogy data? This cannot be undone.')) return;
+            try {
+                const r = await fetch(`${API_URL}/genealogy/reset`, { method: 'POST' });
+                const data = await r.json().catch(() => ({}));
+                if (!r.ok || data.error) {
+                    showToast('Reset failed', data.error || 'Server error', 'error');
+                    return;
+                }
+                try { localStorage.removeItem('genealogy_branch_counter'); } catch (e) {}
+                try { sessionStorage.removeItem('current_population_id'); } catch (e) {}
+                thumbnailCache.clear();
+                savedPositions = null;
+                selectedNodeId = null;
+                showToast('Genealogy reset', 'All populations and branches cleared.', 'success');
+                loadTree();
+            } catch (e) {
+                showToast('Reset failed', e.message || 'Network error', 'error');
+            }
         };
 
         document.getElementById('fit-btn').onclick = () => {

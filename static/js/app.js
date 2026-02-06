@@ -125,6 +125,10 @@
                         setGenealogyBranchCounter(counter + 1);
                         currentBranchName = branchName;
                     }
+                    var fitnessData = currentPopulation.map(function (p) {
+                        var pat = patterns.get(p.id);
+                        return pat ? (pat.clicks || 0) : 0;
+                    });
                     return fetch(API_URL + '/genealogy/save-population', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -134,7 +138,8 @@
                             generation_num: generationNum,
                             branch_name: branchName,
                             description: generationNum === 0 ? 'Random initial population' : 'Generation ' + generationNum,
-                            user_id: 'user'
+                            user_id: 'user',
+                            fitness_data: fitnessData
                         })
                     })
                         .then(function (r) { return r.json(); })

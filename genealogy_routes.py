@@ -27,6 +27,7 @@ def _get_db():
     """Get a connection to the genealogy database."""
     os.makedirs(os.path.dirname(GENEALOGY_DB_PATH) or '.', exist_ok=True)
     conn = sqlite3.connect(GENEALOGY_DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -324,6 +325,24 @@ def get_branches():
         
         return jsonify({'branches': branches})
     
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@genealogy_bp.route('/api/genealogy/reset', methods=['POST'])
+def reset_genealogy():
+    """
+    Clear all genealogy data (populations and individuals).
+    Use for a fresh start; data cannot be recovered.
+    Returns: { "status": "ok" }
+    """
+    try:
+        conn = _get_db()
+        conn.execute("DELETE FROM individuals")
+        conn.execute("DELETE FROM populations")
+        conn.commit()
+        conn.close()
+        return jsonify({'status': 'ok'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
