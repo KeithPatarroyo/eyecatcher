@@ -5,6 +5,7 @@ Provides endpoints that don't depend on server-side population state:
 - /api/compile: Compile genome JSON to GLSL shaders
 - /api/random: Generate random population as genome JSON
 - /api/seeds: Return curated seed patterns
+- /api/open-endedness: Compute open-endedness score for a genome
 """
 import json
 import os
@@ -13,6 +14,23 @@ from flask import Blueprint, jsonify, request
 from cppn_engine import CPPNEngine, DualGenome, create_random_dual_genome
 from genome_serialization import dual_genome_from_json, dual_genome_to_json
 from shader_compiler import ShaderCompiler
+
+# Optional imports for open-endedness scoring
+_clip_embedder = None
+_open_endedness_available = False
+
+def _init_open_endedness():
+    """Try to initialize CLIP embedder for open-endedness scoring."""
+    global _clip_embedder, _open_endedness_available
+    if _clip_embedder is not None:
+        return _open_endedness_available
+    try:
+        from foundation_models.clip import CLIPEmbedder
+        _clip_embedder = CLIPEmbedder()
+        _open_endedness_available = True
+    except ImportError:
+        _open_endedness_available = False
+    return _open_endedness_available
 
 
 # Create blueprint
@@ -153,3 +171,147 @@ def api_time_output():
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@stateless_bp.route('/api/open-endedness', methods=['POST'])
+def api_open_endedness():
+    """
+    Compute open-endedness score for a genome's animation.
+
+    The score measures temporal diversity - how much the pattern changes over time.
+    Lower scores indicate more diverse/interesting animations.
+
+    Body: {
+        "genome": { "key", "visual", "time_signal" },
+        "num_frames": 16,  // optional, default 16
+        "resolution": 224  // optional, default 224
+    }
+    Returns: {
+        "score": float,  // open-endedness score (lower = more interesting)
+        "available": true,
+        "genome_key": int
+    }
+    """
+    try:
+        # Check if open-endedness scoring is available
+        if not _init_open_endedness():
+            return jsonify({
+                'error': 'Open-endedness scoring not available. Install: pip install jax flax transformers einops',
+                'available': False
+            }), 503
+
+        data = request.json or {}
+        genome_data = data.get('genome')
+        if not genome_data:
+            return jsonify({'error': 'genome required'}), 400
+
+        num_frames = int(data.get('num_frames', 16))
+        resolution = int(data.get('resolution', 224))
+
+        # Parse genome
+        dual = dual_genome_from_json(genome_data, _engine)
+        genome_key = genome_data.get('key', dual.key if dual else 0)
+
+        # Import required modules
+        from rollout import render_video_rollout, compute_video_embeddings
+        from asal_metrics import calc_open_endedness_score
+
+        # Render video frames
+        frames = render_video_rollout(
+            _engine,
+            dual,
+            num_frames=num_frames,
+            resolution=resolution,
+            time_range=(0.0, 1.0),
+        )
+
+        # Compute embeddings
+        embeddings = compute_video_embeddings(frames, _clip_embedder)
+
+        # Compute open-endedness score
+        score = calc_open_endedness_score(embeddings)
+        score = float(score)  # Convert from JAX scalar
+
+        return jsonify({
+            'score': score,
+            'available': True,
+            'genome_key': genome_key,
+            'num_frames': num_frames
+        })
+
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@stateless_bp.route('/api/open-endedness/batch', methods=['POST'])
+def api_open_endedness_batch():
+    """
+    Compute open-endedness scores for multiple genomes.
+
+    Body: {
+        "genomes": [ { "key", "visual", "time_signal" }, ... ],
+        "num_frames": 16,
+        "resolution": 224
+    }
+    Returns: {
+        "scores": [ { "genome_key": int, "score": float }, ... ],
+        "available": true
+    }
+    """
+    try:
+        if not _init_open_endedness():
+            return jsonify({
+                'error': 'Open-endedness scoring not available',
+                'available': False
+            }), 503
+
+        data = request.json or {}
+        genomes_data = data.get('genomes', [])
+        if not genomes_data:
+            return jsonify({'error': 'genomes array required'}), 400
+
+        num_frames = int(data.get('num_frames', 16))
+        resolution = int(data.get('resolution', 224))
+
+        from rollout import render_video_rollout, compute_video_embeddings
+        from asal_metrics import calc_open_endedness_score
+
+        results = []
+        for g_data in genomes_data:
+            dual = dual_genome_from_json(g_data, _engine)
+            genome_key = g_data.get('key', dual.key if dual else 0)
+
+            frames = render_video_rollout(
+                _engine, dual,
+                num_frames=num_frames,
+                resolution=resolution,
+                time_range=(0.0, 1.0),
+            )
+            embeddings = compute_video_embeddings(frames, _clip_embedder)
+            score = float(calc_open_endedness_score(embeddings))
+
+            results.append({
+                'genome_key': genome_key,
+                'score': score
+            })
+
+        return jsonify({
+            'scores': results,
+            'available': True
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@stateless_bp.route('/api/open-endedness/status', methods=['GET'])
+def api_open_endedness_status():
+    """Check if open-endedness scoring is available."""
+    available = _init_open_endedness()
+    return jsonify({'available': available})
