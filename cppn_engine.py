@@ -352,10 +352,13 @@ class CPPNEngine:
                               genome: neat.DefaultGenome, 
                               config: neat.Config) -> neat.DefaultGenome:
         """Create a mutated copy of a single genome."""
+        # Ensure node indexer is ahead of this genome's node IDs (avoids AssertionError
+        # when mutate_add_node picks an ID that already exists in deserialized genomes)
+        from genome_serialization import _update_node_indexer_from_genome
+        _update_node_indexer_from_genome(genome, config.genome_config)
         # Ensure parent has fitness (required for configure_crossover)
         if genome.fitness is None:
             genome.fitness = 0.0
-        
         # Ensure parent has a valid key
         parent_key = genome.key if genome.key is not None else 0
         child = neat.DefaultGenome(parent_key + 1)
