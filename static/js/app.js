@@ -120,6 +120,8 @@
                     var parentId = currentPopulationId;
                     if (generationNum === 0) {
                         parentId = null;
+                        currentPopulationId = null;
+                        syncCurrentPopulationIdToStorage();
                         var counter = getGenealogyBranchCounter();
                         branchName = counter === 1 ? 'main' : 'branch-' + counter;
                         setGenealogyBranchCounter(counter + 1);
