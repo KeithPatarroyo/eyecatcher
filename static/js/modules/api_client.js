@@ -39,6 +39,7 @@
 
     /**
      * Breed next generation. Returns { children, population_id? } or throws.
+     * When genealogy is provided, the backend auto-saves to the genealogy tree; do not call save-population after breeding.
      * @param {Array} parents - Array of { genome, clicks }
      * @param {number} populationSize - Desired population size
      * @param {Object} [genealogy] - Optional { parentPopulationId, generationNum, branchName } for genealogy tree
