@@ -10,12 +10,11 @@ RUN pip install --no-cache-dir -e .
 RUN pip install --no-cache-dir gunicorn
 
 # Application code and config
-COPY cppn_engine.py shader_compiler.py server.py stateless_api.py community_routes.py genome_serialization.py genome_visualizer.py .
+COPY cppn_engine.py shader_compiler.py server.py stateless_api.py community_routes.py genealogy_routes.py genome_serialization.py genome_visualizer.py .
 COPY config/ config/
 COPY static/ static/
-COPY data/ data/
 
-# Output directory for saved patterns
+# output/ and data/ created at runtime; genealogy/community DBs created on first use
 RUN mkdir -p output/saved data
 
 # Wrapper script expands PORT at runtime (Railway runs startCommand without a shell)
