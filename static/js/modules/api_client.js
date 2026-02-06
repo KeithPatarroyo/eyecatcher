@@ -38,15 +38,22 @@
     }
 
     /**
-     * Breed next generation. Returns { children } or throws.
+     * Breed next generation. Returns { children, population_id? } or throws.
      * @param {Array} parents - Array of { genome, clicks }
      * @param {number} populationSize - Desired population size
+     * @param {Object} [genealogy] - Optional { parentPopulationId, generationNum, branchName } for genealogy tree
      */
-    async function breed(parents, populationSize) {
+    async function breed(parents, populationSize, genealogy) {
+        const body = { parents: parents, population_size: populationSize };
+        if (genealogy) {
+            if (genealogy.parentPopulationId != null) body.parent_population_id = genealogy.parentPopulationId;
+            if (genealogy.generationNum != null) body.generation_num = genealogy.generationNum;
+            if (genealogy.branchName) body.branch_name = genealogy.branchName;
+        }
         const r = await fetch(_apiUrl + '/breed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parents: parents, population_size: populationSize })
+            body: JSON.stringify(body)
         });
         const data = await r.json().catch(function () { return {}; });
         if (!r.ok || data.error) {
