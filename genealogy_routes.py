@@ -43,7 +43,7 @@ def _init_genealogy_db():
             parent_id INTEGER REFERENCES populations(id),
             generation_num INTEGER NOT NULL,
             created_at TIMESTAMP NOT NULL,
-            branch_name TEXT,
+            branch_name TEXT NOT NULL DEFAULT 'main',
             description TEXT,
             user_id TEXT,
             population_size INTEGER,
@@ -79,7 +79,11 @@ def _init_genealogy_db():
         CREATE INDEX IF NOT EXISTS idx_individuals_parents 
         ON individuals(parent1_id, parent2_id)
     """)
-    
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_populations_branch_gen 
+        ON populations(branch_name, generation_num)
+    """)
+
     conn.commit()
     conn.close()
 
@@ -126,10 +130,15 @@ def save_population():
         try:
             if parent_id is not None:
                 parent_row = conn.execute(
-                    "SELECT 1 FROM populations WHERE id = ?", (parent_id,)
+                    "SELECT generation_num FROM populations WHERE id = ?", (parent_id,)
                 ).fetchone()
                 if not parent_row:
                     return jsonify({'error': 'parent_id not found'}), 400
+                if generation_num != parent_row['generation_num'] + 1:
+                    return jsonify({
+                        'error': 'generation_num must be parent generation_num + 1',
+                        'parent_generation_num': parent_row['generation_num']
+                    }), 400
 
             cur = conn.execute(
                 """INSERT INTO populations 
