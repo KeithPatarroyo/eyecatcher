@@ -148,6 +148,7 @@
      * @param {function(number, HTMLElement)} options.onUnclick - (id, card) => {}
      * @param {function(number)} [options.onMouseEnter] - (id) => {}
      * @param {function(number)} [options.onMouseLeave] - (id) => {}
+     * @param {function(number)} [options.onFullscreen] - (id) => {} open pattern in fullscreen modal
      * @returns {{ card: HTMLElement, canvas: HTMLCanvasElement|null, patternData: Object|null }}
      */
     function createPatternCard(options) {
@@ -171,6 +172,16 @@
 
         const actions = document.createElement('div');
         actions.className = 'pattern-actions';
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'fullscreen-btn';
+        fullscreenBtn.textContent = '\u26F6';
+        fullscreenBtn.setAttribute('title', 'Expand to fullscreen');
+        fullscreenBtn.setAttribute('aria-label', 'Expand to fullscreen');
+        fullscreenBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (options.onFullscreen) options.onFullscreen(id);
+        };
 
         const submitCommunityBtn = document.createElement('button');
         submitCommunityBtn.className = 'submit-community-btn';
@@ -202,6 +213,7 @@
             if (options.onSave) options.onSave(id, saveBtn);
         };
 
+        actions.appendChild(fullscreenBtn);
         actions.appendChild(submitCommunityBtn);
         actions.appendChild(networkBtn);
         actions.appendChild(saveBtn);

@@ -46,6 +46,48 @@
         return (el && el.value === 'rgb') ? 'rgb' : 'hsv';
     }
     var patterns = new Map();
+    var fullscreenPatternData = null;
+
+    function openFullscreen(id) {
+        var pattern = currentPopulation && currentPopulation.find(function (p) { return p.id === id; });
+        if (!pattern || !pattern.shader) return;
+        closeFullscreen();
+        var modal = document.getElementById('fullscreen-modal');
+        var wrap = document.getElementById('fullscreen-canvas-wrap');
+        if (!modal || !wrap) return;
+        modal.hidden = false;
+        wrap.innerHTML = '';
+        var patternRef = pattern;
+        requestAnimationFrame(function () {
+            if (modal.hidden) return;
+            var size = Math.min(wrap.clientWidth || 800, wrap.clientHeight || 800, 1024);
+            if (size < 64) size = 800;
+            var canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            wrap.appendChild(canvas);
+            var patternData = setupPattern(canvas, patternRef.shader);
+            if (!patternData) {
+                wrap.innerHTML = '';
+                modal.hidden = true;
+                return;
+            }
+            fullscreenPatternData = {
+                canvas: canvas,
+                gl: patternData.gl,
+                program: patternData.program,
+                positionBuffer: patternData.positionBuffer
+            };
+        });
+    }
+
+    function closeFullscreen() {
+        fullscreenPatternData = null;
+        var modal = document.getElementById('fullscreen-modal');
+        var wrap = document.getElementById('fullscreen-canvas-wrap');
+        if (wrap) wrap.innerHTML = '';
+        if (modal) modal.hidden = true;
+    }
 
     function setupPattern(canvas, shaderCode) {
         return window.PatternRenderer && window.PatternRenderer.setupPattern(canvas, shaderCode);
@@ -81,6 +123,7 @@
                 onShare: function (id) { window.CommunityUI.openSubmitCommunityModal(id); },
                 onNetwork: function (id, card) { window.NetworkVisualizer.toggle(id, card); },
                 onSave: savePattern,
+                onFullscreen: openFullscreen,
                 onClick: clickPattern,
                 onUnclick: unclickPattern,
                 onMouseEnter: function (id) {
@@ -186,6 +229,7 @@
                         onShare: function (id) { window.CommunityUI.openSubmitCommunityModal(id); },
                         onNetwork: function (id, card) { window.NetworkVisualizer.toggle(id, card); },
                         onSave: savePattern,
+                        onFullscreen: openFullscreen,
                         onClick: clickPattern,
                         onUnclick: unclickPattern,
                         onMouseEnter: function (id) {
@@ -406,7 +450,11 @@
     window.ApiClient.init(API_URL);
 
     window.AnimationLoop.init({
-        getPatterns: function () { return patterns; },
+        getPatterns: function () {
+            var list = Array.from(patterns.values());
+            if (fullscreenPatternData) list.push(fullscreenPatternData);
+            return list;
+        },
         renderPattern: renderPattern
     });
 
@@ -444,6 +492,14 @@
                 loadFromStatelessGenomes(currentGenomes, currentGenerationNum, false);
             }
         });
+    });
+
+    var fullscreenCloseBtn = document.getElementById('fullscreen-close');
+    var fullscreenBackdrop = document.getElementById('fullscreen-backdrop');
+    if (fullscreenCloseBtn) fullscreenCloseBtn.addEventListener('click', closeFullscreen);
+    if (fullscreenBackdrop) fullscreenBackdrop.addEventListener('click', closeFullscreen);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && fullscreenPatternData) closeFullscreen();
     });
 
     var breedBtnEl = document.getElementById('breed-btn');
