@@ -60,7 +60,7 @@
             }
             const d = await r.json();
             if (_loadFromStatelessGenomes) {
-                await _loadFromStatelessGenomes(d.genomes || [], 0);
+                await _loadFromStatelessGenomes(d.genomes || [], 0, true);
             }
         } catch (error) {
             console.error('Error starting random population:', error);
