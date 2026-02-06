@@ -15,17 +15,20 @@
     /**
      * Compile genomes to shaders. Returns { shaders } or throws.
      * @param {Array} genomes - Array of genome objects (with optional clicks; will be normalized to 0 for compile)
+     * @param {string} [colorMode] - 'hsv' (Picbreeder-style) or 'rgb'; omitted = server default
      */
-    async function compile(genomes) {
+    async function compile(genomes, colorMode) {
         const payload = genomes.map(function (g) {
             const copy = Object.assign({}, g);
             copy.clicks = 0;
             return copy;
         });
+        const body = { genomes: payload };
+        if (colorMode === 'hsv' || colorMode === 'rgb') body.color_mode = colorMode;
         const r = await fetch(_apiUrl + '/compile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ genomes: payload })
+            body: JSON.stringify(body)
         });
         const data = await r.json().catch(function () { return {}; });
         if (!r.ok) {

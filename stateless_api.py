@@ -30,9 +30,10 @@ def init_stateless_api(engine: CPPNEngine, compiler: ShaderCompiler):
     _compiler = compiler
 
 
-def _shader_response_for_dual(dual_genome: DualGenome, individual_id: int, clicks: int = 0):
-    """Build a single shader response dict for a dual genome."""
-    shader_code = _compiler.compile_dual_to_glsl(
+def _shader_response_for_dual(dual_genome: DualGenome, individual_id: int, clicks: int = 0, compiler=None):
+    """Build a single shader response dict for a dual genome. Uses compiler or _compiler."""
+    comp = compiler if compiler is not None else _compiler
+    shader_code = comp.compile_dual_to_glsl(
         dual_genome, _engine.config, _engine.time_config
     )
     v_nodes = len(dual_genome.visual.nodes)
@@ -56,7 +57,7 @@ def _shader_response_for_dual(dual_genome: DualGenome, individual_id: int, click
 def api_compile():
     """
     Stateless: compile a list of dual genomes to shaders.
-    Body: { "genomes": [ { "key", "visual", "time_signal" }, ... ] }
+    Body: { "genomes": [ ... ], "color_mode": "hsv"|"rgb" (optional, default from server) }
     Returns: { "shaders": [ { "id", "shader", "clicks", "nodes", ... }, ... ] }
     """
     try:
@@ -64,12 +65,16 @@ def api_compile():
         genomes_data = data.get('genomes', [])
         if not genomes_data:
             return jsonify({'error': 'genomes array required'}), 400
+        color_mode = (data.get('color_mode') or '').strip().lower()
+        if color_mode and color_mode not in ('hsv', 'rgb'):
+            color_mode = 'hsv'
+        compiler = _compiler if (not color_mode or color_mode == _compiler.color_mode) else ShaderCompiler(color_mode=color_mode)
         shaders = []
         for i, g_data in enumerate(genomes_data):
             dual = dual_genome_from_json(g_data, _engine)
             individual_id = g_data.get('key', dual.key if dual else i)
             clicks = g_data.get('clicks', 0)
-            shaders.append(_shader_response_for_dual(dual, individual_id, clicks))
+            shaders.append(_shader_response_for_dual(dual, individual_id, clicks, compiler=compiler))
         return jsonify({'shaders': shaders})
     except ValueError as e:
         return jsonify({'error': str(e)}), 400

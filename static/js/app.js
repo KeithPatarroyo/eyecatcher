@@ -41,6 +41,10 @@
             }
         } catch (e) {}
     }
+    function getColorMode() {
+        var el = document.querySelector('input[name="colorMode"]:checked');
+        return (el && el.value === 'rgb') ? 'rgb' : 'hsv';
+    }
     var patterns = new Map();
 
     function setupPattern(canvas, shaderCode) {
@@ -107,7 +111,7 @@
         document.getElementById('loading').style.display = 'block';
         document.getElementById('grid').innerHTML = '';
         patterns.clear();
-        return window.ApiClient.compile(genomes)
+        return window.ApiClient.compile(genomes, getColorMode())
             .then(function (compData) {
                 currentGenomes = genomes;
                 currentGenerationNum = generationNum;
@@ -168,7 +172,7 @@
     function addToGrid(genomes) {
         if (!genomes || !genomes.length) return Promise.resolve();
         document.getElementById('loading').style.display = 'block';
-        return window.ApiClient.compile(genomes)
+        return window.ApiClient.compile(genomes, getColorMode())
             .then(function (compData) {
                 var newShaders = compData.shaders || [];
                 if (!currentGenomes) currentGenomes = [];
@@ -433,6 +437,14 @@
     });
 
     if (window.initToolbarUI) window.initToolbarUI();
+
+    document.querySelectorAll('input[name="colorMode"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            if (currentGenomes && currentGenomes.length) {
+                loadFromStatelessGenomes(currentGenomes, currentGenerationNum, false);
+            }
+        });
+    });
 
     var breedBtnEl = document.getElementById('breed-btn');
     if (breedBtnEl) {
