@@ -17,6 +17,30 @@
     var currentPopulation = [];
     var currentGenomes = null;
     var currentGenerationNum = 0;
+    var currentPopulationId = null;
+    var currentBranchName = 'main';
+    // Persisted so multiple "Start Fresh" (across tabs) get distinct branches; cleared when user resets genealogy.
+    function getGenealogyBranchCounter() {
+        try {
+            var v = typeof localStorage !== 'undefined' && localStorage.getItem('genealogy_branch_counter');
+            return v != null ? parseInt(v, 10) : 1;
+        } catch (e) { return 1; }
+    }
+    function setGenealogyBranchCounter(n) {
+        try {
+            if (typeof localStorage !== 'undefined') localStorage.setItem('genealogy_branch_counter', String(n));
+        } catch (e) {}
+    }
+    function syncCurrentPopulationIdToStorage() {
+        try {
+            if (typeof sessionStorage === 'undefined') return;
+            if (currentPopulationId != null) {
+                sessionStorage.setItem('current_population_id', String(currentPopulationId));
+            } else {
+                sessionStorage.removeItem('current_population_id');
+            }
+        } catch (e) {}
+    }
     var patterns = new Map();
 
     function setupPattern(canvas, shaderCode) {
@@ -78,7 +102,7 @@
         updateStats();
     }
 
-    function loadFromStatelessGenomes(genomes, generationNum) {
+    function loadFromStatelessGenomes(genomes, generationNum, saveToGenealogy) {
         if (!genomes || !genomes.length) return Promise.resolve();
         document.getElementById('loading').style.display = 'block';
         document.getElementById('grid').innerHTML = '';
@@ -90,6 +114,40 @@
                 currentPopulation = compData.shaders || [];
                 document.getElementById('gen-num').textContent = currentGenerationNum;
                 renderGridFromPopulation(currentPopulation);
+                if (saveToGenealogy) {
+                    // New root (Start Fresh): always treat gen 0 as a new branch; clear parent so we don't attach to a loaded node.
+                    var branchName = currentBranchName || 'main';
+                    var parentId = currentPopulationId;
+                    if (generationNum === 0) {
+                        parentId = null;
+                        var counter = getGenealogyBranchCounter();
+                        branchName = counter === 1 ? 'main' : 'branch-' + counter;
+                        setGenealogyBranchCounter(counter + 1);
+                        currentBranchName = branchName;
+                    }
+                    return fetch(API_URL + '/genealogy/save-population', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            genomes: genomes,
+                            parent_id: parentId,
+                            generation_num: generationNum,
+                            branch_name: branchName,
+                            description: generationNum === 0 ? 'Random initial population' : 'Generation ' + generationNum,
+                            user_id: 'user'
+                        })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (data.population_id != null) {
+                                currentPopulationId = data.population_id;
+                                syncCurrentPopulationIdToStorage();
+                            }
+                        })
+                        .catch(function (e) {
+                            console.warn('Genealogy save failed:', e);
+                        });
+                }
             })
             .catch(function (e) {
                 console.error(e);
@@ -221,8 +279,17 @@
         var sizeInput = document.getElementById('population-size-input');
         var populationSize = Math.max(2, Math.min(50, parseInt(sizeInput && sizeInput.value, 10) || 12));
 
-        window.ApiClient.breed(parents, populationSize)
+        // Breed endpoint auto-saves to genealogy when parent_population_id is sent; do not pass saveToGenealogy.
+        window.ApiClient.breed(parents, populationSize, {
+            parentPopulationId: currentPopulationId,
+            generationNum: currentGenerationNum + 1,
+            branchName: currentBranchName || 'main'
+        })
             .then(function (data) {
+                if (data.population_id != null) {
+                    currentPopulationId = data.population_id;
+                    syncCurrentPopulationIdToStorage();
+                }
                 return loadFromStatelessGenomes(data.children, currentGenerationNum + 1);
             })
             .catch(function (e) {
@@ -417,7 +484,27 @@
         });
     }
 
-    window.PopulationUI.startNewRandomPopulation();
+    // If we arrived from the genealogy viewer ("Load This Population"), restore that population
+    // so the generation counter and branch are correct and evolving continues as a child of that node.
+    var genealogyLoad = null;
+    try {
+        var raw = typeof localStorage !== 'undefined' && localStorage.getItem('genealogy_load');
+        if (raw) {
+            genealogyLoad = JSON.parse(raw);
+            localStorage.removeItem('genealogy_load');
+        }
+    } catch (e) {
+        console.warn('Genealogy load parse failed:', e);
+    }
+    if (genealogyLoad && genealogyLoad.genomes && genealogyLoad.genomes.length) {
+        currentPopulationId = genealogyLoad.population_id != null ? genealogyLoad.population_id : null;
+        currentBranchName = genealogyLoad.branch_name || 'main';
+        syncCurrentPopulationIdToStorage();
+        var genNum = genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
+        loadFromStatelessGenomes(genealogyLoad.genomes, genNum, false);
+    } else {
+        window.PopulationUI.startNewRandomPopulation();
+    }
     window.AnimationLoop.start();
 
     console.log('Eyecatcher Interactive Evolution ready!');
