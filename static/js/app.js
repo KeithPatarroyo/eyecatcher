@@ -214,8 +214,16 @@
 
     function addToGrid(genomes) {
         if (!genomes || !genomes.length) return Promise.resolve();
+        var nextKey = 0;
+        patterns.forEach(function (_, id) { nextKey = Math.max(nextKey, id + 1); });
+        var payload = genomes.map(function (g) {
+            var copy = Object.assign({}, g);
+            copy.key = nextKey++;
+            copy.clicks = 0;
+            return copy;
+        });
         document.getElementById('loading').style.display = 'block';
-        return window.ApiClient.compile(genomes, getColorMode())
+        return window.ApiClient.compile(payload, getColorMode())
             .then(function (compData) {
                 var newShaders = compData.shaders || [];
                 if (!currentGenomes) currentGenomes = [];

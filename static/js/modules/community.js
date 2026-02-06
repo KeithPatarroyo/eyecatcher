@@ -182,8 +182,9 @@
         checked.forEach(cb => {
             const li = cb.closest('.community-item');
             const idx = parseInt(li.dataset.idx, 10);
-            if (_communityPatternsList[idx]) {
-                genomes.push(_communityPatternsList[idx].genome);
+            const pat = _communityPatternsList[idx];
+            if (pat) {
+                genomes.push({ ...pat.genome, key: pat.id });
             }
         });
         return genomes;
@@ -202,7 +203,7 @@
     }
 
     function onCommunityLoad12() {
-        const first12 = _communityPatternsList.slice(0, 12).map(p => p.genome);
+        const first12 = _communityPatternsList.slice(0, 12).map(p => ({ ...p.genome, key: p.id }));
         document.getElementById('community-list-modal').classList.remove('show');
         if (_addToGrid) {
             _addToGrid(first12);
