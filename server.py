@@ -249,10 +249,13 @@ def _breed_stateless(data):
                 conn = _get_db()
                 try:
                     parent_row = conn.execute(
-                        "SELECT 1 FROM populations WHERE id = ?",
+                        "SELECT generation_num FROM populations WHERE id = ?",
                         (parent_population_id,)
                     ).fetchone()
                     if not parent_row:
+                        return jsonify({'children': children})
+                    if generation_num != parent_row['generation_num'] + 1:
+                        # Skip genealogy save; breeding still succeeds
                         return jsonify({'children': children})
 
                     cur = conn.execute(
