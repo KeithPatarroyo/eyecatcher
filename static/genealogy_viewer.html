@@ -643,6 +643,13 @@
         let thumbnailCache = new Map();  // Cache rendered thumbnails
         let savedPositions = null;  // Save positions when switching modes
 
+        function updateControlsVisibility() {
+            const physicsControls = document.getElementById('physics-controls');
+            if (physicsControls) {
+                physicsControls.style.display = hierarchicalLayout ? 'none' : 'block';
+            }
+        }
+
         // Toast notifications
         function showToast(title, body, type = 'success') {
             const container = document.getElementById('toast-container');
@@ -1166,27 +1173,24 @@
 
         document.getElementById('hierarchical-btn').onclick = function () {
             if (!hierarchicalLayout) {
-                // Save current physics positions before switching
                 if (treeNetwork) {
                     savedPositions = treeNetwork.getPositions();
-                    console.log('Saved physics positions');
                 }
-                
-                // Switch to hierarchical mode
                 hierarchicalLayout = true;
                 this.classList.add('active');
                 document.getElementById('physics-btn').classList.remove('active');
                 loadTree();
+                updateControlsVisibility();
             }
         };
 
         document.getElementById('physics-btn').onclick = function () {
             if (hierarchicalLayout) {
-                // Switch to physics mode (will restore saved positions if available)
                 hierarchicalLayout = false;
                 this.classList.add('active');
                 document.getElementById('hierarchical-btn').classList.remove('active');
                 loadTree();
+                updateControlsVisibility();
             }
         };
 
@@ -1334,23 +1338,6 @@
                 }
             });
 
-            // Show/hide physics controls based on mode
-            function updateControlsVisibility() {
-                const physicsControls = document.getElementById('physics-controls');
-                if (hierarchicalLayout) {
-                    physicsControls.style.display = 'none';
-                } else {
-                    physicsControls.style.display = 'block';
-                }
-            }
-
-            // Update visibility when mode changes
-            const hierarchicalBtn = document.getElementById('hierarchical-btn');
-            const physicsBtn = document.getElementById('physics-btn');
-            
-            hierarchicalBtn.addEventListener('click', updateControlsVisibility);
-            physicsBtn.addEventListener('click', updateControlsVisibility);
-            
             updateControlsVisibility();
         }
 
