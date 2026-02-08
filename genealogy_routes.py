@@ -353,6 +353,145 @@ def reset_genealogy():
         return jsonify({'error': str(e)}), 500
 
 
+@genealogy_bp.route('/api/genealogy/export-sizes', methods=['GET'])
+def export_sizes():
+    """
+    Return estimated export sizes for full tree and per branch (for download modal).
+    Returns: { "full": { "populations", "individuals", "estimated_bytes" },
+               "branches": [ { "name", "populations", "individuals", "estimated_bytes" }, ... ] }
+    """
+    try:
+        conn = _get_db()
+        try:
+            # Full: counts and total genome JSON size
+            full_pop = conn.execute("SELECT COUNT(*) as c FROM populations").fetchone()['c']
+            full_ind = conn.execute(
+                "SELECT COUNT(*) as c, COALESCE(SUM(LENGTH(genome_json)), 0) as total_json FROM individuals"
+            ).fetchone()
+            full_ind_count = full_ind['c']
+            full_json_bytes = full_ind['total_json'] or 0
+            # Overhead: populations ~300 bytes each, individuals wrapper ~80 bytes each
+            full_estimated = full_pop * 300 + full_ind_count * 80 + full_json_bytes
+
+            # Per branch
+            branch_rows = conn.execute(
+                """SELECT branch_name, COUNT(*) as pop_count
+                   FROM populations GROUP BY branch_name ORDER BY branch_name"""
+            ).fetchall()
+            branches = []
+            for row in branch_rows:
+                name = row['branch_name']
+                pop_count = row['pop_count']
+                pop_ids = [r['id'] for r in conn.execute(
+                    "SELECT id FROM populations WHERE branch_name = ?", (name,)
+                ).fetchall()]
+                if not pop_ids:
+                    ind_count = 0
+                    json_bytes = 0
+                else:
+                    placeholders = ','.join('?' * len(pop_ids))
+                    ind_row = conn.execute(
+                        f"""SELECT COUNT(*) as c, COALESCE(SUM(LENGTH(genome_json)), 0) as total_json
+                            FROM individuals WHERE population_id IN ({placeholders})""",
+                        pop_ids
+                    ).fetchone()
+                    ind_count = ind_row['c']
+                    json_bytes = ind_row['total_json'] or 0
+                estimated = pop_count * 300 + ind_count * 80 + json_bytes
+                branches.append({
+                    'name': name,
+                    'populations': pop_count,
+                    'individuals': ind_count,
+                    'estimated_bytes': estimated,
+                })
+            return jsonify({
+                'full': {
+                    'populations': full_pop,
+                    'individuals': full_ind_count,
+                    'estimated_bytes': full_pop * 300 + full_ind_count * 80 + full_json_bytes,
+                },
+                'branches': branches,
+            })
+        finally:
+            conn.close()
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@genealogy_bp.route('/api/genealogy/export', methods=['GET'])
+def export_genealogy():
+    """
+    Export genealogy as JSON (populations + individuals with genomes).
+    Query: ?branch_name=<name> to export only that branch; omit for full tree.
+    """
+    branch_name = request.args.get('branch_name', '').strip() or None
+    try:
+        conn = _get_db()
+        try:
+            if branch_name:
+                pop_rows = conn.execute(
+                    """SELECT id, parent_id, generation_num, created_at, branch_name,
+                              description, user_id, population_size, metadata_json
+                       FROM populations WHERE branch_name = ? ORDER BY id ASC""",
+                    (branch_name,)
+                ).fetchall()
+                pop_ids = [r['id'] for r in pop_rows]
+                if not pop_ids:
+                    return jsonify({'error': 'Branch not found or empty', 'branch_name': branch_name}), 404
+                placeholders = ','.join('?' * len(pop_ids))
+                ind_rows = conn.execute(
+                    f"""SELECT id, population_id, genome_key, genome_json, fitness, created_at
+                        FROM individuals WHERE population_id IN ({placeholders}) ORDER BY id ASC""",
+                    pop_ids
+                ).fetchall()
+            else:
+                pop_rows = conn.execute(
+                    """SELECT id, parent_id, generation_num, created_at, branch_name,
+                              description, user_id, population_size, metadata_json
+                       FROM populations ORDER BY id ASC"""
+                ).fetchall()
+                ind_rows = conn.execute(
+                    """SELECT id, population_id, genome_key, genome_json, fitness, created_at
+                       FROM individuals ORDER BY id ASC"""
+                ).fetchall()
+
+            populations = [
+                {
+                    'id': r['id'],
+                    'parent_id': r['parent_id'],
+                    'generation_num': r['generation_num'],
+                    'created_at': r['created_at'],
+                    'branch_name': r['branch_name'],
+                    'description': r['description'],
+                    'user_id': r['user_id'],
+                    'population_size': r['population_size'],
+                    'metadata_json': r['metadata_json'],
+                }
+                for r in pop_rows
+            ]
+            individuals = []
+            for r in ind_rows:
+                individuals.append({
+                    'id': r['id'],
+                    'population_id': r['population_id'],
+                    'genome_key': r['genome_key'],
+                    'genome_json': json.loads(r['genome_json']) if isinstance(r['genome_json'], str) else r['genome_json'],
+                    'fitness': r['fitness'],
+                    'created_at': r['created_at'],
+                })
+            return jsonify({
+                'exported_at': datetime.utcnow().isoformat() + 'Z',
+                'version': 1,
+                'branch_name': branch_name,
+                'populations': populations,
+                'individuals': individuals,
+            })
+        finally:
+            conn.close()
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @genealogy_bp.route('/api/genealogy/stats', methods=['GET'])
 def get_stats():
     """
