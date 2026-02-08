@@ -243,6 +243,78 @@
             }
         }
 
+        .export-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 8000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .export-modal[hidden] { display: none; }
+        .export-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            cursor: pointer;
+        }
+        .export-modal-content {
+            position: relative;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 420px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .export-modal-title {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #0066cc;
+        }
+        .export-modal-warning {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+        .export-option-group {
+            margin-bottom: 16px;
+        }
+        .export-option-title {
+            font-size: 14px;
+            color: #e0e0e0;
+            margin-bottom: 8px;
+        }
+        .export-radio-label {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            cursor: pointer;
+            margin-bottom: 6px;
+        }
+        .export-radio-label input { margin: 0; }
+        .export-size {
+            font-size: 12px;
+            color: #888;
+        }
+        #export-branch-list {
+            margin-left: 24px;
+        }
+        #export-branch-list label.export-radio-label {
+            margin-bottom: 4px;
+        }
+        .export-modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
         #toast-container {
             position: fixed;
             top: 20px;
@@ -494,6 +566,7 @@
         <div class="header-actions">
             <a href="/" class="btn secondary">← Back to Evolution</a>
             <button class="btn" id="refresh-btn">🔄 Refresh</button>
+            <button class="btn secondary" id="download-genealogy-btn" title="Download full genealogy as JSON">Download genealogy</button>
             <button class="btn secondary" id="reset-genealogy-btn" title="Clear all genealogy data (cannot be undone)">Reset genealogy</button>
         </div>
     </div>
@@ -628,6 +701,28 @@
         </div>
     </div>
 
+    <div id="export-genealogy-modal" class="export-modal" hidden role="dialog" aria-labelledby="export-modal-title" aria-modal="true">
+        <div class="export-modal-backdrop"></div>
+        <div class="export-modal-content">
+            <h2 id="export-modal-title" class="export-modal-title">Download genealogy</h2>
+            <p class="export-modal-warning">Full exports can be very large. Choose what to download and check the estimated size.</p>
+            <div class="export-option-group">
+                <label class="export-radio-label">
+                    <input type="radio" name="export-scope" value="full" checked>
+                    <span class="export-option-title">Full tree</span>
+                    <span id="export-full-size" class="export-size">—</span>
+                </label>
+            </div>
+            <div class="export-option-group" id="export-branches-group">
+                <div class="export-option-title">Single branch</div>
+                <div id="export-branch-list"></div>
+            </div>
+            <div class="export-modal-actions">
+                <button type="button" class="btn secondary" id="export-modal-cancel">Cancel</button>
+                <button type="button" class="btn" id="export-modal-download">Download</button>
+            </div>
+        </div>
+    </div>
     <div id="toast-container"></div>
 
     <script>
@@ -1157,6 +1252,94 @@
         // Event listeners
         document.getElementById('refresh-btn').onclick = () => {
             loadTree();
+        };
+
+        function formatBytes(n) {
+            if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+            if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+            return n + ' B';
+        }
+
+        document.getElementById('download-genealogy-btn').onclick = async () => {
+            const modal = document.getElementById('export-genealogy-modal');
+            try {
+                const r = await fetch(`${API_URL}/genealogy/export-sizes`);
+                if (!r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    showToast('Could not load sizes', d.error || 'Server error', 'error');
+                    return;
+                }
+                const sizes = await r.json();
+                document.getElementById('export-full-size').textContent =
+                    sizes.full.populations + ' populations, ' + sizes.full.individuals + ' individuals (~' + formatBytes(sizes.full.estimated_bytes) + ')';
+
+                const branchList = document.getElementById('export-branch-list');
+                const branchesGroup = document.getElementById('export-branches-group');
+                branchList.innerHTML = '';
+                const branches = sizes.branches || [];
+                branchesGroup.hidden = branches.length === 0;
+                branches.forEach(b => {
+                    const label = document.createElement('label');
+                    label.className = 'export-radio-label';
+                    const id = 'export-branch-' + (b.name || 'main').replace(/\W/g, '_');
+                    label.innerHTML = `
+                        <input type="radio" name="export-scope" value="${escapeHtml(b.name || 'main')}" id="${id}">
+                        <span class="export-option-title">${escapeHtml(b.name || 'main')}</span>
+                        <span class="export-size">${b.populations} pop., ${b.individuals} ind. (~${formatBytes(b.estimated_bytes)})</span>
+                    `;
+                    branchList.appendChild(label);
+                });
+                modal.hidden = false;
+            } catch (e) {
+                showToast('Could not load sizes', e.message || 'Network error', 'error');
+            }
+        };
+
+        function escapeHtml(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        document.getElementById('export-modal-cancel').onclick = () => {
+            document.getElementById('export-genealogy-modal').hidden = true;
+        };
+        document.querySelector('.export-modal-backdrop').onclick = () => {
+            document.getElementById('export-genealogy-modal').hidden = true;
+        };
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('export-genealogy-modal');
+            if (e.key === 'Escape' && modal && !modal.hidden) modal.hidden = true;
+        });
+        document.getElementById('export-modal-download').onclick = async () => {
+            const scope = document.querySelector('input[name="export-scope"]:checked');
+            const branchName = scope && scope.value !== 'full' ? scope.value : null;
+            const modal = document.getElementById('export-genealogy-modal');
+            modal.hidden = true;
+            try {
+                const url = branchName
+                    ? `${API_URL}/genealogy/export?branch_name=${encodeURIComponent(branchName)}`
+                    : `${API_URL}/genealogy/export`;
+                const r = await fetch(url);
+                if (!r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    showToast('Download failed', d.error || 'Server error', 'error');
+                    return;
+                }
+                const data = await r.json();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const urlObj = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = urlObj;
+                a.download = branchName
+                    ? `genealogy-${branchName}-${new Date().toISOString().slice(0, 10)}.json`
+                    : `genealogy-export-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(urlObj);
+                showToast('Downloaded', (branchName ? 'Branch "' + branchName + '"' : 'Full tree') + ' exported as JSON.', 'success');
+            } catch (e) {
+                showToast('Download failed', e.message || 'Network error', 'error');
+            }
         };
 
         document.getElementById('reset-genealogy-btn').onclick = async () => {
