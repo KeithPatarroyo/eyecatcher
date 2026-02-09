@@ -1,57 +1,8 @@
 """Tests for shader compiler: CPPN to GLSL."""
 
+from conftest import minimal_dual_genome_one_hidden_visual
 from eyecatcher.cppn_engine import CPPNEngine, create_random_dual_genome
-from eyecatcher.genome_serialization import dual_genome_from_json
 from eyecatcher.shader_compiler import ShaderCompiler
-
-
-def _minimal_dual_genome_one_hidden_visual(engine: CPPNEngine):
-    """Dual genome with exactly one hidden node in the visual CPPN (deterministic)."""
-    vc = engine.config.genome_config
-    tc = engine.time_config.genome_config
-    # Visual: 8 inputs (-8..-1), 3 outputs (0,1,2), one hidden (3). Path: -1 -> 3 -> 0.
-    visual_nodes = {
-        str(i): {
-            "bias": 0.0,
-            "response": 1.0,
-            "activation": "sigmoid",
-            "aggregation": "sum",
-        }
-        for i in list(range(-vc.num_inputs, 0))
-        + list(range(vc.num_outputs))
-        + [vc.num_outputs]
-    }
-    visual_conns = {
-        "-1_3": {"innovation": 1, "weight": 0.5, "enabled": True},
-        "3_0": {"innovation": 2, "weight": 0.5, "enabled": True},
-    }
-    # Time: 5 inputs, 1 output. One connection -1 -> 0.
-    time_nodes = {
-        str(i): {
-            "bias": 0.0,
-            "response": 1.0,
-            "activation": "sigmoid",
-            "aggregation": "sum",
-        }
-        for i in list(range(-tc.num_inputs, 0)) + [0]
-    }
-    time_conns = {"-1_0": {"innovation": 1, "weight": 0.5, "enabled": True}}
-    data = {
-        "key": 0,
-        "visual": {
-            "key": 0,
-            "fitness": None,
-            "nodes": visual_nodes,
-            "connections": visual_conns,
-        },
-        "time_signal": {
-            "key": 0,
-            "fitness": None,
-            "nodes": time_nodes,
-            "connections": time_conns,
-        },
-    }
-    return dual_genome_from_json(data, engine)
 
 
 def test_compile_dual_to_glsl_returns_string():
@@ -105,7 +56,7 @@ def test_compile_dual_single_hidden_node():
     """Compiler with exactly one hidden node in visual CPPN (deterministic)."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = _minimal_dual_genome_one_hidden_visual(engine)
+    dual = minimal_dual_genome_one_hidden_visual(engine)
     hidden_visual = [
         n for n in dual.visual.nodes if n >= engine.config.genome_config.num_outputs
     ]

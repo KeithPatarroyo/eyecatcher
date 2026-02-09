@@ -1,7 +1,5 @@
 """Tests for Flask API endpoints using test client."""
 
-import pytest
-
 
 def test_health(client):
     """GET /health returns 200."""
@@ -192,11 +190,14 @@ def test_api_network_missing_genome(client):
     assert "genome" in rv.get_json().get("error", "").lower()
 
 
-def test_api_adjust_weight(client):
+def test_api_adjust_weight(client, cppn_engine):
     """POST /api/adjust-weight with valid payload returns shader and genome."""
-    rv = client.post("/api/random", json={"size": 1})
-    assert rv.status_code == 200
-    genome = rv.get_json()["genomes"][0]
+    from conftest import minimal_dual_genome_one_hidden_visual
+    from eyecatcher.genome_serialization import dual_genome_to_json
+
+    dual = minimal_dual_genome_one_hidden_visual(cppn_engine)
+    genome = dual_genome_to_json(dual)
+    genome["key"] = 0
     net_rv = client.post("/api/network", json={"genome": genome})
     assert net_rv.status_code == 200
     conns = [
@@ -204,13 +205,11 @@ def test_api_adjust_weight(client):
         for c in net_rv.get_json().get("connections", [])
         if c.get("network") == "visual"
     ]
-    if not conns:
-        pytest.skip("no visual connections in network")
+    assert len(conns) >= 1, "minimal genome has visual connections"
     c = conns[0]
     source = c.get("source")
     target = c.get("target")
-    if not source or not target:
-        pytest.skip("connection missing source/target")
+    assert source and target, "connection has source and target"
     rv = client.post(
         "/api/adjust-weight",
         json={

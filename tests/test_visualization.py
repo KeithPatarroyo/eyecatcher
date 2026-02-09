@@ -83,6 +83,7 @@ def test_visualization(tmp_path, cppn_engine):
 
     assert png_path.exists()
     assert png_path.stat().st_size > 0
+    assert img.shape == (64, 64, 3), "render_image(resolution=64) returns 64x64x3 RGB"
 
     viz_pdf = tmp_path / "test_genome_network.pdf"
     if viz_pdf.exists():

@@ -1,11 +1,59 @@
-"""Shared pytest fixtures for Eyecatcher tests."""
+"""Shared pytest fixtures and helpers for Eyecatcher tests."""
 
 from unittest.mock import patch
 
 import pytest
 from eyecatcher import community_routes, genealogy_routes
 from eyecatcher.cppn_engine import CPPNEngine
+from eyecatcher.genome_serialization import dual_genome_from_json
 from eyecatcher.server import app
+
+
+def minimal_dual_genome_one_hidden_visual(engine: CPPNEngine):
+    """Dual genome with exactly one hidden node in the visual CPPN (deterministic)."""
+    vc = engine.config.genome_config
+    tc = engine.time_config.genome_config
+    visual_nodes = {
+        str(i): {
+            "bias": 0.0,
+            "response": 1.0,
+            "activation": "sigmoid",
+            "aggregation": "sum",
+        }
+        for i in list(range(-vc.num_inputs, 0))
+        + list(range(vc.num_outputs))
+        + [vc.num_outputs]
+    }
+    visual_conns = {
+        "-1_3": {"innovation": 1, "weight": 0.5, "enabled": True},
+        "3_0": {"innovation": 2, "weight": 0.5, "enabled": True},
+    }
+    time_nodes = {
+        str(i): {
+            "bias": 0.0,
+            "response": 1.0,
+            "activation": "sigmoid",
+            "aggregation": "sum",
+        }
+        for i in list(range(-tc.num_inputs, 0)) + [0]
+    }
+    time_conns = {"-1_0": {"innovation": 1, "weight": 0.5, "enabled": True}}
+    data = {
+        "key": 0,
+        "visual": {
+            "key": 0,
+            "fitness": None,
+            "nodes": visual_nodes,
+            "connections": visual_conns,
+        },
+        "time_signal": {
+            "key": 0,
+            "fitness": None,
+            "nodes": time_nodes,
+            "connections": time_conns,
+        },
+    }
+    return dual_genome_from_json(data, engine)
 
 
 @pytest.fixture
