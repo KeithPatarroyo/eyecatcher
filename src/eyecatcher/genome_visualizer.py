@@ -7,7 +7,8 @@ import matplotlib
 import neat
 
 matplotlib.use("Agg")
-from typing import Dict, List, Set, Tuple
+
+from typing import Optional
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
@@ -42,7 +43,7 @@ class GenomeVisualizer:
         genome: neat.DefaultGenome,
         filepath: str,
         view: bool = False,
-        figsize: Tuple[int, int] = None,
+        figsize: Optional[tuple[int, int]] = None,
     ):
         """
         Create a visualization of the genome network structure.
@@ -119,7 +120,7 @@ class GenomeVisualizer:
 
     def _calculate_positions(
         self, genome: neat.DefaultGenome
-    ) -> Dict[int, Tuple[float, float]]:
+    ) -> dict[int, tuple[float, float]]:
         """Calculate (x, y) positions for all nodes with equal spacing."""
         positions = {}
 
@@ -177,8 +178,8 @@ class GenomeVisualizer:
         return positions
 
     def _assign_layers(
-        self, genome: neat.DefaultGenome, input_ids: List[int], output_ids: List[int]
-    ) -> Dict[int, int]:
+        self, genome: neat.DefaultGenome, input_ids: list[int], output_ids: list[int]
+    ) -> dict[int, int]:
         """Assign hidden nodes to layers based on connectivity."""
         layers = {}
 
@@ -221,7 +222,7 @@ class GenomeVisualizer:
 
         return layers
 
-    def _get_nodes_required_for_output(self, genome: neat.DefaultGenome) -> Set[int]:
+    def _get_nodes_required_for_output(self, genome: neat.DefaultGenome) -> set[int]:
         """
         Find all nodes that are required to compute outputs (backward trace from outputs).
         Returns set of node IDs that contribute to at least one output.
@@ -257,7 +258,7 @@ class GenomeVisualizer:
         return required
 
     def _draw_connections(
-        self, ax, genome: neat.DefaultGenome, positions: Dict[int, Tuple[float, float]]
+        self, ax, genome: neat.DefaultGenome, positions: dict[int, tuple[float, float]]
     ):
         """Draw connections between nodes."""
         for conn in genome.connections.values():
@@ -299,7 +300,7 @@ class GenomeVisualizer:
             ax.add_patch(arrow)
 
     def _draw_nodes(
-        self, ax, genome: neat.DefaultGenome, positions: Dict[int, Tuple[float, float]]
+        self, ax, genome: neat.DefaultGenome, positions: dict[int, tuple[float, float]]
     ):
         """Draw nodes."""
         input_names = [

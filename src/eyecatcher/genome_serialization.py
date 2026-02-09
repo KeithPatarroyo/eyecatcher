@@ -5,7 +5,7 @@ Provides JSON serialization/deserialization for NEAT genomes and DualGenomes,
 plus deep copy utilities.
 """
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import neat
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from .cppn_engine import CPPNEngine, DualGenome
 
 
-def genome_to_json(genome: neat.DefaultGenome) -> Dict[str, Any]:
+def genome_to_json(genome: neat.DefaultGenome) -> dict[str, Any]:
     """
     Serialize a NEAT DefaultGenome to a JSON-serializable dict.
     """
@@ -41,7 +41,7 @@ def genome_to_json(genome: neat.DefaultGenome) -> Dict[str, Any]:
     }
 
 
-def genome_from_json(data: Dict[str, Any], config: neat.Config) -> neat.DefaultGenome:
+def genome_from_json(data: dict[str, Any], config: neat.Config) -> neat.DefaultGenome:
     """
     Deserialize a NEAT DefaultGenome from a dict (e.g. from JSON).
     Uses the given config's genome_config for gene types.
@@ -84,7 +84,7 @@ def genome_from_json(data: Dict[str, Any], config: neat.Config) -> neat.DefaultG
     return genome
 
 
-def dual_genome_to_json(dual: "DualGenome") -> Dict[str, Any]:
+def dual_genome_to_json(dual: "DualGenome") -> dict[str, Any]:
     """Serialize a DualGenome to a JSON-serializable dict."""
     return {
         "key": dual.key,
@@ -93,7 +93,7 @@ def dual_genome_to_json(dual: "DualGenome") -> Dict[str, Any]:
     }
 
 
-def dual_genome_from_json(data: Dict[str, Any], engine: "CPPNEngine") -> "DualGenome":
+def dual_genome_from_json(data: dict[str, Any], engine: "CPPNEngine") -> "DualGenome":
     """Deserialize a DualGenome from a dict (e.g. from JSON)."""
     # Import here to avoid circular dependency
     from .cppn_engine import DualGenome

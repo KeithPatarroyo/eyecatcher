@@ -11,7 +11,7 @@ import math
 import os
 import pickle
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import neat
 import numpy as np
@@ -155,7 +155,7 @@ class CPPNEngine:
         mouse_distance: float = 0.0,
         inactivity: float = 0.0,
         distance: Optional[float] = None,
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """
         Query a visual CPPN for RGB values at given coordinates and time.
 
@@ -199,7 +199,7 @@ class CPPNEngine:
         mouse_distance: float = 0.0,
         inactivity: float = 0.0,
         distance: Optional[float] = None,
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """
         Query a dual CPPN (time signal + visual) for RGB values.
 
@@ -272,7 +272,7 @@ class CPPNEngine:
         genome: neat.DefaultGenome,
         resolution: int = 256,
         num_frames: int = 30,
-        time_range: Tuple[float, float] = (0.0, 1.0),
+        time_range: tuple[float, float] = (0.0, 1.0),
     ) -> list:
         """
         Render multiple frames for animation.
@@ -325,7 +325,7 @@ class CPPNEngine:
         dual_genome: DualGenome,
         resolution: int = 256,
         num_frames: int = 30,
-        time_range: Tuple[float, float] = (0.0, 1.0),
+        time_range: tuple[float, float] = (0.0, 1.0),
         mouse_speed: float = 0.0,
         mouse_distance: float = 0.0,
         inactivity: float = 0.0,
