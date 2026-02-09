@@ -208,7 +208,8 @@ class ShaderCompiler:
 
                 if response != 1.0:
                     code_lines.append(
-                        f"    float {var_name} = {activation_func}(({weighted_sum}) * {response:.6f});"
+                        f"    float {var_name} = {activation_func}"
+                        f"(({weighted_sum}) * {response:.6f});"
                     )
                 else:
                     code_lines.append(
@@ -227,7 +228,7 @@ class ShaderCompiler:
         connections = self._get_enabled_connections(time_genome)
         nodes = self._topological_sort(time_genome, connections, time_config)
 
-        # Time signal input names: raw_time, mouseSpeed, mouseDistance, activity, bias (5 inputs)
+        # Time signal: raw_time, mouseSpeed, mouseDistance, activity, bias (5 inputs)
         time_input_names = {
             -5: "vRawTime",
             -4: "vMouseSpeed",
@@ -255,16 +256,15 @@ class ShaderCompiler:
     
     fragColor = vec4(r, g, b, 1.0);"""
         else:  # hsv
-            return """    // Interpret outputs as HSV (Hue, Saturation, Value) - Picbreeder style
-    // Hue: gentle sigmoid (0.4x steepness) - red reachable but only at extreme values
-    // output ~0 -> cyan, output ~±5 -> orange/magenta, output ~±10 -> near red
+            return """    // Interpret outputs as HSV - Picbreeder style
+    // Hue: sigmoid (0.4x); ~0 cyan, ~±5 orange/magenta, ~±10 red
     float h = 1.0 / (1.0 + exp(-output_0 * 0.4));
-    float s = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);  // Saturation: 0-1
-    float v = clamp(abs(output_2), 0.0, 1.0);  // Value: abs then clip (Picbreeder style)
+    float s = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);  // Saturation 0-1
+    float v = clamp(abs(output_2), 0.0, 1.0);  // Value (Picbreeder)
     
-    // Branchless HSV to RGB conversion (from lolengine.net)
-    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    vec3 p = abs(fract(vec3(h, h, h) + K.xyz) * 6.0 - K.www);
+    // Branchless HSV to RGB (lolengine.net)
+    vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+    vec3 p = abs(fract(vec3(h,h,h) + K.xyz) * 6.0 - K.www);
     vec3 rgb = v * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), s);
     
     fragColor = vec4(rgb, 1.0);"""
@@ -282,7 +282,7 @@ in vec2 vUV;  // UV coordinates (0-1)
 uniform float uTime;  // Time uniform (0-1)
 uniform float uMouseSpeed;  // Mouse movement speed (0-1)
 uniform float uMouseDist;  // Distance from mouse to this pattern's center (0-1)
-uniform float uInactivity;  // Activity level - boosted by speed, decays when still (0-1)
+uniform float uInactivity;  // Activity: boosted by speed, decays when still (0-1)
 
 // Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
 uniform float uTimeEnableRawTime;
@@ -408,7 +408,7 @@ in vec2 vUV;  // UV coordinates (0-1)
 uniform float uTime;  // Time uniform (0-1)
 uniform float uMouseSpeed;  // Mouse movement speed (0-1)
 uniform float uMouseDist;  // Distance from mouse to this pattern's center (0-1)
-uniform float uInactivity;  // Activity level - boosted by speed, decays when still (0-1)
+uniform float uInactivity;  // Activity: boosted by speed, decays when still (0-1)
 
 // Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
 uniform float uTimeEnableRawTime;

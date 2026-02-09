@@ -28,12 +28,12 @@ def save_genome_as_text(genome: neat.DefaultGenome, filepath: str, config: neat.
         f.write(f"Fitness: {genome.fitness}\n")
 
         # Input/Output node info
-        f.write(
-            f"\nInputs: {num_inputs} (nodes -{num_inputs} to -1: {', '.join(input_names[:num_inputs])})\n"
+        in_range = f"nodes -{num_inputs} to -1: {', '.join(input_names[:num_inputs])}"
+        f.write(f"\nInputs: {num_inputs} ({in_range})\n")
+        out_range = (
+            f"nodes 0 to {num_outputs - 1}: {', '.join(output_names[:num_outputs])}"
         )
-        f.write(
-            f"Outputs: {num_outputs} (nodes 0 to {num_outputs - 1}: {', '.join(output_names[:num_outputs])})\n"
-        )
+        f.write(f"Outputs: {num_outputs} ({out_range})\n")
 
         f.write(f"\n{'=' * 60}\n")
         f.write(f"NODES ({len(genome.nodes)} hidden nodes)\n")

@@ -64,7 +64,7 @@ _init_community_db()
 
 # Default to ALICE when unset so local dev works without setting env
 ADMIN_KEY = (os.environ.get("ADMIN_KEY") or "ALICE").strip()
-# Normalize: strip and remove any carriage returns (env can have \r in some Docker setups)
+# Normalize: strip carriage returns (env can have \r in some Docker setups)
 ADMIN_KEY = ADMIN_KEY.replace("\r", "").replace("\n", "").strip()
 
 
@@ -120,7 +120,8 @@ def api_community_submit():
         genome_json = json.dumps(genome)
         conn = _get_db()
         cur = conn.execute(
-            """INSERT INTO submissions (name, creator, genome_json, status, submitted_at)
+            """INSERT INTO submissions
+               (name, creator, genome_json, status, submitted_at)
                VALUES (?, ?, ?, 'pending', ?)""",
             (name, creator, genome_json, datetime.utcnow().isoformat()),
         )
@@ -139,7 +140,8 @@ def api_community():
         conn = _get_db()
         rows = conn.execute(
             """SELECT id, name, creator, genome_json, approved_at
-               FROM submissions WHERE status = 'approved' ORDER BY approved_at DESC"""
+               FROM submissions WHERE status = 'approved'
+               ORDER BY approved_at DESC"""
         ).fetchall()
         conn.close()
         patterns = []
@@ -169,7 +171,7 @@ def api_community():
 
 @community_bp.route("/api/admin/status", methods=["GET"])
 def api_admin_status():
-    """Public endpoint: report if admin key is configured and its length (for debugging 403)."""
+    """Report if admin key is configured and its length (for debugging 403)."""
     return jsonify(
         {
             "configured": bool(ADMIN_KEY),

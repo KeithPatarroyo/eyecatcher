@@ -129,8 +129,8 @@ class CPPNEngine:
             time_genome: Time signal NEAT genome
             raw_time: Raw time value (normalized -1 to 1)
             mouse_speed: Mouse movement speed (normalized -1 to 1)
-            mouse_distance: Distance from mouse to pattern center (normalized -1 to 1)
-            inactivity: Activity level - boosted by speed, decays when still (normalized -1 to 1)
+            mouse_distance: Distance from mouse to center (normalized -1 to 1)
+            inactivity: Activity level, decays when still (normalized -1 to 1)
 
         Returns:
             Modified time value (normalized -1 to 1)
@@ -165,8 +165,8 @@ class CPPNEngine:
             y: Y coordinate (normalized -1 to 1)
             time: Time value (normalized -1 to 1)
             mouse_speed: Mouse movement speed (normalized -1 to 1)
-            mouse_distance: Distance from mouse to pattern center (normalized -1 to 1)
-            inactivity: Activity level - boosted by speed, decays when still (normalized -1 to 1)
+            mouse_distance: Distance from mouse to center (normalized -1 to 1)
+            inactivity: Activity level, decays when still (normalized -1 to 1)
             distance: Distance from center (computed if None)
 
         Returns:
@@ -175,7 +175,7 @@ class CPPNEngine:
         if distance is None:
             distance = np.sqrt(x**2 + y**2)
 
-        # CPPN inputs: x, y, distance, time, mouse_speed, mouse_distance, inactivity, bias
+        # CPPN inputs: x, y, dist, time, mouse_speed, mouse_dist, inactivity, bias
         inputs = [x, y, distance, time, mouse_speed, mouse_distance, inactivity, 1.0]
 
         # Create network and activate
@@ -212,8 +212,8 @@ class CPPNEngine:
             y: Y coordinate (normalized -1 to 1)
             raw_time: Raw time value (normalized -1 to 1)
             mouse_speed: Mouse movement speed (normalized -1 to 1)
-            mouse_distance: Distance from mouse to pattern center (normalized -1 to 1)
-            inactivity: Activity level - boosted by speed, decays when still (normalized -1 to 1)
+            mouse_distance: Distance from mouse to center (normalized -1 to 1)
+            inactivity: Activity level, decays when still (normalized -1 to 1)
             distance: Distance from center (computed if None)
 
         Returns:
@@ -369,13 +369,13 @@ class CPPNEngine:
         if visualize:
             viz_path = filepath.replace(".pkl", "_network.pdf")
             try:
-                from genome_visualizer import GenomeVisualizer
+                from .genome_visualizer import GenomeVisualizer
 
                 visualizer = GenomeVisualizer(self.config)
                 visualizer.visualize_genome(genome, viz_path)
             except ImportError:
                 print(
-                    "Warning: Could not visualize genome. Install matplotlib: pip install matplotlib"
+                    "Warning: Could not visualize genome. Install matplotlib."
                 )
             except Exception as e:
                 print(f"Warning: Genome visualization failed: {e}")
@@ -467,7 +467,7 @@ class CPPNEngine:
         Args:
             dual_genome: DualGenome to save
             filepath: Path for .pkl file
-            visualize: If True, also creates a network visualization PDF of the visual genome
+            visualize: If True, also create a network PDF of the visual genome
         """
         with open(filepath, "wb") as f:
             pickle.dump(
@@ -483,13 +483,13 @@ class CPPNEngine:
         if visualize:
             viz_path = filepath.replace(".pkl", "_network.pdf")
             try:
-                from genome_visualizer import GenomeVisualizer
+                from .genome_visualizer import GenomeVisualizer
 
                 visualizer = GenomeVisualizer(self.config)
                 visualizer.visualize_genome(dual_genome.visual, viz_path)
             except ImportError:
                 print(
-                    "Warning: Could not visualize genome. Install matplotlib: pip install matplotlib"
+                    "Warning: Could not visualize genome. Install matplotlib."
                 )
             except Exception as e:
                 print(f"Warning: Genome visualization failed: {e}")

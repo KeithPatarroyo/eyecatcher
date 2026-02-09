@@ -385,8 +385,7 @@ def reset_genealogy():
 def export_sizes():
     """
     Return estimated export sizes for full tree and per branch (for download modal).
-    Returns: { "full": { "populations", "individuals", "estimated_bytes" },
-               "branches": [ { "name", "populations", "individuals", "estimated_bytes" }, ... ] }
+    Returns: { "full": { ... }, "branches": [ { "name", "populations", ... }, ... ] }
     """
     try:
         conn = _get_db()
@@ -396,11 +395,13 @@ def export_sizes():
                 "c"
             ]
             full_ind = conn.execute(
-                "SELECT COUNT(*) as c, COALESCE(SUM(LENGTH(genome_json)), 0) as total_json FROM individuals"
+                "SELECT COUNT(*) as c, "
+                "COALESCE(SUM(LENGTH(genome_json)), 0) as total_json "
+                "FROM individuals"
             ).fetchone()
             full_ind_count = full_ind["c"]
             full_json_bytes = full_ind["total_json"] or 0
-            # Overhead: populations ~300 bytes each, individuals wrapper ~80 bytes each
+            # Overhead: populations ~300 B each, individuals ~80 B each
             full_estimated = full_pop * 300 + full_ind_count * 80 + full_json_bytes
 
             # Per branch
@@ -424,8 +425,10 @@ def export_sizes():
                 else:
                     placeholders = ",".join("?" * len(pop_ids))
                     ind_row = conn.execute(
-                        f"""SELECT COUNT(*) as c, COALESCE(SUM(LENGTH(genome_json)), 0) as total_json
-                            FROM individuals WHERE population_id IN ({placeholders})""",
+                        f"""SELECT COUNT(*) as c,
+                            COALESCE(SUM(LENGTH(genome_json)), 0) as total_json
+                            FROM individuals
+                            WHERE population_id IN ({placeholders})""",
                         pop_ids,
                     ).fetchone()
                     ind_count = ind_row["c"]
@@ -471,7 +474,8 @@ def export_genealogy():
                 pop_rows = conn.execute(
                     """SELECT id, parent_id, generation_num, created_at, branch_name,
                               description, user_id, population_size, metadata_json
-                       FROM populations WHERE branch_name = ? ORDER BY id ASC""",
+                       FROM populations
+                       WHERE branch_name = ? ORDER BY id ASC""",
                     (branch_name,),
                 ).fetchall()
                 pop_ids = [r["id"] for r in pop_rows]
@@ -484,19 +488,24 @@ def export_genealogy():
                     ), 404
                 placeholders = ",".join("?" * len(pop_ids))
                 ind_rows = conn.execute(
-                    f"""SELECT id, population_id, genome_key, genome_json, fitness, created_at
-                        FROM individuals WHERE population_id IN ({placeholders}) ORDER BY id ASC""",
+                    f"""SELECT id, population_id, genome_key, genome_json,
+                        fitness, created_at
+                        FROM individuals
+                        WHERE population_id IN ({placeholders}) ORDER BY id ASC""",
                     pop_ids,
                 ).fetchall()
             else:
                 pop_rows = conn.execute(
                     """SELECT id, parent_id, generation_num, created_at, branch_name,
                               description, user_id, population_size, metadata_json
-                       FROM populations ORDER BY id ASC"""
+                       FROM populations
+                       ORDER BY id ASC"""
                 ).fetchall()
                 ind_rows = conn.execute(
-                    """SELECT id, population_id, genome_key, genome_json, fitness, created_at
-                       FROM individuals ORDER BY id ASC"""
+                    """SELECT id, population_id, genome_key, genome_json,
+                       fitness, created_at
+                       FROM individuals
+                       ORDER BY id ASC"""
                 ).fetchall()
 
             populations = [

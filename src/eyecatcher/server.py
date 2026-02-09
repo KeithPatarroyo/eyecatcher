@@ -7,7 +7,7 @@ Each individual has two CPPNs:
 - Time Signal CPPN: (rawTime, mouseSpeed, bias) -> (modifiedTime)
 
 Population state lives on the client; server provides compile, random, breed, save.
-Save returns file contents for client-side download (works on Railway / no server filesystem).
+Save returns file contents for client-side download (Railway / no server filesystem).
 """
 
 import base64
@@ -214,7 +214,7 @@ def breed():
     Body: {
         "parents": [...],
         "population_size": 12,  (optional, default 12)
-        "elitism": false        (optional, default false; if true, best parent is copied unchanged)
+        "elitism": false  (optional; if true, best parent is copied unchanged)
     }
     Returns { "children": [genome JSONs] }.
     """
@@ -302,9 +302,9 @@ def _breed_stateless(data):
                         return jsonify({"children": children})
 
                     cur = conn.execute(
-                        """INSERT INTO populations 
-                           (parent_id, generation_num, created_at, branch_name, description, 
-                            user_id, population_size, metadata_json)
+                        """INSERT INTO populations
+                           (parent_id, generation_num, created_at, branch_name,
+                            description, user_id, population_size, metadata_json)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
                             parent_population_id,
@@ -322,8 +322,9 @@ def _breed_stateless(data):
                     for idx, child_genome in enumerate(children):
                         genome_json = json.dumps(child_genome)
                         conn.execute(
-                            """INSERT INTO individuals 
-                               (population_id, genome_key, genome_json, fitness, created_at)
+                            """INSERT INTO individuals
+                               (population_id, genome_key, genome_json,
+                                fitness, created_at)
                                VALUES (?, ?, ?, ?, ?)""",
                             (
                                 new_population_id,
@@ -401,9 +402,9 @@ def extract_network_data(genome, network_type, config):
     # X-offset to separate visual and time networks horizontally
     x_offset = 1000 if network_type == "time" else 0
 
-    # Define input labels to match actual CPPN query inputs
-    # Visual CPPN inputs: x, y, distance, time, mouse_speed, mouse_distance, inactivity, bias
-    # Time Signal CPPN inputs: raw_time, mouse_speed, mouse_distance, inactivity, bias
+    # Input labels to match CPPN query inputs
+    # Visual: x, y, dist, time, mouse_speed, mouse_dist, inactivity, bias
+    # Time CPPN inputs: raw_time, mouse_speed, mouse_distance, inactivity, bias
     if network_type == "time":
         input_labels = [
             "raw_time",
@@ -623,7 +624,7 @@ def _save_dual_genome(
 
 @app.route("/api/saved/<int:individual_id>/network")
 def serve_saved_network(individual_id):
-    """Serve the network visualization PDF for a saved pattern (from genome visualizer)."""
+    """Serve network visualization PDF for a saved pattern (genome visualizer)."""
     path = os.path.join(
         ROOT_DIR, "output", "saved", f"dual_genome_{individual_id}_network.pdf"
     )

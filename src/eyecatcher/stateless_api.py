@@ -31,9 +31,12 @@ def init_stateless_api(engine: CPPNEngine, compiler: ShaderCompiler):
 
 
 def _shader_response_for_dual(
-    dual_genome: DualGenome, individual_id: int, clicks: int = 0, compiler=None
+    dual_genome: DualGenome,
+    individual_id: int,
+    clicks: int = 0,
+    compiler=None,
 ):
-    """Build a single shader response dict for a dual genome. Uses compiler or _compiler."""
+    """Build shader response dict for a dual genome. Uses compiler or _compiler."""
     comp = compiler if compiler is not None else _compiler
     shader_code = comp.compile_dual_to_glsl(
         dual_genome, _engine.config, _engine.time_config
@@ -61,7 +64,7 @@ def _shader_response_for_dual(
 def api_compile():
     """
     Stateless: compile a list of dual genomes to shaders.
-    Body: { "genomes": [ ... ], "color_mode": "hsv"|"rgb" (optional, default from server) }
+    Body: { "genomes": [ ... ], "color_mode": "hsv"|"rgb" (optional) }
     Returns: { "shaders": [ { "id", "shader", "clicks", "nodes", ... }, ... ] }
     """
     try:
@@ -118,7 +121,7 @@ def api_random():
 def api_time_output():
     """
     Stateless: query the Time CPPN for a genome with given inputs (for debug panel).
-    Body: { "genome": { "key", "visual", "time_signal" }, "time", "mouseSpeed", "mouseDist", "activity" } (0-1).
+    Body: { "genome": { ... }, "time", "mouseSpeed", "mouseDist", "activity" } (0-1).
     Returns: { "timeOutput": float, "inputs": { ... } }.
     """
     try:
@@ -290,7 +293,8 @@ def api_adjust_weight():
         else:
             return jsonify(
                 {
-                    "error": f"Connection not found: {conn_key} (from {source_node} -> {target_node})"
+                    "error": f"Connection not found: {conn_key} "
+                    f"({source_node} -> {target_node})"
                 }
             ), 404
 

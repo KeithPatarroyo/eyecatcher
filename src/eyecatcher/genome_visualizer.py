@@ -52,7 +52,7 @@ class GenomeVisualizer:
             genome: NEAT genome to visualize
             filepath: Output file path (PDF)
             view: Whether to display the plot
-            figsize: Figure size (width, height). If None, auto-calculated based on node count.
+            figsize: (width, height). If None, auto from node count.
         """
         # Calculate max nodes in any column for sizing
         max_nodes_in_column = max(self.num_inputs, self.num_outputs)
@@ -224,7 +224,7 @@ class GenomeVisualizer:
 
     def _get_nodes_required_for_output(self, genome: neat.DefaultGenome) -> set[int]:
         """
-        Find all nodes that are required to compute outputs (backward trace from outputs).
+        Find nodes required to compute outputs (backward trace from outputs).
         Returns set of node IDs that contribute to at least one output.
         """
         output_ids = list(range(self.num_outputs))
@@ -391,7 +391,9 @@ class GenomeVisualizer:
 
         # Title - positioned closer to plot
         title = f"CPPN Genome #{genome.key}  |  "
-        title += f"Nodes: {self.num_inputs}in + {num_hidden}hidden + {self.num_outputs}out  |  "
+        title += (
+            f"Nodes: {self.num_inputs}in + {num_hidden}hid + {self.num_outputs}out  |  "
+        )
         title += f"Connections: {num_connections} enabled, {num_disabled} disabled"
         ax.set_title(title, fontsize=10, fontweight="bold", pad=10)
 

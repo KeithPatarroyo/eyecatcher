@@ -73,7 +73,7 @@ def genome_from_json(data: dict[str, Any], config: neat.Config) -> neat.DefaultG
         # NEAT-python requires innovation number for DefaultConnectionGene
         innovation = cd.get("innovation")
         if innovation is None:
-            # Synthetic innovation when loading JSON that omitted it (e.g. legacy or imported genomes)
+            # Synthetic innovation when JSON omitted it (e.g. legacy or imported)
             innovation = abs(hash(key)) % (2**31)
         else:
             innovation = int(innovation)
@@ -108,7 +108,7 @@ def dual_genome_from_json(data: dict[str, Any], engine: "CPPNEngine") -> "DualGe
     time_signal = genome_from_json(time_data, engine.time_config)
 
     # Additional safety: update node indexers globally to prevent collisions
-    # This is especially important when loading from genealogy
+    # Important when loading from genealogy
     _update_node_indexer_from_genome(visual, engine.config.genome_config)
     _update_node_indexer_from_genome(time_signal, engine.time_config.genome_config)
 
@@ -123,7 +123,7 @@ def _update_node_indexer_from_genome(
     if not genome.nodes:
         return
 
-    # Find the maximum node ID in this genome (only hidden nodes, which have positive IDs)
+    # Find max node ID (hidden nodes have positive IDs)
     # Input nodes have negative IDs, output nodes are 0+, hidden nodes are higher
     hidden_node_ids = [
         nid for nid in genome.nodes.keys() if nid >= genome_config.num_outputs
