@@ -1,5 +1,6 @@
 """Tests for shader compiler: CPPN to GLSL."""
 
+import pytest
 from eyecatcher.cppn_engine import CPPNEngine, create_random_dual_genome
 from eyecatcher.shader_compiler import ShaderCompiler
 
@@ -34,3 +35,48 @@ def test_compile_dual_to_glsl_rgb_mode():
     glsl = compiler.compile_dual_to_glsl(dual, engine.config, engine.time_config)
     assert "void main()" in glsl
     assert len(glsl) > 0
+
+
+def test_compile_dual_empty_connections():
+    """Compiler handles genome with no enabled connections (minimal output)."""
+    engine = CPPNEngine()
+    engine.create_population()
+    dual = create_random_dual_genome(engine, genome_id=0)
+    for conn in dual.visual.connections.values():
+        conn.enabled = False
+    for conn in dual.time_signal.connections.values():
+        conn.enabled = False
+    compiler = ShaderCompiler(color_mode="hsv")
+    glsl = compiler.compile_dual_to_glsl(dual, engine.config, engine.time_config)
+    assert isinstance(glsl, str)
+    assert "void main()" in glsl
+
+
+def test_compile_dual_single_hidden_node():
+    """Compiler handles genome with a single hidden node in visual CPPN."""
+    engine = CPPNEngine()
+    engine.create_population()
+    for _ in range(50):
+        dual = create_random_dual_genome(engine, genome_id=0)
+        if len(dual.visual.nodes) != 1:
+            continue
+        compiler = ShaderCompiler(color_mode="hsv")
+        glsl = compiler.compile_dual_to_glsl(dual, engine.config, engine.time_config)
+        assert "void main()" in glsl
+        assert len(glsl) > 0
+        return
+    pytest.skip("no random genome had exactly one hidden node in 50 tries")
+
+
+def test_compile_dual_activation_functions_in_output():
+    """Compiled GLSL contains at least one known activation function call."""
+    engine = CPPNEngine()
+    engine.create_population()
+    dual = create_random_dual_genome(engine, genome_id=0)
+    compiler = ShaderCompiler(color_mode="hsv")
+    glsl = compiler.compile_dual_to_glsl(dual, engine.config, engine.time_config)
+    # GLSL calls look like "sigmoid(", "tanh(", etc.
+    activations_found = [
+        name for name in ShaderCompiler.ACTIVATION_FUNCTIONS if f"{name}(" in glsl
+    ]
+    assert len(activations_found) >= 1, "expected at least one activation in output"
