@@ -1,22 +1,21 @@
 """
-Test genome visualization
+Test genome visualization.
 """
 
 import os
+import shutil
+from pathlib import Path
 
 import neat
-from eyecatcher.cppn_engine import CPPNEngine, create_random_genome
+import pytest
+from eyecatcher.cppn_engine import create_random_genome
+from PIL import Image
 
 
-def save_genome_as_text(genome: neat.DefaultGenome, filepath: str, config: neat.Config):
-    """
-    Save a genome to a human-readable text file for debugging.
-
-    Args:
-        genome: NEAT genome to save
-        filepath: Output file path
-        config: NEAT configuration
-    """
+def _save_genome_as_text(
+    genome: neat.DefaultGenome, filepath: str, config: neat.Config
+):
+    """Save a genome to a human-readable text file for debugging."""
     num_inputs = config.genome_config.num_inputs
     num_outputs = config.genome_config.num_outputs
     input_names = ["x", "y", "distance", "angle", "sin(a)", "cos(a)", "time", "bias"]
@@ -25,122 +24,78 @@ def save_genome_as_text(genome: neat.DefaultGenome, filepath: str, config: neat.
     with open(filepath, "w") as f:
         f.write(f"Genome ID: {genome.key}\n")
         f.write(f"Fitness: {genome.fitness}\n")
-
-        # Input/Output node info
         in_range = f"nodes -{num_inputs} to -1: {', '.join(input_names[:num_inputs])}"
         f.write(f"\nInputs: {num_inputs} ({in_range})\n")
         out_range = (
             f"nodes 0 to {num_outputs - 1}: {', '.join(output_names[:num_outputs])}"
         )
         f.write(f"Outputs: {num_outputs} ({out_range})\n")
-
         f.write(f"\n{'=' * 60}\n")
         f.write(f"NODES ({len(genome.nodes)} hidden nodes)\n")
         f.write(f"{'=' * 60}\n\n")
-
         for node_id, node in sorted(genome.nodes.items()):
             f.write(f"Node {node_id}:\n")
             f.write(f"  Activation: {node.activation}\n")
             f.write(f"  Bias: {node.bias:.6f}\n")
             f.write(f"  Response: {node.response:.6f}\n")
             f.write(f"  Aggregation: {node.aggregation}\n\n")
-
         f.write(f"{'=' * 60}\n")
         f.write(f"CONNECTIONS ({len(genome.connections)} total)\n")
         f.write(f"{'=' * 60}\n\n")
-
         enabled_conns = [c for c in genome.connections.values() if c.enabled]
-        disabled_conns = [c for c in genome.connections.values() if not c.enabled]
-
-        # Group connections by destination (to show what feeds each node)
-        f.write(f"Enabled ({len(enabled_conns)}):\n")
-
-        # Show connections grouped by destination
-        conn_by_dest = {}
         for conn in enabled_conns:
             src, dst = conn.key
-            if dst not in conn_by_dest:
-                conn_by_dest[dst] = []
-            conn_by_dest[dst].append((src, conn.weight))
+            f.write(f"  {src} -> {dst}: weight={conn.weight:.6f}\n")
 
-        for dst in sorted(conn_by_dest.keys()):
-            # Determine destination type
-            if dst < 0:
-                dst_label = f"Input {dst}"
-            elif dst < num_outputs:
-                dst_label = f"Output {dst} ({output_names[dst]})"
-            else:
-                dst_label = f"Hidden {dst}"
-
-            f.write(f"\n  -> {dst_label}:\n")
-            for src, weight in sorted(conn_by_dest[dst]):
-                # Determine source type
-                if src < 0:
-                    idx = src + num_inputs
-                    if 0 <= idx < len(input_names):
-                        src_label = input_names[idx]
-                    else:
-                        src_label = f"in{src}"
-                elif src < num_outputs:
-                    src_label = f"Output{src}"
-                else:
-                    src_label = f"Node{src}"
-
-                f.write(f"    {src_label} ({src}): weight={weight:.6f}\n")
-
-        if disabled_conns:
-            f.write(f"\nDisabled ({len(disabled_conns)}):\n")
-            for conn in sorted(disabled_conns, key=lambda c: c.key):
-                src, dst = conn.key
-                f.write(f"  {src} -> {dst}: weight={conn.weight:.6f}\n")
+    return filepath
 
 
-def test_visualization():
-    """Test genome visualization feature."""
-    print("Testing genome visualization...")
+@pytest.mark.slow
+def test_visualization(tmp_path, cppn_engine):
+    """Save pkl, text, optional PDF, and render PNG into tmp_path.
 
-    # Create engine
-    engine = CPPNEngine()
-    engine.create_population()
+    Set EYECATCHER_KEEP_VISUALIZATION_ARTIFACTS=1 to copy outputs to output/test/
+    so you can open the PDF (and other files) after the test.
+    """
+    genome = create_random_genome(cppn_engine.config, genome_id=42)
+    for _ in range(5):
+        genome = cppn_engine.mutate_genome(genome)
 
-    # Create a random genome
-    genome = create_random_genome(engine.config, genome_id=42)
+    pkl_path = tmp_path / "test_genome.pkl"
+    txt_path = tmp_path / "test_genome.txt"
+    png_path = tmp_path / "test_pattern.png"
 
-    # Add some mutations to make it interesting
-    for _ in range(10):
-        genome = engine.mutate_genome(genome)
+    cppn_engine.save_genome(genome, str(pkl_path), visualize=True)
+    _save_genome_as_text(genome, str(txt_path), cppn_engine.config)
 
-    # Create output directory
-    os.makedirs("output/test", exist_ok=True)
+    img = cppn_engine.render_image(genome, resolution=64, time=0.5)
+    Image.fromarray(img).save(str(png_path))
 
-    # Save with visualization
-    print("Saving genome with visualization...")
-    engine.save_genome(genome, "output/test/test_genome.pkl", visualize=True)
+    assert pkl_path.exists()
+    assert pkl_path.stat().st_size > 0
 
-    # Save text representation for debugging
-    print("Saving text representation...")
-    save_genome_as_text(genome, "output/test/test_genome.txt", engine.config)
+    assert txt_path.exists()
+    assert txt_path.stat().st_size > 0
+    text = txt_path.read_text()
+    assert "Genome ID:" in text
+    assert "NODES" in text
+    assert "CONNECTIONS" in text
 
-    # Also render the pattern
-    print("Rendering pattern image...")
-    from PIL import Image
+    assert png_path.exists()
+    assert png_path.stat().st_size > 0
 
-    img = engine.render_image(genome, resolution=128, time=0.5)
-    Image.fromarray(img).save("output/test/test_pattern.png")
+    viz_pdf = tmp_path / "test_genome_network.pdf"
+    if viz_pdf.exists():
+        assert viz_pdf.stat().st_size > 0
 
-    print("\n" + "=" * 60)
-    print("✓ Visualization test complete!")
-    print("=" * 60)
-    print("\nGenerated files:")
-    print("  - output/test/test_genome.pkl (genome data)")
-    print("  - output/test/test_genome.txt (human-readable text format)")
-    print(
-        "  - output/test/test_genome_network.pdf (network visualization - vector PDF)"
-    )
-    print("  - output/test/test_pattern.png (rendered pattern)")
-    print("\nOpen the network visualization to see the CPPN structure!")
-    print("=" * 60)
-
-
-if __name__ == "__main__":
-    test_visualization()
+    # Optional: keep artifacts in output/test/ for inspection (e.g. open the PDF)
+    if os.environ.get("EYECATCHER_KEEP_VISUALIZATION_ARTIFACTS"):
+        out_dir = Path(__file__).resolve().parent.parent / "output" / "test"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for name in ["test_genome.pkl", "test_genome.txt", "test_pattern.png"]:
+            src = tmp_path / name
+            if src.exists():
+                shutil.copy2(src, out_dir / name)
+        if viz_pdf.exists():
+            shutil.copy2(viz_pdf, out_dir / "test_genome_network.pdf")
+            print(f"\nVisualization PDF: {out_dir.resolve()}/test_genome_network.pdf")
