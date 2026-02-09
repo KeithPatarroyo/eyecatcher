@@ -13,7 +13,8 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 ## Commands (run from repo root)
 
 ```bash
-pip install -e ".[dev]"       # Install package + dev deps (pytest, ruff)
+pip install -e ".[dev]"       # Install package + dev deps (pytest, ruff, pre-commit)
+pre-commit install           # Run ruff + hooks on commit (recommended)
 pytest -v --tb=short         # Run tests
 ruff check .                 # Lint
 ruff format .                # Format
@@ -73,6 +74,6 @@ python -m eyecatcher.server  # Run dev server without Docker
 
 ## Boundaries
 
-- **Always:** Run `pytest` and `ruff check` (and fix issues) before committing; use relative imports inside `src/eyecatcher/`; preserve the stateless API contract (no server-side population state).
+- **Always:** Run `pytest` and `ruff check` (and fix issues) before committing, or use `pre-commit install` so hooks run on commit; use relative imports inside `src/eyecatcher/`; preserve the stateless API contract (no server-side population state).
 - **Ask first:** Adding new dependencies; changing NEAT config files; modifying the GLSL shader template in `shader_compiler.py`; changing DB schema (community or genealogy).
 - **Never:** Commit secrets or real API keys; modify files in `data/` (runtime-generated DBs); hardcode absolute paths; break the `DualGenome` visual + time_signal pairing.

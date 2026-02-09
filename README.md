@@ -103,7 +103,7 @@ Run tests on your machine with Python. No server or browser required.
   source .venv/bin/activate   # Windows: .venv\Scripts\activate
   pip install -e ".[dev]"
   ```
-  This installs pytest and ruff; no `.env` or other config is needed for tests.
+  This installs pytest, ruff, and pre-commit; no `.env` or other config is needed for tests. Run `pre-commit install` to run Ruff on each commit (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 - NEAT config files in [config/](config/) (visual and time-signal; default is `*_experimental.txt`; `neat_config.txt` / `neat_config_time.txt` are alternatives).
 
 **Commands**
@@ -239,7 +239,7 @@ ffmpeg -i output/frames/frame_%03d.png -vf "fps=30,scale=512:-1:flags=lanczos" o
 
 ## Requirements
 
-Python 3.9+. Dependencies are in [pyproject.toml](pyproject.toml) (neat-python, numpy, pillow, flask, flask-cors, matplotlib). Dev: `pip install -e ".[dev]"` for pytest and ruff.
+Python 3.9+. Dependencies are in [pyproject.toml](pyproject.toml) (neat-python, numpy, pillow, flask, flask-cors, matplotlib). Dev: `pip install -e ".[dev]"` for pytest, ruff, and pre-commit.
 
 ## Future work
 

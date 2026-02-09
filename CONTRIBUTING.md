@@ -23,15 +23,21 @@ Thank you for your interest in contributing. This document explains how to get s
    source .venv/bin/activate   # Windows: .venv\Scripts\activate
    pip install -e ".[dev]"
    ```
-   This installs the package in editable mode plus dev dependencies (pytest, ruff).
+   This installs the package in editable mode plus dev dependencies (pytest, ruff, pre-commit).
 
-3. **Run tests**
+3. **Install pre-commit hooks (recommended)**
+   ```bash
+   pre-commit install
+   ```
+   This runs Ruff (lint + format) and a few sanity checks automatically on each commit. You can still run `ruff check .` and `ruff format .` manually.
+
+4. **Run tests**
    ```bash
    pytest
    ```
    Run a specific file: `pytest tests/test_visualization.py -v`.
 
-4. **Optional: run the app locally**
+5. **Optional: run the app locally**
    ```bash
    python -m eyecatcher.server
    ```
@@ -41,7 +47,7 @@ No `.env` file is required for running tests; the app can use defaults for local
 
 ## Code style
 
-- **Formatting and linting**: We use [Ruff](https://docs.astral.sh/ruff/). Run `ruff check .` and `ruff format .` before committing (or `ruff check . --fix` and `ruff format .` to auto-fix). Optional: install [pre-commit](https://pre-commit.com/) and run `pre-commit install` to run Ruff automatically on commit.
+- **Formatting and linting**: We use [Ruff](https://docs.astral.sh/ruff/). We recommend [pre-commit](https://pre-commit.com/) so Ruff runs automatically on commit (`pre-commit install` after `pip install -e ".[dev]"`). Without pre-commit, run `ruff check .` and `ruff format .` before committing (or `ruff check . --fix` and `ruff format .` to auto-fix).
 - **Docstrings**: Use docstrings for public modules, classes, and functions; include Args/Returns where helpful.
 
 ## Pull request process
