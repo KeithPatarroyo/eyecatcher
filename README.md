@@ -249,3 +249,11 @@ Python 3.9+. Dependencies are in [pyproject.toml](pyproject.toml) (neat-python, 
 - [ ] Multi-resolution rendering
 - [ ] Save/load evolution sessions
 - [ ] Real-time shader editing
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code style, and the pull request process.
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
