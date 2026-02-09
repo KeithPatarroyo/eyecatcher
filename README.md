@@ -103,7 +103,7 @@ Run tests on your machine with Python. No server or browser required.
   source .venv/bin/activate   # Windows: .venv\Scripts\activate
   pip install -e ".[dev]"
   ```
-  This installs pytest (and black); no `.env` or other config is needed for tests.
+  This installs pytest and ruff; no `.env` or other config is needed for tests.
 - NEAT config files in [config/](config/) (`neat_config.txt`, `neat_config_time.txt`) are in the repo already.
 
 **Commands**
@@ -129,7 +129,7 @@ No constants or templates need to be filled beforehand; tests use the default co
 
 ```bash
 # After creating a venv, activating it, and running: pip install -e .
-python server.py
+python -m eyecatcher.server
 ```
 
 Then open **http://localhost:5001**. Optional: copy [.env.example](.env.example) to `.env` and set `PORT`, `CORS_ORIGINS`, `ADMIN_KEY`, `DATABASE_PATH` if you want to override defaults.
@@ -175,7 +175,8 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **tests/** – Test suite (pytest). Run with `pytest` from repo root.
 - **demos/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
 - **config/** – NEAT config files (`neat_config.txt`, `neat_config_time.txt`) for visual and time-signal CPPNs.
-- **Root** – Backend and deploy: Python modules (`server.py`, `cppn_engine.py`, etc.), `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`, `run.sh`). Entrypoint: `server:app`.
+- **src/eyecatcher/** – Python package: `server`, `cppn_engine`, `shader_compiler`, `genome_serialization`, routes, etc. Entrypoint: `eyecatcher.server:app`.
+- **Root** – `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`, `run.sh`), [CONTRIBUTING.md](CONTRIBUTING.md), [LICENSE](LICENSE).
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
 
@@ -205,14 +206,14 @@ The server does not hold population state. The client (web UI) stores genomes (e
 
 ### Core components
 
-- **CPPN Engine** ([cppn_engine.py](cppn_engine.py)) – `CPPNEngine`, `DualGenome`, mutation/crossover, JSON serialization.
-- **Shader Compiler** ([shader_compiler.py](shader_compiler.py)) – CPPN → GLSL; `compile_dual_to_glsl()` for the web renderer.
-- **Server** ([server.py](server.py)) – Flask app: stateless API (compile, random, seeds, breed, save, time-output), community routes, static serving.
+- **CPPN Engine** (`src/eyecatcher/cppn_engine.py`) – `CPPNEngine`, `DualGenome`, mutation/crossover, JSON serialization.
+- **Shader Compiler** (`src/eyecatcher/shader_compiler.py`) – CPPN → GLSL; `compile_dual_to_glsl()` for the web renderer.
+- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API (compile, random, seeds, breed, save, time-output), community routes, static serving.
 
 ## API usage (programmatic)
 
 ```python
-from cppn_engine import CPPNEngine, create_random_dual_genome
+from eyecatcher.cppn_engine import CPPNEngine, create_random_dual_genome
 
 engine = CPPNEngine()
 engine.create_population()
@@ -225,7 +226,7 @@ r, g, b = engine.query_dual_cppn(
 )
 ```
 
-Compile to shader: [shader_compiler.py](shader_compiler.py) `ShaderCompiler().compile_dual_to_glsl()`. Evolution: `engine.mutate_dual_genome()`, `engine.crossover_dual_genomes()`.
+Compile to shader: `eyecatcher.shader_compiler.ShaderCompiler().compile_dual_to_glsl()`. Evolution: `engine.mutate_dual_genome()`, `engine.crossover_dual_genomes()`.
 
 ## Creating videos
 
@@ -238,7 +239,7 @@ ffmpeg -i output/frames/frame_%03d.png -vf "fps=30,scale=512:-1:flags=lanczos" o
 
 ## Requirements
 
-Python 3.9+. Dependencies are in [pyproject.toml](pyproject.toml) (neat-python, numpy, pillow, flask, flask-cors, matplotlib). Dev: `pip install -e ".[dev]"` for pytest and black.
+Python 3.9+. Dependencies are in [pyproject.toml](pyproject.toml) (neat-python, numpy, pillow, flask, flask-cors, matplotlib). Dev: `pip install -e ".[dev]"` for pytest and ruff.
 
 ## Future work
 
