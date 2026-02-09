@@ -7,6 +7,7 @@ Supports dual-CPPN individuals where each individual has:
 - A time signal CPPN: (rawTime, mouseSpeed, bias) -> (modifiedTime)
 """
 
+import logging
 import math
 import os
 import pickle
@@ -15,6 +16,8 @@ from typing import Optional
 
 import neat
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def _cos_activation(x):
@@ -374,9 +377,9 @@ class CPPNEngine:
                 visualizer = GenomeVisualizer(self.config)
                 visualizer.visualize_genome(genome, viz_path)
             except ImportError:
-                print("Warning: Could not visualize genome. Install matplotlib.")
+                logger.warning("Could not visualize genome. Install matplotlib.")
             except Exception as e:
-                print(f"Warning: Genome visualization failed: {e}")
+                logger.warning("Genome visualization failed: %s", e)
 
     def load_genome(self, filepath: str) -> neat.DefaultGenome:
         """Load a genome from file."""
@@ -486,9 +489,9 @@ class CPPNEngine:
                 visualizer = GenomeVisualizer(self.config)
                 visualizer.visualize_genome(dual_genome.visual, viz_path)
             except ImportError:
-                print("Warning: Could not visualize genome. Install matplotlib.")
+                logger.warning("Could not visualize genome. Install matplotlib.")
             except Exception as e:
-                print(f"Warning: Genome visualization failed: {e}")
+                logger.warning("Genome visualization failed: %s", e)
 
     def load_dual_genome(self, filepath: str) -> DualGenome:
         """Load a dual genome from file."""

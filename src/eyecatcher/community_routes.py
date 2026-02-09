@@ -8,11 +8,14 @@ Provides endpoints for community pattern submissions and admin moderation:
 """
 
 import json
+import logging
 import os
 import sqlite3
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
+
+logger = logging.getLogger(__name__)
 
 # Create blueprint
 community_bp = Blueprint("community", __name__)
@@ -87,12 +90,11 @@ def _check_admin_key():
         return False, jsonify({"error": "Admin key not configured"}), 500
     if key != ADMIN_KEY:
         if os.environ.get("FLASK_ENV") == "development":
-            import sys
-
-            print(
-                f"Admin key mismatch: expected len={len(ADMIN_KEY)} "
-                f"got len={len(key)} key_repr={key!r}",
-                file=sys.stderr,
+            logger.warning(
+                "Admin key mismatch: expected len=%s got len=%s key_repr=%r",
+                len(ADMIN_KEY),
+                len(key),
+                key,
             )
         return False, jsonify({"error": "Invalid admin key"}), 403
     return True, None, None
