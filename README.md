@@ -12,7 +12,7 @@ Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Li
 docker compose up --build
 ```
 
-Then open **http://localhost:5001**. For other options (local Python, tests, deployment), see [Running the project](#running-the-project) below.
+Then open **http://localhost:5001**. You can also use **`make docker-up`** from the repo root. For other options (local Python, tests, deployment), see [Running the project](#running-the-project) below. Common dev tasks: **`make help`** (list targets), **`make test`**, **`make lint`**, **`make format`**.
 
 ## Features
 

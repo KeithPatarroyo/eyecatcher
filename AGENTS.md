@@ -68,7 +68,8 @@ python -m eyecatcher.server  # Run dev server without Docker
 ## Git workflow
 
 - Default development branch: `dev`. PRs target `dev` (or `main` once consolidated).
-- CI (GitHub Actions) runs on push/PR to `main` and `dev`: pytest, `ruff check`, `ruff format --check`.
+- CI (GitHub Actions) runs on push/PR to `main` and `dev`: pytest, `ruff check`, `ruff format --check`, ESLint/Prettier for JS.
+- **Do not skip pre-commit:** Always let hooks run on commit (Ruff, Prettier, ESLint, etc.). Fix failures rather than using `--no-verify`.
 
 ---
 
@@ -76,4 +77,4 @@ python -m eyecatcher.server  # Run dev server without Docker
 
 - **Always:** Run `pytest` and `ruff check` (and fix issues) before committing, or use `pre-commit install` so hooks run on commit; use relative imports inside `src/eyecatcher/`; preserve the stateless API contract (no server-side population state).
 - **Ask first:** Adding new dependencies; changing NEAT config files; modifying the GLSL shader template in `shader_compiler.py`; changing DB schema (community or genealogy).
-- **Never:** Commit secrets or real API keys; modify files in `data/` (runtime-generated DBs); hardcode absolute paths; break the `DualGenome` visual + time_signal pairing.
+- **Never:** Commit secrets or real API keys; modify files in `data/` (runtime-generated DBs); hardcode absolute paths; break the `DualGenome` visual + time_signal pairing; **skip repo health precautions** — do not use `git commit --no-verify` or otherwise bypass pre-commit hooks; fix lint/format/test failures so commits pass the hooks.

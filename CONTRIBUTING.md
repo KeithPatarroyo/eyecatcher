@@ -35,7 +35,7 @@ Thank you for your interest in contributing. This document explains how to get s
    ```bash
    pytest
    ```
-   Run a specific file: `pytest tests/test_visualization.py -v`.
+   Run a specific file: `pytest tests/test_visualization.py -v`. You can also use **`make test`** (see [Makefile](Makefile)).
 
 5. **Optional: run the app locally**
    ```bash
@@ -47,7 +47,7 @@ No `.env` file is required for running tests; the app can use defaults for local
 
 ## Code style
 
-- **Formatting and linting**: We use [Ruff](https://docs.astral.sh/ruff/). We recommend [pre-commit](https://pre-commit.com/) so Ruff runs automatically on commit (`pre-commit install` after `pip install -e ".[dev]"`). Without pre-commit, run `ruff check .` and `ruff format .` before committing (or `ruff check . --fix` and `ruff format .` to auto-fix).
+- **Formatting and linting**: We use [Ruff](https://docs.astral.sh/ruff/) for Python and ESLint/Prettier for JavaScript (see [package.json](package.json)). We recommend [pre-commit](https://pre-commit.com/) so checks run automatically on commit (`pre-commit install` after `pip install -e ".[dev]"`). You can run **`make lint`** and **`make format`** for Python and JS; without Make, run `ruff check .`, `ruff format .`, and `npm run lint` / `npm run format:check` as needed.
 - **Docstrings**: Use docstrings for public modules, classes, and functions; include Args/Returns where helpful.
 
 ## Pull request process
