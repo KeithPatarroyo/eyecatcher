@@ -14,3 +14,6 @@ output/
 uv.lock
 data/community.db
 data/genealogy.db
+
+# Test/LLM artifacts (not part of app)
+llm_test/
