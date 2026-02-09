@@ -19,11 +19,12 @@ Thank you for your interest in contributing. This document explains how to get s
 
 2. **Create a virtual environment and install the project**
    ```bash
-   python -m venv .venv
+   make install
    source .venv/bin/activate   # Windows: .venv\Scripts\activate
-   pip install -e ".[dev]"
    ```
-   This installs the package in editable mode plus dev dependencies (pytest, ruff, pre-commit).
+   This creates `.venv`, installs the package in editable mode plus dev deps (pytest, ruff, pre-commit), and runs `npm install` for JS lint/format. Alternatively, run `python -m venv .venv`, activate it, then `pip install -e ".[dev]"` and `npm install` manually.
+
+   For all available targets (test, lint, format, dev, etc.), run **`make help`**.
 
 3. **Install pre-commit hooks (recommended)**
    ```bash
@@ -33,9 +34,9 @@ Thank you for your interest in contributing. This document explains how to get s
 
 4. **Run tests**
    ```bash
-   pytest
+   make test
    ```
-   Run a specific file: `pytest tests/test_visualization.py -v`. You can also use **`make test`** (see [Makefile](Makefile)).
+   Or `pytest` directly; run a specific file: `pytest tests/test_visualization.py -v`. See **`make help`** for other targets.
 
 5. **Optional: run the app locally**
    ```bash
