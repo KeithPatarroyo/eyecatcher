@@ -72,7 +72,7 @@ def genome_from_json(data: Dict[str, Any], config: neat.Config) -> neat.DefaultG
         # NEAT-python requires innovation number for DefaultConnectionGene
         innovation = cd.get("innovation")
         if innovation is None:
-            # Synthetic innovation when loading JSON that omitted it (e.g. old seeds)
+            # Synthetic innovation when loading JSON that omitted it (e.g. legacy or imported genomes)
             innovation = abs(hash(key)) % (2 ** 31)
         else:
             innovation = int(innovation)

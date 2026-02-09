@@ -33,7 +33,7 @@ python -m eyecatcher.server  # Run dev server without Docker
 | `config/` | NEAT config files (not in package); read at runtime via `get_root_dir()` |
 | `tests/` | Pytest test suite |
 | `demos/` | Example scripts (api_usage, evolution_batch, time_signal_showcase) |
-| `data/` | Runtime data: `seeds.json` tracked; `community.db`, `genealogy.db` gitignored |
+| `data/` | Runtime data: `community.db`, `genealogy.db` (gitignored; created on first run) |
 
 ---
 
@@ -75,4 +75,4 @@ python -m eyecatcher.server  # Run dev server without Docker
 
 - **Always:** Run `pytest` and `ruff check` (and fix issues) before committing; use relative imports inside `src/eyecatcher/`; preserve the stateless API contract (no server-side population state).
 - **Ask first:** Adding new dependencies; changing NEAT config files; modifying the GLSL shader template in `shader_compiler.py`; changing DB schema (community or genealogy).
-- **Never:** Commit secrets or real API keys; modify files in `data/` (runtime-generated; only `seeds.json` is source of truth); hardcode absolute paths; break the `DualGenome` visual + time_signal pairing.
+- **Never:** Commit secrets or real API keys; modify files in `data/` (runtime-generated DBs); hardcode absolute paths; break the `DualGenome` visual + time_signal pairing.

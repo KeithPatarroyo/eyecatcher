@@ -34,7 +34,7 @@ Use this to test the full stack as it runs in production, without installing Pyt
 
 - Install [Docker](https://docs.docker.com/get-docker/) and Docker Compose.
 - No `.env` file is required: `docker-compose.yml` sets `PORT=8080`, `FLASK_ENV=development`, and `ADMIN_KEY=ALICE` for local use. Optionally copy [.env.example](.env.example) to `.env` and override (e.g. `ADMIN_KEY`) if you want; docker-compose will use it when you pass `env_file: .env` or set variables there.
-- `data/seeds.json` is in the repo; the community DB (`data/community.db`) is created at first run.
+- The community DB (`data/community.db`) is created at first run.
 
 **Commands**
 
@@ -150,8 +150,8 @@ The web interface lets you:
 2. **Click to select** – Left-click to increase fitness; right-click to undo.
 3. **Breed** – Create a new generation from selected parents.
 4. **Save** – Download patterns as shaders, images, and genome visualizations.
-5. **Population** – New random, from seeds, from community, or load/save/export from local storage.
-6. **Submit to community** – Share patterns for moderation and inclusion in the seed pool.
+5. **Population** – New random, from community, or load/save/export from local storage.
+6. **Submit to community** – Share patterns for moderation and inclusion in the community pool.
 7. **Signal controls** – Toggle which inputs (time, mouseSpeed, mouseDist, activity) feed into each CPPN.
 8. **Debug overlay** – Real-time signal values; optional time CPPN output sampling.
 9. **Genealogical tree** – View evolutionary history; branch and continue from any generation.
@@ -171,7 +171,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 ## Project layout
 
 - **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). All browser-loaded files live here.
-- **data/** – Runtime data: curated seeds (`seeds.json`) and community DB. Git tracks seeds; `community.db` is gitignored.
+- **data/** – Runtime data: community DB and genealogy DB (both gitignored; created on first run).
 - **tests/** – Test suite (pytest). Run with `pytest` from repo root.
 - **demos/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
 - **config/** – NEAT config files (`neat_config.txt`, `neat_config_time.txt`) for visual and time-signal CPPNs.
@@ -198,7 +198,7 @@ Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. See [config/
 
 The server does not hold population state. The client (web UI) stores genomes (e.g. in IndexedDB) and sends them when needed.
 
-- **Endpoints:** `POST /api/compile` (genomes → shaders), `POST /api/random` (size → new genome JSONs), `GET /api/seeds` (curated seeds), `POST /api/breed` (body: `parents`, optional `population_size`, optional `elitism` → `children`), `POST /api/save` (body: `genome`, optional `visualize` for network PDF), `POST /api/time-output` (body: genome + inputs, for debug).
+- **Endpoints:** `POST /api/compile` (genomes → shaders), `POST /api/random` (size → new genome JSONs), `POST /api/breed` (body: `parents`, optional `population_size`, optional `elitism` → `children`), `POST /api/save` (body: `genome`, optional `visualize` for network PDF), `POST /api/time-output` (body: genome + inputs, for debug).
 - **Flow:** Open the page → "New random population" (or "New from Seeds" / "Load Saved") → client receives and stores genomes; compile, breed, and save all send or use those genomes. No server-side lookup by id.
 - **Consequences:** Works with load balancing and multiple instances; sessions survive server restarts via client storage; local testing needs only the stateless endpoints. You can run multiple Gunicorn workers (no in-memory population to share).
 - **Breeding options:** `elitism` (default `false`) keeps the best parent unchanged in the next generation; set to `true` to preserve top performers.
@@ -208,7 +208,7 @@ The server does not hold population state. The client (web UI) stores genomes (e
 
 - **CPPN Engine** (`src/eyecatcher/cppn_engine.py`) – `CPPNEngine`, `DualGenome`, mutation/crossover, JSON serialization.
 - **Shader Compiler** (`src/eyecatcher/shader_compiler.py`) – CPPN → GLSL; `compile_dual_to_glsl()` for the web renderer.
-- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API (compile, random, seeds, breed, save, time-output), community routes, static serving.
+- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API (compile, random, breed, save, time-output), community routes, static serving.
 
 ## API usage (programmatic)
 
