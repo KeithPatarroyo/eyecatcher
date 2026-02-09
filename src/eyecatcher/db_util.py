@@ -4,6 +4,8 @@ Shared SQLite connection helper for route modules that use a database.
 
 import os
 import sqlite3
+from collections.abc import Generator
+from contextlib import contextmanager
 
 
 def sqlite_connection(
@@ -31,3 +33,21 @@ def sqlite_connection(
     for stmt in pragmas:
         conn.execute(stmt)
     return conn
+
+
+@contextmanager
+def with_db_connection(
+    path: str,
+    pragmas: tuple[str, ...] = (),
+) -> Generator[sqlite3.Connection, None, None]:
+    """
+    Context manager: yield a connection and close it on exit.
+
+    Use in route handlers so connection is always closed. Catch Exception
+    in the route and return api_error(str(e), 500) if needed.
+    """
+    conn = sqlite_connection(path, pragmas)
+    try:
+        yield conn
+    finally:
+        conn.close()

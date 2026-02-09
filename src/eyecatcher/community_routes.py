@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 
 from .api_helpers import api_error
-from .db_util import sqlite_connection
+from .db_util import with_db_connection
 
 logger = logging.getLogger(__name__)
 
@@ -33,27 +33,21 @@ def _default_database_path():
 DATABASE_PATH = os.environ.get("DATABASE_PATH") or _default_database_path()
 
 
-def _get_db():
-    """Get a connection to the community database."""
-    return sqlite_connection(DATABASE_PATH)
-
-
 def _init_community_db():
     """Initialize the community submissions table."""
-    conn = _get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS submissions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            creator TEXT,
-            genome_json TEXT,
-            status TEXT DEFAULT 'pending',
-            submitted_at TIMESTAMP,
-            approved_at TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
+    with with_db_connection(DATABASE_PATH) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS submissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                creator TEXT,
+                genome_json TEXT,
+                status TEXT DEFAULT 'pending',
+                submitted_at TIMESTAMP,
+                approved_at TIMESTAMP
+            )
+        """)
+        conn.commit()
 
 
 # Initialize DB on module load
@@ -119,16 +113,15 @@ def api_community_submit():
         if not genome or not isinstance(genome, dict):
             return api_error("genome object required", 400)
         genome_json = json.dumps(genome)
-        conn = _get_db()
-        cur = conn.execute(
-            """INSERT INTO submissions
-               (name, creator, genome_json, status, submitted_at)
-               VALUES (?, ?, ?, 'pending', ?)""",
-            (name, creator, genome_json, datetime.now(timezone.utc).isoformat()),
-        )
-        conn.commit()
-        sid = cur.lastrowid
-        conn.close()
+        with with_db_connection(DATABASE_PATH) as conn:
+            cur = conn.execute(
+                """INSERT INTO submissions
+                   (name, creator, genome_json, status, submitted_at)
+                   VALUES (?, ?, ?, 'pending', ?)""",
+                (name, creator, genome_json, datetime.now(timezone.utc).isoformat()),
+            )
+            conn.commit()
+            sid = cur.lastrowid
         return jsonify({"id": sid, "status": "pending"})
     except Exception as e:
         return api_error(str(e), 500)
@@ -138,13 +131,12 @@ def api_community_submit():
 def api_community():
     """Return approved community submissions (genome list)."""
     try:
-        conn = _get_db()
-        rows = conn.execute(
-            """SELECT id, name, creator, genome_json, approved_at
-               FROM submissions WHERE status = 'approved'
-               ORDER BY approved_at DESC"""
-        ).fetchall()
-        conn.close()
+        with with_db_connection(DATABASE_PATH) as conn:
+            rows = conn.execute(
+                """SELECT id, name, creator, genome_json, approved_at
+                   FROM submissions WHERE status = 'approved'
+                   ORDER BY approved_at DESC"""
+            ).fetchall()
         patterns = []
         for row in rows:
             try:
@@ -188,12 +180,12 @@ def api_admin_submissions():
     if not ok:
         return err_response, status
     try:
-        conn = _get_db()
-        rows = conn.execute(
-            """SELECT id, name, creator, genome_json, status, submitted_at
-               FROM submissions WHERE status = 'pending' ORDER BY submitted_at ASC"""
-        ).fetchall()
-        conn.close()
+        with with_db_connection(DATABASE_PATH) as conn:
+            rows = conn.execute(
+                """SELECT id, name, creator, genome_json, status, submitted_at
+                   FROM submissions WHERE status = 'pending'
+                   ORDER BY submitted_at ASC"""
+            ).fetchall()
         submissions = []
         for row in rows:
             try:
@@ -226,14 +218,13 @@ def api_admin_approve():
         submission_id = data.get("id")
         if not submission_id:
             return api_error("id required", 400)
-        conn = _get_db()
-        conn.execute(
-            """UPDATE submissions SET status = 'approved', approved_at = ?
-               WHERE id = ? AND status = 'pending'""",
-            (datetime.now(timezone.utc).isoformat(), submission_id),
-        )
-        conn.commit()
-        conn.close()
+        with with_db_connection(DATABASE_PATH) as conn:
+            conn.execute(
+                """UPDATE submissions SET status = 'approved', approved_at = ?
+                   WHERE id = ? AND status = 'pending'""",
+                (datetime.now(timezone.utc).isoformat(), submission_id),
+            )
+            conn.commit()
         return jsonify({"id": submission_id, "status": "approved"})
     except Exception as e:
         return api_error(str(e), 500)
@@ -250,14 +241,13 @@ def api_admin_reject():
         submission_id = data.get("id")
         if not submission_id:
             return api_error("id required", 400)
-        conn = _get_db()
-        conn.execute(
-            """UPDATE submissions SET status = 'rejected'
-               WHERE id = ? AND status = 'pending'""",
-            (submission_id,),
-        )
-        conn.commit()
-        conn.close()
+        with with_db_connection(DATABASE_PATH) as conn:
+            conn.execute(
+                """UPDATE submissions SET status = 'rejected'
+                   WHERE id = ? AND status = 'pending'""",
+                (submission_id,),
+            )
+            conn.commit()
         return jsonify({"id": submission_id, "status": "rejected"})
     except Exception as e:
         return api_error(str(e), 500)
