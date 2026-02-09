@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Optional
 
 import neat
 
+from .genome_serialization import dual_genome_network_stats
+
 if TYPE_CHECKING:
     from .cppn_engine import DualGenome
 
@@ -546,30 +548,18 @@ void main() {{
             filepath: Output file path
         """
         shader_code = self.compile_dual_to_glsl(dual_genome, visual_config, time_config)
-
+        stats = dual_genome_network_stats(dual_genome)
         bundle = {
             "shader": shader_code,
             "metadata": {
                 "type": "dual_cppn",
                 "visual": {
-                    "num_nodes": len(dual_genome.visual.nodes),
-                    "num_connections": len(
-                        [
-                            c
-                            for c in dual_genome.visual.connections.values()
-                            if c.enabled
-                        ]
-                    ),
+                    "num_nodes": stats["visual_nodes"],
+                    "num_connections": stats["visual_connections"],
                 },
                 "time_signal": {
-                    "num_nodes": len(dual_genome.time_signal.nodes),
-                    "num_connections": len(
-                        [
-                            c
-                            for c in dual_genome.time_signal.connections.values()
-                            if c.enabled
-                        ]
-                    ),
+                    "num_nodes": stats["time_nodes"],
+                    "num_connections": stats["time_connections"],
                 },
                 "fitness": dual_genome.fitness,
             },

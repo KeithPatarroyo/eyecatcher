@@ -11,7 +11,11 @@ from flask import Blueprint, jsonify, request
 from .api_helpers import api_error
 from .app_config import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
 from .cppn_engine import CPPNEngine, DualGenome, create_random_dual_genome
-from .genome_serialization import dual_genome_from_json, dual_genome_to_json
+from .genome_serialization import (
+    dual_genome_from_json,
+    dual_genome_network_stats,
+    dual_genome_to_json,
+)
 from .shader_compiler import ShaderCompiler
 
 # Create blueprint
@@ -43,22 +47,17 @@ def _shader_response_for_dual(
     shader_code = comp.compile_dual_to_glsl(
         dual_genome, _engine.config, _engine.time_config
     )
-    v_nodes = len(dual_genome.visual.nodes)
-    v_conns = len([c for c in dual_genome.visual.connections.values() if c.enabled])
-    t_nodes = len(dual_genome.time_signal.nodes)
-    t_conns = len(
-        [c for c in dual_genome.time_signal.connections.values() if c.enabled]
-    )
+    stats = dual_genome_network_stats(dual_genome)
     return {
         "id": individual_id,
         "shader": shader_code,
         "clicks": clicks,
-        "nodes": v_nodes + t_nodes,
-        "connections": v_conns + t_conns,
-        "visual_nodes": v_nodes,
-        "visual_connections": v_conns,
-        "time_nodes": t_nodes,
-        "time_connections": t_conns,
+        "nodes": stats["visual_nodes"] + stats["time_nodes"],
+        "connections": stats["visual_connections"] + stats["time_connections"],
+        "visual_nodes": stats["visual_nodes"],
+        "visual_connections": stats["visual_connections"],
+        "time_nodes": stats["time_nodes"],
+        "time_connections": stats["time_connections"],
     }
 
 

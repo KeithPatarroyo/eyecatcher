@@ -85,6 +85,25 @@ def genome_from_json(data: dict[str, Any], config: neat.Config) -> neat.DefaultG
     return genome
 
 
+def dual_genome_network_stats(dual: "DualGenome") -> dict[str, int]:
+    """
+    Return node and enabled-connection counts for both genomes.
+
+    Returns:
+        Dict with visual_nodes, visual_connections, time_nodes, time_connections.
+    """
+    v_nodes = len(dual.visual.nodes)
+    v_conns = len([c for c in dual.visual.connections.values() if c.enabled])
+    t_nodes = len(dual.time_signal.nodes)
+    t_conns = len([c for c in dual.time_signal.connections.values() if c.enabled])
+    return {
+        "visual_nodes": v_nodes,
+        "visual_connections": v_conns,
+        "time_nodes": t_nodes,
+        "time_connections": t_conns,
+    }
+
+
 def dual_genome_to_json(dual: "DualGenome") -> dict[str, Any]:
     """Serialize a DualGenome to a JSON-serializable dict."""
     return {
