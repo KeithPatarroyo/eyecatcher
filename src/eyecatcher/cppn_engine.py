@@ -17,7 +17,7 @@ from typing import Optional
 import neat
 import numpy as np
 
-from .config import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
+from .app_config import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
 
 logger = logging.getLogger(__name__)
 

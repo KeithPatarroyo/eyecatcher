@@ -15,5 +15,5 @@ DEFAULT_RENDER_RESOLUTION = 512
 DEFAULT_RENDER_TIME = 0.5
 
 # NEAT config file paths (relative to project root)
-NEAT_CONFIG_PATH = "config/neat_config_experimental.txt"
-NEAT_TIME_CONFIG_PATH = "config/neat_config_time_experimental.txt"
+NEAT_CONFIG_PATH = "config/neat/neat_config_experimental.txt"
+NEAT_TIME_CONFIG_PATH = "config/neat/neat_config_time_experimental.txt"

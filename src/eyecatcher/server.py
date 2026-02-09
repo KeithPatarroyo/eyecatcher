@@ -24,13 +24,13 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from . import get_root_dir
-from .community_routes import community_bp
-from .config import (
+from .app_config import (
     DEFAULT_POPULATION_SIZE,
     DEFAULT_RENDER_RESOLUTION,
     DEFAULT_RENDER_TIME,
     MUTATION_PROBABILITY,
 )
+from .community_routes import community_bp
 from .cppn_engine import (
     CPPNEngine,
     DualGenome,
