@@ -15,6 +15,7 @@ from .genome_serialization import (
     dual_genome_from_json,
     dual_genome_network_stats,
     dual_genome_to_json,
+    parse_network_node_id,
 )
 from .shader_compiler import ShaderCompiler
 
@@ -247,21 +248,13 @@ def api_adjust_weight():
         else:
             return api_error(f"Unknown network type: {network_type}", 400)
 
-        # Convert node IDs from strings to integers
-        # Frontend sends IDs like "visual_input_-1" or "time_hidden_5"
-        def extract_node_id(node_id_str):
-            parts = node_id_str.split("_")
-            if len(parts) >= 3:
-                return int(parts[-1])  # Last part is the numeric ID
-            return int(node_id_str)
-
         try:
-            source_id = extract_node_id(source_node)
-            target_id = extract_node_id(target_node)
+            source_id = parse_network_node_id(source_node)
+            target_id = parse_network_node_id(target_node)
         except (ValueError, IndexError):
-            return jsonify(
-                {"error": f"Invalid node ID format: {source_node} or {target_node}"}
-            ), 400
+            return api_error(
+                f"Invalid node ID format: {source_node} or {target_node}", 400
+            )
 
         # Update the weight in the connection
         conn_key = (source_id, target_id)

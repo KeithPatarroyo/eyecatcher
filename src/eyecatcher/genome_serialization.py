@@ -293,3 +293,25 @@ def extract_network_data(
             )
 
     return nodes, connections
+
+
+def parse_network_node_id(node_id_str: str) -> int:
+    """
+    Parse a frontend node ID string back to the numeric NEAT node ID.
+
+    Frontend IDs are produced by extract_network_data, e.g. "visual_input_-1",
+    "time_hidden_5". The last part after splitting on "_" is the numeric ID.
+
+    Args:
+        node_id_str: String like "visual_input_-1" or "time_hidden_5".
+
+    Returns:
+        The integer node ID (e.g. -1, 5).
+
+    Raises:
+        ValueError: If the format is invalid.
+    """
+    parts = node_id_str.split("_")
+    if len(parts) >= 3:
+        return int(parts[-1])
+    return int(node_id_str)
