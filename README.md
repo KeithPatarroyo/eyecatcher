@@ -6,6 +6,14 @@
 
 Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Like Picbreeder, but patterns change over time and react to user input.
 
+## Quick Start
+
+```bash
+docker compose up --build
+```
+
+Then open **http://localhost:5001**. For other options (local Python, tests, deployment), see [Running the project](#running-the-project) below.
+
 ## Features
 
 - **Dual-CPPN Architecture**: Each individual has two evolved networks (visual + time signal).
