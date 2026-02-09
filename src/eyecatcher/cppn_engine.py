@@ -6,11 +6,10 @@ Supports dual-CPPN individuals where each individual has:
 - A visual CPPN: (x, y, dist, time, mouseSpeed, bias) -> (R, G, B)
 - A time signal CPPN: (rawTime, mouseSpeed, bias) -> (modifiedTime)
 """
-import json
 import math
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple, Optional
+from typing import Tuple, Optional
 
 import neat
 import numpy as np
@@ -507,9 +506,9 @@ def create_random_dual_genome(engine: CPPNEngine, genome_id: int = 0) -> DualGen
 
 
 # ---------------------------------------------------------------------------
-# JSON serialization - re-exported from genome_serialization module
+# JSON serialization - re-exported from genome_serialization for public API
 # ---------------------------------------------------------------------------
-from .genome_serialization import (
+from .genome_serialization import (  # noqa: F401
     genome_to_json,
     genome_from_json,
     dual_genome_to_json,

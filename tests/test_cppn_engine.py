@@ -1,5 +1,4 @@
 """Tests for CPPN engine: population, mutation, crossover, query."""
-import pytest
 
 from eyecatcher.cppn_engine import (
     CPPNEngine,
@@ -7,7 +6,6 @@ from eyecatcher.cppn_engine import (
     create_random_dual_genome,
     create_random_genome,
 )
-from eyecatcher.genome_serialization import dual_genome_to_json, dual_genome_from_json
 
 
 def test_engine_create_population():

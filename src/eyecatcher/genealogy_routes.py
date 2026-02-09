@@ -8,7 +8,6 @@ import json
 import os
 import sqlite3
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from flask import Blueprint, jsonify, request
 

@@ -1,5 +1,4 @@
 """Tests for shader compiler: CPPN to GLSL."""
-import pytest
 
 from eyecatcher.cppn_engine import CPPNEngine, create_random_dual_genome
 from eyecatcher.shader_compiler import ShaderCompiler

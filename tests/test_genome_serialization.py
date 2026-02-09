@@ -1,5 +1,4 @@
 """Tests for genome JSON serialization round-trip."""
-import pytest
 
 from eyecatcher.cppn_engine import CPPNEngine, create_random_dual_genome
 from eyecatcher.genome_serialization import (

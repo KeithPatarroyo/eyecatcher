@@ -7,9 +7,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
-import numpy as np
-from typing import Dict, List, Tuple, Optional, Set
+from matplotlib.patches import FancyArrowPatch
+from typing import Dict, List, Tuple, Set
 
 
 class GenomeVisualizer:

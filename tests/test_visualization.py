@@ -2,7 +2,6 @@
 Test genome visualization
 """
 from eyecatcher.cppn_engine import CPPNEngine, create_random_genome
-from eyecatcher.genome_visualizer import GenomeVisualizer
 import os
 import neat
 
