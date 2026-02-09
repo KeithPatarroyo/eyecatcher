@@ -104,7 +104,7 @@ Run tests on your machine with Python. No server or browser required.
   pip install -e ".[dev]"
   ```
   This installs pytest and ruff; no `.env` or other config is needed for tests.
-- NEAT config files in [config/](config/) (`neat_config.txt`, `neat_config_time.txt`) are in the repo already.
+- NEAT config files in [config/](config/) (visual and time-signal; default is `*_experimental.txt`; `neat_config.txt` / `neat_config_time.txt` are alternatives).
 
 **Commands**
 
@@ -174,7 +174,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **data/** – Runtime data: community DB and genealogy DB (both gitignored; created on first run).
 - **tests/** – Test suite (pytest). Run with `pytest` from repo root.
 - **demos/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
-- **config/** – NEAT config files (`neat_config.txt`, `neat_config_time.txt`) for visual and time-signal CPPNs.
+- **config/** – NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives).
 - **src/eyecatcher/** – Python package: `server`, `cppn_engine`, `shader_compiler`, `genome_serialization`, routes, etc. Entrypoint: `eyecatcher.server:app`.
 - **Root** – `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`, `run.sh`), [CONTRIBUTING.md](CONTRIBUTING.md), [LICENSE](LICENSE).
 
