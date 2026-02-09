@@ -1,7 +1,4 @@
-const API_URL =
-    window.location.origin && window.location.protocol.startsWith("http")
-        ? `${window.location.origin}/api`
-        : "http://localhost:5001/api";
+const API_URL = window.API_URL || "http://localhost:5001/api";
 
 let treeNetwork = null;
 let treeData = { nodes: [], edges: [] };

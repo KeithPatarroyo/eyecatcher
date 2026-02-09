@@ -12,10 +12,7 @@
         );
     }
 
-    var API_URL =
-        window.location.origin && window.location.protocol.indexOf("http") === 0
-            ? window.location.origin + "/api"
-            : "http://localhost:5001/api";
+    var API_URL = window.API_URL || "http://localhost:5001/api";
 
     var currentPopulation = [];
     var currentGenomes = null;
@@ -134,13 +131,19 @@
 
     function showGridError(message, showRetry) {
         var grid = document.getElementById("grid");
+        var devPort = window.DEFAULT_DEV_PORT || 5001;
+        var localUrl = "http://localhost:" + devPort;
         grid.innerHTML =
             '<div class="grid-error">' +
             '<div style="color:var(--color-danger);font-weight:600;">Could not load CPPN patterns</div>' +
             '<div style="margin-top:8px;">' +
             message +
             "</div>" +
-            '<div style="margin-top:12px;font-size:13px;color:var(--color-text-secondary);">Start the server: <code>python server.py</code><br>Then open <a href="http://localhost:5001" style="color:var(--color-primary);">http://localhost:5001</a></div>' +
+            '<div style="margin-top:12px;font-size:13px;color:var(--color-text-secondary);">Start the server: <code>python server.py</code><br>Then open <a href="' +
+            localUrl +
+            '" style="color:var(--color-primary);">' +
+            localUrl +
+            "</a></div>" +
             (showRetry
                 ? '<button type="button" class="retry-btn" id="grid-retry-btn">New random population</button>'
                 : "") +
