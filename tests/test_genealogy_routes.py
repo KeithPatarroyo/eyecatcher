@@ -116,3 +116,105 @@ def test_branches_empty(client, genealogy_db):
     rv = client.get("/api/genealogy/branches")
     assert rv.status_code == 200
     assert rv.get_json()["branches"] == []
+
+
+def test_export_genealogy_full(client, genealogy_db, cppn_engine):
+    """GET export (no branch): full tree; populations, individuals, exported_at."""
+    from eyecatcher.cppn_engine import create_random_dual_genome
+    from eyecatcher.genome_serialization import dual_genome_to_json
+
+    dual1 = create_random_dual_genome(cppn_engine, genome_id=0)
+    dual2 = create_random_dual_genome(cppn_engine, genome_id=1)
+    p1 = dual_genome_to_json(dual1)
+    p2 = dual_genome_to_json(dual2)
+    p1["key"] = 0
+    p2["key"] = 1
+    client.post(
+        "/api/genealogy/save-population",
+        json={
+            "genomes": [p1, p2],
+            "parent_id": None,
+            "generation_num": 0,
+            "branch_name": "main",
+        },
+    )
+    rv = client.get("/api/genealogy/export")
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert "exported_at" in data
+    assert "version" in data
+    assert data["version"] == 1
+    assert len(data["populations"]) == 1
+    assert len(data["individuals"]) == 2
+    for ind in data["individuals"]:
+        assert "genome_json" in ind
+        assert "population_id" in ind
+        assert "genome_key" in ind
+        assert "fitness" in ind
+        assert "created_at" in ind
+
+
+def test_export_genealogy_branch(client, genealogy_db, cppn_engine):
+    """GET export?branch_name=main returns branch; nonexistent branch returns 404."""
+    from eyecatcher.cppn_engine import create_random_dual_genome
+    from eyecatcher.genome_serialization import dual_genome_to_json
+
+    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    payload = dual_genome_to_json(dual)
+    payload["key"] = 0
+    client.post(
+        "/api/genealogy/save-population",
+        json={
+            "genomes": [payload],
+            "parent_id": None,
+            "generation_num": 0,
+            "branch_name": "main",
+        },
+    )
+    client.post(
+        "/api/genealogy/save-population",
+        json={
+            "genomes": [payload],
+            "parent_id": 1,
+            "generation_num": 1,
+            "branch_name": "main",
+        },
+    )
+    rv = client.get("/api/genealogy/export?branch_name=main")
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert len(data["populations"]) == 2
+    assert len(data["individuals"]) == 2
+    rv404 = client.get("/api/genealogy/export?branch_name=nonexistent")
+    assert rv404.status_code == 404
+    assert "error" in rv404.get_json()
+
+
+def test_reset_genealogy(client, genealogy_db, cppn_engine):
+    """POST reset clears all data; tree and stats are empty after."""
+    from eyecatcher.cppn_engine import create_random_dual_genome
+    from eyecatcher.genome_serialization import dual_genome_to_json
+
+    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    payload = dual_genome_to_json(dual)
+    payload["key"] = 0
+    client.post(
+        "/api/genealogy/save-population",
+        json={
+            "genomes": [payload],
+            "parent_id": None,
+            "generation_num": 0,
+            "branch_name": "main",
+        },
+    )
+    rv = client.post("/api/genealogy/reset")
+    assert rv.status_code == 200
+    assert rv.get_json().get("status") == "ok"
+    tree_rv = client.get("/api/genealogy/tree")
+    assert tree_rv.status_code == 200
+    assert tree_rv.get_json()["nodes"] == []
+    stats_rv = client.get("/api/genealogy/stats")
+    assert stats_rv.status_code == 200
+    s = stats_rv.get_json()
+    assert s["total_populations"] == 0
+    assert s["total_individuals"] == 0
