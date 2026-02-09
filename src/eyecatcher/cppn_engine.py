@@ -8,6 +8,7 @@ Supports dual-CPPN individuals where each individual has:
 """
 import json
 import math
+import os
 from dataclasses import dataclass
 from typing import Any, Dict, Tuple, Optional
 
@@ -58,6 +59,12 @@ class CPPNEngine:
                  #time_config_path: str = "config/neat_config_time.txt"):
                  time_config_path: str = "config/neat_config_time_experimental.txt"):
         """Initialize CPPN engine with NEAT configurations."""
+        from . import get_root_dir
+        root = get_root_dir()
+        if not os.path.isabs(config_path):
+            config_path = os.path.join(root, config_path)
+        if not os.path.isabs(time_config_path):
+            time_config_path = os.path.join(root, time_config_path)
         # Visual CPPN config
         self.config = neat.Config(
             neat.DefaultGenome,
@@ -502,7 +509,7 @@ def create_random_dual_genome(engine: CPPNEngine, genome_id: int = 0) -> DualGen
 # ---------------------------------------------------------------------------
 # JSON serialization - re-exported from genome_serialization module
 # ---------------------------------------------------------------------------
-from genome_serialization import (
+from .genome_serialization import (
     genome_to_json,
     genome_from_json,
     dual_genome_to_json,

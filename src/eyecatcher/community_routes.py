@@ -18,10 +18,12 @@ from flask import Blueprint, jsonify, request
 community_bp = Blueprint('community', __name__)
 
 # Database path (configurable via environment)
-DATABASE_PATH = os.environ.get(
-    'DATABASE_PATH',
-    os.path.join(os.path.dirname(__file__), 'data', 'community.db')
-)
+def _default_database_path():
+    from . import get_root_dir
+    return os.path.join(get_root_dir(), "data", "community.db")
+
+
+DATABASE_PATH = os.environ.get("DATABASE_PATH") or _default_database_path()
 
 
 def _get_db():

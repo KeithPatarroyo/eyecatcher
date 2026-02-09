@@ -9,7 +9,7 @@ from typing import Any, Dict, TYPE_CHECKING
 import neat
 
 if TYPE_CHECKING:
-    from cppn_engine import CPPNEngine, DualGenome
+    from .cppn_engine import CPPNEngine, DualGenome
 
 
 def genome_to_json(genome: neat.DefaultGenome) -> Dict[str, Any]:

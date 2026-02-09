@@ -7,9 +7,9 @@ Provides endpoints that don't depend on server-side population state:
 """
 from flask import Blueprint, jsonify, request
 
-from cppn_engine import CPPNEngine, DualGenome, create_random_dual_genome
-from genome_serialization import dual_genome_from_json, dual_genome_to_json
-from shader_compiler import ShaderCompiler
+from .cppn_engine import CPPNEngine, DualGenome, create_random_dual_genome
+from .genome_serialization import dual_genome_from_json, dual_genome_to_json
+from .shader_compiler import ShaderCompiler
 
 
 # Create blueprint

@@ -17,10 +17,12 @@ from flask import Blueprint, jsonify, request
 genealogy_bp = Blueprint('genealogy', __name__)
 
 # Database path (same location as community DB)
-GENEALOGY_DB_PATH = os.environ.get(
-    'GENEALOGY_DB_PATH',
-    os.path.join(os.path.dirname(__file__), 'data', 'genealogy.db')
-)
+def _default_genealogy_db_path():
+    from . import get_root_dir
+    return os.path.join(get_root_dir(), "data", "genealogy.db")
+
+
+GENEALOGY_DB_PATH = os.environ.get("GENEALOGY_DB_PATH") or _default_genealogy_db_path()
 
 
 def _get_db():

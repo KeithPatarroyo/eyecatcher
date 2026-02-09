@@ -21,15 +21,16 @@ from datetime import datetime
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
-from cppn_engine import CPPNEngine, DualGenome, dual_genome_from_json, dual_genome_to_json
-from shader_compiler import ShaderCompiler
-from stateless_api import stateless_bp, init_stateless_api
-from community_routes import community_bp
-from genealogy_routes import genealogy_bp, _init_genealogy_db
+from . import get_root_dir
+from .cppn_engine import CPPNEngine, DualGenome, dual_genome_from_json, dual_genome_to_json
+from .shader_compiler import ShaderCompiler
+from .stateless_api import stateless_bp, init_stateless_api
+from .community_routes import community_bp
+from .genealogy_routes import genealogy_bp, _init_genealogy_db
 
 app = Flask(__name__)
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(APP_DIR, 'static')
+ROOT_DIR = get_root_dir()
+STATIC_DIR = os.path.join(ROOT_DIR, "static")
 
 # CORS: allow all in dev, or set CORS_ORIGINS env for production
 _cors_origins = os.environ.get("CORS_ORIGINS", "*")
@@ -533,7 +534,7 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
 @app.route('/api/saved/<int:individual_id>/network')
 def serve_saved_network(individual_id):
     """Serve the network visualization PDF for a saved pattern (from genome visualizer)."""
-    path = os.path.join(APP_DIR, 'output', 'saved', f'dual_genome_{individual_id}_network.pdf')
+    path = os.path.join(ROOT_DIR, "output", "saved", f"dual_genome_{individual_id}_network.pdf")
     if not os.path.isfile(path):
         return jsonify({'error': 'Network visualization not found'}), 404
     return send_from_directory(
@@ -547,7 +548,7 @@ def serve_saved_network(individual_id):
 @app.route('/api/saved/<int:individual_id>/image')
 def serve_saved_image(individual_id):
     """Serve the rendered PNG for a saved pattern."""
-    path = os.path.join(APP_DIR, 'output', 'saved', f'pattern_{individual_id}.png')
+    path = os.path.join(ROOT_DIR, "output", "saved", f"pattern_{individual_id}.png")
     if not os.path.isfile(path):
         return jsonify({'error': 'Image not found'}), 404
     return send_from_directory(
