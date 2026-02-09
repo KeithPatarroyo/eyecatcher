@@ -379,18 +379,11 @@ class CPPNEngine:
         with open(filepath, "wb") as f:
             pickle.dump(genome, f)
 
-        # Optionally create visualization
         if visualize:
-            viz_path = filepath.replace(".pkl", "_network.pdf")
-            try:
-                from .genome_visualizer import GenomeVisualizer
+            from .genome_visualizer import render_genome_network_pdf
 
-                visualizer = GenomeVisualizer(self.config)
-                visualizer.visualize_genome(genome, viz_path)
-            except ImportError:
-                logger.warning("Could not visualize genome. Install matplotlib.")
-            except Exception as e:
-                logger.warning("Genome visualization failed: %s", e)
+            viz_path = filepath.replace(".pkl", "_network.pdf")
+            render_genome_network_pdf(genome, self.config, viz_path)
 
     def load_genome(self, filepath: str) -> neat.DefaultGenome:
         """Load a genome from file."""
@@ -491,18 +484,11 @@ class CPPNEngine:
                 f,
             )
 
-        # Optionally create visualization of the visual genome
         if visualize:
-            viz_path = filepath.replace(".pkl", "_network.pdf")
-            try:
-                from .genome_visualizer import GenomeVisualizer
+            from .genome_visualizer import render_genome_network_pdf
 
-                visualizer = GenomeVisualizer(self.config)
-                visualizer.visualize_genome(dual_genome.visual, viz_path)
-            except ImportError:
-                logger.warning("Could not visualize genome. Install matplotlib.")
-            except Exception as e:
-                logger.warning("Genome visualization failed: %s", e)
+            viz_path = filepath.replace(".pkl", "_network.pdf")
+            render_genome_network_pdf(dual_genome.visual, self.config, viz_path)
 
     def load_dual_genome(self, filepath: str) -> DualGenome:
         """Load a dual genome from file."""

@@ -340,18 +340,14 @@ def _save_dual_genome(
     )
     pkl_base64 = base64.b64encode(pkl_buffer.getvalue()).decode("ascii")
 
-    # Optional: network PDF
     pdf_bytes = None
     if visualize:
-        try:
-            from .genome_visualizer import GenomeVisualizer
+        from .genome_visualizer import render_genome_network_pdf
 
-            visualizer = GenomeVisualizer(engine.config)
-            pdf_buffer = io.BytesIO()
-            visualizer.visualize_genome(dual_genome.visual, pdf_buffer)
-            pdf_bytes = pdf_buffer.getvalue()
-        except Exception as e:
-            logger.warning("Genome visualization failed: %s", e)
+        pdf_buffer = io.BytesIO()
+        pdf_bytes = render_genome_network_pdf(
+            dual_genome.visual, engine.config, pdf_buffer
+        )
 
     names = get_saved_asset_filenames(individual_id)
     zip_buffer = io.BytesIO()

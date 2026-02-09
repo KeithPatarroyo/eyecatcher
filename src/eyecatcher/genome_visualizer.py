@@ -3,16 +3,20 @@ Genome Visualization
 Visualizes CPPN network structure using matplotlib
 """
 
+import io
+import logging
+from typing import BinaryIO, Optional, Union
+
 import matplotlib
-import neat
 
-matplotlib.use("Agg")
+matplotlib.use("Agg")  # must be before importing pyplot
 
-from typing import Optional
+import matplotlib.patches as mpatches  # noqa: E402
+import matplotlib.pyplot as plt  # noqa: E402
+import neat  # noqa: E402
+from matplotlib.patches import FancyArrowPatch  # noqa: E402
 
-import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt
-from matplotlib.patches import FancyArrowPatch
+logger = logging.getLogger(__name__)
 
 
 class GenomeVisualizer:
@@ -41,7 +45,7 @@ class GenomeVisualizer:
     def visualize_genome(
         self,
         genome: neat.DefaultGenome,
-        filepath: str,
+        output: Union[str, BinaryIO],
         view: bool = False,
         figsize: Optional[tuple[int, int]] = None,
     ):
@@ -50,7 +54,7 @@ class GenomeVisualizer:
 
         Args:
             genome: NEAT genome to visualize
-            filepath: Output file path (PDF)
+            output: Output file path (str) or file-like object (e.g. BytesIO) for PDF
             view: Whether to display the plot
             figsize: (width, height). If None, auto from node count.
         """
@@ -106,7 +110,7 @@ class GenomeVisualizer:
 
         # Save as vector PDF - bbox_inches='tight' auto-crops whitespace
         plt.savefig(
-            filepath,
+            output,
             format="pdf",
             bbox_inches="tight",
             pad_inches=0.05,
@@ -413,3 +417,32 @@ class GenomeVisualizer:
             frameon=False,
             fontsize=9,
         )
+
+
+def render_genome_network_pdf(
+    genome: neat.DefaultGenome,
+    config: neat.Config,
+    output: Union[str, BinaryIO],
+) -> Optional[bytes]:
+    """
+    Render a genome network to PDF (optional matplotlib).
+
+    Handles ImportError and other exceptions; logs and returns None on failure.
+    If output is a path (str), writes to file and returns None.
+    If output is a file-like (e.g. BytesIO), writes to it and returns its bytes.
+
+    Returns:
+        PDF bytes when output is file-like, else None.
+    """
+    try:
+        visualizer = GenomeVisualizer(config)
+        visualizer.visualize_genome(genome, output)
+        if isinstance(output, io.BytesIO):
+            return output.getvalue()
+        return None
+    except ImportError:
+        logger.warning("Could not visualize genome. Install matplotlib.")
+        return None
+    except Exception as e:
+        logger.warning("Genome visualization failed: %s", e)
+        return None
