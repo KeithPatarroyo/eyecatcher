@@ -9,10 +9,10 @@ Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Li
 ## Quick Start
 
 ```bash
-docker compose -f docker/docker-compose.yml up --build
+make docker-up
 ```
 
-Then open **http://localhost:5001**. You can also use **`make docker-up`** from the repo root. For other options (local Python, tests, deployment), see [Running the project](#running-the-project) below. Common dev tasks: **`make help`** (list targets), **`make test`**, **`make lint`**, **`make format`**.
+Then open **http://localhost:5001**. (Runs `docker compose -f docker/docker-compose.yml up --build` under the hood.) For other options (local Python, tests, deployment), see [Running the project](#running-the-project) below. Common dev tasks: **`make help`** (list targets), **`make test`**, **`make lint`**, **`make format`**.
 
 ## Features
 
@@ -33,19 +33,19 @@ Use this to test the full stack as it runs in production, without installing Pyt
 **Environment setup**
 
 - Install [Docker](https://docs.docker.com/get-docker/) and Docker Compose.
-- No `.env` file is required: `docker/docker-compose.yml` sets `PORT=8080`, `FLASK_ENV=development`, and `ADMIN_KEY=ALICE` for local use. Optionally copy [config/.env.example](config/.env.example) to `.env` in the repo root and override (e.g. `ADMIN_KEY`) if you want; docker-compose will use it when you pass `env_file: .env` or set variables there.
+- No `.env` file is required: `docker/docker-compose.yml` sets `PORT=8080`, `FLASK_ENV=development`, and `ADMIN_KEY=ALICE` for local use. Optionally copy [config/.env.example](config/.env.example) to `.env` in the repo root; Docker Compose loads `.env` from the project directory when you run from the repo root.
 - The community DB (`data/community.db`) is created at first run.
 
 **Commands**
 
 ```bash
 # From the repo root
-docker compose -f docker/docker-compose.yml up --build
+make docker-up
 ```
 
 Then open **http://localhost:5001** in your browser. The app listens on 8080 inside the container; compose maps host 5001 → 8080.
 
-To stop: `Ctrl+C`, or `docker compose -f docker/docker-compose.yml down`.
+To stop: `Ctrl+C`, or `docker compose -f docker/docker-compose.yml down` if you need to tear down the stack.
 
 ---
 
@@ -86,7 +86,7 @@ In the Railway project dashboard (or via CLI), set:
 railway up
 ```
 
-Railway will build from the Dockerfile and deploy. The dashboard shows the public URL. Health checks use `/health` (see [railway.json](railway.json)).
+Railway will build from [docker/Dockerfile](docker/Dockerfile) and deploy. The dashboard shows the public URL. Health checks use `/health` (see [railway.json](railway.json)).
 
 ---
 
@@ -171,7 +171,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **demos/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
 - **config/** – NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). Also `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
 - **src/eyecatcher/** – Python package: `server`, `cppn_engine`, `shader_compiler`, `genome_serialization`, routes, etc. Entrypoint: `eyecatcher.server:app`.
-- **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml`. **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
+- **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `package.json`, `package-lock.json`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml` (run with **`make docker-up`**). **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
 

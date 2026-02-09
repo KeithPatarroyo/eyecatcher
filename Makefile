@@ -33,11 +33,11 @@ test:
 
 lint:
 	ruff check .
-	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npx eslint static/; fi
+	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npx eslint -c config/eslint.config.js static/; fi
 
 format:
 	ruff format .
-	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npx prettier --write "static/**/*.js" "static/**/*.html" "static/**/*.css"; fi
+	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npm run format; fi
 
 docker-build:
 	docker compose -f docker/docker-compose.yml build
