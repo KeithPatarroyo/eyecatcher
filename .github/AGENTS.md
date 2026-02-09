@@ -77,7 +77,7 @@ Run pytest from **whatever virtualenv the project uses** — the venv name is no
 Try these venv directories in order; run the first that contains an executable `pytest`:
 
 ```bash
-for v in .eyecatcher-venv .venv venv env; do
+for v in .venv venv env; do
   [ -x "$v/bin/pytest" ] && "$v/bin/pytest" --tb=short -q && break
 done
 ```
@@ -87,7 +87,7 @@ If you already know the venv path (e.g. from a previous run or the Makefile), yo
 
 **2. Windows**
 
-Same idea: try in order `.eyecatcher-venv`, `.venv`, `venv`, `env`; for each, if `<dir>\Scripts\pytest.exe` exists, run it with the same args.
+Same idea: try in order `.venv`, `venv`, `env`; for each, if `<dir>\Scripts\pytest.exe` exists, run it with the same args.
 
 **3. Subset or skip slow**
 

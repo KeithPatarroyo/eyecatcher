@@ -49,4 +49,4 @@ clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache __pycache__ .ruff_cache
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-	@echo "Optional: rm -rf .venv .eyecatcher-venv node_modules"
+	@echo "Optional: rm -rf .venv node_modules"

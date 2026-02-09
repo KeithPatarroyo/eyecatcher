@@ -4,6 +4,5 @@ dist/
 config/eslint.config.js
 .pytest_cache/
 .venv/
-.eyecatcher-venv/
 build/
 data/
