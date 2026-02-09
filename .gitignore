@@ -11,6 +11,8 @@ dist/
 output/
 *.pkl
 .pytest_cache/
+.coverage
+.ruff_cache/
 uv.lock
 data/community.db
 data/genealogy.db

@@ -97,20 +97,14 @@ Run tests on your machine with Python. No server or browser required.
 **Environment setup**
 
 - Python 3.9+.
-- Create a virtual environment and install the project plus dev dependencies:
-  ```bash
-  python -m venv .venv
-  source .venv/bin/activate   # Windows: .venv\Scripts\activate
-  pip install -e ".[dev]"
-  ```
-  This installs pytest, ruff, and pre-commit; no `.env` or other config is needed for tests. Run `pre-commit install` to run Ruff on each commit (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+- From the repo root, run **`make install`** — it creates the venv, installs the Python package and dev deps (pytest, ruff, pre-commit), and installs npm deps for JS lint/format. Then activate the venv (`source .venv/bin/activate` or Windows: `.venv\Scripts\activate`) and run **`pre-commit install`** to run checks on each commit (see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)). Alternatively, create a venv manually, then `pip install -e ".[dev]"` and `npm install`.
 - NEAT config files in [config/](config/) (visual and time-signal; default is `*_experimental.txt`; `neat_config.txt` / `neat_config_time.txt` are alternatives).
 
 **Commands**
 
 ```bash
-# From the repo root, with venv activated
-pytest
+# From the repo root (with venv activated)
+make test
 ```
 
 To run a specific test file:
@@ -119,7 +113,7 @@ To run a specific test file:
 pytest tests/test_visualization.py -v
 ```
 
-No constants or templates need to be filled beforehand; tests use the default config paths and in-memory state.
+No constants or templates need to be filled beforehand; tests use the default config paths and in-memory state. For all targets (lint, format, dev, docker, etc.), run **`make help`**.
 
 ---
 
@@ -127,12 +121,13 @@ No constants or templates need to be filled beforehand; tests use the default co
 
 **Interactive evolution server (plain Python, no Docker)**
 
+After **`make install`** and activating the venv, run:
+
 ```bash
-# After creating a venv, activating it, and running: pip install -e .
-python -m eyecatcher.server
+make dev
 ```
 
-Then open **http://localhost:5001**. Optional: copy [.env.example](.env.example) to `.env` and set `PORT`, `CORS_ORIGINS`, `ADMIN_KEY`, `DATABASE_PATH` if you want to override defaults.
+Or `python -m eyecatcher.server`. Then open **http://localhost:5001**. Optional: copy [.env.example](.env.example) to `.env` and set `PORT`, `CORS_ORIGINS`, `ADMIN_KEY`, `DATABASE_PATH` if you want to override defaults.
 
 **Demos (batch evolution, API usage, time-signal plot)** – Live in `demos/`. Run from repo root, e.g.:
 
@@ -172,11 +167,11 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 
 - **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). All browser-loaded files live here.
 - **data/** – Runtime data: community DB and genealogy DB (both gitignored; created on first run).
-- **tests/** – Test suite (pytest). Run with `pytest` from repo root.
+- **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
 - **demos/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
 - **config/** – NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives).
 - **src/eyecatcher/** – Python package: `server`, `cppn_engine`, `shader_compiler`, `genome_serialization`, routes, etc. Entrypoint: `eyecatcher.server:app`.
-- **Root** – `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`, `run.sh`), [CONTRIBUTING.md](CONTRIBUTING.md), [LICENSE](LICENSE).
+- **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`, `run.sh`), [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE).
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
 
@@ -239,7 +234,7 @@ ffmpeg -i output/frames/frame_%03d.png -vf "fps=30,scale=512:-1:flags=lanczos" o
 
 ## Requirements
 
-Python 3.9+. Dependencies are in [pyproject.toml](pyproject.toml) (neat-python, numpy, pillow, flask, flask-cors, matplotlib). Dev: `pip install -e ".[dev]"` for pytest, ruff, and pre-commit.
+Python 3.9+. Dependencies are in [pyproject.toml](pyproject.toml) (neat-python, numpy, pillow, flask, flask-cors, matplotlib). For development, run **`make install`** to get pytest, ruff, pre-commit, and JS lint/format tooling (or install manually: `pip install -e ".[dev]"` and `npm install`).
 
 ## Future work
 
@@ -252,7 +247,7 @@ Python 3.9+. Dependencies are in [pyproject.toml](pyproject.toml) (neat-python, 
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code style, and the pull request process.
+Contributions are welcome. See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for setup, code style, and the pull request process.
 
 ## License
 

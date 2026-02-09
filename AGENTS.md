@@ -1,6 +1,6 @@
 # AGENTS.md – Instructions for AI Coding Agents
 
-This file gives AI coding agents the context needed to work effectively in the Eyecatcher codebase. See [CONTRIBUTING.md](CONTRIBUTING.md) for human contributor guidelines.
+This file gives AI coding agents the context needed to work effectively in the Eyecatcher codebase. See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for human contributor guidelines.
 
 ## Project overview
 

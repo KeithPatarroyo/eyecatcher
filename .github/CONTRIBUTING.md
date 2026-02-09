@@ -42,20 +42,20 @@ Thank you for your interest in contributing. This document explains how to get s
    ```bash
    python -m eyecatcher.server
    ```
-   Then open http://localhost:5001. See [README.md](README.md) for Docker and other options.
+   Then open http://localhost:5001. See [README.md](../README.md) for Docker and other options.
 
 No `.env` file is required for running tests; the app can use defaults for local development.
 
 ## Code style
 
-- **Formatting and linting**: We use [Ruff](https://docs.astral.sh/ruff/) for Python and ESLint/Prettier for JavaScript (see [package.json](package.json)). We recommend [pre-commit](https://pre-commit.com/) so checks run automatically on commit (`pre-commit install` after `pip install -e ".[dev]"`). You can run **`make lint`** and **`make format`** for Python and JS; without Make, run `ruff check .`, `ruff format .`, and `npm run lint` / `npm run format:check` as needed.
+- **Formatting and linting**: We use [Ruff](https://docs.astral.sh/ruff/) for Python and ESLint/Prettier for JavaScript (see [package.json](../package.json)). We recommend [pre-commit](https://pre-commit.com/) so checks run automatically on commit (`pre-commit install` after `pip install -e ".[dev]"`). You can run **`make lint`** and **`make format`** for Python and JS; without Make, run `ruff check .`, `ruff format .`, and `npm run lint` / `npm run format:check` as needed.
 - **Docstrings**: Use docstrings for public modules, classes, and functions; include Args/Returns where helpful.
 
 ## Pull request process
 
 1. **Open an issue** (optional but helpful) for non-trivial changes so we can align on approach.
 2. **Branch from `dev`** (or the default branch). Use a short, descriptive branch name.
-3. **Make your changes** and ensure tests pass (`pytest`).
+3. **Make your changes** and ensure tests pass (`make test` or `pytest`).
 4. **Commit** with clear, conventional-style messages:
    - `feat: add X`
    - `fix: correct Y`
@@ -82,4 +82,4 @@ Thank you for contributing.
 
 ## Maintainers: releasing
 
-Before tagging a release or going public, see [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
+Before tagging a release or going public, see [docs/RELEASE_CHECKLIST.md](../docs/RELEASE_CHECKLIST.md).

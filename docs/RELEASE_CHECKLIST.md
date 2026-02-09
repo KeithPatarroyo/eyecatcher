@@ -9,12 +9,12 @@ Use this checklist before tagging a release or making the repository public.
 
 ## Code quality and tests
 
-- [ ] **Tests pass** — From repo root: `pip install -e ".[dev]"` then `pytest -v`.
-- [ ] **Linting** — `ruff check .` and `ruff format --check .` (or rely on CI).
+- [ ] **Tests pass** — From repo root: `make install` then `make test` (or `pip install -e ".[dev]"` and `pytest -v`).
+- [ ] **Linting** — `make lint`; run `ruff format --check .` and `npm run format:check` for format checks (or rely on CI).
 
 ## Build and run
 
-- [ ] **Docker build** — `docker compose up --build` and open http://localhost:5001; confirm the app loads.
+- [ ] **Docker build** — `make docker-up` or `docker compose up --build`; open http://localhost:5001 and confirm the app loads.
 - [ ] **Fresh clone** — In a separate directory, clone the repo, follow the README (e.g. Quick Start or local setup), and confirm you can run tests and the server.
 
 ## GitHub / repository
@@ -26,4 +26,4 @@ Use this checklist before tagging a release or making the repository public.
 ## Before first public release
 
 - [ ] **LICENSE** — Confirm copyright holder in [LICENSE](LICENSE) is correct.
-- [ ] **CODE_OF_CONDUCT / SECURITY** — Add a contact method in CODE_OF_CONDUCT.md and SECURITY.md if you want private vulnerability reports.
+- [ ] **CODE_OF_CONDUCT / SECURITY** — Add a contact method in [.github/CODE_OF_CONDUCT.md](../.github/CODE_OF_CONDUCT.md) and [.github/SECURITY.md](../.github/SECURITY.md) if you want private vulnerability reports.
