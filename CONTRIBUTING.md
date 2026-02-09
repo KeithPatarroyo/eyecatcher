@@ -33,7 +33,7 @@ Thank you for your interest in contributing. This document explains how to get s
 
 4. **Optional: run the app locally**
    ```bash
-   python server.py
+   python -m eyecatcher.server
    ```
    Then open http://localhost:5001. See [README.md](README.md) for Docker and other options.
 
@@ -63,7 +63,7 @@ Open an issue and include:
 
 - What you did (steps to reproduce).
 - What you expected vs what happened.
-- Your environment (OS, Python version, how you ran the app — e.g. Docker, `python server.py`).
+- Your environment (OS, Python version, how you ran the app — e.g. Docker, `python -m eyecatcher.server`).
 - Any relevant logs or error messages.
 
 ## Asking for help

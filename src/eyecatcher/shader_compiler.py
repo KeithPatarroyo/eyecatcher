@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
 import json
 
 if TYPE_CHECKING:
-    from cppn_engine import DualGenome
+    from .cppn_engine import DualGenome
 
 
 class ShaderCompiler:
