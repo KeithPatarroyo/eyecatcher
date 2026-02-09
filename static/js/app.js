@@ -13,6 +13,9 @@
     }
 
     var API_URL = window.API_URL || "http://localhost:5001/api";
+    var FULLSCREEN_CANVAS_MAX = 1024;
+    var FULLSCREEN_CANVAS_DEFAULT = 800;
+    var FULLSCREEN_CANVAS_MIN = 64;
 
     var currentPopulation = [];
     var currentGenomes = null;
@@ -77,11 +80,11 @@
         requestAnimationFrame(function () {
             if (modal.hidden) return;
             var size = Math.min(
-                wrap.clientWidth || 800,
-                wrap.clientHeight || 800,
-                1024
+                wrap.clientWidth || FULLSCREEN_CANVAS_DEFAULT,
+                wrap.clientHeight || FULLSCREEN_CANVAS_DEFAULT,
+                FULLSCREEN_CANVAS_MAX
             );
-            if (size < 64) size = 800;
+            if (size < FULLSCREEN_CANVAS_MIN) size = FULLSCREEN_CANVAS_DEFAULT;
             var canvas = document.createElement("canvas");
             canvas.width = size;
             canvas.height = size;

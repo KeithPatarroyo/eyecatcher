@@ -15,17 +15,33 @@ function updateControlsVisibility() {
     }
 }
 
-// Toast notifications (local to this module; ESLint globals list has showToast for other pages)
+const TOAST_DURATION_MS = 5000;
+const DEFAULT_NODE_SIZE = 90;
+const PHYSICS_DEFAULTS = {
+    repelForce: 5000,
+    centerForce: 0.1,
+    linkDistance: 300,
+    linkForce: 0.05,
+    damping: 0.09,
+};
+
 function showGenealogyToast(title, body, type = "success") {
-    const container = document.getElementById("toast-container");
-    const toast = document.createElement("div");
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-    <div class="toast-title">${title}</div>
-    ${body ? `<div class="toast-body">${body}</div>` : ""}
-`;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
+    if (typeof window.Toast !== "undefined" && window.Toast.show) {
+        window.Toast.show(title, body, type, { duration: TOAST_DURATION_MS });
+    } else {
+        const container = document.getElementById("toast-container");
+        const toast = document.createElement("div");
+        toast.className = "toast " + type;
+        toast.innerHTML =
+            '<div class="toast-title">' +
+            title +
+            "</div>" +
+            (body ? '<div class="toast-body">' + body + "</div>" : "");
+        container.appendChild(toast);
+        setTimeout(function () {
+            toast.remove();
+        }, TOAST_DURATION_MS);
+    }
 }
 
 function showLoading(show) {
@@ -146,7 +162,10 @@ function visualizeTree(nodes) {
         const borderColor = isCurrent ? "#FFD700" : "#0066cc";
         const borderWidth = isCurrent ? 5 : 2;
 
-        const nodeSize = parseInt(document.getElementById("node-size")?.value || 90);
+        const nodeSize = parseInt(
+            document.getElementById("node-size")?.value || DEFAULT_NODE_SIZE,
+            10
+        );
 
         visNodes.add({
             id: node.id,
@@ -215,18 +234,25 @@ function visualizeTree(nodes) {
             },
             barnesHut: {
                 gravitationalConstant: -parseFloat(
-                    document.getElementById("repel-force")?.value || 5000
+                    document.getElementById("repel-force")?.value ||
+                        PHYSICS_DEFAULTS.repelForce
                 ),
                 centralGravity: parseFloat(
-                    document.getElementById("center-force")?.value || 0.1
+                    document.getElementById("center-force")?.value ||
+                        PHYSICS_DEFAULTS.centerForce
                 ),
                 springLength: parseFloat(
-                    document.getElementById("link-distance")?.value || 300
+                    document.getElementById("link-distance")?.value ||
+                        PHYSICS_DEFAULTS.linkDistance
                 ),
                 springConstant: parseFloat(
-                    document.getElementById("link-force")?.value || 0.05
+                    document.getElementById("link-force")?.value ||
+                        PHYSICS_DEFAULTS.linkForce
                 ),
-                damping: parseFloat(document.getElementById("damping")?.value || 0.09),
+                damping: parseFloat(
+                    document.getElementById("damping")?.value ||
+                        PHYSICS_DEFAULTS.damping
+                ),
                 avoidOverlap: 0.15,
             },
             solver: "barnesHut",
@@ -279,7 +305,10 @@ function visualizeTree(nodes) {
             },
             length: hierarchicalLayout
                 ? undefined
-                : parseFloat(document.getElementById("link-distance")?.value || 300),
+                : parseFloat(
+                      document.getElementById("link-distance")?.value ||
+                          PHYSICS_DEFAULTS.linkDistance
+                  ),
         },
     };
 
@@ -538,7 +567,10 @@ async function renderThumbnail(populationId) {
 const THUMBNAIL_BATCH_SIZE = 8;
 async function renderAllThumbnails(visNodes) {
     const nodes = visNodes.get();
-    const nodeSize = parseInt(document.getElementById("node-size")?.value || 90);
+    const nodeSize = parseInt(
+        document.getElementById("node-size")?.value || DEFAULT_NODE_SIZE,
+        10
+    );
 
     for (let i = 0; i < nodes.length; i += THUMBNAIL_BATCH_SIZE) {
         const batch = nodes.slice(i, i + THUMBNAIL_BATCH_SIZE);
@@ -576,12 +608,6 @@ document.getElementById("refresh-btn").onclick = () => {
     loadTree();
 };
 
-function formatBytes(n) {
-    if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";
-    if (n >= 1024) return (n / 1024).toFixed(1) + " KB";
-    return n + " B";
-}
-
 document.getElementById("download-genealogy-btn").onclick = async () => {
     const modal = document.getElementById("export-genealogy-modal");
     try {
@@ -601,7 +627,7 @@ document.getElementById("download-genealogy-btn").onclick = async () => {
             " populations, " +
             sizes.full.individuals +
             " individuals (~" +
-            formatBytes(sizes.full.estimated_bytes) +
+            window.formatBytes(sizes.full.estimated_bytes) +
             ")";
 
         const branchList = document.getElementById("export-branch-list");
@@ -614,9 +640,9 @@ document.getElementById("download-genealogy-btn").onclick = async () => {
             label.className = "export-radio-label";
             const id = "export-branch-" + (b.name || "main").replace(/\W/g, "_");
             label.innerHTML = `
-            <input type="radio" name="export-scope" value="${escapeHtml(b.name || "main")}" id="${id}">
-            <span class="export-option-title">${escapeHtml(b.name || "main")}</span>
-            <span class="export-size">${b.populations} pop., ${b.individuals} ind. (~${formatBytes(b.estimated_bytes)})</span>
+            <input type="radio" name="export-scope" value="${window.escapeHtml(b.name || "main")}" id="${id}">
+            <span class="export-option-title">${window.escapeHtml(b.name || "main")}</span>
+            <span class="export-size">${b.populations} pop., ${b.individuals} ind. (~${window.formatBytes(b.estimated_bytes)})</span>
         `;
             branchList.appendChild(label);
         });
@@ -629,12 +655,6 @@ document.getElementById("download-genealogy-btn").onclick = async () => {
         );
     }
 };
-
-function escapeHtml(s) {
-    const div = document.createElement("div");
-    div.textContent = s;
-    return div.innerHTML;
-}
 
 document.getElementById("export-modal-cancel").onclick = () => {
     document.getElementById("export-genealogy-modal").hidden = true;

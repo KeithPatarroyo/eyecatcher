@@ -103,6 +103,29 @@
     }
 
     /**
+     * Generic fetch that parses JSON and throws on !r.ok with data.error or defaultMessage.
+     * Use for any API URL (e.g. genealogy endpoints). Returns parsed JSON.
+     * @param {string} url - Full URL
+     * @param {RequestInit} [options] - fetch options (method, headers, body, etc.)
+     * @param {string} [defaultMessage] - Error message when response has no data.error
+     */
+    async function apiFetch(url, options, defaultMessage) {
+        const r = await fetch(url, options || {});
+        const data = await r.json().catch(function () {
+            return {};
+        });
+        if (!r.ok) {
+            const err = new Error(
+                data.error || defaultMessage || "Request failed (" + r.status + ")"
+            );
+            err.status = r.status;
+            err.data = data;
+            throw err;
+        }
+        return data;
+    }
+
+    /**
      * Get a new random population. Returns { genomes } or throws.
      * @param {number} size - Population size
      */
@@ -130,5 +153,6 @@
         breed: breed,
         save: save,
         random: random,
+        apiFetch: apiFetch,
     };
 })();
