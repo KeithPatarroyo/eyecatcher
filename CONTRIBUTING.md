@@ -72,3 +72,7 @@ Open an issue and include:
 - **Security concerns**: See [SECURITY.md](SECURITY.md); do not report security vulnerabilities in public issues.
 
 Thank you for contributing.
+
+## Maintainers: releasing
+
+Before tagging a release or going public, see [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
