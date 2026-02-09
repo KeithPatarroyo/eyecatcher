@@ -13,6 +13,7 @@ Save returns file contents for client-side download (Railway / no server filesys
 import base64
 import io
 import json
+import logging
 import os
 import pickle
 import random
@@ -33,6 +34,14 @@ from .cppn_engine import (
 from .genealogy_routes import _init_genealogy_db, genealogy_bp
 from .shader_compiler import ShaderCompiler
 from .stateless_api import init_stateless_api, stateless_bp
+
+_log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, _log_level, logging.INFO),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 ROOT_DIR = get_root_dir()
@@ -250,9 +259,9 @@ def _breed_stateless(data):
                 dual.fitness = p.get("clicks", 0)
                 parents.append({"genome": dual, "clicks": p.get("clicks", 0)})
             except Exception as e:
-                print(f"Warning: Failed to parse parent {idx}: {e}")
-                print(f"Parent data: {p}")
-                # Skip this parent and continue
+                logger.warning(
+                    "Failed to parse parent %s: %s. Parent data: %s", idx, e, p
+                )
                 continue
         if not parents:
             return jsonify(
@@ -285,8 +294,6 @@ def _breed_stateless(data):
         # Auto-save to genealogy database (only if parent_population_id is provided)
         if parent_population_id is not None:
             try:
-                import traceback
-
                 from .genealogy_routes import _get_db
 
                 conn = _get_db()
@@ -342,25 +349,16 @@ def _breed_stateless(data):
                 finally:
                     conn.close()
             except Exception as e:
-                print(f"Warning: Failed to save to genealogy: {e}")
-                import traceback
-
-                traceback.print_exc()
+                logger.exception("Failed to save to genealogy: %s", e)
                 return jsonify({"children": children})
 
         # Return children without genealogy tracking
         return jsonify({"children": children})
     except ValueError as e:
-        print(f"Breed ValueError: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logger.exception("Breed ValueError: %s", e)
         return jsonify({"error": f"Validation error: {str(e)}"}), 400
     except Exception as e:
-        print(f"Breed Exception: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logger.exception("Breed Exception: %s", e)
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
@@ -458,7 +456,7 @@ def _save_dual_genome(
             visualizer.visualize_genome(dual_genome.visual, pdf_buffer)
             pdf_bytes = pdf_buffer.getvalue()
         except Exception as e:
-            print(f"Warning: Genome visualization failed: {e}")
+            logger.warning("Genome visualization failed: %s", e)
 
     # Package all assets into a single zip
     zip_buffer = io.BytesIO()
@@ -539,16 +537,13 @@ def serve_saved_image(individual_id):
 
 
 if __name__ == "__main__":
-    print("=" * 60)
     port = int(os.environ.get("PORT", 5001))
     debug = os.environ.get("FLASK_ENV") == "development"
-
-    print("EYECATCHER - Interactive Evolution Server")
-    print("Dual-CPPN Mode: Visual + Time Signal Networks")
-    print("=" * 60)
-    print("\nStarting server...")
-    print(f"Open http://localhost:{port} in your browser")
-    print("\nPress Ctrl+C to stop")
-    print("=" * 60)
-
+    logger.info("=" * 60)
+    logger.info("EYECATCHER - Interactive Evolution Server")
+    logger.info("Dual-CPPN Mode: Visual + Time Signal Networks")
+    logger.info("=" * 60)
+    logger.info("Starting server... Open http://localhost:%s in your browser", port)
+    logger.info("Press Ctrl+C to stop")
+    logger.info("=" * 60)
     app.run(debug=debug, port=port, host="0.0.0.0")
