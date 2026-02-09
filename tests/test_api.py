@@ -52,6 +52,26 @@ def test_api_breed(client):
     assert len(data["children"]) == 4
 
 
+def test_api_breed_without_genealogy(client, cppn_engine):
+    """Breed without parent_population_id returns children only, no population_id."""
+    from eyecatcher.cppn_engine import create_random_dual_genome
+    from eyecatcher.genome_serialization import dual_genome_to_json
+
+    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    genome = dual_genome_to_json(dual)
+    genome["key"] = 0
+    parents = [{"genome": genome, "clicks": 0}]
+    rv = client.post(
+        "/api/breed",
+        json={"parents": parents, "population_size": 2},
+    )
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert "children" in data
+    assert len(data["children"]) == 2
+    assert "population_id" not in data
+
+
 def test_api_breed_missing_parents(client):
     """POST /api/breed without parents returns 400."""
     rv = client.post("/api/breed", json={})
@@ -131,6 +151,24 @@ def test_api_save(client, cppn_engine):
     assert "content_base64" in data["downloads"][0]
 
 
+def test_save_download_structure(client, cppn_engine):
+    """Save returns downloads[0] with .zip filename and non-empty content_base64."""
+    from eyecatcher.cppn_engine import create_random_dual_genome
+    from eyecatcher.genome_serialization import dual_genome_to_json
+
+    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    genome = dual_genome_to_json(dual)
+    genome["key"] = 0
+    rv = client.post("/api/save", json={"genome": genome})
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert len(data["downloads"]) >= 1
+    d = data["downloads"][0]
+    assert d.get("filename", "").endswith(".zip")
+    assert isinstance(d.get("content_base64"), str)
+    assert len(d["content_base64"]) > 0
+
+
 def test_api_save_missing_genome(client):
     """POST /api/save without genome returns 400."""
     rv = client.post("/api/save", json={})
@@ -188,6 +226,16 @@ def test_api_network_missing_genome(client):
     rv = client.post("/api/network", json={})
     assert rv.status_code == 400
     assert "genome" in rv.get_json().get("error", "").lower()
+
+
+def test_api_error_response_shape(client):
+    """Error responses have exactly one key 'error' with a string value."""
+    rv = client.post("/api/breed", json={})
+    assert rv.status_code == 400
+    data = rv.get_json()
+    assert list(data.keys()) == ["error"]
+    assert isinstance(data["error"], str)
+    assert len(data["error"]) > 0
 
 
 def test_api_adjust_weight(client, cppn_engine):
