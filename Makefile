@@ -17,11 +17,13 @@ help:
 	@echo ""
 
 install:
+	@echo "==> Creating virtual environment..."
 	python -m venv .venv 2>/dev/null || true
-	@echo "Activate the venv: source .venv/bin/activate (or .venv\\Scripts\\activate on Windows)"
-	@echo "Then run: pip install -e \".[dev]\""
-	@echo "For JS linting: npm install"
-	@echo "For pre-commit: pre-commit install"
+	@echo "==> Installing Python package + dev deps..."
+	.venv/bin/pip install -e ".[dev]" 2>/dev/null || .venv\Scripts\pip install -e ".[dev]"
+	@if [ -f package.json ]; then echo "==> Installing npm deps (JS lint/format)..."; npm install; else echo "==> No package.json, skipping npm install"; fi
+	@echo "==> Done. Activate venv: source .venv/bin/activate (Windows: .venv\\Scripts\\activate)"
+	@echo "==> Install pre-commit hooks: pre-commit install"
 
 dev:
 	python -m eyecatcher.server
