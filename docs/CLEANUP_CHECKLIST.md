@@ -22,7 +22,7 @@ Use this checklist to find and fix outdated or unneeded code, config, docs, and 
 
 - [x] **Commented-out blocks** – `src/eyecatcher/server.py` lines ~424–438: "deprecated" stateful endpoint comments; decide keep (as history) or remove.
 - [x] **TODO/FIXME/XXX/HACK** – Grep for these; either resolve or convert to tracked issues and remove from code.
-- [ ] **Unused exports** – From `src/eyecatcher/`: any public functions/classes never imported by demos, tests, or other modules; consider removing or documenting as internal.
+- [x] **Unused exports** – From `src/eyecatcher/`: any public functions/classes never imported by demos, tests, or other modules; consider removing or documenting as internal. (Verified: public API is used by demos, tests, or re-exported.)
 
 ### 1.4 Dependencies
 
@@ -49,21 +49,21 @@ Use this checklist to find and fix outdated or unneeded code, config, docs, and 
 
 ### 3.1 README
 
-- [ ] **Quick Start and run instructions** – Commands (Docker, `python -m eyecatcher.server`, pytest) work as written.
-- [ ] **Project layout** – Matches repo (e.g. `src/eyecatcher/`, `static/`, `config/`, `data/`); no seeds or removed features.
-- [ ] **API / endpoints** – List matches actual routes (no GET /api/seeds, etc.); server one-liner matches.
-- [ ] **Code examples** – Snippets use `eyecatcher` package and current API (e.g. `mutate_dual_genome(..., new_key=...)`).
+- [x] **Quick Start and run instructions** – Commands (Docker, `python -m eyecatcher.server`, pytest) work as written.
+- [x] **Project layout** – Matches repo (e.g. `src/eyecatcher/`, `static/`, `config/`, `data/`); no seeds or removed features.
+- [x] **API / endpoints** – List matches actual routes (no GET /api/seeds, etc.); server one-liner matches.
+- [x] **Code examples** – Snippets use `eyecatcher` package and current API (e.g. `mutate_dual_genome(..., new_key=...)`).
 
 ### 3.2 AGENTS.md
 
-- [ ] **Commands** – Match current tooling (ruff, pytest, docker compose, `python -m eyecatcher.server`).
-- [ ] **Structure and boundaries** – `data/` and "Never" rules reflect current design (no seeds); paths and entry points correct.
+- [x] **Commands** – Match current tooling (ruff, pytest, docker compose, `python -m eyecatcher.server`).
+- [x] **Structure and boundaries** – `data/` and "Never" rules reflect current design (no seeds); paths and entry points correct.
 
 ### 3.3 CONTRIBUTING, SECURITY, RELEASE_CHECKLIST
 
-- [ ] **CONTRIBUTING** – Setup and commands (venv, `pip install -e ".[dev]"`, ruff, pytest) and branch/PR flow match repo and CI.
-- [ ] **SECURITY** – Supported versions and reporting flow still accurate.
-- [ ] **RELEASE_CHECKLIST** – Items still relevant; no seeds or obsolete steps.
+- [x] **CONTRIBUTING** – Setup and commands (venv, `pip install -e ".[dev]"`, ruff, pytest) and branch/PR flow match repo and CI.
+- [x] **SECURITY** – Supported versions and reporting flow still accurate.
+- [x] **RELEASE_CHECKLIST** – Items still relevant; no seeds or obsolete steps.
 
 ---
 
@@ -71,13 +71,13 @@ Use this checklist to find and fix outdated or unneeded code, config, docs, and 
 
 ### 4.1 Server routes vs files
 
-- [ ] **JS/CSS routes** – Every file under `static/` that is served has a matching route in `server.py` (or is included by HTML); no route points to a missing file.
-- [ ] **HTML** – `interactive_viewer.html` and `genealogy_viewer.html` exist and are the only HTML entry points if that's intended.
+- [x] **JS/CSS routes** – Every file under `static/` that is served has a matching route in `server.py` (or is included by HTML); no route points to a missing file.
+- [x] **HTML** – `interactive_viewer.html` and `genealogy_viewer.html` exist and are the only HTML entry points if that's intended.
 
 ### 4.2 Orphaned or duplicate assets
 
-- [ ] **Unused CSS/JS** – No file in `static/` that is never linked or requested (e.g. from HTML or other JS); remove or document if intentional.
-- [ ] **Broken or outdated links** – No script/link in HTML or JS pointing to old paths or removed endpoints (e.g. /api/seeds).
+- [x] **Unused CSS/JS** – No file in `static/` that is never linked or requested (e.g. from HTML or other JS); remove or document if intentional.
+- [x] **Broken or outdated links** – No script/link in HTML or JS pointing to old paths or removed endpoints (e.g. /api/seeds).
 
 ---
 
@@ -85,8 +85,8 @@ Use this checklist to find and fix outdated or unneeded code, config, docs, and 
 
 ### 5.1 data/
 
-- [ ] **Intent** – Only community and genealogy DBs (and any future runtime files); no seeds or legacy files. .gitignore ignores the DBs; nothing tracks `seeds.json` if it's gone.
-- [ ] **Docker/CI** – Image creates `data/` if needed; no COPY of removed seeds.
+- [x] **Intent** – Only community and genealogy DBs (and any future runtime files); no seeds or legacy files. .gitignore ignores the DBs; nothing tracks `seeds.json` if it's gone.
+- [x] **Docker/CI** – Image creates `data/` if needed; no COPY of removed seeds.
 
 ### 5.2 output/ and llm_test/
 
@@ -99,12 +99,12 @@ Use this checklist to find and fix outdated or unneeded code, config, docs, and 
 
 ### 6.1 Test suite
 
-- [ ] **Coverage** – Every public API surface (engine, compiler, serialization, server routes) has at least one test; no test file for a removed feature.
-- [ ] **Imports and assertions** – Tests use `eyecatcher` package and current signatures (e.g. `new_key` for mutate/crossover); no references to seeds or old modules.
+- [x] **Coverage** – Every public API surface (engine, compiler, serialization, server routes) has at least one test; no test file for a removed feature.
+- [x] **Imports and assertions** – Tests use `eyecatcher` package and current signatures (e.g. `new_key` for mutate/crossover); no references to seeds or old modules.
 
 ### 6.2 CI
 
-- [ ] **.github/workflows/ci.yml** – Install command (`pip install -e ".[dev]"`), pytest, ruff check/format match repo; triggers (branches) match your workflow (e.g. main, dev).
+- [x] **.github/workflows/ci.yml** – Install command (`pip install -e ".[dev]"`), pytest, ruff check/format match repo; triggers (branches) match your workflow (e.g. main, dev).
 
 ---
 
@@ -113,9 +113,9 @@ Use this checklist to find and fix outdated or unneeded code, config, docs, and 
 ### 7.1 .gitignore
 
 - [x] **Ignore list** – Covers build artifacts, venvs, `.env`, DBs, output, and any local/tooling dirs (e.g. `.cursor/`). No need to ignore `*.md` or critical docs.
-- [ ] **.dockerignore** – Aligns with Dockerfile (e.g. no need to copy tests/docs into image unless intended); no accidental exclusion of `src/` or `config/`.
+- [x] **.dockerignore** – Aligns with Dockerfile (e.g. no need to copy tests/docs into image unless intended); no accidental exclusion of `src/` or `config/`.
 
 ### 7.2 Branches and defaults
 
-- [ ] **Default branch** – Docs (CONTRIBUTING, AGENTS) and CI mention the correct default (e.g. dev or main).
-- [ ] **Stale branches** – Optional: list branches that are merged or abandoned and can be deleted.
+- [x] **Default branch** – Docs (CONTRIBUTING, AGENTS) and CI mention the correct default (e.g. dev or main).
+- [x] **Stale branches** – Optional: list branches that are merged or abandoned and can be deleted. (Deferred; no change.)
