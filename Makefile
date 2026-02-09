@@ -40,10 +40,10 @@ format:
 	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npx prettier --write "static/**/*.js" "static/**/*.html" "static/**/*.css"; fi
 
 docker-build:
-	docker compose build
+	docker compose -f docker/docker-compose.yml build
 
 docker-up:
-	docker compose up --build
+	docker compose -f docker/docker-compose.yml up --build
 
 clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache __pycache__ .ruff_cache

@@ -14,7 +14,7 @@ Use this checklist before tagging a release or making the repository public.
 
 ## Build and run
 
-- [ ] **Docker build** — `make docker-up` or `docker compose up --build`; open http://localhost:5001 and confirm the app loads.
+- [ ] **Docker build** — `make docker-up` or `docker compose -f docker/docker-compose.yml up --build`; open http://localhost:5001 and confirm the app loads.
 - [ ] **Fresh clone** — In a separate directory, clone the repo, follow the README (e.g. Quick Start or local setup), and confirm you can run tests and the server.
 
 ## GitHub / repository

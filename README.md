@@ -9,7 +9,7 @@ Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Li
 ## Quick Start
 
 ```bash
-docker compose up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 Then open **http://localhost:5001**. You can also use **`make docker-up`** from the repo root. For other options (local Python, tests, deployment), see [Running the project](#running-the-project) below. Common dev tasks: **`make help`** (list targets), **`make test`**, **`make lint`**, **`make format`**.
@@ -33,25 +33,25 @@ Use this to test the full stack as it runs in production, without installing Pyt
 **Environment setup**
 
 - Install [Docker](https://docs.docker.com/get-docker/) and Docker Compose.
-- No `.env` file is required: `docker-compose.yml` sets `PORT=8080`, `FLASK_ENV=development`, and `ADMIN_KEY=ALICE` for local use. Optionally copy [.env.example](.env.example) to `.env` and override (e.g. `ADMIN_KEY`) if you want; docker-compose will use it when you pass `env_file: .env` or set variables there.
+- No `.env` file is required: `docker/docker-compose.yml` sets `PORT=8080`, `FLASK_ENV=development`, and `ADMIN_KEY=ALICE` for local use. Optionally copy [.env.example](.env.example) to `.env` and override (e.g. `ADMIN_KEY`) if you want; docker-compose will use it when you pass `env_file: .env` or set variables there.
 - The community DB (`data/community.db`) is created at first run.
 
 **Commands**
 
 ```bash
 # From the repo root
-docker compose up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 Then open **http://localhost:5001** in your browser. The app listens on 8080 inside the container; compose maps host 5001 → 8080.
 
-To stop: `Ctrl+C`, or `docker compose down`.
+To stop: `Ctrl+C`, or `docker compose -f docker/docker-compose.yml down`.
 
 ---
 
 ### 2. Deploy to Railway (from terminal)
 
-Deploy the current project to [Railway](https://railway.app) using the Railway CLI. The repo already contains [railway.json](railway.json) and [Dockerfile](Dockerfile); Railway will build the image and run `./run.sh` (Gunicorn). No config files need to be edited for deploy.
+Deploy the current project to [Railway](https://railway.app) using the Railway CLI. The repo already contains [railway.json](railway.json) and [docker/Dockerfile](docker/Dockerfile); Railway will build the image and run `./run.sh` (Gunicorn). No config files need to be edited for deploy.
 
 **Environment setup**
 
@@ -171,7 +171,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **demos/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
 - **config/** – NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives).
 - **src/eyecatcher/** – Python package: `server`, `cppn_engine`, `shader_compiler`, `genome_serialization`, routes, etc. Entrypoint: `eyecatcher.server:app`.
-- **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, Docker/deploy files (`Dockerfile`, `docker-compose.yml`, `railway.json`), [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
+- **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml`. **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
 
@@ -247,7 +247,7 @@ Python 3.9+. Dependencies are in [pyproject.toml](pyproject.toml) (neat-python, 
 
 ## Contributing
 
-Contributions are welcome. See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for setup, code style, and the pull request process.
+Contributions are welcome. See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for setup, code style, and the pull request process. AI coding agents: see [.github/AGENTS.md](.github/AGENTS.md).
 
 ## License
 

@@ -1,6 +1,6 @@
 # AGENTS.md – Instructions for AI Coding Agents
 
-This file gives AI coding agents the context needed to work effectively in the Eyecatcher codebase. See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for human contributor guidelines.
+This file gives AI coding agents the context needed to work effectively in the Eyecatcher codebase. See [CONTRIBUTING.md](CONTRIBUTING.md) for human contributor guidelines.
 
 ## Project overview
 
@@ -21,12 +21,12 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 | `make lint` | Ruff (Python) + ESLint (JS) |
 | `make format` | Ruff format + Prettier (JS) |
 | `make dev` | Run Flask dev server |
-| `make docker-up` | docker compose up --build |
+| `make docker-up` | docker compose -f docker/docker-compose.yml up --build |
 | `make clean` | Remove build artifacts, caches |
 
-**npm scripts** (from repo root, after `npm install`): `npm run lint`, `npm run format:check`, `npm run format` (see [package.json](package.json)).
+**npm scripts** (from repo root, after `npm install`): `npm run lint`, `npm run format:check`, `npm run format` (see [package.json](../package.json)).
 
-**Direct commands** (if not using Make): `pip install -e ".[dev]"`, `pre-commit install`, `pytest -v --tb=short`, `ruff check .`, `ruff format .`, `docker compose up --build`, `python -m eyecatcher.server`.
+**Direct commands** (if not using Make): `pip install -e ".[dev]"`, `pre-commit install`, `pytest -v --tb=short`, `ruff check .`, `ruff format .`, `docker compose -f docker/docker-compose.yml up --build`, `python -m eyecatcher.server`.
 
 ---
 
@@ -48,13 +48,13 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 - **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from .cppn_engine import ...`). Code outside the package (demos, tests) imports with `from eyecatcher.xxx import ...`.
 - **Stateless API:** The server does **not** hold population state. Clients send full genome payloads in requests (e.g. `/api/compile`, `/api/breed`). Do not add server-side population storage.
 - **Dual-CPPN:** Each individual is a `DualGenome`: two NEAT genomes (`visual` and `time_signal`) evolved together. Mutations and crossovers operate on both; keep the pairing consistent.
-- **Paths:** `get_root_dir()` in `src/eyecatcher/__init__.py` returns the repo root. Use it (or paths relative to it) for `config/`, `static/`, `data/`. Flask’s `static_folder` is set to that root `static/` directory.
+- **Paths:** `get_root_dir()` in `src/eyecatcher/__init__.py` returns the repo root. Use it (or paths relative to it) for `config/`, `static/`, `data/`. Flask's `static_folder` is set to that root `static/` directory.
 
 ---
 
 ## Code style
 
-- **Python:** Ruff. Line length 88, target Python 3.9, rules E/F/I/N/W/UP, double quotes. Config in [pyproject.toml](pyproject.toml).
+- **Python:** Ruff. Line length 88, target Python 3.9, rules E/F/I/N/W/UP, double quotes. Config in [pyproject.toml](../pyproject.toml).
 - **Commits:** Conventional prefixes: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `ci:`.
 - **Docstrings:** Google style with Args/Returns where relevant.
 - **Types:** Type hints used widely; `TYPE_CHECKING` for circular import guards.
@@ -63,14 +63,14 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 
 ## Testing
 
-**Framework:** pytest (`testpaths = ["tests"]` in [pyproject.toml](pyproject.toml)).
+**Framework:** pytest (`testpaths = ["tests"]` in [pyproject.toml](../pyproject.toml)).
 **Test modules:** `test_cppn_engine.py`, `test_shader_compiler.py`, `test_genome_serialization.py`, `test_api.py`, `test_visualization.py`, `test_community_routes.py`, `test_genealogy_routes.py`.
 **API tests:** Flask test client — `from eyecatcher.server import app` then `app.test_client()`.
 **Engine API:** `mutate_dual_genome(dual, new_key)` and `crossover_dual_genomes(dual1, dual2, new_key)` **require** the `new_key` argument.
 
 ### How to run tests (coding agents)
 
-Run pytest from **whatever virtualenv the project uses** — the venv name is not fixed (the [Makefile](Makefile) creates `.venv` by default, but the workspace may use another name). **Discover** a venv by trying common locations and use the first that has `pytest`. Do **not** use bare `pytest` or `make test` unless the venv is activated; otherwise you may get `ModuleNotFoundError: No module named 'eyecatcher'` or `No module named 'neat'`.
+Run pytest from **whatever virtualenv the project uses** — the venv name is not fixed (the [Makefile](../Makefile) creates `.venv` by default, but the workspace may use another name). **Discover** a venv by trying common locations and use the first that has `pytest`. Do **not** use bare `pytest` or `make test` unless the venv is activated; otherwise you may get `ModuleNotFoundError: No module named 'eyecatcher'` or `No module named 'neat'`.
 
 **1. Discover and run (Unix/macOS, from repo root)**
 
@@ -97,7 +97,7 @@ or
 `<venv_dir>/bin/pytest tests/ -m "not slow" --tb=short -q`
 
 **4. Coverage (optional)**
-For coverage reports, add `--cov=src/eyecatcher --cov-fail-under=40` (or see [pyproject.toml](pyproject.toml) / CI). The above commands are the general way to run tests.
+For coverage reports, add `--cov=src/eyecatcher --cov-fail-under=40` (or see [pyproject.toml](../pyproject.toml) / CI). The above commands are the general way to run tests.
 
 **5. If no venv works**
 
@@ -106,9 +106,9 @@ If none of the tried directories exist or pytest fails with import errors: do no
 ### Test quality (when adding or changing tests)
 
 - **Avoid trivial assertions** — Assert things that would fail on regression (e.g. key, structure, exact values), not always-true conditions like `len(x) >= 0`.
-- **Prefer deterministic tests** — For edge cases (e.g. “one hidden node”), construct minimal data (e.g. via JSON or a shared helper in conftest) instead of “try N random and skip if not found”.
+- **Prefer deterministic tests** — For edge cases (e.g. "one hidden node"), construct minimal data (e.g. via JSON or a shared helper in conftest) instead of "try N random and skip if not found".
 - **Round-trip tests** — For serialize/deserialize, assert that behavior is preserved (e.g. same query output), not only that types or ranges are correct.
-- **Document skips** — If a test must skip (e.g. missing data), make the skip reason explicit so it’s clear the skip is intentional.
+- **Document skips** — If a test must skip (e.g. missing data), make the skip reason explicit so it's clear the skip is intentional.
 
 ---
 
