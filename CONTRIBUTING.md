@@ -23,7 +23,7 @@ Thank you for your interest in contributing. This document explains how to get s
    source .venv/bin/activate   # Windows: .venv\Scripts\activate
    pip install -e ".[dev]"
    ```
-   This installs the package in editable mode plus dev dependencies (pytest, black).
+   This installs the package in editable mode plus dev dependencies (pytest, ruff).
 
 3. **Run tests**
    ```bash
@@ -41,8 +41,7 @@ No `.env` file is required for running tests; the app can use defaults for local
 
 ## Code style
 
-- **Formatting**: We use [Black](https://github.com/psf/black). Run `black .` before committing.
-- **Linting**: Keep imports and style consistent; CI may enforce additional checks.
+- **Formatting and linting**: We use [Ruff](https://docs.astral.sh/ruff/). Run `ruff check .` and `ruff format .` before committing (or `ruff check . --fix` and `ruff format .` to auto-fix).
 - **Docstrings**: Use docstrings for public modules, classes, and functions; include Args/Returns where helpful.
 
 ## Pull request process

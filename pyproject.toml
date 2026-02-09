@@ -42,7 +42,7 @@ Issues = "https://github.com/KeithPatarroyo/eyecatcher/issues"
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "black>=23.0.0",
+    "ruff>=0.4.0",
 ]
 
 [build-system]
@@ -54,3 +54,13 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
