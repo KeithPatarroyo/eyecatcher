@@ -36,16 +36,16 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 |------|---------|
 | `src/eyecatcher/` | Python package: `cppn_engine`, `shader_compiler`, `server`, `stateless_api`, `community_routes`, `genealogy_routes`, `genome_serialization`, `genome_visualizer` |
 | `static/` | Frontend: HTML, CSS, JS modules; served by Flask from repo root |
-| `config/` | NEAT config files (not in package); read at runtime via `get_root_dir()`. Also `eslint.config.js`, `.env.example` (copy to root `.env`). |
+| `config/` | NEAT config files in **config/neat/** (read at runtime via `get_root_dir()`). Also `config/eslint.config.js`, `config/.env.example` (copy to root `.env`). |
 | `tests/` | Pytest test suite |
-| `demos/` | Example scripts (api_usage, evolution_batch, time_signal_showcase) |
+| `examples/` | Example scripts (api_usage, evolution_batch, time_signal_showcase) |
 | `data/` | Runtime data: `community.db`, `genealogy.db` (gitignored; created on first run) |
 
 ---
 
 ## Architecture notes
 
-- **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from .cppn_engine import ...`). Code outside the package (demos, tests) imports with `from eyecatcher.xxx import ...`.
+- **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from .cppn_engine import ...`). Code outside the package (examples, tests) imports with `from eyecatcher.xxx import ...`.
 - **Stateless API:** The server does **not** hold population state. Clients send full genome payloads in requests (e.g. `/api/compile`, `/api/breed`). Do not add server-side population storage.
 - **Dual-CPPN:** Each individual is a `DualGenome`: two NEAT genomes (`visual` and `time_signal`) evolved together. Mutations and crossovers operate on both; keep the pairing consistent.
 - **Paths:** `get_root_dir()` in `src/eyecatcher/__init__.py` returns the repo root. Use it (or paths relative to it) for `config/`, `static/`, `data/`. Flask's `static_folder` is set to that root `static/` directory.

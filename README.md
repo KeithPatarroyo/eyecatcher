@@ -98,7 +98,7 @@ Run tests on your machine with Python. No server or browser required.
 
 - Python 3.9+.
 - From the repo root, run **`make install`** — it creates the venv, installs the Python package and dev deps (pytest, ruff, pre-commit), and installs npm deps for JS lint/format. Then activate the venv (`source .venv/bin/activate` or Windows: `.venv\Scripts\activate`) and run **`pre-commit install`** to run checks on each commit (see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)). Alternatively, create a venv manually, then `pip install -e ".[dev]"` and `npm install`.
-- NEAT config files in [config/](config/) (visual and time-signal; default is `*_experimental.txt`; `neat_config.txt` / `neat_config_time.txt` are alternatives).
+- NEAT config files in [config/neat/](config/neat/) (visual and time-signal; default is `*_experimental.txt`; `neat_config.txt` / `neat_config_time.txt` in that folder are alternatives).
 
 **Commands**
 
@@ -129,12 +129,12 @@ make dev
 
 Or `python -m eyecatcher.server`. Then open **http://localhost:5001**. Optional: copy [config/.env.example](config/.env.example) to `.env` in the repo root and set `PORT`, `CORS_ORIGINS`, `ADMIN_KEY`, `DATABASE_PATH` if you want to override defaults.
 
-**Demos (batch evolution, API usage, time-signal plot)** – Live in `demos/`. Run from repo root, e.g.:
+**Examples (batch evolution, API usage, time-signal plot)** – Live in `examples/`. Run from repo root, e.g.:
 
 ```bash
-python demos/api_usage.py            # create, render, compile, mutate, crossover
-python demos/evolution_batch.py      # batch evolution with proxy fitness
-python demos/time_signal_showcase.py # plot time CPPN output (requires matplotlib)
+python examples/api_usage.py            # create, render, compile, mutate, crossover
+python examples/evolution_batch.py      # batch evolution with proxy fitness
+python examples/time_signal_showcase.py # plot time CPPN output (requires matplotlib)
 ```
 
 ## Interactive Evolution (web UI)
@@ -168,8 +168,8 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). All browser-loaded files live here.
 - **data/** – Runtime data: community DB and genealogy DB (both gitignored; created on first run).
 - **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
-- **demos/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
-- **config/** – NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). Also `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
+- **examples/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
+- **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
 - **src/eyecatcher/** – Python package: `server`, `cppn_engine`, `shader_compiler`, `genome_serialization`, routes, etc. Entrypoint: `eyecatcher.server:app`.
 - **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `package.json`, `package-lock.json`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml` (run with **`make docker-up`**). **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 
@@ -187,7 +187,7 @@ Each individual has two CPPNs that evolve together:
 [x, y, dist, modifiedTime, mouseSpeed, mouseDist, activity, bias] → Visual CPPN → RGB
 ```
 
-Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. See [config/neat_config_time.txt](config/neat_config_time.txt) and [config/neat_config.txt](config/neat_config.txt) for exact parameters and activation options.
+Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. See [config/neat/neat_config_time.txt](config/neat/neat_config_time.txt) and [config/neat/neat_config.txt](config/neat/neat_config.txt) for exact parameters and activation options.
 
 ### Stateless API
 
