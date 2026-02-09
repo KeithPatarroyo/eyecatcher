@@ -57,7 +57,8 @@ def genome_from_json(data: dict[str, Any], config: neat.Config) -> neat.DefaultG
         node = gc.node_gene_type(nid)
         node.bias = float(nd.get("bias", 0.0))
         node.response = float(nd.get("response", 1.0))
-        node.activation = str(nd.get("activation", "sigmoid"))
+        act = str(nd.get("activation", "sigmoid")).strip()
+        node.activation = act if act else "sigmoid"
         node.aggregation = str(nd.get("aggregation", "sum"))
         genome.nodes[nid] = node
 
