@@ -541,7 +541,7 @@ def create_random_dual_genome(engine: CPPNEngine, genome_id: int = 0) -> DualGen
 # ---------------------------------------------------------------------------
 # JSON serialization - re-exported from genome_serialization for public API
 # ---------------------------------------------------------------------------
-from .genome_serialization import (  # noqa: F401
+from .genome_serialization import (  # noqa: E402, F401
     copy_dual_genome,
     copy_genome,
     dual_genome_from_json,

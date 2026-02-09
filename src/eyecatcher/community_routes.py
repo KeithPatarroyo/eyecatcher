@@ -90,8 +90,8 @@ def _check_admin_key():
             import sys
 
             print(
-                "Admin key mismatch: expected len=%d got len=%d key_repr=%r"
-                % (len(ADMIN_KEY), len(key), key),
+                f"Admin key mismatch: expected len={len(ADMIN_KEY)} "
+                f"got len={len(key)} key_repr={key!r}",
                 file=sys.stderr,
             )
         return False, jsonify({"error": "Invalid admin key"}), 403
