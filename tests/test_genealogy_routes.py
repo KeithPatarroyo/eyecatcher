@@ -1,19 +1,5 @@
 """Tests for genealogy API (save/load population, tree, branches)."""
 
-from unittest.mock import patch
-
-import pytest
-from eyecatcher import genealogy_routes
-
-
-@pytest.fixture
-def genealogy_db(tmp_path):
-    """Use a temp DB for genealogy so tests don't touch the real one."""
-    path = tmp_path / "genealogy.db"
-    with patch.object(genealogy_routes, "GENEALOGY_DB_PATH", str(path)):
-        genealogy_routes._init_genealogy_db()
-        yield path
-
 
 def test_save_population(client, genealogy_db, cppn_engine):
     """POST save-population with genomes returns population_id and individual_ids."""

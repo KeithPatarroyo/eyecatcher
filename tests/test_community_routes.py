@@ -4,16 +4,6 @@ import os
 from unittest.mock import patch
 
 import pytest
-from eyecatcher import community_routes
-
-
-@pytest.fixture
-def community_db(tmp_path):
-    """Use a temp DB for community so tests don't touch the real one."""
-    path = tmp_path / "community.db"
-    with patch.object(community_routes, "DATABASE_PATH", str(path)):
-        community_routes._init_community_db()
-        yield path
 
 
 @pytest.fixture
