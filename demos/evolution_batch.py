@@ -8,8 +8,6 @@ import os
 import random
 
 import numpy as np
-from PIL import Image
-
 from eyecatcher.cppn_engine import (
     CPPNEngine,
     DualGenome,
@@ -17,6 +15,7 @@ from eyecatcher.cppn_engine import (
     create_random_dual_genome,
 )
 from eyecatcher.shader_compiler import ShaderCompiler
+from PIL import Image
 
 
 def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:
