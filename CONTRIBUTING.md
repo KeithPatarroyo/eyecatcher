@@ -41,7 +41,7 @@ No `.env` file is required for running tests; the app can use defaults for local
 
 ## Code style
 
-- **Formatting and linting**: We use [Ruff](https://docs.astral.sh/ruff/). Run `ruff check .` and `ruff format .` before committing (or `ruff check . --fix` and `ruff format .` to auto-fix).
+- **Formatting and linting**: We use [Ruff](https://docs.astral.sh/ruff/). Run `ruff check .` and `ruff format .` before committing (or `ruff check . --fix` and `ruff format .` to auto-fix). Optional: install [pre-commit](https://pre-commit.com/) and run `pre-commit install` to run Ruff automatically on commit.
 - **Docstrings**: Use docstrings for public modules, classes, and functions; include Args/Returns where helpful.
 
 ## Pull request process
