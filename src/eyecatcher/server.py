@@ -9,6 +9,7 @@ Each individual has two CPPNs:
 Population state lives on the client; server provides compile, random, breed, save.
 Save returns file contents for client-side download (works on Railway / no server filesystem).
 """
+
 import base64
 import io
 import json
@@ -22,11 +23,16 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from . import get_root_dir
-from .cppn_engine import CPPNEngine, DualGenome, dual_genome_from_json, dual_genome_to_json
-from .shader_compiler import ShaderCompiler
-from .stateless_api import stateless_bp, init_stateless_api
 from .community_routes import community_bp
-from .genealogy_routes import genealogy_bp, _init_genealogy_db
+from .cppn_engine import (
+    CPPNEngine,
+    DualGenome,
+    dual_genome_from_json,
+    dual_genome_to_json,
+)
+from .genealogy_routes import _init_genealogy_db, genealogy_bp
+from .shader_compiler import ShaderCompiler
+from .stateless_api import init_stateless_api, stateless_bp
 
 app = Flask(__name__)
 ROOT_DIR = get_root_dir()
@@ -42,8 +48,10 @@ else:
 # Engine and compiler (no server-side population state)
 engine = CPPNEngine()
 engine.create_population()  # Initialize NEAT populations for mutation/crossover
-compiler = ShaderCompiler(color_mode="hsv") # Use HSV output for more vibrant colors (client converts to RGB for display)
-#compiler = ShaderCompiler(color_mode="rgb")  # Use RGB output 
+compiler = ShaderCompiler(
+    color_mode="hsv"
+)  # Use HSV output for more vibrant colors (client converts to RGB for display)
+# compiler = ShaderCompiler(color_mode="rgb")  # Use RGB output
 
 # Initialize and register API blueprints
 init_stateless_api(engine, compiler)
@@ -53,127 +61,153 @@ app.register_blueprint(community_bp)
 app.register_blueprint(genealogy_bp)
 
 
-@app.route('/health')
+@app.route("/health")
 def health():
     """Lightweight health check for Railway/deploy (no app state)."""
-    return '', 200
+    return "", 200
 
 
-@app.route('/')
+@app.route("/")
 def index():
     """Serve the viewer HTML."""
-    return send_from_directory(STATIC_DIR, 'interactive_viewer.html')
+    return send_from_directory(STATIC_DIR, "interactive_viewer.html")
 
 
-@app.route('/genealogy')
+@app.route("/genealogy")
 def genealogy():
     """Serve the genealogy tree viewer."""
-    return send_from_directory(STATIC_DIR, 'genealogy_viewer.html')
+    return send_from_directory(STATIC_DIR, "genealogy_viewer.html")
 
 
-@app.route('/js/modules/debug.js')
+@app.route("/js/modules/debug.js")
 def serve_debug_js():
     """Serve the debug module JavaScript."""
-    return send_from_directory(STATIC_DIR, 'js/modules/debug.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/debug.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/css/debug.css')
+@app.route("/css/debug.css")
 def serve_debug_css():
     """Serve the debug module CSS."""
-    return send_from_directory(STATIC_DIR, 'css/debug.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, "css/debug.css", mimetype="text/css")
 
 
-@app.route('/js/modules/storage.js')
+@app.route("/js/modules/storage.js")
 def serve_storage_js():
     """Serve the IndexedDB storage module."""
-    return send_from_directory(STATIC_DIR, 'js/modules/storage.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/storage.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/js/modules/population_ui.js')
+@app.route("/js/modules/population_ui.js")
 def serve_population_ui_js():
     """Serve the population UI module."""
-    return send_from_directory(STATIC_DIR, 'js/modules/population_ui.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/population_ui.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/js/modules/community.js')
+@app.route("/js/modules/community.js")
 def serve_community_js():
     """Serve the community UI module."""
-    return send_from_directory(STATIC_DIR, 'js/modules/community.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/community.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/css/community.css')
+@app.route("/css/community.css")
 def serve_community_css():
     """Serve the community UI styles."""
-    return send_from_directory(STATIC_DIR, 'css/community.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, "css/community.css", mimetype="text/css")
 
 
-@app.route('/css/viewer.css')
+@app.route("/css/viewer.css")
 def serve_viewer_css():
     """Serve the interactive viewer main styles."""
-    return send_from_directory(STATIC_DIR, 'css/viewer.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, "css/viewer.css", mimetype="text/css")
 
 
-@app.route('/js/modules/pattern_renderer.js')
+@app.route("/js/modules/pattern_renderer.js")
 def serve_pattern_renderer_js():
     """Serve the pattern renderer WebGL module."""
-    return send_from_directory(STATIC_DIR, 'js/modules/pattern_renderer.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/pattern_renderer.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/js/modules/toast.js')
+@app.route("/js/modules/toast.js")
 def serve_toast_js():
     """Serve toast and download helpers."""
-    return send_from_directory(STATIC_DIR, 'js/modules/toast.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/toast.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/js/modules/zoom_signals.js')
+@app.route("/js/modules/zoom_signals.js")
 def serve_zoom_signals_js():
     """Serve zoom and signal controls module."""
-    return send_from_directory(STATIC_DIR, 'js/modules/zoom_signals.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/zoom_signals.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/js/modules/toolbar_ui.js')
+@app.route("/js/modules/toolbar_ui.js")
 def serve_toolbar_ui_js():
     """Serve toolbar UI (start fresh, help, settings, population size)."""
-    return send_from_directory(STATIC_DIR, 'js/modules/toolbar_ui.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/toolbar_ui.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/js/modules/network_visualizer.js')
+@app.route("/js/modules/network_visualizer.js")
 def serve_network_visualizer_js():
     """Serve network visualization module (CPPN sidebar, vis.js, weight sliders)."""
-    return send_from_directory(STATIC_DIR, 'js/modules/network_visualizer.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR,
+        "js/modules/network_visualizer.js",
+        mimetype="application/javascript",
+    )
 
 
-@app.route('/css/network.css')
+@app.route("/css/network.css")
 def serve_network_css():
     """Serve network sidebar and weight slider styles."""
-    return send_from_directory(STATIC_DIR, 'css/network.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, "css/network.css", mimetype="text/css")
 
 
-@app.route('/css/base.css')
+@app.route("/css/base.css")
 def serve_base_css():
     """Serve base CSS (variables, reset, typography)."""
-    return send_from_directory(STATIC_DIR, 'css/base.css', mimetype='text/css')
+    return send_from_directory(STATIC_DIR, "css/base.css", mimetype="text/css")
 
 
-@app.route('/js/app.js')
+@app.route("/js/app.js")
 def serve_app_js():
     """Serve main app entry (state, grid, module wiring)."""
-    return send_from_directory(STATIC_DIR, 'js/app.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/app.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/js/modules/api_client.js')
+@app.route("/js/modules/api_client.js")
 def serve_api_client_js():
     """Serve API client module."""
-    return send_from_directory(STATIC_DIR, 'js/modules/api_client.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/api_client.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/js/modules/animation_loop.js')
+@app.route("/js/modules/animation_loop.js")
 def serve_animation_loop_js():
     """Serve animation loop (mouse, time mode, render loop)."""
-    return send_from_directory(STATIC_DIR, 'js/modules/animation_loop.js', mimetype='application/javascript')
+    return send_from_directory(
+        STATIC_DIR, "js/modules/animation_loop.js", mimetype="application/javascript"
+    )
 
 
-@app.route('/api/breed', methods=['POST'])
+@app.route("/api/breed", methods=["POST"])
 def breed():
     """
     Breed next generation (stateless).
@@ -185,88 +219,103 @@ def breed():
     Returns { "children": [genome JSONs] }.
     """
     data = request.json or {}
-    if 'parents' not in data:
-        return jsonify({'error': 'parents array required'}), 400
+    if "parents" not in data:
+        return jsonify({"error": "parents array required"}), 400
     return _breed_stateless(data)
 
 
 def _breed_stateless(data):
     """Stateless breed: parents in body, return children as genome JSONs."""
     from .cppn_engine import copy_dual_genome, dual_genome_to_json
+
     try:
-        parents_data = data.get('parents', [])
-        population_size = data.get('population_size', 12)
-        elitism = data.get('elitism', False)
-        
+        parents_data = data.get("parents", [])
+        population_size = data.get("population_size", 12)
+        elitism = data.get("elitism", False)
+
         # Genealogy metadata
-        parent_population_id = data.get('parent_population_id')  # ID of parent generation
-        generation_num = data.get('generation_num', 0)
-        branch_name = data.get('branch_name', 'main')
-        
+        parent_population_id = data.get(
+            "parent_population_id"
+        )  # ID of parent generation
+        generation_num = data.get("generation_num", 0)
+        branch_name = data.get("branch_name", "main")
+
         if not parents_data:
-            return jsonify({'error': 'parents array required'}), 400
+            return jsonify({"error": "parents array required"}), 400
         parents = []
         for idx, p in enumerate(parents_data):
             try:
-                genome_data = p.get('genome', p)
+                genome_data = p.get("genome", p)
                 dual = dual_genome_from_json(genome_data, engine)
-                dual.fitness = p.get('clicks', 0)
-                parents.append({'genome': dual, 'clicks': p.get('clicks', 0)})
+                dual.fitness = p.get("clicks", 0)
+                parents.append({"genome": dual, "clicks": p.get("clicks", 0)})
             except Exception as e:
                 print(f"Warning: Failed to parse parent {idx}: {e}")
                 print(f"Parent data: {p}")
                 # Skip this parent and continue
                 continue
         if not parents:
-            return jsonify({'error': 'No valid parents - check server logs for details'}), 400
-        max_key = max(p['genome'].key for p in parents)
+            return jsonify(
+                {"error": "No valid parents - check server logs for details"}
+            ), 400
+        max_key = max(p["genome"].key for p in parents)
         next_key = max_key + 1
         children = []
         # Elitism: optionally keep best parent unchanged
         if elitism:
-            best = max(parents, key=lambda x: x['clicks'])
-            elite = copy_dual_genome(best['genome'], engine, next_key)
+            best = max(parents, key=lambda x: x["clicks"])
+            elite = copy_dual_genome(best["genome"], engine, next_key)
             children.append(dual_genome_to_json(elite))
             next_key += 1
         while len(children) < population_size:
             if len(parents) == 1:
-                child = engine.mutate_dual_genome(parents[0]['genome'], next_key)
+                child = engine.mutate_dual_genome(parents[0]["genome"], next_key)
             else:
                 if random.random() < 0.7:
                     parent = random.choice(parents)
-                    child = engine.mutate_dual_genome(parent['genome'], next_key)
+                    child = engine.mutate_dual_genome(parent["genome"], next_key)
                 else:
                     p1, p2 = random.sample(parents, 2)
                     child = engine.crossover_dual_genomes(
-                        p1['genome'], p2['genome'], next_key
+                        p1["genome"], p2["genome"], next_key
                     )
             children.append(dual_genome_to_json(child))
             next_key += 1
-        
+
         # Auto-save to genealogy database (only if parent_population_id is provided)
         if parent_population_id is not None:
             try:
-                from .genealogy_routes import _get_db
                 import traceback
+
+                from .genealogy_routes import _get_db
+
                 conn = _get_db()
                 try:
                     parent_row = conn.execute(
                         "SELECT generation_num FROM populations WHERE id = ?",
-                        (parent_population_id,)
+                        (parent_population_id,),
                     ).fetchone()
                     if not parent_row:
-                        return jsonify({'children': children})
-                    if generation_num != parent_row['generation_num'] + 1:
+                        return jsonify({"children": children})
+                    if generation_num != parent_row["generation_num"] + 1:
                         # Skip genealogy save; breeding still succeeds
-                        return jsonify({'children': children})
+                        return jsonify({"children": children})
 
                     cur = conn.execute(
                         """INSERT INTO populations 
                            (parent_id, generation_num, created_at, branch_name, description, 
                             user_id, population_size, metadata_json)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (parent_population_id, generation_num, datetime.utcnow().isoformat(),
-                         branch_name, f'Generation {generation_num}', 'user', len(children), '{}')
+                        (
+                            parent_population_id,
+                            generation_num,
+                            datetime.utcnow().isoformat(),
+                            branch_name,
+                            f"Generation {generation_num}",
+                            "user",
+                            len(children),
+                            "{}",
+                        ),
                     )
                     new_population_id = cur.lastrowid
 
@@ -276,38 +325,45 @@ def _breed_stateless(data):
                             """INSERT INTO individuals 
                                (population_id, genome_key, genome_json, fitness, created_at)
                                VALUES (?, ?, ?, ?, ?)""",
-                            (new_population_id, child_genome.get('key', idx), genome_json,
-                             0, datetime.utcnow().isoformat())
+                            (
+                                new_population_id,
+                                child_genome.get("key", idx),
+                                genome_json,
+                                0,
+                                datetime.utcnow().isoformat(),
+                            ),
                         )
 
                     conn.commit()
-                    return jsonify({
-                        'children': children,
-                        'population_id': new_population_id
-                    })
+                    return jsonify(
+                        {"children": children, "population_id": new_population_id}
+                    )
                 finally:
                     conn.close()
             except Exception as e:
                 print(f"Warning: Failed to save to genealogy: {e}")
                 import traceback
+
                 traceback.print_exc()
-                return jsonify({'children': children})
-        
+                return jsonify({"children": children})
+
         # Return children without genealogy tracking
-        return jsonify({'children': children})
+        return jsonify({"children": children})
     except ValueError as e:
         print(f"Breed ValueError: {e}")
         import traceback
+
         traceback.print_exc()
-        return jsonify({'error': f'Validation error: {str(e)}'}), 400
+        return jsonify({"error": f"Validation error: {str(e)}"}), 400
     except Exception as e:
         print(f"Breed Exception: {e}")
         import traceback
+
         traceback.print_exc()
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
-@app.route('/api/save', methods=['POST'])
+@app.route("/api/save", methods=["POST"])
 def save_individual():
     """
     Save a dual genome (stateless).
@@ -318,93 +374,117 @@ def save_individual():
     }
     """
     data = request.json or {}
-    genome_json = data.get('genome')
-    individual_id = data.get('id')
-    visualize = data.get('visualize', True)
+    genome_json = data.get("genome")
+    individual_id = data.get("id")
+    visualize = data.get("visualize", True)
     if not genome_json:
-        return jsonify({'error': 'genome required in request body'}), 400
+        return jsonify({"error": "genome required in request body"}), 400
     try:
         dual_genome = dual_genome_from_json(genome_json, engine)
-        return _save_dual_genome(dual_genome, individual_id or dual_genome.key, visualize=visualize)
+        return _save_dual_genome(
+            dual_genome, individual_id or dual_genome.key, visualize=visualize
+        )
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 def extract_network_data(genome, network_type, config):
     """Extract nodes and connections from a genome."""
     nodes = []
     node_id_map = {}
-    
+
     num_inputs = config.genome_config.num_inputs
     num_outputs = config.genome_config.num_outputs
-    
+
     # X-offset to separate visual and time networks horizontally
-    x_offset = 1000 if network_type == 'time' else 0
-    
+    x_offset = 1000 if network_type == "time" else 0
+
     # Define input labels to match actual CPPN query inputs
     # Visual CPPN inputs: x, y, distance, time, mouse_speed, mouse_distance, inactivity, bias
     # Time Signal CPPN inputs: raw_time, mouse_speed, mouse_distance, inactivity, bias
-    if network_type == 'time':
-        input_labels = ['raw_time', 'mouse_speed', 'mouse_distance', 'inactivity', 'bias']
+    if network_type == "time":
+        input_labels = [
+            "raw_time",
+            "mouse_speed",
+            "mouse_distance",
+            "inactivity",
+            "bias",
+        ]
     else:
-        input_labels = ['x', 'y', 'distance', 'time', 'mouse_speed', 'mouse_distance', 'inactivity', 'bias']
-    
+        input_labels = [
+            "x",
+            "y",
+            "distance",
+            "time",
+            "mouse_speed",
+            "mouse_distance",
+            "inactivity",
+            "bias",
+        ]
+
     # Add input nodes - position on left
     for i in range(num_inputs):
         neat_id = -(i + 1)
-        vis_id = f'{network_type}_input_{neat_id}'
+        vis_id = f"{network_type}_input_{neat_id}"
         node_id_map[neat_id] = vis_id
-        label = input_labels[i] if i < len(input_labels) else f'Input {i}'
-        nodes.append({
-            'id': vis_id,
-            'label': label,
-            'type': 'input',
-            'network': network_type,
-            'index': i,
-            'x': -400 + x_offset,
-            'y': (i - num_inputs/2) * 80
-        })
-    
+        label = input_labels[i] if i < len(input_labels) else f"Input {i}"
+        nodes.append(
+            {
+                "id": vis_id,
+                "label": label,
+                "type": "input",
+                "network": network_type,
+                "index": i,
+                "x": -400 + x_offset,
+                "y": (i - num_inputs / 2) * 80,
+            }
+        )
+
     # Add hidden nodes - position in middle
     hidden_list = sorted(genome.nodes.keys())
     for idx, neat_id in enumerate(hidden_list):
         node = genome.nodes[neat_id]
-        vis_id = f'{network_type}_hidden_{neat_id}'
+        vis_id = f"{network_type}_hidden_{neat_id}"
         node_id_map[neat_id] = vis_id
-        nodes.append({
-            'id': vis_id,
-            'label': f'Node {neat_id}',
-            'type': 'hidden',
-            'network': network_type,
-            'activation': node.activation,
-            'bias': float(node.bias),
-            'index': neat_id,
-            'x': 0 + x_offset,
-            'y': (idx - len(hidden_list)/2) * 80
-        })
-    
+        nodes.append(
+            {
+                "id": vis_id,
+                "label": f"Node {neat_id}",
+                "type": "hidden",
+                "network": network_type,
+                "activation": node.activation,
+                "bias": float(node.bias),
+                "index": neat_id,
+                "x": 0 + x_offset,
+                "y": (idx - len(hidden_list) / 2) * 80,
+            }
+        )
+
     # Add output nodes - position on right
-    if network_type == 'time':
-        output_labels = ['output']
+    if network_type == "time":
+        output_labels = ["output"]
     else:
-        output_labels = ['red', 'green', 'blue']
-    
+        output_labels = ["red", "green", "blue"]
+
     for i in range(num_outputs):
         neat_id = i
-        vis_id = f'{network_type}_output_{neat_id}'
+        vis_id = f"{network_type}_output_{neat_id}"
         node_id_map[neat_id] = vis_id
-        label = output_labels[i] if i < len(output_labels) else f'Output {i}'
-        nodes.append({
-            'id': vis_id,
-            'label': label,
-            'type': 'output',
-            'network': network_type,
-            'index': i,
-            'x': 400 + x_offset,
-            'y': (i - num_outputs/2) * 80
-        })
-    
+        label = output_labels[i] if i < len(output_labels) else f"Output {i}"
+        nodes.append(
+            {
+                "id": vis_id,
+                "label": label,
+                "type": "output",
+                "network": network_type,
+                "index": i,
+                "x": 400 + x_offset,
+                "y": (i - num_outputs / 2) * 80,
+            }
+        )
+
     # Extract connections
     connections = []
     for conn_id, conn in genome.connections.items():
@@ -412,17 +492,21 @@ def extract_network_data(genome, network_type, config):
             input_node, output_node = conn_id
             source_id = node_id_map.get(input_node, str(input_node))
             target_id = node_id_map.get(output_node, str(output_node))
-            connections.append({
-                'source': source_id,
-                'target': target_id,
-                'weight': float(conn.weight),
-                'network': network_type
-            })
-    
+            connections.append(
+                {
+                    "source": source_id,
+                    "target": target_id,
+                    "weight": float(conn.weight),
+                    "network": network_type,
+                }
+            )
+
     return nodes, connections
 
 
-def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bool = True):
+def _save_dual_genome(
+    dual_genome: DualGenome, individual_id: int, visualize: bool = True
+):
     """
     Build save assets in memory and return them for client-side download.
     Works on Railway (no server filesystem). Optionally write to disk if SAVE_TO_DISK=1.
@@ -436,11 +520,19 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
             "type": "dual_cppn",
             "visual": {
                 "num_nodes": len(dual_genome.visual.nodes),
-                "num_connections": len([c for c in dual_genome.visual.connections.values() if c.enabled]),
+                "num_connections": len(
+                    [c for c in dual_genome.visual.connections.values() if c.enabled]
+                ),
             },
             "time_signal": {
                 "num_nodes": len(dual_genome.time_signal.nodes),
-                "num_connections": len([c for c in dual_genome.time_signal.connections.values() if c.enabled]),
+                "num_connections": len(
+                    [
+                        c
+                        for c in dual_genome.time_signal.connections.values()
+                        if c.enabled
+                    ]
+                ),
             },
             "fitness": dual_genome.fitness,
         },
@@ -450,6 +542,7 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
 
     # PNG image
     from PIL import Image
+
     img = engine.render_image(dual_genome.visual, resolution=512, time=0.5)
     img_buffer = io.BytesIO()
     Image.fromarray(img).save(img_buffer, format="PNG")
@@ -458,7 +551,11 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
     # Pickle genome
     pkl_buffer = io.BytesIO()
     pickle.dump(
-        {"visual": dual_genome.visual, "time_signal": dual_genome.time_signal, "key": dual_genome.key},
+        {
+            "visual": dual_genome.visual,
+            "time_signal": dual_genome.time_signal,
+            "key": dual_genome.key,
+        },
         pkl_buffer,
     )
     pkl_base64 = base64.b64encode(pkl_buffer.getvalue()).decode("ascii")
@@ -468,6 +565,7 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
     if visualize:
         try:
             from .genome_visualizer import GenomeVisualizer
+
             visualizer = GenomeVisualizer(engine.config)
             pdf_buffer = io.BytesIO()
             visualizer.visualize_genome(dual_genome.visual, pdf_buffer)
@@ -488,7 +586,11 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
     zip_base64 = base64.b64encode(zip_buffer.getvalue()).decode("ascii")
 
     downloads = [
-        {"filename": f"pattern_{individual_id}.zip", "mime": "application/zip", "content_base64": zip_base64},
+        {
+            "filename": f"pattern_{individual_id}.zip",
+            "mime": "application/zip",
+            "content_base64": zip_base64,
+        },
     ]
 
     # Optional: write to disk for local dev (e.g. SAVE_TO_DISK=1)
@@ -505,45 +607,51 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
         with open(f"output/saved/dual_genome_{individual_id}.pkl", "wb") as f:
             f.write(base64.b64decode(pkl_base64))
         if pdf_bytes:
-            with open(f"output/saved/dual_genome_{individual_id}_network.pdf", "wb") as f:
+            with open(
+                f"output/saved/dual_genome_{individual_id}_network.pdf", "wb"
+            ) as f:
                 f.write(pdf_bytes)
 
-    return jsonify({
-        "id": individual_id,
-        "status": "saved",
-        "downloads": downloads,
-    })
-
-
-@app.route('/api/saved/<int:individual_id>/network')
-def serve_saved_network(individual_id):
-    """Serve the network visualization PDF for a saved pattern (from genome visualizer)."""
-    path = os.path.join(ROOT_DIR, "output", "saved", f"dual_genome_{individual_id}_network.pdf")
-    if not os.path.isfile(path):
-        return jsonify({'error': 'Network visualization not found'}), 404
-    return send_from_directory(
-        os.path.dirname(path),
-        os.path.basename(path),
-        mimetype='application/pdf',
-        as_attachment=False
+    return jsonify(
+        {
+            "id": individual_id,
+            "status": "saved",
+            "downloads": downloads,
+        }
     )
 
 
-@app.route('/api/saved/<int:individual_id>/image')
+@app.route("/api/saved/<int:individual_id>/network")
+def serve_saved_network(individual_id):
+    """Serve the network visualization PDF for a saved pattern (from genome visualizer)."""
+    path = os.path.join(
+        ROOT_DIR, "output", "saved", f"dual_genome_{individual_id}_network.pdf"
+    )
+    if not os.path.isfile(path):
+        return jsonify({"error": "Network visualization not found"}), 404
+    return send_from_directory(
+        os.path.dirname(path),
+        os.path.basename(path),
+        mimetype="application/pdf",
+        as_attachment=False,
+    )
+
+
+@app.route("/api/saved/<int:individual_id>/image")
 def serve_saved_image(individual_id):
     """Serve the rendered PNG for a saved pattern."""
     path = os.path.join(ROOT_DIR, "output", "saved", f"pattern_{individual_id}.png")
     if not os.path.isfile(path):
-        return jsonify({'error': 'Image not found'}), 404
+        return jsonify({"error": "Image not found"}), 404
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),
-        mimetype='image/png',
-        as_attachment=False
+        mimetype="image/png",
+        as_attachment=False,
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 60)
     port = int(os.environ.get("PORT", 5001))
     debug = os.environ.get("FLASK_ENV") == "development"

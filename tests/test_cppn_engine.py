@@ -48,7 +48,9 @@ def test_mutate_dual_genome():
     mutated = engine.mutate_dual_genome(dual, new_key=1)
     assert isinstance(mutated, DualGenome)
     assert mutated.key == 1
-    assert mutated.visual is not dual.visual or mutated.time_signal is not dual.time_signal
+    assert (
+        mutated.visual is not dual.visual or mutated.time_signal is not dual.time_signal
+    )
 
 
 def test_crossover_dual_genomes():

@@ -2,14 +2,16 @@
 Programmatic dual-CPPN API usage: create, render, compile, mutate, crossover, save.
 Run from repo root: python demos/api_usage.py
 """
+
 import os
+
+from PIL import Image
 
 from eyecatcher.cppn_engine import (
     CPPNEngine,
     create_random_dual_genome,
 )
 from eyecatcher.shader_compiler import ShaderCompiler
-from PIL import Image
 
 
 def main():
@@ -28,9 +30,7 @@ def main():
     print("Saved: output/dual_pattern.png")
 
     # Compile to GLSL (dual shader)
-    shader_code = compiler.compile_dual_to_glsl(
-        dual, engine.config, engine.time_config
-    )
+    shader_code = compiler.compile_dual_to_glsl(dual, engine.config, engine.time_config)
     with open("output/dual_pattern.glsl", "w") as f:
         f.write(shader_code)
     print("Saved: output/dual_pattern.glsl")

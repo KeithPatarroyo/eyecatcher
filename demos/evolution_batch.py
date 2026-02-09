@@ -3,6 +3,7 @@ Batch evolution demo using dual-CPPN (visual + time signal).
 Simulates automated evolution with a proxy fitness function.
 Run from repo root: python demos/evolution_batch.py
 """
+
 import os
 import random
 
@@ -12,8 +13,8 @@ from PIL import Image
 from eyecatcher.cppn_engine import (
     CPPNEngine,
     DualGenome,
-    create_random_dual_genome,
     copy_dual_genome,
+    create_random_dual_genome,
 )
 from eyecatcher.shader_compiler import ShaderCompiler
 
@@ -30,8 +31,13 @@ def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:
         raw_t = -1.0 + t * 2.0
         for x, y in coords:
             r, g, b = engine.query_dual_cppn(
-                dual_genome, x, y, raw_t,
-                mouse_speed=0.0, mouse_distance=0.0, inactivity=0.0
+                dual_genome,
+                x,
+                y,
+                raw_t,
+                mouse_speed=0.0,
+                mouse_distance=0.0,
+                inactivity=0.0,
             )
             samples.append([r, g, b])
     samples = np.array(samples)
@@ -40,8 +46,13 @@ def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:
     for t in times:
         raw_t = -1.0 + t * 2.0
         r, g, b = engine.query_dual_cppn(
-            dual_genome, 0, 0, raw_t,
-            mouse_speed=0.0, mouse_distance=0.0, inactivity=0.0
+            dual_genome,
+            0,
+            0,
+            raw_t,
+            mouse_speed=0.0,
+            mouse_distance=0.0,
+            inactivity=0.0,
         )
         temporal_samples.append([r, g, b])
     temporal_variance = np.var(temporal_samples)
@@ -103,9 +114,7 @@ def run_evolution(
     scores.sort(key=lambda x: x[1], reverse=True)
     best = scores[0][0]
     shader_path = os.path.join(output_dir, "best_pattern.glsl")
-    shader_code = compiler.compile_dual_to_glsl(
-        best, engine.config, engine.time_config
-    )
+    shader_code = compiler.compile_dual_to_glsl(best, engine.config, engine.time_config)
     with open(shader_path, "w") as f:
         f.write(shader_code)
     print(f"Saved best shader: {shader_path}")

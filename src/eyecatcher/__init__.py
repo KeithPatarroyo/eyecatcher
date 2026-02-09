@@ -1,6 +1,7 @@
 """
 Eyecatcher: evolutionary time-varying CPPN patterns with shader generation.
 """
+
 __version__ = "0.1.0"
 
 import os

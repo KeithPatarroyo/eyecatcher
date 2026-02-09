@@ -2,8 +2,8 @@
 
 from eyecatcher.cppn_engine import CPPNEngine, create_random_dual_genome
 from eyecatcher.genome_serialization import (
-    dual_genome_to_json,
     dual_genome_from_json,
+    dual_genome_to_json,
 )
 
 

@@ -1,4 +1,5 @@
 """Tests for Flask API endpoints using test client."""
+
 import pytest
 
 from eyecatcher.server import app
