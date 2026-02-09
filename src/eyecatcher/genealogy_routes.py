@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 
 from .api_helpers import api_error
-from .db_util import sqlite_connection
+from .db_util import with_db_connection
 
 # Create blueprint
 genealogy_bp = Blueprint("genealogy", __name__)
@@ -26,19 +26,14 @@ def _default_genealogy_db_path():
 
 
 GENEALOGY_DB_PATH = os.environ.get("GENEALOGY_DB_PATH") or _default_genealogy_db_path()
-
-
-def _get_db():
-    """Get a connection to the genealogy database."""
-    return sqlite_connection(GENEALOGY_DB_PATH, pragmas=("PRAGMA foreign_keys = ON",))
+GENEALOGY_PRAGMAS = ("PRAGMA foreign_keys = ON",)
 
 
 def _init_genealogy_db():
     """Initialize the genealogy database schema."""
-    conn = _get_db()
-
-    # Population nodes (generations)
-    conn.execute("""
+    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+        # Population nodes (generations)
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS populations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             parent_id INTEGER REFERENCES populations(id),
@@ -50,43 +45,42 @@ def _init_genealogy_db():
             population_size INTEGER,
             metadata_json TEXT
         )
-    """)
+        """)
 
-    # Individual genomes within populations
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS individuals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            population_id INTEGER NOT NULL REFERENCES populations(id),
-            genome_key INTEGER NOT NULL,
-            genome_json TEXT NOT NULL,
-            fitness REAL DEFAULT 0,
-            parent1_id INTEGER REFERENCES individuals(id),
-            parent2_id INTEGER REFERENCES individuals(id),
-            mutation_only BOOLEAN DEFAULT 0,
-            created_at TIMESTAMP NOT NULL
-        )
-    """)
+        # Individual genomes within populations
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS individuals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                population_id INTEGER NOT NULL REFERENCES populations(id),
+                genome_key INTEGER NOT NULL,
+                genome_json TEXT NOT NULL,
+                fitness REAL DEFAULT 0,
+                parent1_id INTEGER REFERENCES individuals(id),
+                parent2_id INTEGER REFERENCES individuals(id),
+                mutation_only BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP NOT NULL
+            )
+        """)
 
-    # Indexes for performance
-    conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_populations_parent
-        ON populations(parent_id)
-    """)
-    conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_individuals_population
-        ON individuals(population_id)
-    """)
-    conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_individuals_parents
-        ON individuals(parent1_id, parent2_id)
-    """)
-    conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_populations_branch_gen
-        ON populations(branch_name, generation_num)
-    """)
+        # Indexes for performance
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_populations_parent
+            ON populations(parent_id)
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_individuals_population
+            ON individuals(population_id)
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_individuals_parents
+            ON individuals(parent1_id, parent2_id)
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_populations_branch_gen
+            ON populations(branch_name, generation_num)
+        """)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 # Initialize DB on module load
@@ -128,8 +122,7 @@ def save_population():
         if not genomes:
             return api_error("genomes array required", 400)
 
-        conn = _get_db()
-        try:
+        with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             if parent_id is not None:
                 parent_row = conn.execute(
                     "SELECT generation_num FROM populations WHERE id = ?", (parent_id,)
@@ -188,9 +181,6 @@ def save_population():
                     "generation_num": generation_num,
                 }
             )
-        finally:
-            conn.close()
-
     except Exception as e:
         return api_error(str(e), 500)
 
@@ -213,8 +203,7 @@ def load_population(population_id):
     }
     """
     try:
-        conn = _get_db()
-        try:
+        with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             pop_row = conn.execute(
                 """SELECT * FROM populations WHERE id = ?""", (population_id,)
             ).fetchone()
@@ -249,9 +238,6 @@ def load_population(population_id):
                     "genomes": genomes,
                 }
             )
-        finally:
-            conn.close()
-
     except Exception as e:
         return api_error(str(e), 500)
 
@@ -277,30 +263,14 @@ def get_tree():
     }
     """
     try:
-        conn = _get_db()
-        try:
+        with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             rows = conn.execute(
                 """SELECT id, parent_id, generation_num, created_at, branch_name,
                           description, user_id, population_size
                    FROM populations ORDER BY created_at ASC"""
             ).fetchall()
-
-            nodes = [
-                {
-                    "id": row["id"],
-                    "parent_id": row["parent_id"],
-                    "generation_num": row["generation_num"],
-                    "created_at": row["created_at"],
-                    "branch_name": row["branch_name"],
-                    "description": row["description"],
-                    "user_id": row["user_id"],
-                    "population_size": row["population_size"],
-                }
-                for row in rows
-            ]
+            nodes = [dict(row) for row in rows]
             return jsonify({"nodes": nodes})
-        finally:
-            conn.close()
     except Exception as e:
         return api_error(str(e), 500)
 
@@ -323,8 +293,7 @@ def get_branches():
     }
     """
     try:
-        conn = _get_db()
-        try:
+        with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             rows = conn.execute(
                 """SELECT branch_name,
                           MAX(generation_num) as latest_gen,
@@ -353,8 +322,6 @@ def get_branches():
                     }
                 )
             return jsonify({"branches": branches})
-        finally:
-            conn.close()
     except Exception as e:
         return api_error(str(e), 500)
 
@@ -367,14 +334,11 @@ def reset_genealogy():
     Returns: { "status": "ok" }
     """
     try:
-        conn = _get_db()
-        try:
+        with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             conn.execute("DELETE FROM individuals")
             conn.execute("DELETE FROM populations")
             conn.commit()
             return jsonify({"status": "ok"})
-        finally:
-            conn.close()
     except Exception as e:
         return api_error(str(e), 500)
 
@@ -386,8 +350,7 @@ def export_sizes():
     Returns: { "full": { ... }, "branches": [ { "name", "populations", ... }, ... ] }
     """
     try:
-        conn = _get_db()
-        try:
+        with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             # Full: counts and total genome JSON size
             full_pop = conn.execute("SELECT COUNT(*) as c FROM populations").fetchone()[
                 "c"
@@ -450,8 +413,6 @@ def export_sizes():
                     "branches": branches,
                 }
             )
-        finally:
-            conn.close()
     except Exception as e:
         return api_error(str(e), 500)
 
@@ -464,8 +425,7 @@ def export_genealogy():
     """
     branch_name = request.args.get("branch_name", "").strip() or None
     try:
-        conn = _get_db()
-        try:
+        with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             if branch_name:
                 pop_rows = conn.execute(
                     """SELECT id, parent_id, generation_num, created_at, branch_name,
@@ -504,34 +464,16 @@ def export_genealogy():
                        ORDER BY id ASC"""
                 ).fetchall()
 
-            populations = [
-                {
-                    "id": r["id"],
-                    "parent_id": r["parent_id"],
-                    "generation_num": r["generation_num"],
-                    "created_at": r["created_at"],
-                    "branch_name": r["branch_name"],
-                    "description": r["description"],
-                    "user_id": r["user_id"],
-                    "population_size": r["population_size"],
-                    "metadata_json": r["metadata_json"],
-                }
-                for r in pop_rows
-            ]
+            populations = [dict(r) for r in pop_rows]
             individuals = []
             for r in ind_rows:
-                individuals.append(
-                    {
-                        "id": r["id"],
-                        "population_id": r["population_id"],
-                        "genome_key": r["genome_key"],
-                        "genome_json": json.loads(r["genome_json"])
-                        if isinstance(r["genome_json"], str)
-                        else r["genome_json"],
-                        "fitness": r["fitness"],
-                        "created_at": r["created_at"],
-                    }
+                d = dict(r)
+                d["genome_json"] = (
+                    json.loads(d["genome_json"])
+                    if isinstance(d["genome_json"], str)
+                    else d["genome_json"]
                 )
+                individuals.append(d)
             return jsonify(
                 {
                     "exported_at": datetime.now(timezone.utc)
@@ -543,8 +485,6 @@ def export_genealogy():
                     "individuals": individuals,
                 }
             )
-        finally:
-            conn.close()
     except Exception as e:
         return api_error(str(e), 500)
 
@@ -562,8 +502,7 @@ def get_stats():
     }
     """
     try:
-        conn = _get_db()
-        try:
+        with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             stats = conn.execute(
                 """SELECT
                     COUNT(DISTINCT id) as total_pops,
@@ -582,8 +521,6 @@ def get_stats():
                     "max_generation": stats["max_gen"] or 0,
                 }
             )
-        finally:
-            conn.close()
     except Exception as e:
         return api_error(str(e), 500)
 
@@ -601,8 +538,7 @@ def get_population_thumbnail(population_id):
     }
     """
     try:
-        conn = _get_db()
-        try:
+        with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             row = conn.execute(
                 """SELECT genome_json, fitness FROM individuals
                    WHERE population_id = ?
@@ -618,9 +554,7 @@ def get_population_thumbnail(population_id):
 
             genome = json.loads(row["genome_json"])
             return jsonify({"genome": genome, "fitness": row["fitness"]})
-        except (json.JSONDecodeError, TypeError):
-            return api_error("Invalid genome data", 500)
-        finally:
-            conn.close()
+    except (json.JSONDecodeError, TypeError):
+        return api_error("Invalid genome data", 500)
     except Exception as e:
         return api_error(str(e), 500)
