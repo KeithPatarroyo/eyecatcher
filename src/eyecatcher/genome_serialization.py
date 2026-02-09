@@ -95,8 +95,8 @@ def dual_genome_to_json(dual: "DualGenome") -> Dict[str, Any]:
 def dual_genome_from_json(data: Dict[str, Any], engine: "CPPNEngine") -> "DualGenome":
     """Deserialize a DualGenome from a dict (e.g. from JSON)."""
     # Import here to avoid circular dependency
-    from cppn_engine import DualGenome
-    
+    from .cppn_engine import DualGenome
+
     visual_data = data.get("visual", {})
     time_data = data.get("time_signal", {})
     if not visual_data or not time_data:
@@ -146,8 +146,8 @@ def copy_genome(genome: neat.DefaultGenome, config: neat.Config) -> neat.Default
 def copy_dual_genome(dual: "DualGenome", engine: "CPPNEngine", new_key: int = None) -> "DualGenome":
     """Create a deep copy of a dual genome."""
     # Import here to avoid circular dependency
-    from cppn_engine import DualGenome
-    
+    from .cppn_engine import DualGenome
+
     return DualGenome(
         visual=copy_genome(dual.visual, engine.config),
         time_signal=copy_genome(dual.time_signal, engine.time_config),

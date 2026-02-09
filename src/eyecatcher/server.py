@@ -192,7 +192,7 @@ def breed():
 
 def _breed_stateless(data):
     """Stateless breed: parents in body, return children as genome JSONs."""
-    from cppn_engine import copy_dual_genome, dual_genome_to_json
+    from .cppn_engine import copy_dual_genome, dual_genome_to_json
     try:
         parents_data = data.get('parents', [])
         population_size = data.get('population_size', 12)
@@ -246,7 +246,7 @@ def _breed_stateless(data):
         # Auto-save to genealogy database (only if parent_population_id is provided)
         if parent_population_id is not None:
             try:
-                from genealogy_routes import _get_db
+                from .genealogy_routes import _get_db
                 import traceback
                 conn = _get_db()
                 try:

@@ -162,14 +162,14 @@ def api_network():
         
         # Extract visual network
         if dual.visual:
-            from server import extract_network_data
+            from .server import extract_network_data
             visual_nodes, visual_conns = extract_network_data(dual.visual, 'visual', _engine.config)
             all_nodes.extend(visual_nodes)
             all_connections.extend(visual_conns)
         
         # Extract time signal network
         if dual.time_signal:
-            from server import extract_network_data
+            from .server import extract_network_data
             time_nodes, time_conns = extract_network_data(dual.time_signal, 'time', _engine.time_config)
             all_nodes.extend(time_nodes)
             all_connections.extend(time_conns)
@@ -250,7 +250,7 @@ def api_adjust_weight():
             )
             
             # Return updated genome as JSON so client can update its state
-            from genome_serialization import dual_genome_to_json
+            from .genome_serialization import dual_genome_to_json
             updated_genome = dual_genome_to_json(dual)
             
             return jsonify({
