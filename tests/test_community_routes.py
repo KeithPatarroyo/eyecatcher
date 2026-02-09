@@ -12,6 +12,7 @@ def admin_headers():
     return {"X-Admin-Key": "ALICE"}
 
 
+@pytest.mark.slow
 def test_community_submit(client, community_db, cppn_engine):
     """POST submit with genome returns id and status pending."""
     from eyecatcher.cppn_engine import create_random_dual_genome
@@ -63,6 +64,7 @@ def test_admin_submissions_forbidden_without_key(client, community_db):
     assert rv.status_code == 403
 
 
+@pytest.mark.slow
 def test_admin_submit_then_list_and_approve(
     client, community_db, cppn_engine, admin_headers
 ):

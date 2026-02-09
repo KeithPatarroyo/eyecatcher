@@ -1,6 +1,9 @@
 """Tests for genealogy API (save/load population, tree, branches)."""
 
+import pytest
 
+
+@pytest.mark.slow
 def test_save_population(client, genealogy_db, cppn_engine):
     """POST save-population with genomes returns population_id and individual_ids."""
     from eyecatcher.cppn_engine import create_random_dual_genome
@@ -45,6 +48,7 @@ def test_load_population_not_found(client, genealogy_db):
     assert "not found" in rv.get_json().get("error", "").lower()
 
 
+@pytest.mark.slow
 def test_save_and_load_population(client, genealogy_db, cppn_engine):
     """Save a population then load it by id; genomes round-trip."""
     from eyecatcher.cppn_engine import create_random_dual_genome
@@ -84,6 +88,7 @@ def test_tree_empty(client, genealogy_db):
     assert rv.get_json()["nodes"] == []
 
 
+@pytest.mark.slow
 def test_tree_after_save(client, genealogy_db, cppn_engine):
     """GET tree after save returns one node."""
     from eyecatcher.cppn_engine import create_random_dual_genome
@@ -118,6 +123,7 @@ def test_branches_empty(client, genealogy_db):
     assert rv.get_json()["branches"] == []
 
 
+@pytest.mark.slow
 def test_export_genealogy_full(client, genealogy_db, cppn_engine):
     """GET export (no branch): full tree; populations, individuals, exported_at."""
     from eyecatcher.cppn_engine import create_random_dual_genome
@@ -154,6 +160,7 @@ def test_export_genealogy_full(client, genealogy_db, cppn_engine):
         assert "created_at" in ind
 
 
+@pytest.mark.slow
 def test_export_genealogy_branch(client, genealogy_db, cppn_engine):
     """GET export?branch_name=main returns branch; nonexistent branch returns 404."""
     from eyecatcher.cppn_engine import create_random_dual_genome
@@ -190,6 +197,7 @@ def test_export_genealogy_branch(client, genealogy_db, cppn_engine):
     assert "error" in rv404.get_json()
 
 
+@pytest.mark.slow
 def test_reset_genealogy(client, genealogy_db, cppn_engine):
     """POST reset clears all data; tree and stats are empty after."""
     from eyecatcher.cppn_engine import create_random_dual_genome

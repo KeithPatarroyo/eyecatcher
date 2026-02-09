@@ -1,5 +1,6 @@
 """Tests for genome JSON serialization round-trip."""
 
+import pytest
 from eyecatcher.cppn_engine import CPPNEngine, create_random_dual_genome
 from eyecatcher.genome_serialization import (
     dual_genome_from_json,
@@ -28,6 +29,7 @@ def test_dual_genome_round_trip():
     assert len(restored.time_signal.nodes) == len(dual.time_signal.nodes)
 
 
+@pytest.mark.slow
 def test_dual_genome_round_trip_query_consistency():
     """After round-trip, querying the CPPN gives identical output (fidelity)."""
     engine = CPPNEngine()

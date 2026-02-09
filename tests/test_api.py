@@ -1,5 +1,7 @@
 """Tests for Flask API endpoints using test client."""
 
+import pytest
+
 
 def test_health(client):
     """GET /health returns 200."""
@@ -20,6 +22,7 @@ def test_api_random(client):
         assert "time_signal" in g
 
 
+@pytest.mark.slow
 def test_api_compile(client):
     """POST /api/compile with genomes returns shaders."""
     # Get genomes first
@@ -95,6 +98,7 @@ def test_api_breed_malformed_parents(client):
     assert "no valid parents" in rv.get_json().get("error", "").lower()
 
 
+@pytest.mark.slow
 def test_api_breed_with_genealogy(client, genealogy_db, cppn_engine):
     """Breed with parent_population_id saves to genealogy and returns population_id."""
     from eyecatcher.cppn_engine import create_random_dual_genome
@@ -132,6 +136,7 @@ def test_api_breed_with_genealogy(client, genealogy_db, cppn_engine):
     assert data["population_id"] != pop_id
 
 
+@pytest.mark.slow
 def test_api_save(client, cppn_engine):
     """POST /api/save with genome returns id, status, and downloads."""
     from eyecatcher.cppn_engine import create_random_dual_genome
@@ -151,6 +156,7 @@ def test_api_save(client, cppn_engine):
     assert "content_base64" in data["downloads"][0]
 
 
+@pytest.mark.slow
 def test_save_download_structure(client, cppn_engine):
     """Save returns downloads[0] with .zip filename and non-empty content_base64."""
     from eyecatcher.cppn_engine import create_random_dual_genome
