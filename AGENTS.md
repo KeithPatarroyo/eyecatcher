@@ -103,6 +103,13 @@ For coverage reports, add `--cov=src/eyecatcher --cov-fail-under=40` (or see [py
 
 If none of the tried directories exist or pytest fails with import errors: do not block. Complete the change, then ask the user to run tests locally (`make install` then `make test`, or ensure a venv exists and run the command above). In restricted sandboxes, `pip install` often fails (network/SSL), so the agent should not depend on installing deps itself.
 
+### Test quality (when adding or changing tests)
+
+- **Avoid trivial assertions** — Assert things that would fail on regression (e.g. key, structure, exact values), not always-true conditions like `len(x) >= 0`.
+- **Prefer deterministic tests** — For edge cases (e.g. “one hidden node”), construct minimal data (e.g. via JSON or a shared helper in conftest) instead of “try N random and skip if not found”.
+- **Round-trip tests** — For serialize/deserialize, assert that behavior is preserved (e.g. same query output), not only that types or ranges are correct.
+- **Document skips** — If a test must skip (e.g. missing data), make the skip reason explicit so it’s clear the skip is intentional.
+
 ---
 
 ## Git workflow
