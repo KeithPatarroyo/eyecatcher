@@ -18,7 +18,7 @@ COPY static/ static/
 RUN mkdir -p output/saved data
 
 # Wrapper script expands PORT at runtime (Railway runs startCommand without a shell)
-COPY run.sh .
+COPY scripts/run.sh .
 RUN chmod +x run.sh
 
 ENV PORT=8080
