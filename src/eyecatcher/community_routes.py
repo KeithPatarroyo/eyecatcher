@@ -10,12 +10,12 @@ Provides endpoints for community pattern submissions and admin moderation:
 import json
 import logging
 import os
-import sqlite3
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
 from .api_helpers import api_error
+from .db_util import sqlite_connection
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +35,7 @@ DATABASE_PATH = os.environ.get("DATABASE_PATH") or _default_database_path()
 
 def _get_db():
     """Get a connection to the community database."""
-    os.makedirs(os.path.dirname(DATABASE_PATH) or ".", exist_ok=True)
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return sqlite_connection(DATABASE_PATH)
 
 
 def _init_community_db():
