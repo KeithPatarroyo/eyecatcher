@@ -14,8 +14,8 @@
     "endOfLine": "lf"
   },
   "scripts": {
-    "lint": "eslint static/",
-    "lint:fix": "eslint static/ --fix",
+    "lint": "eslint -c config/eslint.config.js static/",
+    "lint:fix": "eslint -c config/eslint.config.js static/ --fix",
     "format": "prettier --write \"static/**/*.js\" \"static/**/*.html\" \"static/**/*.css\"",
     "format:check": "prettier --check \"static/**/*.js\" \"static/**/*.html\" \"static/**/*.css\""
   },

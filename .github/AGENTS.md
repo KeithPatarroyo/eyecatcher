@@ -36,7 +36,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 |------|---------|
 | `src/eyecatcher/` | Python package: `cppn_engine`, `shader_compiler`, `server`, `stateless_api`, `community_routes`, `genealogy_routes`, `genome_serialization`, `genome_visualizer` |
 | `static/` | Frontend: HTML, CSS, JS modules; served by Flask from repo root |
-| `config/` | NEAT config files (not in package); read at runtime via `get_root_dir()` |
+| `config/` | NEAT config files (not in package); read at runtime via `get_root_dir()`. Also `eslint.config.js`, `.env.example` (copy to root `.env`). |
 | `tests/` | Pytest test suite |
 | `demos/` | Example scripts (api_usage, evolution_batch, time_signal_showcase) |
 | `data/` | Runtime data: `community.db`, `genealogy.db` (gitignored; created on first run) |

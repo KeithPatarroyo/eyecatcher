@@ -19,7 +19,7 @@ repos:
     hooks:
       - id: eslint
         name: eslint
-        entry: npx eslint static/ --fix
+        entry: npx eslint -c config/eslint.config.js static/ --fix
         language: system
         types: [javascript]
       - id: prettier

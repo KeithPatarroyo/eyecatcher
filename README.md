@@ -33,7 +33,7 @@ Use this to test the full stack as it runs in production, without installing Pyt
 **Environment setup**
 
 - Install [Docker](https://docs.docker.com/get-docker/) and Docker Compose.
-- No `.env` file is required: `docker/docker-compose.yml` sets `PORT=8080`, `FLASK_ENV=development`, and `ADMIN_KEY=ALICE` for local use. Optionally copy [.env.example](.env.example) to `.env` and override (e.g. `ADMIN_KEY`) if you want; docker-compose will use it when you pass `env_file: .env` or set variables there.
+- No `.env` file is required: `docker/docker-compose.yml` sets `PORT=8080`, `FLASK_ENV=development`, and `ADMIN_KEY=ALICE` for local use. Optionally copy [config/.env.example](config/.env.example) to `.env` in the repo root and override (e.g. `ADMIN_KEY`) if you want; docker-compose will use it when you pass `env_file: .env` or set variables there.
 - The community DB (`data/community.db`) is created at first run.
 
 **Commands**
@@ -127,7 +127,7 @@ After **`make install`** and activating the venv, run:
 make dev
 ```
 
-Or `python -m eyecatcher.server`. Then open **http://localhost:5001**. Optional: copy [.env.example](.env.example) to `.env` and set `PORT`, `CORS_ORIGINS`, `ADMIN_KEY`, `DATABASE_PATH` if you want to override defaults.
+Or `python -m eyecatcher.server`. Then open **http://localhost:5001**. Optional: copy [config/.env.example](config/.env.example) to `.env` in the repo root and set `PORT`, `CORS_ORIGINS`, `ADMIN_KEY`, `DATABASE_PATH` if you want to override defaults.
 
 **Demos (batch evolution, API usage, time-signal plot)** – Live in `demos/`. Run from repo root, e.g.:
 
@@ -169,7 +169,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **data/** – Runtime data: community DB and genealogy DB (both gitignored; created on first run).
 - **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
 - **demos/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
-- **config/** – NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives).
+- **config/** – NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). Also `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
 - **src/eyecatcher/** – Python package: `server`, `cppn_engine`, `shader_compiler`, `genome_serialization`, routes, etc. Entrypoint: `eyecatcher.server:app`.
 - **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml`. **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 

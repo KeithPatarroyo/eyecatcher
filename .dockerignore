@@ -56,7 +56,7 @@ test_*.py
 # Env (do not bake dev secrets into image)
 .env
 .env.*
-!.env.example
+!config/.env.example
 
 # Misc
 .DS_Store
