@@ -24,6 +24,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from . import get_root_dir
+from .api_helpers import api_error
 from .app_config import (
     DEFAULT_POPULATION_SIZE,
     DEFAULT_RENDER_RESOLUTION,
@@ -107,7 +108,7 @@ def breed():
     """
     data = request.json or {}
     if "parents" not in data:
-        return jsonify({"error": "parents array required"}), 400
+        return api_error("parents array required", 400)
     return _breed_stateless(data)
 
 
@@ -128,7 +129,7 @@ def _breed_stateless(data):
         branch_name = data.get("branch_name", "main")
 
         if not parents_data:
-            return jsonify({"error": "parents array required"}), 400
+            return api_error("parents array required", 400)
         parents = []
         for idx, p in enumerate(parents_data):
             try:
@@ -234,10 +235,10 @@ def _breed_stateless(data):
         return jsonify({"children": children})
     except ValueError as e:
         logger.exception("Breed ValueError: %s", e)
-        return jsonify({"error": f"Validation error: {str(e)}"}), 400
+        return api_error(f"Validation error: {str(e)}", 400)
     except Exception as e:
         logger.exception("Breed Exception: %s", e)
-        return jsonify({"error": f"Server error: {str(e)}"}), 500
+        return api_error(f"Server error: {str(e)}", 500)
 
 
 @app.route("/api/save", methods=["POST"])
@@ -255,16 +256,34 @@ def save_individual():
     individual_id = data.get("id")
     visualize = data.get("visualize", True)
     if not genome_json:
-        return jsonify({"error": "genome required in request body"}), 400
+        return api_error("genome required in request body", 400)
     try:
         dual_genome = dual_genome_from_json(genome_json, engine)
         return _save_dual_genome(
             dual_genome, individual_id or dual_genome.key, visualize=visualize
         )
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return api_error(str(e), 400)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
+
+
+def get_saved_asset_filenames(individual_id: int):
+    """
+    Return logical filenames for saved assets (no directory prefix).
+
+    Keys: png, glsl, bundle_json, genome_json, pkl, network_pdf, zip.
+    Use when building zip or writing to output/saved.
+    """
+    return {
+        "png": f"pattern_{individual_id}.png",
+        "glsl": f"pattern_{individual_id}.glsl",
+        "bundle_json": f"pattern_{individual_id}_bundle.json",
+        "genome_json": f"genome_{individual_id}.json",
+        "pkl": f"dual_genome_{individual_id}.pkl",
+        "network_pdf": f"dual_genome_{individual_id}_network.pdf",
+        "zip": f"pattern_{individual_id}.zip",
+    }
 
 
 def _save_dual_genome(
@@ -395,7 +414,7 @@ def serve_saved_network(individual_id):
         ROOT_DIR, "output", "saved", f"dual_genome_{individual_id}_network.pdf"
     )
     if not os.path.isfile(path):
-        return jsonify({"error": "Network visualization not found"}), 404
+        return api_error("Network visualization not found", 404)
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),
@@ -409,7 +428,7 @@ def serve_saved_image(individual_id):
     """Serve the rendered PNG for a saved pattern."""
     path = os.path.join(ROOT_DIR, "output", "saved", f"pattern_{individual_id}.png")
     if not os.path.isfile(path):
-        return jsonify({"error": "Image not found"}), 404
+        return api_error("Image not found", 404)
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),

@@ -12,6 +12,8 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
+from .api_helpers import api_error
+
 # Create blueprint
 genealogy_bp = Blueprint("genealogy", __name__)
 
@@ -128,7 +130,7 @@ def save_population():
         fitness_data = data.get("fitness_data", [])
 
         if not genomes:
-            return jsonify({"error": "genomes array required"}), 400
+            return api_error("genomes array required", 400)
 
         conn = _get_db()
         try:
@@ -137,7 +139,7 @@ def save_population():
                     "SELECT generation_num FROM populations WHERE id = ?", (parent_id,)
                 ).fetchone()
                 if not parent_row:
-                    return jsonify({"error": "parent_id not found"}), 400
+                    return api_error("parent_id not found", 400)
                 if generation_num != parent_row["generation_num"] + 1:
                     return jsonify(
                         {
@@ -194,7 +196,7 @@ def save_population():
             conn.close()
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @genealogy_bp.route(
@@ -222,7 +224,7 @@ def load_population(population_id):
             ).fetchone()
 
             if not pop_row:
-                return jsonify({"error": "Population not found"}), 404
+                return api_error("Population not found", 404)
 
             individual_rows = conn.execute(
                 """SELECT genome_json, fitness FROM individuals
@@ -255,7 +257,7 @@ def load_population(population_id):
             conn.close()
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @genealogy_bp.route("/api/genealogy/tree", methods=["GET"])
@@ -304,7 +306,7 @@ def get_tree():
         finally:
             conn.close()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @genealogy_bp.route("/api/genealogy/branches", methods=["GET"])
@@ -358,7 +360,7 @@ def get_branches():
         finally:
             conn.close()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @genealogy_bp.route("/api/genealogy/reset", methods=["POST"])
@@ -378,7 +380,7 @@ def reset_genealogy():
         finally:
             conn.close()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @genealogy_bp.route("/api/genealogy/export-sizes", methods=["GET"])
@@ -455,7 +457,7 @@ def export_sizes():
         finally:
             conn.close()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @genealogy_bp.route("/api/genealogy/export", methods=["GET"])
@@ -546,7 +548,7 @@ def export_genealogy():
         finally:
             conn.close()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @genealogy_bp.route("/api/genealogy/stats", methods=["GET"])
@@ -585,7 +587,7 @@ def get_stats():
         finally:
             conn.close()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @genealogy_bp.route(
@@ -619,8 +621,8 @@ def get_population_thumbnail(population_id):
             genome = json.loads(row["genome_json"])
             return jsonify({"genome": genome, "fitness": row["fitness"]})
         except (json.JSONDecodeError, TypeError):
-            return jsonify({"error": "Invalid genome data"}), 500
+            return api_error("Invalid genome data", 500)
         finally:
             conn.close()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)

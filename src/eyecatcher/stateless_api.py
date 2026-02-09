@@ -8,6 +8,7 @@ Provides endpoints that don't depend on server-side population state:
 
 from flask import Blueprint, jsonify, request
 
+from .api_helpers import api_error
 from .app_config import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
 from .cppn_engine import CPPNEngine, DualGenome, create_random_dual_genome
 from .genome_serialization import dual_genome_from_json, dual_genome_to_json
@@ -72,7 +73,7 @@ def api_compile():
         data = request.json or {}
         genomes_data = data.get("genomes", [])
         if not genomes_data:
-            return jsonify({"error": "genomes array required"}), 400
+            return api_error("genomes array required", 400)
         color_mode = (data.get("color_mode") or "").strip().lower()
         if color_mode and color_mode not in ("hsv", "rgb"):
             color_mode = "hsv"
@@ -93,9 +94,9 @@ def api_compile():
             )
         return jsonify({"shaders": shaders})
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return api_error(str(e), 400)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @stateless_bp.route("/api/random", methods=["POST"])
@@ -115,7 +116,7 @@ def api_random():
             genomes.append(dual_genome_to_json(dual))
         return jsonify({"genomes": genomes})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @stateless_bp.route("/api/time-output", methods=["POST"])
@@ -129,7 +130,7 @@ def api_time_output():
         data = request.json or {}
         genome_data = data.get("genome")
         if not genome_data:
-            return jsonify({"error": "genome required"}), 400
+            return api_error("genome required", 400)
         raw_time = float(data.get("time", 0))
         mouse_speed = float(data.get("mouseSpeed", 0))
         mouse_dist = float(data.get("mouseDist", 0))
@@ -154,9 +155,9 @@ def api_time_output():
             }
         )
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return api_error(str(e), 400)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @stateless_bp.route("/api/network", methods=["POST"])
@@ -170,7 +171,7 @@ def api_network():
         data = request.json or {}
         genome_data = data.get("genome")
         if not genome_data:
-            return jsonify({"error": "genome required"}), 400
+            return api_error("genome required", 400)
 
         dual = dual_genome_from_json(genome_data, _engine)
         individual_id = genome_data.get("key", dual.key if dual else 0)
@@ -207,9 +208,9 @@ def api_network():
             }
         )
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return api_error(str(e), 400)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @stateless_bp.route("/api/adjust-weight", methods=["POST"])
@@ -229,7 +230,7 @@ def api_adjust_weight():
         data = request.json or {}
         genome_data = data.get("genome")
         if not genome_data:
-            return jsonify({"error": "genome required"}), 400
+            return api_error("genome required", 400)
 
         network_type = data.get("network")  # 'visual' or 'time'
         source_node = data.get("source")
@@ -245,7 +246,7 @@ def api_adjust_weight():
         elif network_type == "time":
             genome = dual.time_signal
         else:
-            return jsonify({"error": f"Unknown network type: {network_type}"}), 400
+            return api_error(f"Unknown network type: {network_type}", 400)
 
         # Convert node IDs from strings to integers
         # Frontend sends IDs like "visual_input_-1" or "time_hidden_5"
@@ -290,14 +291,12 @@ def api_adjust_weight():
                 }
             )
         else:
-            return jsonify(
-                {
-                    "error": f"Connection not found: {conn_key} "
-                    f"({source_node} -> {target_node})"
-                }
-            ), 404
+            return api_error(
+                f"Connection not found: {conn_key} ({source_node} -> {target_node})",
+                404,
+            )
 
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return api_error(str(e), 400)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)

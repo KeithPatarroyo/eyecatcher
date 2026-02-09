@@ -15,6 +15,8 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
+from .api_helpers import api_error
+
 logger = logging.getLogger(__name__)
 
 # Create blueprint
@@ -87,7 +89,7 @@ def _check_admin_key():
     if os.environ.get("FLASK_ENV") == "development" and key == "ALICE":
         return True, None, None
     if not ADMIN_KEY:
-        return False, jsonify({"error": "Admin key not configured"}), 500
+        return False, *api_error("Admin key not configured", 500)
     if key != ADMIN_KEY:
         if os.environ.get("FLASK_ENV") == "development":
             logger.warning(
@@ -96,7 +98,7 @@ def _check_admin_key():
                 len(key),
                 key,
             )
-        return False, jsonify({"error": "Invalid admin key"}), 403
+        return False, *api_error("Invalid admin key", 403)
     return True, None, None
 
 
@@ -118,7 +120,7 @@ def api_community_submit():
         name = (data.get("name") or "").strip() or "Unnamed"
         creator = (data.get("creator") or "").strip() or "Anonymous"
         if not genome or not isinstance(genome, dict):
-            return jsonify({"error": "genome object required"}), 400
+            return api_error("genome object required", 400)
         genome_json = json.dumps(genome)
         conn = _get_db()
         cur = conn.execute(
@@ -132,7 +134,7 @@ def api_community_submit():
         conn.close()
         return jsonify({"id": sid, "status": "pending"})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @community_bp.route("/api/community", methods=["GET"])
@@ -163,7 +165,7 @@ def api_community():
                 continue
         return jsonify({"patterns": patterns})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +215,7 @@ def api_admin_submissions():
                 continue
         return jsonify({"submissions": submissions})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @community_bp.route("/api/admin/approve", methods=["POST"])
@@ -226,7 +228,7 @@ def api_admin_approve():
         data = request.json or {}
         submission_id = data.get("id")
         if not submission_id:
-            return jsonify({"error": "id required"}), 400
+            return api_error("id required", 400)
         conn = _get_db()
         conn.execute(
             """UPDATE submissions SET status = 'approved', approved_at = ?
@@ -237,7 +239,7 @@ def api_admin_approve():
         conn.close()
         return jsonify({"id": submission_id, "status": "approved"})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @community_bp.route("/api/admin/reject", methods=["POST"])
@@ -250,7 +252,7 @@ def api_admin_reject():
         data = request.json or {}
         submission_id = data.get("id")
         if not submission_id:
-            return jsonify({"error": "id required"}), 400
+            return api_error("id required", 400)
         conn = _get_db()
         conn.execute(
             """UPDATE submissions SET status = 'rejected'
@@ -261,4 +263,4 @@ def api_admin_reject():
         conn.close()
         return jsonify({"id": submission_id, "status": "rejected"})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
