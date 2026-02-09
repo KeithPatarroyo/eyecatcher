@@ -12,16 +12,21 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 
 ## Commands (run from repo root)
 
-```bash
-pip install -e ".[dev]"       # Install package + dev deps (pytest, ruff, pre-commit)
-pre-commit install           # Run ruff + hooks on commit (recommended)
-pytest -v --tb=short         # Run tests
-ruff check .                 # Lint
-ruff format .                # Format
-ruff check . --fix           # Auto-fix lint
-docker compose up --build    # Run full stack locally (then open http://localhost:5001)
-python -m eyecatcher.server  # Run dev server without Docker
-```
+**Makefile (preferred):** Run `make help` to list all. Common targets:
+
+| Target | Action |
+|--------|--------|
+| `make install` | Create venv, `pip install -e ".[dev]"`, `npm install` |
+| `make test` | pytest --tb=short -v |
+| `make lint` | Ruff (Python) + ESLint (JS) |
+| `make format` | Ruff format + Prettier (JS) |
+| `make dev` | Run Flask dev server |
+| `make docker-up` | docker compose up --build |
+| `make clean` | Remove build artifacts, caches |
+
+**npm scripts** (from repo root, after `npm install`): `npm run lint`, `npm run format:check`, `npm run format` (see [package.json](package.json)).
+
+**Direct commands** (if not using Make): `pip install -e ".[dev]"`, `pre-commit install`, `pytest -v --tb=short`, `ruff check .`, `ruff format .`, `docker compose up --build`, `python -m eyecatcher.server`.
 
 ---
 
