@@ -73,6 +73,12 @@ def cppn_engine():
 
 
 @pytest.fixture
+def minimal_dual(cppn_engine):
+    """Dual genome with one hidden node in visual CPPN (deterministic)."""
+    return minimal_dual_genome_one_hidden_visual(cppn_engine)
+
+
+@pytest.fixture
 def genealogy_db(tmp_path):
     """Use a temp DB for genealogy so tests don't touch the real one."""
     path = tmp_path / "genealogy.db"
