@@ -359,43 +359,41 @@ def _save_dual_genome(
         except Exception as e:
             logger.warning("Genome visualization failed: %s", e)
 
-    # Package all assets into a single zip
+    names = get_saved_asset_filenames(individual_id)
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(f"pattern_{individual_id}.png", base64.b64decode(img_base64))
-        zf.writestr(f"pattern_{individual_id}.glsl", shader_code.encode("utf-8"))
-        zf.writestr(f"pattern_{individual_id}_bundle.json", bundle_json.encode("utf-8"))
-        zf.writestr(f"genome_{individual_id}.json", genome_json.encode("utf-8"))
-        zf.writestr(f"dual_genome_{individual_id}.pkl", base64.b64decode(pkl_base64))
+        zf.writestr(names["png"], base64.b64decode(img_base64))
+        zf.writestr(names["glsl"], shader_code.encode("utf-8"))
+        zf.writestr(names["bundle_json"], bundle_json.encode("utf-8"))
+        zf.writestr(names["genome_json"], genome_json.encode("utf-8"))
+        zf.writestr(names["pkl"], base64.b64decode(pkl_base64))
         if pdf_bytes:
-            zf.writestr(f"dual_genome_{individual_id}_network.pdf", pdf_bytes)
+            zf.writestr(names["network_pdf"], pdf_bytes)
     zip_base64 = base64.b64encode(zip_buffer.getvalue()).decode("ascii")
 
     downloads = [
         {
-            "filename": f"pattern_{individual_id}.zip",
+            "filename": names["zip"],
             "mime": "application/zip",
             "content_base64": zip_base64,
         },
     ]
 
-    # Optional: write to disk for local dev (e.g. SAVE_TO_DISK=1)
     if os.environ.get("SAVE_TO_DISK", "").strip() in ("1", "true", "yes"):
-        os.makedirs("output/saved", exist_ok=True)
-        with open(f"output/saved/pattern_{individual_id}.png", "wb") as f:
+        saved_dir = os.path.join(ROOT_DIR, "output", "saved")
+        os.makedirs(saved_dir, exist_ok=True)
+        with open(os.path.join(saved_dir, names["png"]), "wb") as f:
             f.write(base64.b64decode(img_base64))
-        with open(f"output/saved/pattern_{individual_id}.glsl", "w") as f:
+        with open(os.path.join(saved_dir, names["glsl"]), "w") as f:
             f.write(shader_code)
-        with open(f"output/saved/pattern_{individual_id}_bundle.json", "w") as f:
+        with open(os.path.join(saved_dir, names["bundle_json"]), "w") as f:
             f.write(bundle_json)
-        with open(f"output/saved/genome_{individual_id}.json", "w") as f:
+        with open(os.path.join(saved_dir, names["genome_json"]), "w") as f:
             f.write(genome_json)
-        with open(f"output/saved/dual_genome_{individual_id}.pkl", "wb") as f:
+        with open(os.path.join(saved_dir, names["pkl"]), "wb") as f:
             f.write(base64.b64decode(pkl_base64))
         if pdf_bytes:
-            with open(
-                f"output/saved/dual_genome_{individual_id}_network.pdf", "wb"
-            ) as f:
+            with open(os.path.join(saved_dir, names["network_pdf"]), "wb") as f:
                 f.write(pdf_bytes)
 
     return jsonify(
@@ -410,9 +408,8 @@ def _save_dual_genome(
 @app.route("/api/saved/<int:individual_id>/network")
 def serve_saved_network(individual_id):
     """Serve network visualization PDF for a saved pattern (genome visualizer)."""
-    path = os.path.join(
-        ROOT_DIR, "output", "saved", f"dual_genome_{individual_id}_network.pdf"
-    )
+    names = get_saved_asset_filenames(individual_id)
+    path = os.path.join(ROOT_DIR, "output", "saved", names["network_pdf"])
     if not os.path.isfile(path):
         return api_error("Network visualization not found", 404)
     return send_from_directory(
@@ -426,7 +423,8 @@ def serve_saved_network(individual_id):
 @app.route("/api/saved/<int:individual_id>/image")
 def serve_saved_image(individual_id):
     """Serve the rendered PNG for a saved pattern."""
-    path = os.path.join(ROOT_DIR, "output", "saved", f"pattern_{individual_id}.png")
+    names = get_saved_asset_filenames(individual_id)
+    path = os.path.join(ROOT_DIR, "output", "saved", names["png"])
     if not os.path.isfile(path):
         return api_error("Image not found", 404)
     return send_from_directory(
