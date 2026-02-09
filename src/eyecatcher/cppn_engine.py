@@ -15,9 +15,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 import neat
+import numpy as np
 
 from .config import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
-import numpy as np
 
 logger = logging.getLogger(__name__)
 

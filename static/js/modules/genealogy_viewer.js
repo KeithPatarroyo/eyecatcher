@@ -14,9 +14,7 @@ let savedPositions = null; // Save positions when switching modes
 function updateControlsVisibility() {
     const physicsControls = document.getElementById("physics-controls");
     if (physicsControls) {
-        physicsControls.style.display = hierarchicalLayout
-            ? "none"
-            : "block";
+        physicsControls.style.display = hierarchicalLayout ? "none" : "block";
     }
 }
 
@@ -34,9 +32,7 @@ function showGenealogyToast(title, body, type = "success") {
 }
 
 function showLoading(show) {
-    document.getElementById("loading").style.display = show
-        ? "block"
-        : "none";
+    document.getElementById("loading").style.display = show ? "block" : "none";
 }
 
 // Fetch and display genealogy stats
@@ -54,10 +50,8 @@ async function loadStats() {
             data.total_populations;
         document.getElementById("stat-individuals").textContent =
             data.total_individuals;
-        document.getElementById("stat-branches").textContent =
-            data.total_branches;
-        document.getElementById("stat-max-gen").textContent =
-            data.max_generation;
+        document.getElementById("stat-branches").textContent = data.total_branches;
+        document.getElementById("stat-max-gen").textContent = data.max_generation;
     } catch (error) {
         console.error("Failed to load stats:", error);
     }
@@ -148,17 +142,14 @@ function visualizeTree(nodes) {
 
     nodes.forEach((node) => {
         const isCurrent =
-            currentPopulationId &&
-            node.id === parseInt(currentPopulationId);
+            currentPopulationId && node.id === parseInt(currentPopulationId);
         const color = getBranchColor(node.branch_name);
 
         // Highlight current population with special styling
         const borderColor = isCurrent ? "#FFD700" : "#0066cc";
         const borderWidth = isCurrent ? 5 : 2;
 
-        const nodeSize = parseInt(
-            document.getElementById("node-size")?.value || 90
-        );
+        const nodeSize = parseInt(document.getElementById("node-size")?.value || 90);
 
         visNodes.add({
             id: node.id,
@@ -238,9 +229,7 @@ function visualizeTree(nodes) {
                 springConstant: parseFloat(
                     document.getElementById("link-force")?.value || 0.05
                 ),
-                damping: parseFloat(
-                    document.getElementById("damping")?.value || 0.09
-                ),
+                damping: parseFloat(document.getElementById("damping")?.value || 0.09),
                 avoidOverlap: 0.15,
             },
             solver: "barnesHut",
@@ -293,9 +282,7 @@ function visualizeTree(nodes) {
             },
             length: hierarchicalLayout
                 ? undefined
-                : parseFloat(
-                      document.getElementById("link-distance")?.value || 300
-                  ),
+                : parseFloat(document.getElementById("link-distance")?.value || 300),
         },
     };
 
@@ -385,8 +372,7 @@ function selectNode(nodeId) {
 
     document.getElementById("selected-node-info").style.display = "block";
     document.getElementById("info-id").textContent = node.id;
-    document.getElementById("info-generation").textContent =
-        node.generation_num;
+    document.getElementById("info-generation").textContent = node.generation_num;
     document.getElementById("info-branch").textContent = node.branch_name;
     document.getElementById("info-size").textContent = node.population_size;
     document.getElementById("info-created").textContent = new Date(
@@ -397,9 +383,7 @@ function selectNode(nodeId) {
 // Update current population info display
 function updateCurrentPopulationInfo() {
     if (!currentPopulationId || !treeData.nodes) {
-        document.getElementById(
-            "current-population-section"
-        ).style.display = "none";
+        document.getElementById("current-population-section").style.display = "none";
         return;
     }
 
@@ -407,17 +391,13 @@ function updateCurrentPopulationInfo() {
     const node = treeData.nodes.find((n) => n.id === popId);
 
     if (!node) {
-        document.getElementById(
-            "current-population-section"
-        ).style.display = "none";
+        document.getElementById("current-population-section").style.display = "none";
         return;
     }
 
-    document.getElementById("current-population-section").style.display =
-        "block";
+    document.getElementById("current-population-section").style.display = "block";
     document.getElementById("current-id").textContent = node.id;
-    document.getElementById("current-generation").textContent =
-        node.generation_num;
+    document.getElementById("current-generation").textContent = node.generation_num;
 }
 
 // Load a population into the main viewer
@@ -447,11 +427,7 @@ async function loadPopulation(populationId) {
             })
         );
 
-        showGenealogyToast(
-            "Success",
-            "Population loaded! Redirecting...",
-            "success"
-        );
+        showGenealogyToast("Success", "Population loaded! Redirecting...", "success");
 
         // Redirect to main viewer after a short delay
         setTimeout(() => {
@@ -522,9 +498,7 @@ async function renderThumbnail(populationId) {
 
         const patternData = PatternRenderer.setupPattern(canvas, shader);
         if (!patternData) {
-            console.warn(
-                `Failed to setup pattern for population ${populationId}`
-            );
+            console.warn(`Failed to setup pattern for population ${populationId}`);
             return null;
         }
 
@@ -543,14 +517,7 @@ async function renderThumbnail(populationId) {
                 inactivity: true,
             },
         };
-        PatternRenderer.renderPattern(
-            patternData,
-            0.5,
-            0,
-            0,
-            0,
-            signalState
-        );
+        PatternRenderer.renderPattern(patternData, 0.5, 0, 0, 0, signalState);
 
         // Convert to data URL
         const dataUrl = canvas.toDataURL("image/png");
@@ -574,9 +541,7 @@ async function renderThumbnail(populationId) {
 const THUMBNAIL_BATCH_SIZE = 8;
 async function renderAllThumbnails(visNodes) {
     const nodes = visNodes.get();
-    const nodeSize = parseInt(
-        document.getElementById("node-size")?.value || 90
-    );
+    const nodeSize = parseInt(document.getElementById("node-size")?.value || 90);
 
     for (let i = 0; i < nodes.length; i += THUMBNAIL_BATCH_SIZE) {
         const batch = nodes.slice(i, i + THUMBNAIL_BATCH_SIZE);
@@ -643,17 +608,14 @@ document.getElementById("download-genealogy-btn").onclick = async () => {
             ")";
 
         const branchList = document.getElementById("export-branch-list");
-        const branchesGroup = document.getElementById(
-            "export-branches-group"
-        );
+        const branchesGroup = document.getElementById("export-branches-group");
         branchList.innerHTML = "";
         const branches = sizes.branches || [];
         branchesGroup.hidden = branches.length === 0;
         branches.forEach((b) => {
             const label = document.createElement("label");
             label.className = "export-radio-label";
-            const id =
-                "export-branch-" + (b.name || "main").replace(/\W/g, "_");
+            const id = "export-branch-" + (b.name || "main").replace(/\W/g, "_");
             label.innerHTML = `
             <input type="radio" name="export-scope" value="${escapeHtml(b.name || "main")}" id="${id}">
             <span class="export-option-title">${escapeHtml(b.name || "main")}</span>
@@ -688,9 +650,7 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modal && !modal.hidden) modal.hidden = true;
 });
 document.getElementById("export-modal-download").onclick = async () => {
-    const scope = document.querySelector(
-        'input[name="export-scope"]:checked'
-    );
+    const scope = document.querySelector('input[name="export-scope"]:checked');
     const branchName = scope && scope.value !== "full" ? scope.value : null;
     const modal = document.getElementById("export-genealogy-modal");
     modal.hidden = true;
@@ -701,11 +661,7 @@ document.getElementById("export-modal-download").onclick = async () => {
         const r = await fetch(url);
         if (!r.ok) {
             const d = await r.json().catch(() => ({}));
-            showGenealogyToast(
-                "Download failed",
-                d.error || "Server error",
-                "error"
-            );
+            showGenealogyToast("Download failed", d.error || "Server error", "error");
             return;
         }
         const data = await r.json();
@@ -732,19 +688,14 @@ document.getElementById("export-modal-download").onclick = async () => {
 };
 
 document.getElementById("reset-genealogy-btn").onclick = async () => {
-    if (!confirm("Clear all genealogy data? This cannot be undone."))
-        return;
+    if (!confirm("Clear all genealogy data? This cannot be undone.")) return;
     try {
         const r = await fetch(`${API_URL}/genealogy/reset`, {
             method: "POST",
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok || data.error) {
-            showGenealogyToast(
-                "Reset failed",
-                data.error || "Server error",
-                "error"
-            );
+            showGenealogyToast("Reset failed", data.error || "Server error", "error");
             return;
         }
         try {
@@ -794,9 +745,7 @@ document.getElementById("physics-btn").onclick = function () {
     if (hierarchicalLayout) {
         hierarchicalLayout = false;
         this.classList.add("active");
-        document
-            .getElementById("hierarchical-btn")
-            .classList.remove("active");
+        document.getElementById("hierarchical-btn").classList.remove("active");
         loadTree();
         updateControlsVisibility();
     }
@@ -826,152 +775,130 @@ document.getElementById("focus-current-btn").onclick = () => {
 // Initialize physics controls
 function initPhysicsControls() {
     // Center force
-    document
-        .getElementById("center-force")
-        .addEventListener("input", function (e) {
-            const value = parseFloat(e.target.value);
-            document.getElementById("center-force-value").textContent =
-                value.toFixed(2);
-            if (treeNetwork && !hierarchicalLayout) {
-                treeNetwork.setOptions({
-                    physics: {
-                        barnesHut: {
-                            centralGravity: value,
-                        },
+    document.getElementById("center-force").addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        document.getElementById("center-force-value").textContent = value.toFixed(2);
+        if (treeNetwork && !hierarchicalLayout) {
+            treeNetwork.setOptions({
+                physics: {
+                    barnesHut: {
+                        centralGravity: value,
                     },
-                });
-            }
-        });
+                },
+            });
+        }
+    });
 
     // Repel force
-    document
-        .getElementById("repel-force")
-        .addEventListener("input", function (e) {
-            const value = parseFloat(e.target.value);
-            document.getElementById("repel-force-value").textContent =
-                value;
-            if (treeNetwork && !hierarchicalLayout) {
-                treeNetwork.setOptions({
-                    physics: {
-                        barnesHut: {
-                            gravitationalConstant: -value,
-                        },
+    document.getElementById("repel-force").addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        document.getElementById("repel-force-value").textContent = value;
+        if (treeNetwork && !hierarchicalLayout) {
+            treeNetwork.setOptions({
+                physics: {
+                    barnesHut: {
+                        gravitationalConstant: -value,
                     },
-                });
-            }
-        });
+                },
+            });
+        }
+    });
 
     // Link force
-    document
-        .getElementById("link-force")
-        .addEventListener("input", function (e) {
-            const value = parseFloat(e.target.value);
-            document.getElementById("link-force-value").textContent =
-                value.toFixed(2);
-            if (treeNetwork && !hierarchicalLayout) {
-                treeNetwork.setOptions({
-                    physics: {
-                        barnesHut: {
-                            springConstant: value,
-                        },
+    document.getElementById("link-force").addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        document.getElementById("link-force-value").textContent = value.toFixed(2);
+        if (treeNetwork && !hierarchicalLayout) {
+            treeNetwork.setOptions({
+                physics: {
+                    barnesHut: {
+                        springConstant: value,
                     },
-                });
-            }
-        });
+                },
+            });
+        }
+    });
 
     // Link distance
-    document
-        .getElementById("link-distance")
-        .addEventListener("input", function (e) {
-            const value = parseFloat(e.target.value);
-            document.getElementById("link-distance-value").textContent =
-                value;
-            if (treeNetwork && !hierarchicalLayout) {
-                treeNetwork.setOptions({
-                    physics: {
-                        barnesHut: {
-                            springLength: value,
-                        },
+    document.getElementById("link-distance").addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        document.getElementById("link-distance-value").textContent = value;
+        if (treeNetwork && !hierarchicalLayout) {
+            treeNetwork.setOptions({
+                physics: {
+                    barnesHut: {
+                        springLength: value,
                     },
-                });
-            }
-        });
+                },
+            });
+        }
+    });
 
     // Show arrows
-    document
-        .getElementById("show-arrows")
-        .addEventListener("change", function (e) {
-            if (treeNetwork) {
-                const edges = treeNetwork.body.data.edges;
-                const allEdges = edges.get();
-                allEdges.forEach((edge) => {
-                    edges.update({
-                        id: edge.id,
-                        arrows: {
-                            to: {
-                                enabled: e.target.checked,
-                                scaleFactor: 1.0,
-                            },
-                        },
-                    });
-                });
-            }
-        });
-
-    // Node size
-    document
-        .getElementById("node-size")
-        .addEventListener("input", function (e) {
-            const value = parseFloat(e.target.value);
-            document.getElementById("node-size-value").textContent = value;
-            if (treeNetwork) {
-                const nodes = treeNetwork.body.data.nodes;
-                const allNodes = nodes.get();
-                allNodes.forEach((node) => {
-                    nodes.update({
-                        id: node.id,
-                        size: value / 2, // Divide by 2 for radius
-                    });
-                });
-            }
-        });
-
-    // Link thickness
-    document
-        .getElementById("link-thickness")
-        .addEventListener("input", function (e) {
-            const value = parseFloat(e.target.value);
-            document.getElementById("link-thickness-value").textContent =
-                value.toFixed(1);
-            if (treeNetwork) {
-                const edges = treeNetwork.body.data.edges;
-                const allEdges = edges.get();
-                allEdges.forEach((edge) => {
-                    edges.update({
-                        id: edge.id,
-                        width: value,
-                    });
-                });
-            }
-        });
-
-    // Damping
-    document
-        .getElementById("damping")
-        .addEventListener("input", function (e) {
-            const value = parseFloat(e.target.value);
-            document.getElementById("damping-value").textContent =
-                value.toFixed(2);
-            if (treeNetwork && !hierarchicalLayout) {
-                treeNetwork.setOptions({
-                    physics: {
-                        barnesHut: {
-                            damping: value,
+    document.getElementById("show-arrows").addEventListener("change", function (e) {
+        if (treeNetwork) {
+            const edges = treeNetwork.body.data.edges;
+            const allEdges = edges.get();
+            allEdges.forEach((edge) => {
+                edges.update({
+                    id: edge.id,
+                    arrows: {
+                        to: {
+                            enabled: e.target.checked,
+                            scaleFactor: 1.0,
                         },
                     },
                 });
-            }
-        });
+            });
+        }
+    });
+
+    // Node size
+    document.getElementById("node-size").addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        document.getElementById("node-size-value").textContent = value;
+        if (treeNetwork) {
+            const nodes = treeNetwork.body.data.nodes;
+            const allNodes = nodes.get();
+            allNodes.forEach((node) => {
+                nodes.update({
+                    id: node.id,
+                    size: value / 2, // Divide by 2 for radius
+                });
+            });
+        }
+    });
+
+    // Link thickness
+    document.getElementById("link-thickness").addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        document.getElementById("link-thickness-value").textContent = value.toFixed(1);
+        if (treeNetwork) {
+            const edges = treeNetwork.body.data.edges;
+            const allEdges = edges.get();
+            allEdges.forEach((edge) => {
+                edges.update({
+                    id: edge.id,
+                    width: value,
+                });
+            });
+        }
+    });
+
+    // Damping
+    document.getElementById("damping").addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        document.getElementById("damping-value").textContent = value.toFixed(2);
+        if (treeNetwork && !hierarchicalLayout) {
+            treeNetwork.setOptions({
+                physics: {
+                    barnesHut: {
+                        damping: value,
+                    },
+                },
+            });
+        }
+    });
 
     updateControlsVisibility();
 }
