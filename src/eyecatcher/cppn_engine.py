@@ -21,10 +21,19 @@ from .app_config import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
 
 logger = logging.getLogger(__name__)
 
+# Defaults for preview/batch rendering (server uses app_config for save resolution)
+_DEFAULT_RENDER_RESOLUTION = 256
+_DEFAULT_NUM_FRAMES = 30
+
 
 def _cos_activation(x):
     """Cosine activation function."""
     return math.cos(x)
+
+
+def _rgb_uint8(r: float, g: float, b: float) -> list[int]:
+    """Convert 0–1 RGB floats to uint8 list for image pixel."""
+    return [int(r * 255), int(g * 255), int(b * 255)]
 
 
 @dataclass
@@ -240,7 +249,10 @@ class CPPNEngine:
         )
 
     def render_image(
-        self, genome: neat.DefaultGenome, resolution: int = 256, time: float = 0.0
+        self,
+        genome: neat.DefaultGenome,
+        resolution: int = _DEFAULT_RENDER_RESOLUTION,
+        time: float = 0.0,
     ) -> np.ndarray:
         """
         Render a complete image from a CPPN at a specific time.
@@ -265,16 +277,15 @@ class CPPNEngine:
                 t = -1.0 + time * 2.0
 
                 r, g, b = self.query_cppn(genome, x, y, t)
-
-                img[j, i] = [int(r * 255), int(g * 255), int(b * 255)]
+                img[j, i] = _rgb_uint8(r, g, b)
 
         return img
 
     def render_animation_frames(
         self,
         genome: neat.DefaultGenome,
-        resolution: int = 256,
-        num_frames: int = 30,
+        resolution: int = _DEFAULT_RENDER_RESOLUTION,
+        num_frames: int = _DEFAULT_NUM_FRAMES,
         time_range: tuple[float, float] = (0.0, 1.0),
     ) -> list:
         """
@@ -302,7 +313,7 @@ class CPPNEngine:
     def render_dual_image(
         self,
         dual_genome: DualGenome,
-        resolution: int = 256,
+        resolution: int = _DEFAULT_RENDER_RESOLUTION,
         raw_time: float = 0.5,
         mouse_speed: float = 0.0,
         mouse_distance: float = 0.0,
@@ -320,14 +331,14 @@ class CPPNEngine:
                 r, g, b = self.query_dual_cppn(
                     dual_genome, x, y, raw_time, mouse_speed, mouse_distance, inactivity
                 )
-                img[j, i] = [int(r * 255), int(g * 255), int(b * 255)]
+                img[j, i] = _rgb_uint8(r, g, b)
         return img
 
     def render_dual_animation_frames(
         self,
         dual_genome: DualGenome,
-        resolution: int = 256,
-        num_frames: int = 30,
+        resolution: int = _DEFAULT_RENDER_RESOLUTION,
+        num_frames: int = _DEFAULT_NUM_FRAMES,
         time_range: tuple[float, float] = (0.0, 1.0),
         mouse_speed: float = 0.0,
         mouse_distance: float = 0.0,
