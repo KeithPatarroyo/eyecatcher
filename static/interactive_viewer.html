@@ -209,63 +209,63 @@
         <div class="spinner"></div>
         <div>Loading patterns...</div>
     </div>
-
+    
     <!-- Network Sidebar (CPPN visualization) -->
-    <div id="network-sidebar" class="network-container">
+        <div id="network-sidebar" class="network-container">
         <button class="network-container-close" id="network-sidebar-close">Close</button>
-        <div class="network-labels-header">
-            <div class="network-labels-main">
-                <div class="network-label-item">
-                    <span class="network-label-title">Visual Network</span>
-                    <span class="network-label-description">(Left)</span>
+            <div class="network-labels-header">
+                <div class="network-labels-main">
+                    <div class="network-label-item">
+                        <span class="network-label-title">Visual Network</span>
+                        <span class="network-label-description">(Left)</span>
+                    </div>
+                    <div class="network-label-divider">→</div>
+                    <div class="network-label-item">
+                        <span class="network-label-title">Time Signal Network</span>
+                        <span class="network-label-description">(Right)</span>
+                    </div>
                 </div>
-                <div class="network-label-divider">→</div>
-                <div class="network-label-item">
-                    <span class="network-label-title">Time Signal Network</span>
-                    <span class="network-label-description">(Right)</span>
+                <div class="network-legend-header">
+                    <div class="legend-item-inline">
+                        <div class="legend-dot" style="background: #0066cc;"></div>
+                        <span>Input</span>
+                    </div>
+                    <div class="legend-item-inline">
+                        <div class="legend-dot" style="background: #28a745;"></div>
+                        <span>Hidden</span>
+                    </div>
+                    <div class="legend-item-inline">
+                        <div class="legend-dot" style="background: #dc3545;"></div>
+                        <span>Output</span>
+                    </div>
                 </div>
             </div>
-            <div class="network-legend-header">
-                <div class="legend-item-inline">
-                    <div class="legend-dot" style="background: #0066cc;"></div>
-                    <span>Input</span>
-                </div>
-                <div class="legend-item-inline">
-                    <div class="legend-dot" style="background: #28a745;"></div>
-                    <span>Hidden</span>
-                </div>
-                <div class="legend-item-inline">
-                    <div class="legend-dot" style="background: #dc3545;"></div>
-                    <span>Output</span>
-                </div>
-            </div>
-        </div>
-        <div class="network-visualization"></div>
-        <div class="network-inline-controls">
+            <div class="network-visualization"></div>
+            <div class="network-inline-controls">
             <button id="network-fit-btn">Fit View</button>
             <button id="network-export-btn">Export JSON</button>
-        </div>
-        <div class="weight-adjustment-panel" id="weight-adjustment-panel" style="display: none;">
-            <div class="weight-adjustment-title">Adjust Connection Weights</div>
-            <div id="weight-sliders-container"></div>
-        </div>
-        <div class="network-info-panel">
-            <div class="network-info-item">
-                <span class="network-info-label">Hidden Nodes:</span>
-                <span class="network-info-value" data-nodes>0</span>
             </div>
-            <div class="network-info-item">
-                <span class="network-info-label">Connections:</span>
-                <span class="network-info-value" data-connections>0</span>
+            <div class="weight-adjustment-panel" id="weight-adjustment-panel" style="display: none;">
+                <div class="weight-adjustment-title">Adjust Connection Weights</div>
+                <div id="weight-sliders-container"></div>
+            </div>
+            <div class="network-info-panel">
+                <div class="network-info-item">
+                    <span class="network-info-label">Hidden Nodes:</span>
+                    <span class="network-info-value" data-nodes>0</span>
+                </div>
+                <div class="network-info-item">
+                    <span class="network-info-label">Connections:</span>
+                    <span class="network-info-value" data-connections>0</span>
+                </div>
             </div>
         </div>
-    </div>
     <div id="fullscreen-modal" class="fullscreen-modal" hidden aria-modal="true" role="dialog" aria-label="Pattern fullscreen">
         <div id="fullscreen-backdrop" class="fullscreen-backdrop"></div>
         <div class="fullscreen-content">
             <button type="button" id="fullscreen-close" class="fullscreen-close" aria-label="Close fullscreen">&times;</button>
             <div id="fullscreen-canvas-wrap" class="fullscreen-canvas-wrap"></div>
-        </div>
+    </div>
     </div>
     <div id="toast-container"></div>
 
