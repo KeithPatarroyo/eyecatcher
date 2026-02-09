@@ -13,8 +13,7 @@ output/
 .coverage
 .ruff_cache/
 uv.lock
-data/community.db
-data/genealogy.db
+data/
 
 # Node (JS tooling)
 node_modules/

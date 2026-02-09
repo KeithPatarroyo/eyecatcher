@@ -35,8 +35,7 @@ env/
 .gitignore
 
 # Docker
-Dockerfile
-docker-compose.yml
+docker/
 .dockerignore
 
 # Output and data (mounted as volumes)
