@@ -28,7 +28,7 @@ def test_dual_genome_round_trip():
 
 
 def test_dual_genome_round_trip_query_consistency():
-    """After round-trip, querying the CPPN gives same-shaped output."""
+    """After round-trip, querying the CPPN gives identical output (fidelity)."""
     engine = CPPNEngine()
     engine.create_population()
     dual = create_random_dual_genome(engine, genome_id=0)
@@ -41,3 +41,5 @@ def test_dual_genome_round_trip_query_consistency():
     assert 0 <= r0 <= 255 and 0 <= r1 <= 255
     assert 0 <= g0 <= 255 and 0 <= g1 <= 255
     assert 0 <= b0 <= 255 and 0 <= b1 <= 255
+    # Round-trip must preserve behavior: same inputs -> same outputs
+    assert r0 == r1 and g0 == g1 and b0 == b1

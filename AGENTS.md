@@ -63,10 +63,45 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 
 ## Testing
 
-- **Framework:** pytest; `testpaths = ["tests"]` in [pyproject.toml](pyproject.toml).
-- **Test modules:** `tests/test_cppn_engine.py`, `tests/test_shader_compiler.py`, `tests/test_genome_serialization.py`, `tests/test_api.py`, `tests/test_visualization.py`.
-- **API tests:** Use Flask test client: `from eyecatcher.server import app` then `app.test_client()`.
-- **Engine API:** `mutate_dual_genome(dual, new_key)` and `crossover_dual_genomes(dual1, dual2, new_key)` **require** the `new_key` argument.
+**Framework:** pytest (`testpaths = ["tests"]` in [pyproject.toml](pyproject.toml)).
+**Test modules:** `test_cppn_engine.py`, `test_shader_compiler.py`, `test_genome_serialization.py`, `test_api.py`, `test_visualization.py`, `test_community_routes.py`, `test_genealogy_routes.py`.
+**API tests:** Flask test client — `from eyecatcher.server import app` then `app.test_client()`.
+**Engine API:** `mutate_dual_genome(dual, new_key)` and `crossover_dual_genomes(dual1, dual2, new_key)` **require** the `new_key` argument.
+
+### How to run tests (coding agents)
+
+Run pytest from **whatever virtualenv the project uses** — the venv name is not fixed (the [Makefile](Makefile) creates `.venv` by default, but the workspace may use another name). **Discover** a venv by trying common locations and use the first that has `pytest`. Do **not** use bare `pytest` or `make test` unless the venv is activated; otherwise you may get `ModuleNotFoundError: No module named 'eyecatcher'` or `No module named 'neat'`.
+
+**1. Discover and run (Unix/macOS, from repo root)**
+
+Try these venv directories in order; run the first that contains an executable `pytest`:
+
+```bash
+for v in .eyecatcher-venv .venv venv env; do
+  [ -x "$v/bin/pytest" ] && "$v/bin/pytest" --tb=short -q && break
+done
+```
+
+If you already know the venv path (e.g. from a previous run or the Makefile), you can call it directly:
+`<venv_dir>/bin/pytest --tb=short -q`
+
+**2. Windows**
+
+Same idea: try in order `.eyecatcher-venv`, `.venv`, `venv`, `env`; for each, if `<dir>\Scripts\pytest.exe` exists, run it with the same args.
+
+**3. Subset or skip slow**
+
+Append to the pytest invocation, e.g.:
+`<venv_dir>/bin/pytest tests/test_cppn_engine.py --tb=short -q`
+or
+`<venv_dir>/bin/pytest tests/ -m "not slow" --tb=short -q`
+
+**4. Coverage (optional)**
+For coverage reports, add `--cov=src/eyecatcher --cov-fail-under=40` (or see [pyproject.toml](pyproject.toml) / CI). The above commands are the general way to run tests.
+
+**5. If no venv works**
+
+If none of the tried directories exist or pytest fails with import errors: do not block. Complete the change, then ask the user to run tests locally (`make install` then `make test`, or ensure a venv exists and run the command above). In restricted sandboxes, `pip install` often fails (network/SSL), so the agent should not depend on installing deps itself.
 
 ---
 

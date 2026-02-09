@@ -74,5 +74,8 @@ def test_create_random_genome_and_mutate():
     assert genome is not None
     mutated = engine.mutate_genome(genome)
     assert mutated is not None
-    assert len(mutated.nodes) >= 0
-    assert len(mutated.connections) >= 0
+    assert mutated.key == 43, "mutate returns child with parent_key + 1"
+    assert isinstance(mutated.nodes, dict)
+    assert isinstance(mutated.connections, dict)
+    # Child is a valid genome (structure may differ from parent due to mutation)
+    assert len(mutated.nodes) >= engine.config.genome_config.num_outputs
