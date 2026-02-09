@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.min.js
+eslint.config.js
+.pytest_cache/
+.venv/
+.eyecatcher-venv/
+build/
+data/

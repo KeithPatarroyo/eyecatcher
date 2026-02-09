@@ -15,3 +15,16 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=1000]
       - id: check-merge-conflict
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: npx eslint static/ --fix
+        language: system
+        types: [javascript]
+      - id: prettier
+        name: prettier
+        entry: npx prettier --write
+        language: system
+        types: [javascript]
+        additional_dependencies: []

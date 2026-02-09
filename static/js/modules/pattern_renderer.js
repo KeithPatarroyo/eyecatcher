@@ -7,7 +7,7 @@
  * Dependencies: none (signal state passed into renderPattern).
  */
 (function () {
-    'use strict';
+    "use strict";
 
     const VERTEX_SHADER_SOURCE = `#version 300 es
         in vec2 position;
@@ -20,9 +20,9 @@
     `;
 
     function createWebGLContext(canvas) {
-        const gl = canvas.getContext('webgl2');
+        const gl = canvas.getContext("webgl2");
         if (!gl) {
-            console.error('WebGL 2 not supported');
+            console.error("WebGL 2 not supported");
             return null;
         }
         return gl;
@@ -34,7 +34,7 @@
         gl.compileShader(shader);
 
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
+            console.error("Shader compilation error:", gl.getShaderInfoLog(shader));
             gl.deleteShader(shader);
             return null;
         }
@@ -54,7 +54,7 @@
         gl.linkProgram(program);
 
         if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error('Program linking error:', gl.getProgramInfoLog(program));
+            console.error("Program linking error:", gl.getProgramInfoLog(program));
             gl.deleteProgram(program);
             return null;
         }
@@ -75,12 +75,7 @@
         const program = createProgram(gl, VERTEX_SHADER_SOURCE, shaderCode);
         if (!program) return null;
 
-        const positions = new Float32Array([
-            -1, -1,
-            1, -1,
-            -1, 1,
-            1, 1,
-        ]);
+        const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
 
         const positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -104,30 +99,46 @@
 
         gl.useProgram(program);
 
-        gl.uniform1f(gl.getUniformLocation(program, 'uTime'), time);
-        gl.uniform1f(gl.getUniformLocation(program, 'uMouseSpeed'), mouseSpd);
-        gl.uniform1f(gl.getUniformLocation(program, 'uMouseDist'), mouseDist);
-        gl.uniform1f(gl.getUniformLocation(program, 'uInactivity'), inact);
+        gl.uniform1f(gl.getUniformLocation(program, "uTime"), time);
+        gl.uniform1f(gl.getUniformLocation(program, "uMouseSpeed"), mouseSpd);
+        gl.uniform1f(gl.getUniformLocation(program, "uMouseDist"), mouseDist);
+        gl.uniform1f(gl.getUniformLocation(program, "uInactivity"), inact);
 
-        gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableRawTime'),
-            sig.time.rawTime ? 1.0 : 0.0);
-        gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableMouseSpeed'),
-            sig.time.mouseSpeed ? 1.0 : 0.0);
-        gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableMouseDist'),
-            sig.time.mouseDist ? 1.0 : 0.0);
-        gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableInactivity'),
-            sig.time.inactivity ? 1.0 : 0.0);
+        gl.uniform1f(
+            gl.getUniformLocation(program, "uTimeEnableRawTime"),
+            sig.time.rawTime ? 1.0 : 0.0
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(program, "uTimeEnableMouseSpeed"),
+            sig.time.mouseSpeed ? 1.0 : 0.0
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(program, "uTimeEnableMouseDist"),
+            sig.time.mouseDist ? 1.0 : 0.0
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(program, "uTimeEnableInactivity"),
+            sig.time.inactivity ? 1.0 : 0.0
+        );
 
-        gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableTime'),
-            sig.visual.time ? 1.0 : 0.0);
-        gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableMouseSpeed'),
-            sig.visual.mouseSpeed ? 1.0 : 0.0);
-        gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableMouseDist'),
-            sig.visual.mouseDist ? 1.0 : 0.0);
-        gl.uniform1f(gl.getUniformLocation(program, 'uVisualEnableInactivity'),
-            sig.visual.inactivity ? 1.0 : 0.0);
+        gl.uniform1f(
+            gl.getUniformLocation(program, "uVisualEnableTime"),
+            sig.visual.time ? 1.0 : 0.0
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(program, "uVisualEnableMouseSpeed"),
+            sig.visual.mouseSpeed ? 1.0 : 0.0
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(program, "uVisualEnableMouseDist"),
+            sig.visual.mouseDist ? 1.0 : 0.0
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(program, "uVisualEnableInactivity"),
+            sig.visual.inactivity ? 1.0 : 0.0
+        );
 
-        const positionLocation = gl.getAttribLocation(program, 'position');
+        const positionLocation = gl.getAttribLocation(program, "position");
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.enableVertexAttribArray(positionLocation);
         gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
@@ -155,59 +166,72 @@
         const pattern = options.pattern;
         const id = pattern.id;
         const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;
-        const card = document.createElement('div');
-        card.className = 'pattern-card';
+        const card = document.createElement("div");
+        card.className = "pattern-card";
         card.dataset.id = id;
 
-        const canvas = document.createElement('canvas');
-        canvas.className = 'pattern-canvas';
+        const canvas = document.createElement("canvas");
+        canvas.className = "pattern-canvas";
         canvas.width = 256;
         canvas.height = 256;
 
-        const info = document.createElement('div');
-        info.className = 'pattern-info';
+        const info = document.createElement("div");
+        info.className = "pattern-info";
         info.innerHTML =
-            '<div class="pattern-meta">ID: ' + id + ' | Nodes: ' + pattern.nodes + ' | Connections: ' + pattern.connections + '</div>' +
-            '<div class="click-count' + (clicks === 0 ? ' zero' : '') + '">' + clicks + '</div>';
+            '<div class="pattern-meta">ID: ' +
+            id +
+            " | Nodes: " +
+            pattern.nodes +
+            " | Connections: " +
+            pattern.connections +
+            "</div>" +
+            '<div class="click-count' +
+            (clicks === 0 ? " zero" : "") +
+            '">' +
+            clicks +
+            "</div>";
 
-        const actions = document.createElement('div');
-        actions.className = 'pattern-actions';
+        const actions = document.createElement("div");
+        actions.className = "pattern-actions";
 
-        const fullscreenBtn = document.createElement('button');
-        fullscreenBtn.className = 'fullscreen-btn';
-        fullscreenBtn.textContent = '\u26F6';
-        fullscreenBtn.setAttribute('title', 'Expand to fullscreen');
-        fullscreenBtn.setAttribute('aria-label', 'Expand to fullscreen');
+        const fullscreenBtn = document.createElement("button");
+        fullscreenBtn.className = "fullscreen-btn";
+        fullscreenBtn.textContent = "\u26F6";
+        fullscreenBtn.setAttribute("title", "Expand to fullscreen");
+        fullscreenBtn.setAttribute("aria-label", "Expand to fullscreen");
         fullscreenBtn.onclick = function (e) {
             e.stopPropagation();
             if (options.onFullscreen) options.onFullscreen(id);
         };
 
-        const submitCommunityBtn = document.createElement('button');
-        submitCommunityBtn.className = 'submit-community-btn';
-        submitCommunityBtn.setAttribute('title', 'Share to Community');
-        submitCommunityBtn.setAttribute('aria-label', 'Share to Community');
-        submitCommunityBtn.textContent = '\u2197';
+        const submitCommunityBtn = document.createElement("button");
+        submitCommunityBtn.className = "submit-community-btn";
+        submitCommunityBtn.setAttribute("title", "Share to Community");
+        submitCommunityBtn.setAttribute("aria-label", "Share to Community");
+        submitCommunityBtn.textContent = "\u2197";
         submitCommunityBtn.onclick = function (e) {
             e.stopPropagation();
             if (options.onShare) options.onShare(id);
         };
 
-        const networkBtn = document.createElement('button');
-        networkBtn.className = 'network-btn';
-        networkBtn.textContent = '\uD83E\uDDE0';
-        networkBtn.setAttribute('title', 'View network visualization');
-        networkBtn.setAttribute('aria-label', 'View network visualization');
+        const networkBtn = document.createElement("button");
+        networkBtn.className = "network-btn";
+        networkBtn.textContent = "\uD83E\uDDE0";
+        networkBtn.setAttribute("title", "View network visualization");
+        networkBtn.setAttribute("aria-label", "View network visualization");
         networkBtn.onclick = function (e) {
             e.stopPropagation();
             if (options.onNetwork) options.onNetwork(id, card);
         };
 
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'save-btn';
-        saveBtn.textContent = '\u2193';
-        saveBtn.setAttribute('title', 'Download pattern (compiling may take a moment)');
-        saveBtn.setAttribute('aria-label', 'Download pattern; compiling may take a moment');
+        const saveBtn = document.createElement("button");
+        saveBtn.className = "save-btn";
+        saveBtn.textContent = "\u2193";
+        saveBtn.setAttribute("title", "Download pattern (compiling may take a moment)");
+        saveBtn.setAttribute(
+            "aria-label",
+            "Download pattern; compiling may take a moment"
+        );
         saveBtn.onclick = function (e) {
             e.stopPropagation();
             if (options.onSave) options.onSave(id, saveBtn);
@@ -223,27 +247,33 @@
 
         let patternData = setupPattern(canvas, pattern.shader);
         if (!patternData) {
-            const fallback = document.createElement('div');
-            fallback.className = 'pattern-canvas-fallback';
-            fallback.textContent = 'WebGL not available';
+            const fallback = document.createElement("div");
+            fallback.className = "pattern-canvas-fallback";
+            fallback.textContent = "WebGL not available";
             card.replaceChild(fallback, canvas);
             return { card: card, canvas: null, patternData: null };
         }
 
         if (options.onClick) {
-            card.addEventListener('click', function () { options.onClick(id, card); });
+            card.addEventListener("click", function () {
+                options.onClick(id, card);
+            });
         }
         if (options.onUnclick) {
-            card.addEventListener('contextmenu', function (e) {
+            card.addEventListener("contextmenu", function (e) {
                 e.preventDefault();
                 options.onUnclick(id, card);
             });
         }
         if (options.onMouseEnter) {
-            card.addEventListener('mouseenter', function () { options.onMouseEnter(id); });
+            card.addEventListener("mouseenter", function () {
+                options.onMouseEnter(id);
+            });
         }
         if (options.onMouseLeave) {
-            card.addEventListener('mouseleave', function () { options.onMouseLeave(id); });
+            card.addEventListener("mouseleave", function () {
+                options.onMouseLeave(id);
+            });
         }
 
         return { card: card, canvas: canvas, patternData: patternData };

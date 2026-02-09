@@ -1,218 +1,437 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Eyecatcher - Interactive Evolution</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css"
+            rel="stylesheet"
+            type="text/css"
+        />
+        <link rel="stylesheet" href="css/base.css" />
+        <link rel="stylesheet" href="css/debug.css" />
+        <link rel="stylesheet" href="css/community.css" />
+        <link rel="stylesheet" href="css/viewer.css" />
+        <link rel="stylesheet" href="css/network.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    </head>
 
-<head>
-    <meta charset="UTF-8">
-    <title>Eyecatcher - Interactive Evolution</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/debug.css">
-    <link rel="stylesheet" href="css/community.css">
-    <link rel="stylesheet" href="css/viewer.css">
-    <link rel="stylesheet" href="css/network.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-</head>
+    <body>
+        <div id="header">
+            <h1>Eyecatcher</h1>
+            <span
+                id="help-btn"
+                class="header-icon"
+                role="button"
+                tabindex="0"
+                title="Show help"
+                aria-label="Show help"
+                >?</span
+            >
+        </div>
 
-<body>
-    <div id="header">
-        <h1>Eyecatcher</h1>
-        <span id="help-btn" class="header-icon" role="button" tabindex="0" title="Show help" aria-label="Show help">?</span>
-    </div>
-
-    <div id="toolbar">
-        <span id="breed-btn" class="btn-action breed disabled" role="button" tabindex="0" aria-disabled="true">Evolve Next Generation</span>
-        <span class="toolbar-sep" aria-hidden="true">|</span>
-        <span class="start-fresh-wrap">
-            <span id="start-fresh-btn" class="btn-action pop-btn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">Start Fresh ▾</span>
-            <div id="start-fresh-dropdown" class="dropdown-content" role="menu" hidden>
-                <span data-action="random" role="menuitem" tabindex="0">Random</span>
-                <span data-action="load" role="menuitem" tabindex="0">Load population</span>
-            </div>
-        </span>
-        <a href="/genealogy" class="pop-btn btn-action" style="text-decoration:none;" title="View genealogy tree">Genealogy Tree</a>
-        <span id="new-from-community-btn" class="pop-btn btn-action" role="button" tabindex="0">Add from Community</span>
-        <span id="import-btn" class="pop-btn btn-action" role="button" tabindex="0">Add from File</span>
-        <span id="save-current-btn" class="pop-btn btn-action" role="button" tabindex="0">Save population</span>
-        <span class="toolbar-sep" aria-hidden="true">|</span>
-        <span id="stats" class="stats-inline">
-            <span class="stat"><span class="stat-label">Generation:</span><span id="gen-num" class="stat-value">0</span></span>
-            <span class="stat"><span class="stat-label">Total clicks:</span><span id="total-clicks" class="stat-value">0</span></span>
+        <div id="toolbar">
+            <span
+                id="breed-btn"
+                class="btn-action breed disabled"
+                role="button"
+                tabindex="0"
+                aria-disabled="true"
+                >Evolve Next Generation</span
+            >
             <span class="toolbar-sep" aria-hidden="true">|</span>
-            <span class="population-size-controls" title="Number of individuals per generation">
-                <span class="population-size-label">Next generation size</span>
-                <span id="population-size-down" class="btn-zoom" role="button" tabindex="0" title="Decrease" aria-label="Decrease population size">−</span>
-                <input type="number" id="population-size-input" class="population-size-value" min="2" max="50" value="12" title="Individuals per generation" aria-label="Population size">
-                <span id="population-size-up" class="btn-zoom" role="button" tabindex="0" title="Increase" aria-label="Increase population size">+</span>
+            <span class="start-fresh-wrap">
+                <span
+                    id="start-fresh-btn"
+                    class="btn-action pop-btn"
+                    role="button"
+                    tabindex="0"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    >Start Fresh ▾</span
+                >
+                <div
+                    id="start-fresh-dropdown"
+                    class="dropdown-content"
+                    role="menu"
+                    hidden
+                >
+                    <span data-action="random" role="menuitem" tabindex="0"
+                        >Random</span
+                    >
+                    <span data-action="load" role="menuitem" tabindex="0"
+                        >Load population</span
+                    >
+                </div>
             </span>
-        </span>
-        <span class="toolbar-sep" aria-hidden="true">|</span>
-        <span class="zoom-controls" title="Pattern size">
-            <span class="zoom-controls-label">Zoom</span>
-            <span id="zoom-out" class="btn-zoom" role="button" tabindex="0" title="Zoom out" aria-label="Zoom out">−</span>
-            <span id="zoom-label">100%</span>
-            <span id="zoom-in" class="btn-zoom" role="button" tabindex="0" title="Zoom in" aria-label="Zoom in">+</span>
-        </span>
-        <span class="toolbar-end">
-            <span id="settings-btn" class="settings-btn" role="button" tabindex="0" aria-expanded="false" title="Settings" aria-label="Open settings">⚙ Settings</span>
-        </span>
-        <input type="file" id="import-file" accept=".json,.zip">
-    </div>
-    
-    <div id="instructions" class="collapsible-help" hidden>
-        <strong>How to use:</strong> Click on patterns you like (right-click to undo). The more you click, the higher their fitness. 
-        When you're happy with your selection, click "Evolve Next Generation" to breed the next generation from your favorites.
-        Patterns with green borders have fitness (clicks). Hover over a pattern and click "Download" to save it.
-    </div>
+            <a
+                href="/genealogy"
+                class="pop-btn btn-action"
+                style="text-decoration: none"
+                title="View genealogy tree"
+                >Genealogy Tree</a
+            >
+            <span
+                id="new-from-community-btn"
+                class="pop-btn btn-action"
+                role="button"
+                tabindex="0"
+                >Add from Community</span
+            >
+            <span id="import-btn" class="pop-btn btn-action" role="button" tabindex="0"
+                >Add from File</span
+            >
+            <span
+                id="save-current-btn"
+                class="pop-btn btn-action"
+                role="button"
+                tabindex="0"
+                >Save population</span
+            >
+            <span class="toolbar-sep" aria-hidden="true">|</span>
+            <span id="stats" class="stats-inline">
+                <span class="stat"
+                    ><span class="stat-label">Generation:</span
+                    ><span id="gen-num" class="stat-value">0</span></span
+                >
+                <span class="stat"
+                    ><span class="stat-label">Total clicks:</span
+                    ><span id="total-clicks" class="stat-value">0</span></span
+                >
+                <span class="toolbar-sep" aria-hidden="true">|</span>
+                <span
+                    class="population-size-controls"
+                    title="Number of individuals per generation"
+                >
+                    <span class="population-size-label">Next generation size</span>
+                    <span
+                        id="population-size-down"
+                        class="btn-zoom"
+                        role="button"
+                        tabindex="0"
+                        title="Decrease"
+                        aria-label="Decrease population size"
+                        >−</span
+                    >
+                    <input
+                        type="number"
+                        id="population-size-input"
+                        class="population-size-value"
+                        min="2"
+                        max="50"
+                        value="12"
+                        title="Individuals per generation"
+                        aria-label="Population size"
+                    />
+                    <span
+                        id="population-size-up"
+                        class="btn-zoom"
+                        role="button"
+                        tabindex="0"
+                        title="Increase"
+                        aria-label="Increase population size"
+                        >+</span
+                    >
+                </span>
+            </span>
+            <span class="toolbar-sep" aria-hidden="true">|</span>
+            <span class="zoom-controls" title="Pattern size">
+                <span class="zoom-controls-label">Zoom</span>
+                <span
+                    id="zoom-out"
+                    class="btn-zoom"
+                    role="button"
+                    tabindex="0"
+                    title="Zoom out"
+                    aria-label="Zoom out"
+                    >−</span
+                >
+                <span id="zoom-label">100%</span>
+                <span
+                    id="zoom-in"
+                    class="btn-zoom"
+                    role="button"
+                    tabindex="0"
+                    title="Zoom in"
+                    aria-label="Zoom in"
+                    >+</span
+                >
+            </span>
+            <span class="toolbar-end">
+                <span
+                    id="settings-btn"
+                    class="settings-btn"
+                    role="button"
+                    tabindex="0"
+                    aria-expanded="false"
+                    title="Settings"
+                    aria-label="Open settings"
+                    >⚙ Settings</span
+                >
+            </span>
+            <input type="file" id="import-file" accept=".json,.zip" />
+        </div>
 
-    <div id="settings-panel" class="settings-panel" hidden>
-        <div id="time-mode-controls">
-            <div class="signal-group-title">Time signal <span class="signal-hint">(raw input; CPPN modifies it)</span></div>
-            <div class="time-mode-radios">
-                <div class="time-mode-radio">
-                    <input type="radio" id="time-mode-loop" name="timeMode" value="loop">
-                    <label for="time-mode-loop">Loop <span class="signal-hint">(sawtooth)</span></label>
-                </div>
-                <div class="time-mode-radio">
-                    <input type="radio" id="time-mode-oscillate" name="timeMode" value="oscillate" checked>
-                    <label for="time-mode-oscillate">Oscillate <span class="signal-hint">(sine wave)</span></label>
-                </div>
-                <div class="time-mode-radio">
-                    <input type="radio" id="time-mode-infinite" name="timeMode" value="infinite">
-                    <label for="time-mode-infinite">Infinite <span class="signal-hint">(linear)</span></label>
-                </div>
-            </div>
+        <div id="instructions" class="collapsible-help" hidden>
+            <strong>How to use:</strong> Click on patterns you like (right-click to
+            undo). The more you click, the higher their fitness. When you're happy with
+            your selection, click "Evolve Next Generation" to breed the next generation
+            from your favorites. Patterns with green borders have fitness (clicks).
+            Hover over a pattern and click "Download" to save it.
         </div>
-        <div id="signal-controls">
-            <div class="signal-group">
-                <div class="signal-group-title">Time Signal CPPN Inputs</div>
-                <div class="signal-checkboxes">
-                    <div class="signal-checkbox">
-                        <input type="checkbox" id="time-rawTime" checked>
-                        <label for="time-rawTime">Raw Time <span class="signal-hint">(from Time Mode above)</span></label>
-                    </div>
-                    <div class="signal-checkbox">
-                        <input type="checkbox" id="time-mouseSpeed" checked>
-                        <label for="time-mouseSpeed">Mouse Speed</label>
-                    </div>
-                    <div class="signal-checkbox">
-                        <input type="checkbox" id="time-mouseDist" checked>
-                        <label for="time-mouseDist">Mouse Dist</label>
-                    </div>
-                    <div class="signal-checkbox">
-                        <input type="checkbox" id="time-inactivity" checked>
-                        <label for="time-inactivity">Activity</label>
-                    </div>
+
+        <div id="settings-panel" class="settings-panel" hidden>
+            <div id="time-mode-controls">
+                <div class="signal-group-title">
+                    Time signal
+                    <span class="signal-hint">(raw input; CPPN modifies it)</span>
                 </div>
-            </div>
-            <div class="signal-flow">→</div>
-            <div class="signal-group">
-                <div class="signal-group-title">Visual CPPN Inputs</div>
-                <div class="signal-checkboxes">
-                    <div class="signal-checkbox signal-derived">
-                        <input type="checkbox" id="visual-time" checked>
-                        <label for="visual-time">Body Clock <span class="signal-hint">(from Time CPPN)</span></label>
+                <div class="time-mode-radios">
+                    <div class="time-mode-radio">
+                        <input
+                            type="radio"
+                            id="time-mode-loop"
+                            name="timeMode"
+                            value="loop"
+                        />
+                        <label for="time-mode-loop"
+                            >Loop <span class="signal-hint">(sawtooth)</span></label
+                        >
                     </div>
-                    <div class="signal-checkbox">
-                        <input type="checkbox" id="visual-mouseSpeed" checked>
-                        <label for="visual-mouseSpeed">Mouse Speed</label>
+                    <div class="time-mode-radio">
+                        <input
+                            type="radio"
+                            id="time-mode-oscillate"
+                            name="timeMode"
+                            value="oscillate"
+                            checked
+                        />
+                        <label for="time-mode-oscillate"
+                            >Oscillate
+                            <span class="signal-hint">(sine wave)</span></label
+                        >
                     </div>
-                    <div class="signal-checkbox">
-                        <input type="checkbox" id="visual-mouseDist" checked>
-                        <label for="visual-mouseDist">Mouse Dist</label>
-                    </div>
-                    <div class="signal-checkbox">
-                        <input type="checkbox" id="visual-inactivity" checked>
-                        <label for="visual-inactivity">Activity</label>
+                    <div class="time-mode-radio">
+                        <input
+                            type="radio"
+                            id="time-mode-infinite"
+                            name="timeMode"
+                            value="infinite"
+                        />
+                        <label for="time-mode-infinite"
+                            >Infinite <span class="signal-hint">(linear)</span></label
+                        >
                     </div>
                 </div>
             </div>
-        </div>
-        <div id="color-mode-controls" class="signal-group">
-            <div class="signal-group-title">Color output</div>
-            <div class="time-mode-radios">
-                <div class="time-mode-radio">
-                    <input type="radio" id="color-mode-hsv" name="colorMode" value="hsv" checked>
-                    <label for="color-mode-hsv">HSV <span class="signal-hint">(Picbreeder-style)</span></label>
+            <div id="signal-controls">
+                <div class="signal-group">
+                    <div class="signal-group-title">Time Signal CPPN Inputs</div>
+                    <div class="signal-checkboxes">
+                        <div class="signal-checkbox">
+                            <input type="checkbox" id="time-rawTime" checked />
+                            <label for="time-rawTime"
+                                >Raw Time
+                                <span class="signal-hint"
+                                    >(from Time Mode above)</span
+                                ></label
+                            >
+                        </div>
+                        <div class="signal-checkbox">
+                            <input type="checkbox" id="time-mouseSpeed" checked />
+                            <label for="time-mouseSpeed">Mouse Speed</label>
+                        </div>
+                        <div class="signal-checkbox">
+                            <input type="checkbox" id="time-mouseDist" checked />
+                            <label for="time-mouseDist">Mouse Dist</label>
+                        </div>
+                        <div class="signal-checkbox">
+                            <input type="checkbox" id="time-inactivity" checked />
+                            <label for="time-inactivity">Activity</label>
+                        </div>
+                    </div>
                 </div>
-                <div class="time-mode-radio">
-                    <input type="radio" id="color-mode-rgb" name="colorMode" value="rgb">
-                    <label for="color-mode-rgb">RGB <span class="signal-hint">(direct)</span></label>
+                <div class="signal-flow">→</div>
+                <div class="signal-group">
+                    <div class="signal-group-title">Visual CPPN Inputs</div>
+                    <div class="signal-checkboxes">
+                        <div class="signal-checkbox signal-derived">
+                            <input type="checkbox" id="visual-time" checked />
+                            <label for="visual-time"
+                                >Body Clock
+                                <span class="signal-hint">(from Time CPPN)</span></label
+                            >
+                        </div>
+                        <div class="signal-checkbox">
+                            <input type="checkbox" id="visual-mouseSpeed" checked />
+                            <label for="visual-mouseSpeed">Mouse Speed</label>
+                        </div>
+                        <div class="signal-checkbox">
+                            <input type="checkbox" id="visual-mouseDist" checked />
+                            <label for="visual-mouseDist">Mouse Dist</label>
+                        </div>
+                        <div class="signal-checkbox">
+                            <input type="checkbox" id="visual-inactivity" checked />
+                            <label for="visual-inactivity">Activity</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="color-mode-controls" class="signal-group">
+                <div class="signal-group-title">Color output</div>
+                <div class="time-mode-radios">
+                    <div class="time-mode-radio">
+                        <input
+                            type="radio"
+                            id="color-mode-hsv"
+                            name="colorMode"
+                            value="hsv"
+                            checked
+                        />
+                        <label for="color-mode-hsv"
+                            >HSV
+                            <span class="signal-hint">(Picbreeder-style)</span></label
+                        >
+                    </div>
+                    <div class="time-mode-radio">
+                        <input
+                            type="radio"
+                            id="color-mode-rgb"
+                            name="colorMode"
+                            value="rgb"
+                        />
+                        <label for="color-mode-rgb"
+                            >RGB <span class="signal-hint">(direct)</span></label
+                        >
+                    </div>
+                </div>
+            </div>
+            <div class="settings-panel-actions">
+                <button
+                    type="button"
+                    id="settings-moderate-btn"
+                    class="pop-btn moderate-btn"
+                >
+                    Moderate
+                </button>
+            </div>
+        </div>
+
+        <div id="admin-modal">
+            <div class="modal-content">
+                <div id="admin-step-key">
+                    <h3>Community moderation</h3>
+                    <p>Enter the admin API key to review pending submissions.</p>
+                    <label
+                        >API key
+                        <input
+                            type="password"
+                            id="admin-key-input"
+                            placeholder="Admin key"
+                            autocomplete="off"
+                    /></label>
+                    <p id="admin-key-error"></p>
+                    <div class="modal-actions">
+                        <button type="button" class="primary" id="admin-key-submit">
+                            Continue
+                        </button>
+                        <button type="button" id="admin-modal-cancel">Cancel</button>
+                    </div>
+                </div>
+                <div id="admin-step-list">
+                    <h3>Pending submissions</h3>
+                    <p>Approve to publish in Community, or reject to remove.</p>
+                    <ul id="admin-pending-list"></ul>
+                    <span class="modal-close" id="admin-list-close">Close</span>
                 </div>
             </div>
         </div>
-        <div class="settings-panel-actions">
-            <button type="button" id="settings-moderate-btn" class="pop-btn moderate-btn">Moderate</button>
-        </div>
-    </div>
-    
-    <div id="admin-modal">
-        <div class="modal-content">
-            <div id="admin-step-key">
-                <h3>Community moderation</h3>
-                <p>Enter the admin API key to review pending submissions.</p>
-                <label>API key <input type="password" id="admin-key-input" placeholder="Admin key" autocomplete="off"></label>
-                <p id="admin-key-error"></p>
+
+        <div id="community-submit-modal">
+            <div class="modal-content">
+                <h3>Submit to Community</h3>
+                <p>
+                    Share this pattern for others to use. It will be reviewed before
+                    appearing in Community.
+                </p>
+                <label
+                    >Pattern name
+                    <input
+                        type="text"
+                        id="community-submit-name"
+                        placeholder="e.g. Sunset spiral"
+                /></label>
+                <label
+                    >Your name
+                    <input
+                        type="text"
+                        id="community-submit-creator"
+                        placeholder="e.g. Anonymous"
+                /></label>
                 <div class="modal-actions">
-                    <button type="button" class="primary" id="admin-key-submit">Continue</button>
-                    <button type="button" id="admin-modal-cancel">Cancel</button>
+                    <button type="button" class="primary" id="community-submit-do">
+                        Submit
+                    </button>
+                    <button type="button" id="community-submit-cancel">Cancel</button>
                 </div>
             </div>
-            <div id="admin-step-list">
-                <h3>Pending submissions</h3>
-                <p>Approve to publish in Community, or reject to remove.</p>
-                <ul id="admin-pending-list"></ul>
-                <span class="modal-close" id="admin-list-close">Close</span>
+        </div>
+        <div id="community-list-modal">
+            <div class="modal-content">
+                <h3>Load from Community</h3>
+                <p>
+                    Select one or more patterns (click row or checkbox), then "Load
+                    selected". Or use the shortcuts below.
+                </p>
+                <ul id="community-list"></ul>
+                <div class="community-modal-actions">
+                    <button
+                        type="button"
+                        class="pop-btn primary"
+                        id="community-load-selected-btn"
+                    >
+                        Load selected
+                    </button>
+                    <button type="button" class="pop-btn" id="community-load-12-btn">
+                        Load first 12
+                    </button>
+                    <span class="community-modal-sep">|</span>
+                    <button type="button" class="pop-btn" id="community-select-all-btn">
+                        Select all
+                    </button>
+                    <button
+                        type="button"
+                        class="pop-btn"
+                        id="community-deselect-all-btn"
+                    >
+                        Deselect all
+                    </button>
+                </div>
+                <span class="modal-close" id="community-list-close">Cancel</span>
             </div>
         </div>
-    </div>
-    
-    <div id="community-submit-modal">
-        <div class="modal-content">
-            <h3>Submit to Community</h3>
-            <p>Share this pattern for others to use. It will be reviewed before appearing in Community.</p>
-            <label>Pattern name <input type="text" id="community-submit-name" placeholder="e.g. Sunset spiral"></label>
-            <label>Your name <input type="text" id="community-submit-creator" placeholder="e.g. Anonymous"></label>
-            <div class="modal-actions">
-                <button type="button" class="primary" id="community-submit-do">Submit</button>
-                <button type="button" id="community-submit-cancel">Cancel</button>
+
+        <div id="load-list-modal">
+            <div class="modal-content">
+                <h3>Load population</h3>
+                <ul id="load-list"></ul>
+                <span class="modal-close" id="load-modal-close">Cancel</span>
             </div>
         </div>
-    </div>
-    <div id="community-list-modal">
-        <div class="modal-content">
-            <h3>Load from Community</h3>
-            <p>Select one or more patterns (click row or checkbox), then "Load selected". Or use the shortcuts below.</p>
-            <ul id="community-list"></ul>
-            <div class="community-modal-actions">
-                <button type="button" class="pop-btn primary" id="community-load-selected-btn">Load selected</button>
-                <button type="button" class="pop-btn" id="community-load-12-btn">Load first 12</button>
-                <span class="community-modal-sep">|</span>
-                <button type="button" class="pop-btn" id="community-select-all-btn">Select all</button>
-                <button type="button" class="pop-btn" id="community-deselect-all-btn">Deselect all</button>
-            </div>
-            <span class="modal-close" id="community-list-close">Cancel</span>
+
+        <div id="grid"></div>
+
+        <div id="loading">
+            <div class="spinner"></div>
+            <div>Loading patterns...</div>
         </div>
-    </div>
-    
-    <div id="load-list-modal">
-        <div class="modal-content">
-            <h3>Load population</h3>
-            <ul id="load-list"></ul>
-            <span class="modal-close" id="load-modal-close">Cancel</span>
-        </div>
-    </div>
-    
-    <div id="grid"></div>
-    
-    <div id="loading">
-        <div class="spinner"></div>
-        <div>Loading patterns...</div>
-    </div>
-    
-    <!-- Network Sidebar (CPPN visualization) -->
+
+        <!-- Network Sidebar (CPPN visualization) -->
         <div id="network-sidebar" class="network-container">
-        <button class="network-container-close" id="network-sidebar-close">Close</button>
+            <button class="network-container-close" id="network-sidebar-close">
+                Close
+            </button>
             <div class="network-labels-header">
                 <div class="network-labels-main">
                     <div class="network-label-item">
@@ -227,25 +446,29 @@
                 </div>
                 <div class="network-legend-header">
                     <div class="legend-item-inline">
-                        <div class="legend-dot" style="background: #0066cc;"></div>
+                        <div class="legend-dot" style="background: #0066cc"></div>
                         <span>Input</span>
                     </div>
                     <div class="legend-item-inline">
-                        <div class="legend-dot" style="background: #28a745;"></div>
+                        <div class="legend-dot" style="background: #28a745"></div>
                         <span>Hidden</span>
                     </div>
                     <div class="legend-item-inline">
-                        <div class="legend-dot" style="background: #dc3545;"></div>
+                        <div class="legend-dot" style="background: #dc3545"></div>
                         <span>Output</span>
                     </div>
                 </div>
             </div>
             <div class="network-visualization"></div>
             <div class="network-inline-controls">
-            <button id="network-fit-btn">Fit View</button>
-            <button id="network-export-btn">Export JSON</button>
+                <button id="network-fit-btn">Fit View</button>
+                <button id="network-export-btn">Export JSON</button>
             </div>
-            <div class="weight-adjustment-panel" id="weight-adjustment-panel" style="display: none;">
+            <div
+                class="weight-adjustment-panel"
+                id="weight-adjustment-panel"
+                style="display: none"
+            >
                 <div class="weight-adjustment-title">Adjust Connection Weights</div>
                 <div id="weight-sliders-container"></div>
             </div>
@@ -260,27 +483,40 @@
                 </div>
             </div>
         </div>
-    <div id="fullscreen-modal" class="fullscreen-modal" hidden aria-modal="true" role="dialog" aria-label="Pattern fullscreen">
-        <div id="fullscreen-backdrop" class="fullscreen-backdrop"></div>
-        <div class="fullscreen-content">
-            <button type="button" id="fullscreen-close" class="fullscreen-close" aria-label="Close fullscreen">&times;</button>
-            <div id="fullscreen-canvas-wrap" class="fullscreen-canvas-wrap"></div>
-    </div>
-    </div>
-    <div id="toast-container"></div>
+        <div
+            id="fullscreen-modal"
+            class="fullscreen-modal"
+            hidden
+            aria-modal="true"
+            role="dialog"
+            aria-label="Pattern fullscreen"
+        >
+            <div id="fullscreen-backdrop" class="fullscreen-backdrop"></div>
+            <div class="fullscreen-content">
+                <button
+                    type="button"
+                    id="fullscreen-close"
+                    class="fullscreen-close"
+                    aria-label="Close fullscreen"
+                >
+                    &times;
+                </button>
+                <div id="fullscreen-canvas-wrap" class="fullscreen-canvas-wrap"></div>
+            </div>
+        </div>
+        <div id="toast-container"></div>
 
-    <script src="js/modules/storage.js"></script>
-    <script src="js/modules/population_ui.js"></script>
-    <script src="js/modules/community.js"></script>
-    <script src="js/modules/debug.js"></script>
-    <script src="js/modules/pattern_renderer.js"></script>
-    <script src="js/modules/toast.js"></script>
-    <script src="js/modules/zoom_signals.js"></script>
-    <script src="js/modules/toolbar_ui.js"></script>
-    <script src="js/modules/network_visualizer.js"></script>
-    <script src="js/modules/api_client.js"></script>
-    <script src="js/modules/animation_loop.js"></script>
-    <script src="js/app.js"></script>
-</body>
-
+        <script src="js/modules/storage.js"></script>
+        <script src="js/modules/population_ui.js"></script>
+        <script src="js/modules/community.js"></script>
+        <script src="js/modules/debug.js"></script>
+        <script src="js/modules/pattern_renderer.js"></script>
+        <script src="js/modules/toast.js"></script>
+        <script src="js/modules/zoom_signals.js"></script>
+        <script src="js/modules/toolbar_ui.js"></script>
+        <script src="js/modules/network_visualizer.js"></script>
+        <script src="js/modules/api_client.js"></script>
+        <script src="js/modules/animation_loop.js"></script>
+        <script src="js/app.js"></script>
+    </body>
 </html>

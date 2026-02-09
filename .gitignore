@@ -15,5 +15,8 @@ uv.lock
 data/community.db
 data/genealogy.db
 
+# Node (JS tooling)
+node_modules/
+
 # Test/LLM artifacts (not part of app)
 llm_test/

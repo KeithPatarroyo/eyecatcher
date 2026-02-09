@@ -67,7 +67,7 @@
 body {
     background: var(--color-bg-page);
     color: var(--color-text);
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-family: "Segoe UI", system-ui, sans-serif;
     overflow-x: hidden;
 }
 

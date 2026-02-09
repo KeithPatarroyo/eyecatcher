@@ -4,12 +4,12 @@
  *   ApiClient.save(id, genome), ApiClient.random(size)
  */
 (function () {
-    'use strict';
+    "use strict";
 
-    let _apiUrl = '';
+    let _apiUrl = "";
 
     function init(apiUrl) {
-        _apiUrl = apiUrl || '';
+        _apiUrl = apiUrl || "";
     }
 
     /**
@@ -24,15 +24,17 @@
             return copy;
         });
         const body = { genomes: payload };
-        if (colorMode === 'hsv' || colorMode === 'rgb') body.color_mode = colorMode;
-        const r = await fetch(_apiUrl + '/compile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+        if (colorMode === "hsv" || colorMode === "rgb") body.color_mode = colorMode;
+        const r = await fetch(_apiUrl + "/compile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
         });
-        const data = await r.json().catch(function () { return {}; });
+        const data = await r.json().catch(function () {
+            return {};
+        });
         if (!r.ok) {
-            const err = new Error(data.error || 'Compile failed');
+            const err = new Error(data.error || "Compile failed");
             err.status = r.status;
             err.data = data;
             throw err;
@@ -50,24 +52,30 @@
     async function breed(parents, populationSize, genealogy) {
         const body = { parents: parents, population_size: populationSize };
         if (genealogy) {
-            if (genealogy.parentPopulationId != null) body.parent_population_id = genealogy.parentPopulationId;
-            if (genealogy.generationNum != null) body.generation_num = genealogy.generationNum;
+            if (genealogy.parentPopulationId != null)
+                body.parent_population_id = genealogy.parentPopulationId;
+            if (genealogy.generationNum != null)
+                body.generation_num = genealogy.generationNum;
             if (genealogy.branchName) body.branch_name = genealogy.branchName;
         }
-        const r = await fetch(_apiUrl + '/breed', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+        const r = await fetch(_apiUrl + "/breed", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
         });
-        const data = await r.json().catch(function () { return {}; });
+        const data = await r.json().catch(function () {
+            return {};
+        });
         if (!r.ok || data.error) {
-            const err = new Error(data.error || 'Breed failed (status ' + r.status + ')');
+            const err = new Error(
+                data.error || "Breed failed (status " + r.status + ")"
+            );
             err.status = r.status;
             err.data = data;
             throw err;
         }
         if (!Array.isArray(data.children)) {
-            throw new Error('Breed failed: no children in response');
+            throw new Error("Breed failed: no children in response");
         }
         return data;
     }
@@ -78,12 +86,14 @@
      * @param {Object} genome - Genome object
      */
     async function save(id, genome) {
-        const r = await fetch(_apiUrl + '/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, genome: genome })
+        const r = await fetch(_apiUrl + "/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: id, genome: genome }),
         });
-        const data = await r.json().catch(function () { return {}; });
+        const data = await r.json().catch(function () {
+            return {};
+        });
         if (data.error) {
             const err = new Error(data.error);
             err.data = data;
@@ -97,14 +107,16 @@
      * @param {number} size - Population size
      */
     async function random(size) {
-        const r = await fetch(_apiUrl + '/random', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ size: size })
+        const r = await fetch(_apiUrl + "/random", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ size: size }),
         });
-        const data = await r.json().catch(function () { return {}; });
+        const data = await r.json().catch(function () {
+            return {};
+        });
         if (!r.ok) {
-            const err = new Error(data.error || 'Failed to create random population');
+            const err = new Error(data.error || "Failed to create random population");
             err.status = r.status;
             err.data = data;
             throw err;
@@ -117,6 +129,6 @@
         compile: compile,
         breed: breed,
         save: save,
-        random: random
+        random: random,
     };
 })();

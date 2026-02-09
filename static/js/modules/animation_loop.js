@@ -5,7 +5,7 @@
  *   AnimationLoop.getActivity(), AnimationLoop.getMouseX(), AnimationLoop.getMouseY(), AnimationLoop.getTime()
  */
 (function () {
-    'use strict';
+    "use strict";
 
     const ANIMATION_SPEED = 0.005;
     const MOUSE_SPEED_DECAY = 0.95;
@@ -40,17 +40,19 @@
 
     function animate() {
         if (animating) {
-            const timeMode = document.querySelector('input[name="timeMode"]:checked')?.value || 'oscillate';
+            const timeMode =
+                document.querySelector('input[name="timeMode"]:checked')?.value ||
+                "oscillate";
 
             switch (timeMode) {
-                case 'loop':
+                case "loop":
                     animationTime = (animationTime + ANIMATION_SPEED) % 1.0;
                     break;
-                case 'oscillate':
+                case "oscillate":
                     oscillatePhase += ANIMATION_SPEED;
                     animationTime = (Math.sin(oscillatePhase * Math.PI * 2) + 1) * 0.5;
                     break;
-                case 'infinite':
+                case "infinite":
                     animationTime += ANIMATION_SPEED;
                     break;
                 default:
@@ -65,17 +67,26 @@
             if (patterns && _renderPattern) {
                 patterns.forEach(function (patternData) {
                     const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
-                    _renderPattern(patternData, normalizedTime, mouseSpeed, mouseDist, activity);
+                    _renderPattern(
+                        patternData,
+                        normalizedTime,
+                        mouseSpeed,
+                        mouseDist,
+                        activity
+                    );
                 });
             }
 
-            if (typeof window.EyecatcherDebug !== 'undefined' && window.EyecatcherDebug.update) {
+            if (
+                typeof window.EyecatcherDebug !== "undefined" &&
+                window.EyecatcherDebug.update
+            ) {
                 window.EyecatcherDebug.update({
                     time: normalizedTime,
                     mouseSpeed: mouseSpeed,
                     activity: activity,
                     mouseX: mouseX,
-                    mouseY: mouseY
+                    mouseY: mouseY,
                 });
             }
         }
@@ -87,7 +98,7 @@
         _renderPattern = options.renderPattern || null;
         lastMouseTime = performance.now();
 
-        document.addEventListener('mousemove', function (e) {
+        document.addEventListener("mousemove", function (e) {
             const now = performance.now();
             const dt = now - lastMouseTime;
 
@@ -99,7 +110,10 @@
                 const dy = e.clientY - lastMouseY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const instantSpeed = distance / dt;
-                mouseSpeed = Math.min(1.0, mouseSpeed * 0.7 + instantSpeed * MOUSE_SPEED_SCALE * 0.3);
+                mouseSpeed = Math.min(
+                    1.0,
+                    mouseSpeed * 0.7 + instantSpeed * MOUSE_SPEED_SCALE * 0.3
+                );
             }
 
             lastMouseX = e.clientX;
@@ -110,7 +124,7 @@
 
         const timeModeRadios = document.querySelectorAll('input[name="timeMode"]');
         timeModeRadios.forEach(function (radio) {
-            radio.addEventListener('change', function () {
+            radio.addEventListener("change", function () {
                 animationTime = 0;
                 oscillatePhase = 0;
             });
@@ -130,11 +144,21 @@
         init: init,
         start: start,
         stop: stop,
-        getMouseSpeed: function () { return mouseSpeed; },
+        getMouseSpeed: function () {
+            return mouseSpeed;
+        },
         getMouseDistance: getMouseDistanceToCanvas,
-        getActivity: function () { return activity; },
-        getMouseX: function () { return mouseX; },
-        getMouseY: function () { return mouseY; },
-        getTime: function () { return animationTime; }
+        getActivity: function () {
+            return activity;
+        },
+        getMouseX: function () {
+            return mouseX;
+        },
+        getMouseY: function () {
+            return mouseY;
+        },
+        getTime: function () {
+            return animationTime;
+        },
     };
 })();

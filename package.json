@@ -1,0 +1,18 @@
+{
+  "name": "eyecatcher-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lint and format for Eyecatcher static frontend (no build step)",
+  "scripts": {
+    "lint": "eslint static/",
+    "lint:fix": "eslint static/ --fix",
+    "format": "prettier --write \"static/**/*.js\" \"static/**/*.html\" \"static/**/*.css\"",
+    "format:check": "prettier --check \"static/**/*.js\" \"static/**/*.html\" \"static/**/*.css\""
+  },
+  "devDependencies": {
+    "eslint": "^9.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.12.0",
+    "prettier": "^3.3.3"
+  }
+}

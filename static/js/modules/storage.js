@@ -8,10 +8,10 @@
  *   - settings: { key, value }
  */
 const EyecatcherStorage = (function () {
-    const DB_NAME = 'eyecatcher';
+    const DB_NAME = "eyecatcher";
     const DB_VERSION = 1;
-    const POPULATIONS_STORE = 'populations';
-    const SETTINGS_STORE = 'settings';
+    const POPULATIONS_STORE = "populations";
+    const SETTINGS_STORE = "settings";
 
     let db = null;
 
@@ -31,13 +31,13 @@ const EyecatcherStorage = (function () {
                 const database = e.target.result;
                 if (!database.objectStoreNames.contains(POPULATIONS_STORE)) {
                     const pop = database.createObjectStore(POPULATIONS_STORE, {
-                        keyPath: 'id',
-                        autoIncrement: true
+                        keyPath: "id",
+                        autoIncrement: true,
                     });
-                    pop.createIndex('modified', 'modified', { unique: false });
+                    pop.createIndex("modified", "modified", { unique: false });
                 }
                 if (!database.objectStoreNames.contains(SETTINGS_STORE)) {
-                    database.createObjectStore(SETTINGS_STORE, { keyPath: 'key' });
+                    database.createObjectStore(SETTINGS_STORE, { keyPath: "key" });
                 }
             };
         });
@@ -53,14 +53,14 @@ const EyecatcherStorage = (function () {
             const database = await open();
             const now = new Date().toISOString();
             const record = {
-                name: name || 'Unnamed',
+                name: name || "Unnamed",
                 genomes: genomes,
                 generation: generation,
                 created: now,
-                modified: now
+                modified: now,
             };
             return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, 'readwrite');
+                const tx = database.transaction(POPULATIONS_STORE, "readwrite");
                 const store = tx.objectStore(POPULATIONS_STORE);
                 const req = store.add(record);
                 req.onsuccess = () => resolve(req.result);
@@ -78,10 +78,10 @@ const EyecatcherStorage = (function () {
                 genomes: genomes != null ? genomes : existing.genomes,
                 generation: generation != null ? generation : existing.generation,
                 created: existing.created,
-                modified: new Date().toISOString()
+                modified: new Date().toISOString(),
             };
             return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, 'readwrite');
+                const tx = database.transaction(POPULATIONS_STORE, "readwrite");
                 const store = tx.objectStore(POPULATIONS_STORE);
                 const req = store.put(record);
                 req.onsuccess = () => resolve(id);
@@ -92,7 +92,7 @@ const EyecatcherStorage = (function () {
         async loadPopulation(id) {
             const database = await open();
             return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, 'readonly');
+                const tx = database.transaction(POPULATIONS_STORE, "readonly");
                 const req = tx.objectStore(POPULATIONS_STORE).get(id);
                 req.onsuccess = () => resolve(req.result || null);
                 req.onerror = () => reject(req.error);
@@ -102,7 +102,7 @@ const EyecatcherStorage = (function () {
         async listPopulations() {
             const database = await open();
             return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, 'readonly');
+                const tx = database.transaction(POPULATIONS_STORE, "readonly");
                 const req = tx.objectStore(POPULATIONS_STORE).getAll();
                 req.onsuccess = () => {
                     const list = (req.result || []).sort(
@@ -117,7 +117,7 @@ const EyecatcherStorage = (function () {
         async deletePopulation(id) {
             const database = await open();
             return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, 'readwrite');
+                const tx = database.transaction(POPULATIONS_STORE, "readwrite");
                 const req = tx.objectStore(POPULATIONS_STORE).delete(id);
                 req.onsuccess = () => resolve();
                 req.onerror = () => reject(req.error);
@@ -131,12 +131,12 @@ const EyecatcherStorage = (function () {
                 name: pop.name,
                 generation: pop.generation,
                 genomes: pop.genomes,
-                exportedAt: new Date().toISOString()
+                exportedAt: new Date().toISOString(),
             };
         },
 
         async importPopulation(json) {
-            const name = json.name || 'Imported';
+            const name = json.name || "Imported";
             const genomes = json.genomes || [];
             const generation = json.generation != null ? json.generation : 0;
             if (!genomes.length) return null;
@@ -147,9 +147,10 @@ const EyecatcherStorage = (function () {
         async getSetting(key) {
             const database = await open();
             return new Promise((resolve, reject) => {
-                const tx = database.transaction(SETTINGS_STORE, 'readonly');
+                const tx = database.transaction(SETTINGS_STORE, "readonly");
                 const req = tx.objectStore(SETTINGS_STORE).get(key);
-                req.onsuccess = () => resolve(req.result ? req.result.value : undefined);
+                req.onsuccess = () =>
+                    resolve(req.result ? req.result.value : undefined);
                 req.onerror = () => reject(req.error);
             });
         },
@@ -157,19 +158,19 @@ const EyecatcherStorage = (function () {
         async setSetting(key, value) {
             const database = await open();
             return new Promise((resolve, reject) => {
-                const tx = database.transaction(SETTINGS_STORE, 'readwrite');
+                const tx = database.transaction(SETTINGS_STORE, "readwrite");
                 const req = tx.objectStore(SETTINGS_STORE).put({ key, value });
                 req.onsuccess = () => resolve();
                 req.onerror = () => reject(req.error);
             });
-        }
+        },
     };
 })();
 
 // Ensure global in browser (works even if script runs in strict mode or before DOM)
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
     window.EyecatcherStorage = EyecatcherStorage;
 }
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
     module.exports = EyecatcherStorage;
 }

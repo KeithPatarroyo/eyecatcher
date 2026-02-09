@@ -2,14 +2,14 @@
  * Debug overlay module for Eyecatcher
  * Provides real-time signal monitoring and time CPPN output sampling.
  */
-const EyecatcherDebug = (function() {
+const EyecatcherDebug = (function () {
     // Configuration
-    let apiUrl = '';
-    let getMouseDistanceFn = null;  // Function to get mouse distance to a pattern
-    let getPatternsMapFn = null;    // Function to get the patterns Map
-    let getSignalStateFn = null;    // Function to get signal state
-    let getGenomeForPatternFn = null;  // Async function(patternId) => genome JSON for stateless time-output
-    
+    let apiUrl = "";
+    let getMouseDistanceFn = null; // Function to get mouse distance to a pattern
+    let getPatternsMapFn = null; // Function to get the patterns Map
+    let getSignalStateFn = null; // Function to get signal state
+    let getGenomeForPatternFn = null; // Async function(patternId) => genome JSON for stateless time-output
+
     // State
     let hoveredPatternId = null;
     let timeSamplingEnabled = false;
@@ -17,26 +17,26 @@ const EyecatcherDebug = (function() {
     let lastSampledTimeOutput = null;
     let pendingSampleRequest = false;
     const SAMPLE_INTERVAL_MS = 400;
-    
+
     // DOM elements (created dynamically)
     let toggleBtn = null;
     let overlay = null;
     let elements = {};
-    
+
     /**
      * Create the debug overlay DOM structure
      */
     function createDOM() {
         // Toggle button
-        toggleBtn = document.createElement('button');
-        toggleBtn.id = 'debug-toggle';
-        toggleBtn.textContent = 'Debug';
+        toggleBtn = document.createElement("button");
+        toggleBtn.id = "debug-toggle";
+        toggleBtn.textContent = "Debug";
         document.body.appendChild(toggleBtn);
-        
+
         // Overlay container
-        overlay = document.createElement('div');
-        overlay.id = 'debug-overlay';
-        overlay.className = 'hidden';
+        overlay = document.createElement("div");
+        overlay.id = "debug-overlay";
+        overlay.className = "hidden";
         overlay.innerHTML = `
             <h4>Global Signals</h4>
             <div class="debug-row">
@@ -74,56 +74,66 @@ const EyecatcherDebug = (function() {
             </div>
         `;
         document.body.appendChild(overlay);
-        
+
         // Cache element references
         elements = {
-            time: document.getElementById('dbg-time'),
-            mouseSpeed: document.getElementById('dbg-mouseSpeed'),
-            activity: document.getElementById('dbg-activity'),
-            mousePos: document.getElementById('dbg-mousePos'),
-            patternId: document.getElementById('dbg-pattern-id'),
-            mouseDist: document.getElementById('dbg-mouseDist'),
-            timeOutput: document.getElementById('dbg-v-time'),
-            sampleCheckbox: document.getElementById('dbg-sample-time'),
-            sampleWarning: document.getElementById('dbg-sample-warning')
+            time: document.getElementById("dbg-time"),
+            mouseSpeed: document.getElementById("dbg-mouseSpeed"),
+            activity: document.getElementById("dbg-activity"),
+            mousePos: document.getElementById("dbg-mousePos"),
+            patternId: document.getElementById("dbg-pattern-id"),
+            mouseDist: document.getElementById("dbg-mouseDist"),
+            timeOutput: document.getElementById("dbg-v-time"),
+            sampleCheckbox: document.getElementById("dbg-sample-time"),
+            sampleWarning: document.getElementById("dbg-sample-warning"),
         };
     }
-    
+
     /**
      * Set up event listeners
      */
     function setupEventListeners() {
         // Toggle button
-        toggleBtn.addEventListener('click', () => {
-            overlay.classList.toggle('hidden');
-            toggleBtn.style.display = overlay.classList.contains('hidden') ? 'block' : 'none';
+        toggleBtn.addEventListener("click", () => {
+            overlay.classList.toggle("hidden");
+            toggleBtn.style.display = overlay.classList.contains("hidden")
+                ? "block"
+                : "none";
         });
-        
+
         // Double-click overlay to close
-        overlay.addEventListener('dblclick', () => {
-            overlay.classList.add('hidden');
-            toggleBtn.style.display = 'block';
+        overlay.addEventListener("dblclick", () => {
+            overlay.classList.add("hidden");
+            toggleBtn.style.display = "block";
         });
-        
+
         // Sample checkbox
-        elements.sampleCheckbox.addEventListener('change', (e) => {
+        elements.sampleCheckbox.addEventListener("change", (e) => {
             timeSamplingEnabled = e.target.checked;
-            elements.sampleWarning.style.display = timeSamplingEnabled ? 'block' : 'none';
+            elements.sampleWarning.style.display = timeSamplingEnabled
+                ? "block"
+                : "none";
             if (!timeSamplingEnabled) {
                 lastSampledTimeOutput = null;
             }
         });
     }
-    
+
     /**
      * Fetch time output from server (stateless: send genome in body)
      */
-    async function sampleTimeOutput(patternId, time, mouseSpd, mouseDist, activityLevel) {
+    async function sampleTimeOutput(
+        patternId,
+        time,
+        mouseSpd,
+        mouseDist,
+        activityLevel
+    ) {
         if (pendingSampleRequest || !getGenomeForPatternFn) return;
-        
+
         pendingSampleRequest = true;
         lastSampleTime = performance.now();
-        
+
         try {
             const genome = await getGenomeForPatternFn(patternId);
             if (!genome) {
@@ -131,15 +141,15 @@ const EyecatcherDebug = (function() {
                 return;
             }
             const response = await fetch(`${apiUrl}/time-output`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     genome,
                     time,
                     mouseSpeed: mouseSpd,
                     mouseDist,
-                    activity: activityLevel
-                })
+                    activity: activityLevel,
+                }),
             });
             const data = await response.json();
             if (data.error) {
@@ -150,19 +160,19 @@ const EyecatcherDebug = (function() {
                 lastSampledTimeOutput = data.timeOutput;
             }
         } catch (error) {
-            console.error('Error sampling time output:', error);
+            console.error("Error sampling time output:", error);
         } finally {
             pendingSampleRequest = false;
         }
     }
-    
+
     /**
      * Format number for display
      */
     function fmt(v) {
         return v.toFixed(3);
     }
-    
+
     // Public API
     return {
         /**
@@ -174,17 +184,18 @@ const EyecatcherDebug = (function() {
          * @param {Function} config.getSignalState Function() that returns signalState object
          * @param {Function} config.getGenomeForPattern Async function(patternId) that returns genome JSON (for time-output)
          */
-        init: function(config) {
-            apiUrl = config.apiUrl || '';
+        init: function (config) {
+            apiUrl = config.apiUrl || "";
             getMouseDistanceFn = config.getMouseDistance || (() => 0);
             getPatternsMapFn = config.getPatterns || (() => new Map());
-            getSignalStateFn = config.getSignalState || (() => ({ visual: { time: true } }));
+            getSignalStateFn =
+                config.getSignalState || (() => ({ visual: { time: true } }));
             getGenomeForPatternFn = config.getGenomeForPattern || null;
-            
+
             createDOM();
             setupEventListeners();
         },
-        
+
         /**
          * Update the debug overlay with current values
          * @param {Object} state Current state
@@ -194,81 +205,93 @@ const EyecatcherDebug = (function() {
          * @param {number} state.mouseX Mouse X position
          * @param {number} state.mouseY Mouse Y position
          */
-        update: function(state) {
+        update: function (state) {
             // Skip if hidden
-            if (overlay.classList.contains('hidden')) return;
-            
+            if (overlay.classList.contains("hidden")) return;
+
             const { time, mouseSpeed, activity, mouseX, mouseY } = state;
-            
+
             // Global signals
             elements.time.textContent = fmt(time);
             elements.mouseSpeed.textContent = fmt(mouseSpeed);
             elements.activity.textContent = fmt(activity);
             elements.mousePos.textContent = `${Math.round(mouseX)}, ${Math.round(mouseY)}`;
-            
+
             const timeEl = elements.timeOutput;
             const signalState = getSignalStateFn();
             const timeEnabled = signalState.visual.time;
-            
+
             // Hovered pattern info
             const patterns = getPatternsMapFn();
             if (hoveredPatternId !== null && patterns.has(hoveredPatternId)) {
                 const patternData = patterns.get(hoveredPatternId);
                 const mouseDist = getMouseDistanceFn(patternData.canvas);
-                
+
                 elements.patternId.textContent = `#${hoveredPatternId}`;
                 elements.mouseDist.textContent = fmt(mouseDist);
-                
+
                 // Time output - either sampled or placeholder
                 if (timeSamplingEnabled && timeEnabled) {
                     // Trigger sparse sampling if enough time has passed
                     const now = performance.now();
-                    if (!pendingSampleRequest && (now - lastSampleTime) >= SAMPLE_INTERVAL_MS) {
-                        sampleTimeOutput(hoveredPatternId, time, mouseSpeed, mouseDist, activity);
+                    if (
+                        !pendingSampleRequest &&
+                        now - lastSampleTime >= SAMPLE_INTERVAL_MS
+                    ) {
+                        sampleTimeOutput(
+                            hoveredPatternId,
+                            time,
+                            mouseSpeed,
+                            mouseDist,
+                            activity
+                        );
                     }
-                    
+
                     // Display last sampled value or loading indicator
                     if (lastSampledTimeOutput !== null) {
                         timeEl.textContent = fmt(lastSampledTimeOutput);
-                        timeEl.classList.remove('disabled');
-                        timeEl.classList.add('sampled');
+                        timeEl.classList.remove("disabled");
+                        timeEl.classList.add("sampled");
                     } else {
-                        timeEl.textContent = '...';
-                        timeEl.classList.remove('disabled', 'sampled');
+                        timeEl.textContent = "...";
+                        timeEl.classList.remove("disabled", "sampled");
                     }
                 } else {
                     // Not sampling - show placeholder
-                    timeEl.textContent = timeEnabled ? 'unique' : 'disabled';
-                    timeEl.classList.toggle('disabled', !timeEnabled);
-                    timeEl.classList.remove('sampled');
+                    timeEl.textContent = timeEnabled ? "unique" : "disabled";
+                    timeEl.classList.toggle("disabled", !timeEnabled);
+                    timeEl.classList.remove("sampled");
                 }
             } else {
-                elements.patternId.textContent = '(hover to see)';
-                elements.mouseDist.textContent = '-';
-                timeEl.textContent = '-';
-                timeEl.classList.remove('disabled', 'sampled');
+                elements.patternId.textContent = "(hover to see)";
+                elements.mouseDist.textContent = "-";
+                timeEl.textContent = "-";
+                timeEl.classList.remove("disabled", "sampled");
                 lastSampledTimeOutput = null;
             }
         },
-        
+
         /**
          * Set the currently hovered pattern ID
          * Called from main script on card mouseenter/mouseleave
          * @param {number|null} id Pattern ID or null if not hovering
          */
-        setHoveredPatternId: function(id) {
+        setHoveredPatternId: function (id) {
             if (id !== hoveredPatternId) {
-                lastSampledTimeOutput = null;  // Reset sample when changing patterns
+                lastSampledTimeOutput = null; // Reset sample when changing patterns
             }
             hoveredPatternId = id;
         },
-        
+
         /**
          * Get the currently hovered pattern ID
          * @returns {number|null}
          */
-        getHoveredPatternId: function() {
+        getHoveredPatternId: function () {
             return hoveredPatternId;
-        }
+        },
     };
 })();
+if (typeof window !== "undefined") {
+    window.EyecatcherDebug = EyecatcherDebug;
+}

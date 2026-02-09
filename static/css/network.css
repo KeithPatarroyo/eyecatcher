@@ -55,7 +55,9 @@
     overflow-x: hidden;
     height: 100vh;
     z-index: 200;
-    transition: width 0.3s ease, min-width 0.3s ease;
+    transition:
+        width 0.3s ease,
+        min-width 0.3s ease;
     box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
 }
 

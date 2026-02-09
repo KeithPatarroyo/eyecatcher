@@ -4,41 +4,52 @@
  * Also exposes legacy globals: showToast, dismissToast, base64ToBlob, triggerDownload.
  */
 (function () {
-    'use strict';
+    "use strict";
 
     function show(title, body, type, options) {
-        type = type || 'success';
+        type = type || "success";
         options = options || {};
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = 'toast ' + type;
-        toast.style.position = 'relative';
+        const container = document.getElementById("toast-container");
+        const toast = document.createElement("div");
+        toast.className = "toast " + type;
+        toast.style.position = "relative";
 
         let html = '<button class="toast-close" aria-label="Close">&times;</button>';
-        html += '<div class="toast-title">' + title + '</div>';
-        if (body) html += '<div class="toast-body">' + body + '</div>';
+        html += '<div class="toast-title">' + title + "</div>";
+        if (body) html += '<div class="toast-body">' + body + "</div>";
         if (options.linkText && options.linkUrl) {
-            html += '<a class="toast-link" href="' + options.linkUrl + '" target="_blank">' + options.linkText + '</a>';
+            html +=
+                '<a class="toast-link" href="' +
+                options.linkUrl +
+                '" target="_blank">' +
+                options.linkText +
+                "</a>";
         }
         toast.innerHTML = html;
 
-        toast.querySelector('.toast-close').onclick = function () { dismiss(toast); };
+        toast.querySelector(".toast-close").onclick = function () {
+            dismiss(toast);
+        };
         container.appendChild(toast);
 
         const duration = options.duration || (options.linkUrl ? 10000 : 6000);
-        setTimeout(function () { dismiss(toast); }, duration);
+        setTimeout(function () {
+            dismiss(toast);
+        }, duration);
 
         return toast;
     }
 
     function dismiss(toast) {
         if (!toast.parentNode) return;
-        toast.style.animation = 'toast-out 0.3s ease-in forwards';
-        setTimeout(function () { toast.remove(); }, 300);
+        toast.style.animation = "toast-out 0.3s ease-in forwards";
+        setTimeout(function () {
+            toast.remove();
+        }, 300);
     }
 
     function error(message) {
-        return show('Error', message, 'error');
+        return show("Error", message, "error");
     }
 
     function base64ToBlob(base64, mime) {
@@ -50,10 +61,10 @@
 
     function triggerDownload(blob, filename) {
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         a.download = filename;
-        a.style.display = 'none';
+        a.style.display = "none";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -65,7 +76,7 @@
         dismiss: dismiss,
         error: error,
         base64ToBlob: base64ToBlob,
-        triggerDownload: triggerDownload
+        triggerDownload: triggerDownload,
     };
 
     window.Toast = Toast;
