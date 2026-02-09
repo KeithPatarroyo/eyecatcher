@@ -374,9 +374,7 @@ class CPPNEngine:
                 visualizer = GenomeVisualizer(self.config)
                 visualizer.visualize_genome(genome, viz_path)
             except ImportError:
-                print(
-                    "Warning: Could not visualize genome. Install matplotlib."
-                )
+                print("Warning: Could not visualize genome. Install matplotlib.")
             except Exception as e:
                 print(f"Warning: Genome visualization failed: {e}")
 
@@ -488,9 +486,7 @@ class CPPNEngine:
                 visualizer = GenomeVisualizer(self.config)
                 visualizer.visualize_genome(dual_genome.visual, viz_path)
             except ImportError:
-                print(
-                    "Warning: Could not visualize genome. Install matplotlib."
-                )
+                print("Warning: Could not visualize genome. Install matplotlib.")
             except Exception as e:
                 print(f"Warning: Genome visualization failed: {e}")
 

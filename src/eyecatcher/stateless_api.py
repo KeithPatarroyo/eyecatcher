@@ -241,10 +241,8 @@ def api_adjust_weight():
         # Select the appropriate network
         if network_type == "visual":
             genome = dual.visual
-            config = _engine.config
         elif network_type == "time":
             genome = dual.time_signal
-            config = _engine.time_config
         else:
             return jsonify({"error": f"Unknown network type: {network_type}"}), 400
 

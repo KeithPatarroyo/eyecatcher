@@ -7,7 +7,7 @@ the time input to a visual CPPN.
 """
 
 import json
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 import neat
 
@@ -44,8 +44,8 @@ class ShaderCompiler:
     }
 
     def __init__(self, color_mode: str = "hsv"):
-        self.node_order: List[int] = []
-        self.node_code: Dict[int, str] = {}
+        self.node_order: list[int] = []
+        self.node_code: dict[int, str] = {}
         self.color_mode = color_mode  # 'hsv' or 'rgb'
 
     def compile_to_glsl(self, genome: neat.DefaultGenome, config: neat.Config) -> str:
@@ -71,7 +71,7 @@ class ShaderCompiler:
 
         return shader
 
-    def _get_enabled_connections(self, genome: neat.DefaultGenome) -> List[Tuple]:
+    def _get_enabled_connections(self, genome: neat.DefaultGenome) -> list[tuple]:
         """Get all enabled connections in the genome."""
         return [
             (c.key[0], c.key[1], c.weight)
@@ -80,8 +80,8 @@ class ShaderCompiler:
         ]
 
     def _topological_sort(
-        self, genome: neat.DefaultGenome, connections: List[Tuple], config: neat.Config
-    ) -> List[int]:
+        self, genome: neat.DefaultGenome, connections: list[tuple], config: neat.Config
+    ) -> list[int]:
         """
         Topologically sort nodes for correct evaluation order.
 
@@ -135,10 +135,10 @@ class ShaderCompiler:
     def _generate_node_code(
         self,
         genome: neat.DefaultGenome,
-        connections: List[Tuple],
-        nodes: List[int],
+        connections: list[tuple],
+        nodes: list[int],
         config: neat.Config,
-        input_names: Optional[Dict[int, str]] = None,
+        input_names: Optional[dict[int, str]] = None,
         prefix: str = "",
     ) -> str:
         """Generate GLSL code for all node computations."""
@@ -253,7 +253,7 @@ class ShaderCompiler:
     float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
     float g = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);
     float b = clamp((output_2 + 1.0) * 0.5, 0.0, 1.0);
-    
+
     fragColor = vec4(r, g, b, 1.0);"""
         else:  # hsv
             return """    // Interpret outputs as HSV - Picbreeder style
@@ -261,12 +261,12 @@ class ShaderCompiler:
     float h = 1.0 / (1.0 + exp(-output_0 * 0.4));
     float s = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);  // Saturation 0-1
     float v = clamp(abs(output_2), 0.0, 1.0);  // Value (Picbreeder)
-    
+
     // Branchless HSV to RGB (lolengine.net)
     vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
     vec3 p = abs(fract(vec3(h,h,h) + K.xyz) * 6.0 - K.www);
     vec3 rgb = v * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), s);
-    
+
     fragColor = vec4(rgb, 1.0);"""
 
     def _build_shader_template(self, node_code: str, config: neat.Config) -> str:
@@ -340,17 +340,17 @@ void main() {{
     float vX = vUV.x * 2.0 - 1.0;
     float vY = vUV.y * 2.0 - 1.0;
     float vDist = sqrt(vX * vX + vY * vY);
-    
+
     // Apply enable gates (disabled = 0.0 neutral)
     float vTime = (uTime * 2.0 - 1.0) * uVisualEnableTime;
     float vMouseSpeed = (uMouseSpeed * 2.0 - 1.0) * uVisualEnableMouseSpeed;
     float vMouseDist = (uMouseDist * 2.0 - 1.0) * uVisualEnableMouseDist;
     float vInactivity = (uInactivity * 2.0 - 1.0) * uVisualEnableInactivity;
     float vBias = 1.0;
-    
+
     // Network computations
 {node_code}
-    
+
 {color_output}
 }}
 """
@@ -468,35 +468,35 @@ void main() {{
     float mouseDist_base = uMouseDist * 2.0 - 1.0;
     float inactivity_base = uInactivity * 2.0 - 1.0;
     float vBias = 1.0;
-    
+
     // === TIME SIGNAL NETWORK ===
     // Apply enable gates for time CPPN inputs (disabled = 0.0 neutral)
     float vRawTime = rawTime_base * uTimeEnableRawTime;
     float vMouseSpeed = mouseSpeed_base * uTimeEnableMouseSpeed;
     float vMouseDist = mouseDist_base * uTimeEnableMouseDist;
     float vInactivity = inactivity_base * uTimeEnableInactivity;
-    
+
     // Time signal network computation
 {time_code}
-    
+
     // Get modified time from time signal network (clamped to valid range)
     float timeFromNetwork = clamp(time_output_0, -1.0, 1.0);
-    
+
     // === VISUAL NETWORK ===
     // Convert UV to CPPN coordinate space (-1 to 1)
     float vX = vUV.x * 2.0 - 1.0;
     float vY = vUV.y * 2.0 - 1.0;
     float vDist = sqrt(vX * vX + vY * vY);
-    
+
     // Apply enable gates for visual CPPN inputs (disabled = 0.0 neutral)
     float vTime = timeFromNetwork * uVisualEnableTime;
     vMouseSpeed = mouseSpeed_base * uVisualEnableMouseSpeed;
     vMouseDist = mouseDist_base * uVisualEnableMouseDist;
     vInactivity = inactivity_base * uVisualEnableInactivity;
-    
+
     // Visual network computations (using modified time)
 {visual_code}
-    
+
 {color_output}
 }}
 """

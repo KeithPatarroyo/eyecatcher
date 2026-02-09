@@ -71,19 +71,19 @@ def _init_genealogy_db():
 
     # Indexes for performance
     conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_populations_parent 
+        CREATE INDEX IF NOT EXISTS idx_populations_parent
         ON populations(parent_id)
     """)
     conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_individuals_population 
+        CREATE INDEX IF NOT EXISTS idx_individuals_population
         ON individuals(population_id)
     """)
     conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_individuals_parents 
+        CREATE INDEX IF NOT EXISTS idx_individuals_parents
         ON individuals(parent1_id, parent2_id)
     """)
     conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_populations_branch_gen 
+        CREATE INDEX IF NOT EXISTS idx_populations_branch_gen
         ON populations(branch_name, generation_num)
     """)
 
@@ -147,8 +147,8 @@ def save_population():
                     ), 400
 
             cur = conn.execute(
-                """INSERT INTO populations 
-                   (parent_id, generation_num, created_at, branch_name, description, 
+                """INSERT INTO populations
+                   (parent_id, generation_num, created_at, branch_name, description,
                     user_id, population_size, metadata_json)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
@@ -169,7 +169,7 @@ def save_population():
                 genome_json = json.dumps(genome)
                 fitness = fitness_data[idx] if idx < len(fitness_data) else 0
                 cur = conn.execute(
-                    """INSERT INTO individuals 
+                    """INSERT INTO individuals
                        (population_id, genome_key, genome_json, fitness, created_at)
                        VALUES (?, ?, ?, ?, ?)""",
                     (
@@ -225,7 +225,7 @@ def load_population(population_id):
                 return jsonify({"error": "Population not found"}), 404
 
             individual_rows = conn.execute(
-                """SELECT genome_json, fitness FROM individuals 
+                """SELECT genome_json, fitness FROM individuals
                    WHERE population_id = ? ORDER BY genome_key""",
                 (population_id,),
             ).fetchall()
@@ -447,9 +447,7 @@ def export_sizes():
                     "full": {
                         "populations": full_pop,
                         "individuals": full_ind_count,
-                        "estimated_bytes": full_pop * 300
-                        + full_ind_count * 80
-                        + full_json_bytes,
+                        "estimated_bytes": full_estimated,
                     },
                     "branches": branches,
                 }
