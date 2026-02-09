@@ -1,8 +1,8 @@
 """
 Test genome visualization
 """
-from cppn_engine import CPPNEngine, create_random_genome
-from ..genome_visualizer import GenomeVisualizer
+from eyecatcher.cppn_engine import CPPNEngine, create_random_genome
+from eyecatcher.genome_visualizer import GenomeVisualizer
 import os
 import neat
 
