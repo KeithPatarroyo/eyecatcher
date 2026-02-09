@@ -54,6 +54,92 @@ def test_api_breed(client):
     assert len(data["children"]) == 4
 
 
+def test_api_breed_missing_parents(client):
+    """POST /api/breed without parents returns 400."""
+    rv = client.post("/api/breed", json={})
+    assert rv.status_code == 400
+    assert "parents" in rv.get_json().get("error", "").lower()
+
+
+def test_api_breed_empty_parents(client):
+    """POST /api/breed with empty parents returns 400."""
+    rv = client.post("/api/breed", json={"parents": []})
+    assert rv.status_code == 400
+
+
+def test_api_breed_malformed_parents(client):
+    """POST /api/breed with invalid genome in parents returns 400."""
+    rv = client.post(
+        "/api/breed",
+        json={"parents": [{"genome": "not a genome", "clicks": 0}]},
+    )
+    assert rv.status_code == 400
+    assert "no valid parents" in rv.get_json().get("error", "").lower()
+
+
+def test_api_breed_with_genealogy(client, genealogy_db, cppn_engine):
+    """Breed with parent_population_id saves to genealogy and returns population_id."""
+    from eyecatcher.cppn_engine import create_random_dual_genome
+    from eyecatcher.genome_serialization import dual_genome_to_json
+
+    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    payload = dual_genome_to_json(dual)
+    payload["key"] = 0
+    save_rv = client.post(
+        "/api/genealogy/save-population",
+        json={
+            "genomes": [payload],
+            "parent_id": None,
+            "generation_num": 0,
+            "branch_name": "main",
+        },
+    )
+    assert save_rv.status_code == 200
+    pop_id = save_rv.get_json()["population_id"]
+    parents = [{"genome": payload, "clicks": 1}]
+    breed_rv = client.post(
+        "/api/breed",
+        json={
+            "parents": parents,
+            "population_size": 2,
+            "parent_population_id": pop_id,
+            "generation_num": 1,
+            "branch_name": "main",
+        },
+    )
+    assert breed_rv.status_code == 200
+    data = breed_rv.get_json()
+    assert "children" in data
+    assert "population_id" in data
+    assert data["population_id"] != pop_id
+
+
+def test_api_save(client, cppn_engine):
+    """POST /api/save with genome returns id, status, and downloads."""
+    from eyecatcher.cppn_engine import create_random_dual_genome
+    from eyecatcher.genome_serialization import dual_genome_to_json
+
+    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    genome = dual_genome_to_json(dual)
+    genome["key"] = 0
+    rv = client.post("/api/save", json={"genome": genome})
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert data.get("id") == 0
+    assert data.get("status") == "saved"
+    assert "downloads" in data
+    assert len(data["downloads"]) == 1
+    assert data["downloads"][0].get("filename") == "pattern_0.zip"
+    assert "content_base64" in data["downloads"][0]
+
+
+def test_api_save_missing_genome(client):
+    """POST /api/save without genome returns 400."""
+    rv = client.post("/api/save", json={})
+    assert rv.status_code == 400
+    assert "genome" in rv.get_json().get("error", "").lower()
+
+
 def test_api_time_output(client):
     """POST /api/time-output with genome returns timeOutput and inputs."""
     rv = client.post("/api/random", json={"size": 1})
