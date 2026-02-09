@@ -6,7 +6,7 @@ Requires matplotlib: pip install matplotlib
 """
 import os
 
-from cppn_engine import CPPNEngine, create_random_dual_genome
+from eyecatcher.cppn_engine import CPPNEngine, create_random_dual_genome
 
 
 def main():

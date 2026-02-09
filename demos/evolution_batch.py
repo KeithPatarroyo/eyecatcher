@@ -9,13 +9,13 @@ import random
 import numpy as np
 from PIL import Image
 
-from cppn_engine import (
+from eyecatcher.cppn_engine import (
     CPPNEngine,
     DualGenome,
     create_random_dual_genome,
     copy_dual_genome,
 )
-from shader_compiler import ShaderCompiler
+from eyecatcher.shader_compiler import ShaderCompiler
 
 
 def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:

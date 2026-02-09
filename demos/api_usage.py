@@ -4,11 +4,11 @@ Run from repo root: python demos/api_usage.py
 """
 import os
 
-from cppn_engine import (
+from eyecatcher.cppn_engine import (
     CPPNEngine,
     create_random_dual_genome,
 )
-from shader_compiler import ShaderCompiler
+from eyecatcher.shader_compiler import ShaderCompiler
 from PIL import Image
 
 
