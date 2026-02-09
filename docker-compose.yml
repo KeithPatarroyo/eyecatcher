@@ -10,8 +10,9 @@ services:
       - FLASK_ENV=development
       # Set ADMIN_KEY for community moderation (use ALICE for local dev; set in production!)
       - ADMIN_KEY=ALICE
+      - PYTHONPATH=/app/src
     volumes:
       # Mount source for hot-reload during development
       - .:/app
     # Override CMD for development with Flask debug mode (auto-reload)
-    command: ["python", "server.py"]
+    command: ["python", "-m", "eyecatcher.server"]
