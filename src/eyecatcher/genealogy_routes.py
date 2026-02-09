@@ -7,7 +7,7 @@ Auto-saves every generation to enable branch exploration and time-travel evoluti
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
@@ -152,7 +152,7 @@ def save_population():
                 (
                     parent_id,
                     generation_num,
-                    datetime.utcnow().isoformat(),
+                    datetime.now(timezone.utc).isoformat(),
                     branch_name,
                     description,
                     user_id,
@@ -175,7 +175,7 @@ def save_population():
                         genome.get("key", idx),
                         genome_json,
                         fitness,
-                        datetime.utcnow().isoformat(),
+                        datetime.now(timezone.utc).isoformat(),
                     ),
                 )
                 individual_ids.append(cur.lastrowid)
@@ -534,7 +534,9 @@ def export_genealogy():
                 )
             return jsonify(
                 {
-                    "exported_at": datetime.utcnow().isoformat() + "Z",
+                    "exported_at": datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
                     "version": 1,
                     "branch_name": branch_name,
                     "populations": populations,

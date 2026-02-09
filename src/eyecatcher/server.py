@@ -18,7 +18,7 @@ import os
 import pickle
 import random
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -196,7 +196,7 @@ def _breed_stateless(data):
                         (
                             parent_population_id,
                             generation_num,
-                            datetime.utcnow().isoformat(),
+                            datetime.now(timezone.utc).isoformat(),
                             branch_name,
                             f"Generation {generation_num}",
                             "user",
@@ -218,7 +218,7 @@ def _breed_stateless(data):
                                 child_genome.get("key", idx),
                                 genome_json,
                                 0,
-                                datetime.utcnow().isoformat(),
+                                datetime.now(timezone.utc).isoformat(),
                             ),
                         )
 
