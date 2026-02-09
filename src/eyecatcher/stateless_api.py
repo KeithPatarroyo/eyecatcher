@@ -8,6 +8,7 @@ Provides endpoints that don't depend on server-side population state:
 
 from flask import Blueprint, jsonify, request
 
+from .config import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
 from .cppn_engine import CPPNEngine, DualGenome, create_random_dual_genome
 from .genome_serialization import dual_genome_from_json, dual_genome_to_json
 from .shader_compiler import ShaderCompiler
@@ -101,13 +102,13 @@ def api_compile():
 def api_random():
     """
     Stateless: create a new random population.
-    Body: { "size": 12 }
+    Body: { "size": N } (default from config)
     Returns: { "genomes": [ { "key", "visual", "time_signal" }, ... ] }
     """
     try:
         data = request.json or {}
-        size = data.get("size", 12)
-        size = max(1, min(int(size), 50))
+        size = data.get("size", DEFAULT_POPULATION_SIZE)
+        size = max(1, min(int(size), MAX_POPULATION_SIZE))
         genomes = []
         for i in range(size):
             dual = create_random_dual_genome(_engine, genome_id=i)

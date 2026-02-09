@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 import neat
+
+from .config import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -59,10 +61,8 @@ class CPPNEngine:
 
     def __init__(
         self,
-        # config_path: str = "config/neat_config.txt",
-        config_path: str = "config/neat_config_experimental.txt",
-        # time_config_path: str = "config/neat_config_time.txt"):
-        time_config_path: str = "config/neat_config_time_experimental.txt",
+        config_path: str = NEAT_CONFIG_PATH,
+        time_config_path: str = NEAT_TIME_CONFIG_PATH,
     ):
         """Initialize CPPN engine with NEAT configurations."""
         from . import get_root_dir

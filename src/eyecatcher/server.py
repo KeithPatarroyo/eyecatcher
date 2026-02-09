@@ -25,6 +25,12 @@ from flask_cors import CORS
 
 from . import get_root_dir
 from .community_routes import community_bp
+from .config import (
+    DEFAULT_POPULATION_SIZE,
+    DEFAULT_RENDER_RESOLUTION,
+    DEFAULT_RENDER_TIME,
+    MUTATION_PROBABILITY,
+)
 from .cppn_engine import (
     CPPNEngine,
     DualGenome,
@@ -94,7 +100,7 @@ def breed():
     Breed next generation (stateless).
     Body: {
         "parents": [...],
-        "population_size": 12,  (optional, default 12)
+        "population_size": 12,  (optional, default from config)
         "elitism": false  (optional; if true, best parent is copied unchanged)
     }
     Returns { "children": [genome JSONs] }.
@@ -111,7 +117,7 @@ def _breed_stateless(data):
 
     try:
         parents_data = data.get("parents", [])
-        population_size = data.get("population_size", 12)
+        population_size = data.get("population_size", DEFAULT_POPULATION_SIZE)
         elitism = data.get("elitism", False)
 
         # Genealogy metadata
@@ -152,7 +158,7 @@ def _breed_stateless(data):
             if len(parents) == 1:
                 child = engine.mutate_dual_genome(parents[0]["genome"], next_key)
             else:
-                if random.random() < 0.7:
+                if random.random() < MUTATION_PROBABILITY:
                     parent = random.choice(parents)
                     child = engine.mutate_dual_genome(parent["genome"], next_key)
                 else:
@@ -300,7 +306,11 @@ def _save_dual_genome(
     # PNG image
     from PIL import Image
 
-    img = engine.render_image(dual_genome.visual, resolution=512, time=0.5)
+    img = engine.render_image(
+        dual_genome.visual,
+        resolution=DEFAULT_RENDER_RESOLUTION,
+        time=DEFAULT_RENDER_TIME,
+    )
     img_buffer = io.BytesIO()
     Image.fromarray(img).save(img_buffer, format="PNG")
     img_base64 = base64.b64encode(img_buffer.getvalue()).decode("ascii")
