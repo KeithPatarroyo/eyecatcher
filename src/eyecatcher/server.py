@@ -421,22 +421,6 @@ def extract_network_data(genome, network_type, config):
     
     return nodes, connections
 
-# NOTE: Old stateful endpoints below are deprecated - using stateless API now
-# The stateless versions are in stateless_api.py (POST /api/network, etc.)
-
-# @app.route('/api/network/<int:individual_id>', methods=['GET'])
-# def get_network_data(individual_id):
-#     """DEPRECATED: Get both CPPN networks (visual and time signal) for visualization."""
-#     # This endpoint required current_population which doesn't exist in stateless mode
-#     # Use POST /api/network with genome in body instead
-#     return jsonify({'error': 'This endpoint is deprecated. Use POST /api/network with genome data.'}), 410
-
-# @app.route('/api/adjust-weight', methods=['POST'])
-# def adjust_weight():
-#     """DEPRECATED: Adjust a connection weight in a network and return updated shader."""
-#     # This endpoint required current_population which doesn't exist in stateless mode
-#     return jsonify({'error': 'This endpoint is deprecated.'}), 410
-
 
 def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bool = True):
     """
