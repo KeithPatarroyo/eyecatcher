@@ -1,5 +1,9 @@
 # Eyecatcher
 
+[![CI](https://github.com/KeithPatarroyo/eyecatcher/actions/workflows/ci.yml/badge.svg)](https://github.com/KeithPatarroyo/eyecatcher/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+
 Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Like Picbreeder, but patterns change over time and react to user input.
 
 ## Features
