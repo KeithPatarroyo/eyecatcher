@@ -1,7 +1,7 @@
 """
 Time-signal CPPN showcase: plot modified time vs raw time for a few dual genomes.
 Shows how each individual's time CPPN transforms the raw clock (the "heartbeat").
-Run from repo root: python demos/time_signal_showcase.py
+Run from repo root: python examples/time_signal_showcase.py
 Requires matplotlib: pip install matplotlib
 """
 

@@ -1,6 +1,6 @@
 """
 Programmatic dual-CPPN API usage: create, render, compile, mutate, crossover, save.
-Run from repo root: python demos/api_usage.py
+Run from repo root: python examples/api_usage.py
 """
 
 import os

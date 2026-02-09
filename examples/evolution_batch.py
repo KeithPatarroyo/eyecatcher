@@ -1,7 +1,7 @@
 """
 Batch evolution demo using dual-CPPN (visual + time signal).
 Simulates automated evolution with a proxy fitness function.
-Run from repo root: python demos/evolution_batch.py
+Run from repo root: python examples/evolution_batch.py
 """
 
 import os
