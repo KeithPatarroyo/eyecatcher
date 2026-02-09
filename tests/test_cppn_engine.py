@@ -47,8 +47,9 @@ def test_mutate_dual_genome():
     engine = CPPNEngine()
     engine.create_population()
     dual = create_random_dual_genome(engine, genome_id=0)
-    mutated = engine.mutate_dual_genome(dual)
+    mutated = engine.mutate_dual_genome(dual, new_key=1)
     assert isinstance(mutated, DualGenome)
+    assert mutated.key == 1
     assert mutated.visual is not dual.visual or mutated.time_signal is not dual.time_signal
 
 
@@ -58,8 +59,9 @@ def test_crossover_dual_genomes():
     engine.create_population()
     a = create_random_dual_genome(engine, genome_id=0)
     b = create_random_dual_genome(engine, genome_id=1)
-    child = engine.crossover_dual_genomes(a, b)
+    child = engine.crossover_dual_genomes(a, b, new_key=2)
     assert isinstance(child, DualGenome)
+    assert child.key == 2
     assert child.visual is not None
     assert child.time_signal is not None
 
