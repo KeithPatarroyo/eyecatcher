@@ -1,17 +1,5 @@
 """Tests for Flask API endpoints using test client."""
 
-import pytest
-
-from eyecatcher.server import app
-
-
-@pytest.fixture
-def client():
-    """Flask test client."""
-    app.config["TESTING"] = True
-    with app.test_client() as c:
-        yield c
-
 
 def test_health(client):
     """GET /health returns 200."""

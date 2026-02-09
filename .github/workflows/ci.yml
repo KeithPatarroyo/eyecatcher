@@ -30,8 +30,8 @@ jobs:
       - name: Ruff format check
         run: ruff format --check .
 
-      - name: Pytest
-        run: pytest --tb=short -v
+      - name: Pytest with coverage
+        run: pytest --tb=short -v --cov=src/eyecatcher --cov-report=term-missing --cov-fail-under=25
 
   js-lint:
     runs-on: ubuntu-latest
