@@ -467,7 +467,7 @@ def _save_dual_genome(dual_genome: DualGenome, individual_id: int, visualize: bo
     pdf_bytes = None
     if visualize:
         try:
-            from genome_visualizer import GenomeVisualizer
+            from .genome_visualizer import GenomeVisualizer
             visualizer = GenomeVisualizer(engine.config)
             pdf_buffer = io.BytesIO()
             visualizer.visualize_genome(dual_genome.visual, pdf_buffer)
