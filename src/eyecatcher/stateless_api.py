@@ -17,13 +17,13 @@ from .evolution import (
     DualGenome,
     create_random_dual_genome,
     dual_genome_from_json,
-    dual_genome_network_stats,
     dual_genome_to_json,
     extract_network_data,
     parse_network_node_id,
 )
 from .evolution.shader_compiler import ShaderCompiler
 from .evolution.signals import TIME_INPUTS
+from .response_builder import build_shader_response
 
 # Create blueprint
 stateless_bp = Blueprint("stateless", __name__)
@@ -49,23 +49,16 @@ def _shader_response_for_dual(
     clicks: int = 0,
     compiler=None,
 ):
-    """Build shader response dict for a dual genome; used by compile and save flows."""
+    """Build shader response dict for a dual genome; used by the compile endpoint."""
     comp = compiler if compiler is not None else _compiler
-    shader_code = comp.compile_dual_to_glsl(
-        dual_genome, _engine.config, _engine.time_config
+    return build_shader_response(
+        dual_genome,
+        individual_id=individual_id,
+        clicks=clicks,
+        compiler=comp,
+        visual_config=_engine.config,
+        time_config=_engine.time_config,
     )
-    stats = dual_genome_network_stats(dual_genome)
-    return {
-        "id": individual_id,
-        "shader": shader_code,
-        "clicks": clicks,
-        "nodes": stats["visual_nodes"] + stats["time_nodes"],
-        "connections": stats["visual_connections"] + stats["time_connections"],
-        "visual_nodes": stats["visual_nodes"],
-        "visual_connections": stats["visual_connections"],
-        "time_nodes": stats["time_nodes"],
-        "time_connections": stats["time_connections"],
-    }
 
 
 @stateless_bp.route("/api/compile", methods=["POST"])

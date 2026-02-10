@@ -39,12 +39,12 @@ from .evolution import (
     CPPNEngine,
     DualGenome,
     dual_genome_from_json,
-    dual_genome_network_stats,
     dual_genome_to_json,
 )
 from .evolution.breeding import breed_next_generation
 from .evolution.shader_compiler import ShaderCompiler
 from .genealogy_routes import genealogy_bp
+from .response_builder import build_shader_response
 from .stateless_api import init_stateless_api, stateless_bp
 
 _log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -213,21 +213,26 @@ def _save_dual_genome(
     Build save assets in memory and return them for client-side download.
     Works on Railway (no server filesystem). Optionally write to disk if SAVE_TO_DISK=1.
     """
-    shader_code = compiler.compile_dual_to_glsl(
-        dual_genome, engine.config, engine.time_config
+    resp = build_shader_response(
+        dual_genome,
+        individual_id=individual_id,
+        clicks=0,
+        compiler=compiler,
+        visual_config=engine.config,
+        time_config=engine.time_config,
     )
-    stats = dual_genome_network_stats(dual_genome)
+    shader_code = resp["shader"]
     bundle = {
         "shader": shader_code,
         "metadata": {
             "type": "dual_cppn",
             "visual": {
-                "num_nodes": stats["visual_nodes"],
-                "num_connections": stats["visual_connections"],
+                "num_nodes": resp["visual_nodes"],
+                "num_connections": resp["visual_connections"],
             },
             "time_signal": {
-                "num_nodes": stats["time_nodes"],
-                "num_connections": stats["time_connections"],
+                "num_nodes": resp["time_nodes"],
+                "num_connections": resp["time_connections"],
             },
             "fitness": dual_genome.fitness,
         },

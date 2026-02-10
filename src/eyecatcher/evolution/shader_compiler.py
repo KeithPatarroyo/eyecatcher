@@ -14,7 +14,6 @@ from .compiler_topology import get_enabled_connections, topological_sort
 from .genome import DualGenome
 from .glsl_fragments import ACTIVATION_GLSL_BLOCK
 from .node_code_generator import generate_node_code, generate_time_signal_code
-from .serialization import dual_genome_network_stats
 from .signals import TIME_INPUTS, VISUAL_INPUTS
 
 
@@ -320,19 +319,27 @@ void main() {{
             time_config: NEAT configuration for time signal CPPN
             filepath: Output file path
         """
-        shader_code = self.compile_dual_to_glsl(dual_genome, visual_config, time_config)
-        stats = dual_genome_network_stats(dual_genome)
+        from eyecatcher.response_builder import build_shader_response
+
+        resp = build_shader_response(
+            dual_genome,
+            individual_id=dual_genome.key,
+            clicks=0,
+            compiler=self,
+            visual_config=visual_config,
+            time_config=time_config,
+        )
         bundle = {
-            "shader": shader_code,
+            "shader": resp["shader"],
             "metadata": {
                 "type": "dual_cppn",
                 "visual": {
-                    "num_nodes": stats["visual_nodes"],
-                    "num_connections": stats["visual_connections"],
+                    "num_nodes": resp["visual_nodes"],
+                    "num_connections": resp["visual_connections"],
                 },
                 "time_signal": {
-                    "num_nodes": stats["time_nodes"],
-                    "num_connections": stats["time_connections"],
+                    "num_nodes": resp["time_nodes"],
+                    "num_connections": resp["time_connections"],
                 },
                 "fitness": dual_genome.fitness,
             },

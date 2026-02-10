@@ -37,6 +37,14 @@ Compilation is split into phases so you can test or extend one part at a time:
 - **Change output (color mode):** Edit `_get_color_output_code()` and `color_mode` in [shader_compiler.py](src/eyecatcher/evolution/shader_compiler.py).
 - **Change inputs/signals:** Edit [signals.py](src/eyecatcher/evolution/signals.py) (VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map); the compiler uses them automatically.
 
+## Shader response (compile / save / export)
+
+The same “shader + network stats” shape is built in one place and used by the compile API, save bundle, and export:
+
+- **Helper:** [src/eyecatcher/response_builder.py](src/eyecatcher/response_builder.py) – `build_shader_response(dual_genome, *, individual_id, clicks, compiler, visual_config, time_config, extra_metadata=None)`.
+- **Returned keys:** `id`, `shader`, `clicks`, `nodes`, `connections`, `visual_nodes`, `visual_connections`, `time_nodes`, `time_connections`. The compile API returns `{ "shaders": [ build_shader_response(...) for each ] }`; save and export use the same stats for bundle metadata.
+- **Extending metadata:** Add fields via `extra_metadata` (merged into the result), or extend the helper (e.g. `compile_version`, `compile_time_ms`); then compile, save, and export all expose them consistently.
+
 ## Frontend extension points
 
 The viewer frontend is grouped by role; see **[static/js/README.md](static/js/README.md)** for the full layout.
@@ -67,6 +75,7 @@ Some constants exist in both Python and JavaScript; when you change them, update
 | Change breeding/selection | evolution/breeding.py, operators.py |
 | Change CPU rendering | evolution/rendering.py |
 | Change how CPPN becomes GLSL | evolution/shader_compiler.py, glsl_fragments.py, node_code_generator.py, compiler_topology.py |
+| Change compile/save/export response shape | response_builder.py |
 | Change serialization / network export | evolution/serialization.py |
 
 For full project layout and running the app, see [README.md](README.md). For contributing (tests, style), see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
