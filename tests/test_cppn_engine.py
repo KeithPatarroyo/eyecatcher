@@ -6,6 +6,7 @@ from eyecatcher.evolution import (
     create_random_dual_genome,
     create_random_genome,
 )
+from eyecatcher.evolution.operators import mutate_single_genome
 
 
 def test_engine_create_population():
@@ -78,14 +79,12 @@ def test_crossover_dual_genomes():
 
 
 def test_create_random_genome_and_mutate():
-    """Single-genome path: create_random_genome and mutate_genome work."""
+    """Single-genome path: create_random_genome and mutate_single_genome work."""
     engine = CPPNEngine()
     engine.create_population()
-    genome = create_random_genome(
-        engine.config, genome_id=42
-    )
+    genome = create_random_genome(engine.config, genome_id=42)
     assert genome is not None
-    mutated = engine.mutate_genome(genome)
+    mutated = mutate_single_genome(genome, engine.config)
     assert mutated is not None
     assert mutated.key == 43, "mutate returns child with parent_key + 1"
     assert isinstance(mutated.nodes, dict)

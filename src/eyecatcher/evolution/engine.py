@@ -13,25 +13,12 @@ from .. import get_root_dir
 from . import config as evolution_config
 from .activation import register_custom_activations
 from .genome import DualGenome
-from .operators import (
-    crossover_dual_genomes,
-    crossover_single_genomes,
-    mutate_dual_genome,
-    mutate_single_genome,
-)
+from .operators import crossover_dual_genomes, mutate_dual_genome
 from .query import query_dual_cppn, query_time_signal, query_visual_cppn
-from .rendering import (
-    render_animation_frames as _render_animation_frames,
-)
 from .rendering import (
     render_dual_animation_frames as _render_dual_animation_frames,
 )
-from .rendering import (
-    render_dual_image as _render_dual_image,
-)
-from .rendering import (
-    render_image as _render_image,
-)
+from .rendering import render_dual_image as _render_dual_image
 from .signals import (
     TIME_INPUTS,
     TIME_OUTPUTS,
@@ -147,27 +134,6 @@ class CPPNEngine:
             inputs,
         )
 
-    def render_image(
-        self,
-        genome: neat.DefaultGenome,
-        resolution: int = evolution_config.PREVIEW_RENDER_RESOLUTION,
-        time: float = 0.0,
-    ):
-        """Render a full image from a CPPN at a given time."""
-        return _render_image(genome, self.config, resolution, time)
-
-    def render_animation_frames(
-        self,
-        genome: neat.DefaultGenome,
-        resolution: int = evolution_config.PREVIEW_RENDER_RESOLUTION,
-        num_frames: int = evolution_config.DEFAULT_NUM_FRAMES,
-        time_range: tuple[float, float] = (0.0, 1.0),
-    ):
-        """Render multiple frames for animation."""
-        return _render_animation_frames(
-            genome, self.config, resolution, num_frames, time_range
-        )
-
     def render_dual_image(
         self,
         dual_genome: DualGenome,
@@ -208,36 +174,9 @@ class CPPNEngine:
             extra_inputs,
         )
 
-    def save_genome(
-        self, genome: neat.DefaultGenome, filepath: str, visualize: bool = False
-    ):
-        """Save a genome to file. If visualize=True, also create network PDF."""
-        with open(filepath, "wb") as f:
-            pickle.dump(genome, f)
-        if visualize:
-            from .genome_visualizer import render_genome_network_pdf
-
-            viz_path = filepath.replace(".pkl", "_network.pdf")
-            render_genome_network_pdf(genome, self.config, viz_path)
-
-    def load_genome(self, filepath: str) -> neat.DefaultGenome:
-        """Load a genome from file."""
-        with open(filepath, "rb") as f:
-            return pickle.load(f)
-
-    def mutate_genome(self, genome: neat.DefaultGenome) -> neat.DefaultGenome:
-        """Create a mutated copy of a visual genome (legacy support)."""
-        return mutate_single_genome(genome, self.config)
-
     def mutate_dual_genome(self, dual_genome: DualGenome, new_key: int) -> DualGenome:
         """Create a mutated copy of a dual genome."""
         return mutate_dual_genome(dual_genome, self.config, self.time_config, new_key)
-
-    def crossover_genomes(
-        self, genome1: neat.DefaultGenome, genome2: neat.DefaultGenome
-    ) -> neat.DefaultGenome:
-        """Create offspring from two visual genomes (legacy support)."""
-        return crossover_single_genomes(genome1, genome2, self.config)
 
     def crossover_dual_genomes(
         self, dual1: DualGenome, dual2: DualGenome, new_key: int

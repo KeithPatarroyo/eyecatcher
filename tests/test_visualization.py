@@ -3,12 +3,16 @@ Test genome visualization.
 """
 
 import os
+import pickle
 import shutil
 from pathlib import Path
 
 import neat
 import pytest
 from eyecatcher.evolution import create_random_genome
+from eyecatcher.evolution.operators import mutate_single_genome
+from eyecatcher.evolution.rendering import render_image
+from eyecatcher.evolution.genome_visualizer import render_genome_network_pdf
 from PIL import Image
 
 
@@ -59,16 +63,22 @@ def test_visualization(tmp_path, cppn_engine):
     """
     genome = create_random_genome(cppn_engine.config, genome_id=42)
     for _ in range(5):
-        genome = cppn_engine.mutate_genome(genome)
+        genome = mutate_single_genome(genome, cppn_engine.config)
 
     pkl_path = tmp_path / "test_genome.pkl"
     txt_path = tmp_path / "test_genome.txt"
     png_path = tmp_path / "test_pattern.png"
 
-    cppn_engine.save_genome(genome, str(pkl_path), visualize=True)
+    with open(pkl_path, "wb") as f:
+        pickle.dump(genome, f)
+    render_genome_network_pdf(
+        genome, cppn_engine.config, str(tmp_path / "test_genome_network.pdf")
+    )
     _save_genome_as_text(genome, str(txt_path), cppn_engine.config)
 
-    img = cppn_engine.render_image(genome, resolution=64, time=0.5)
+    img = render_image(
+        genome, cppn_engine.config, resolution=64, time=0.5
+    )
     Image.fromarray(img).save(str(png_path))
 
     assert pkl_path.exists()
