@@ -193,7 +193,18 @@ class CPPNEngine:
     def save_dual_genome(
         self, dual_genome: DualGenome, filepath: str, visualize: bool = False
     ):
-        """Save a dual genome to file. If visualize=True, also create network PDF."""
+        """
+        Save a dual genome to a pickle file.
+
+        Args:
+            dual_genome: The dual genome to save.
+            filepath: Path for the pickle file.
+            visualize: If True, also create a network PDF alongside
+                (via genome_visualizer).
+
+        Returns:
+            None.
+        """
         with open(filepath, "wb") as f:
             pickle.dump(
                 {
@@ -210,7 +221,15 @@ class CPPNEngine:
             render_genome_network_pdf(dual_genome.visual, self.config, viz_path)
 
     def load_dual_genome(self, filepath: str) -> DualGenome:
-        """Load a dual genome from file."""
+        """
+        Load a dual genome from a pickle file.
+
+        Args:
+            filepath: Path to the pickle file written by save_dual_genome.
+
+        Returns:
+            The restored DualGenome.
+        """
         with open(filepath, "rb") as f:
             data = pickle.load(f)
             return DualGenome(

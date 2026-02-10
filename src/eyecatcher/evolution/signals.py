@@ -2,9 +2,9 @@
 
 Defines VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS so that
 query, shader_compiler, serialization, and genome_visualizer consume one
-source of truth. When adding or removing a signal, also update the NEAT
-config num_inputs/num_outputs and the frontend evolution_config.js
-SIGNAL_TOGGLES (toggleable inputs only).
+source of truth. To add/rename a signal, edit this file and
+static/js/modules/evolution_config.js; update NEAT num_inputs/num_outputs
+(and frontend SIGNAL_TOGGLES for toggleable inputs).
 
 Derived inputs: some signals are computed from other inputs when not provided
 (e.g. distance = sqrt(x² + y²)). Register them in VISUAL_DERIVED_INPUTS so

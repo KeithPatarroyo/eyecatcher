@@ -1,6 +1,7 @@
 """
-Genome Visualization
-Visualizes CPPN network structure using matplotlib
+Genome visualization: matplotlib network diagrams of CPPN structure.
+
+Produces PDFs of visual CPPN structure; used by save (visualize=True) and tests.
 """
 
 import io

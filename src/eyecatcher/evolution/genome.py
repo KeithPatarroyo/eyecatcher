@@ -1,5 +1,8 @@
 """
 Genome types and creation: DualGenome and random genome creation.
+
+DualGenome pairs visual and time_signal NEAT genomes; create_random_dual_genome
+is the main constructor.
 """
 
 import neat

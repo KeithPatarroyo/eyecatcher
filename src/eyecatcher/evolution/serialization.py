@@ -99,7 +99,15 @@ def dual_genome_network_stats(dual: DualGenome) -> dict[str, int]:
 
 
 def dual_genome_to_json(dual: DualGenome) -> dict[str, Any]:
-    """Serialize a DualGenome to a JSON-serializable dict."""
+    """
+    Serialize a DualGenome to a JSON-serializable dict.
+
+    Args:
+        dual: The dual genome to serialize.
+
+    Returns:
+        Dict with "key", "visual", "time_signal" suitable for JSON.
+    """
     return {
         "key": dual.key,
         "visual": genome_to_json(dual.visual),
@@ -112,7 +120,17 @@ def dual_genome_from_json(
     visual_config: neat.Config,
     time_config: neat.Config,
 ) -> DualGenome:
-    """Deserialize a DualGenome from a dict (e.g. from JSON)."""
+    """
+    Deserialize a DualGenome from a dict (e.g. from JSON).
+
+    Args:
+        data: Dict with "visual" and "time_signal" genome dicts.
+        visual_config: NEAT config for the visual genome.
+        time_config: NEAT config for the time_signal genome.
+
+    Returns:
+        Reconstructed DualGenome.
+    """
     visual_data = data.get("visual", {})
     time_data = data.get("time_signal", {})
     if not visual_data or not time_data:
@@ -202,8 +220,13 @@ def extract_network_data(
     """
     Extract nodes and connections from a genome for network visualization.
 
-    neat_config: NEAT config for this genome (visual or time depending on network_type).
-    Returns (nodes, connections) as lists of dicts with id, label, type, etc.
+    Args:
+        genome: NEAT DefaultGenome (visual or time_signal).
+        network_type: "visual" or "time"; determines which signal registry is used.
+        neat_config: NEAT config for this genome (visual or time).
+
+    Returns:
+        (nodes, connections) as lists of dicts with id, label, type, etc.
     """
     nodes = []
     node_id_map = {}

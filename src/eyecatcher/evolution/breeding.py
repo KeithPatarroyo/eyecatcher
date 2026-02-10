@@ -2,7 +2,8 @@
 Stateless breeding: produce next generation from parent genome payloads.
 
 Used by the server /api/breed endpoint. Callers pass an engine and parent
-data; this module returns children as list of genome JSON dicts.
+data; this module returns children as list of genome JSON dicts. Researchers
+can change selection/elitism here.
 """
 
 import logging

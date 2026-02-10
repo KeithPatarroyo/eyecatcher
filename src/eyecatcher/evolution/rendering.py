@@ -1,5 +1,8 @@
 """
 Rendering: full-image and animation frame generation from CPPNs.
+
+Used for save PNG, batch export, and tests. Dual-CPPN path is primary
+(render_dual_image, render_dual_animation_frames).
 """
 
 from typing import Optional
@@ -34,8 +37,7 @@ def render_image(
     """
     Render a full image from a single visual CPPN at a given time (single-CPPN path).
 
-    Used by tests and any legacy single-genome flow.
-    For dual-CPPN use render_dual_image.
+    Used by tests and single-CPPN visualization. For dual-CPPN use render_dual_image.
     extra_inputs: optional dict of additional signal values (keys = signal names).
     Returns (H, W, 3) uint8 array.
     """

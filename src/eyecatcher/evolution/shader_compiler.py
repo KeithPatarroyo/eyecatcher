@@ -1,9 +1,8 @@
 """
-CPPN to GLSL Shader Compiler.
-Converts NEAT genomes into GPU-executable shader code.
+Compiles dual CPPN (visual + time) to a single GLSL fragment shader.
 
-Supports dual-CPPN compilation where a time signal CPPN modulates
-the time input to a visual CPPN.
+Uses signals.py for input/output names; researchers extend activation mapping
+here. Converts NEAT genomes into GPU-executable shader code for the web renderer.
 """
 
 import json
@@ -346,9 +345,7 @@ class ShaderCompiler:
                 )
         return "\n".join(lines)
 
-    def _build_shader_template(
-        self, node_code: str, visual_config: neat.Config
-    ) -> str:
+    def _build_shader_template(self, node_code: str, visual_config: neat.Config) -> str:
         """Build the complete GLSL shader with node computations (single CPPN)."""
 
         color_output = self._get_color_output_code()
