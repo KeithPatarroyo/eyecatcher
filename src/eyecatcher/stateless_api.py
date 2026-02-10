@@ -22,6 +22,7 @@ from .evolution import (
     parse_network_node_id,
 )
 from .evolution.shader_compiler import ShaderCompiler
+from .evolution.signals import TIME_INPUTS
 
 # Create blueprint
 stateless_bp = Blueprint("stateless", __name__)
@@ -134,15 +135,11 @@ def api_time_output():
     Returns: { "timeOutput": float, "inputs": { <enable_key>: value ... } }.
     """
     try:
-        from eyecatcher.evolution.signals import TIME_INPUTS
-
         data = request.json or {}
         genome_data = data.get("genome")
         if not genome_data:
             return api_error("genome required", 400)
-        dual = dual_genome_from_json(
-            genome_data, _engine.config, _engine.time_config
-        )
+        dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
         time_inputs = {}
         response_inputs = {}
         for s in TIME_INPUTS:
@@ -179,9 +176,7 @@ def api_network():
         if not genome_data:
             return api_error("genome required", 400)
 
-        dual = dual_genome_from_json(
-            genome_data, _engine.config, _engine.time_config
-        )
+        dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
         individual_id = genome_data.get("key", dual.key if dual else 0)
 
         all_nodes = []
@@ -242,9 +237,7 @@ def api_adjust_weight():
         new_weight = float(data.get("weight", 0))
 
         # Parse the genome
-        dual = dual_genome_from_json(
-            genome_data, _engine.config, _engine.time_config
-        )
+        dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
 
         # Select the appropriate network
         if network_type == "visual":

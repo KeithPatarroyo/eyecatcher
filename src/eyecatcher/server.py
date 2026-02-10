@@ -36,7 +36,7 @@ from .evolution import (
 )
 from .evolution.breeding import breed_next_generation
 from .evolution.shader_compiler import ShaderCompiler
-from .genealogy_routes import _init_genealogy_db, genealogy_bp
+from .genealogy_routes import genealogy_bp
 from .stateless_api import init_stateless_api, stateless_bp
 
 _log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -68,7 +68,6 @@ compiler = ShaderCompiler(
 
 # Initialize and register API blueprints
 init_stateless_api(engine, compiler)
-_init_genealogy_db()  # Initialize genealogy database
 app.register_blueprint(stateless_bp)
 app.register_blueprint(community_bp)
 app.register_blueprint(genealogy_bp)
