@@ -36,9 +36,10 @@
         gl.compileShader(shader);
 
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error("Shader compilation error:", gl.getShaderInfoLog(shader));
+            const log = gl.getShaderInfoLog(shader);
+            console.error("Shader compilation error:", log);
             gl.deleteShader(shader);
-            return null;
+            return { error: log };
         }
 
         return shader;
@@ -46,9 +47,12 @@
 
     function createProgram(gl, vertexSource, fragmentSource) {
         const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
+        if (vertexShader && vertexShader.error) return { error: vertexShader.error };
         const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+        if (fragmentShader && fragmentShader.error)
+            return { error: fragmentShader.error };
 
-        if (!vertexShader || !fragmentShader) return null;
+        if (!vertexShader || !fragmentShader) return { error: "Shader compile failed" };
 
         const program = gl.createProgram();
         gl.attachShader(program, vertexShader);
@@ -56,9 +60,10 @@
         gl.linkProgram(program);
 
         if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error("Program linking error:", gl.getProgramInfoLog(program));
+            const log = gl.getProgramInfoLog(program);
+            console.error("Program linking error:", log);
             gl.deleteProgram(program);
-            return null;
+            return { error: log || "Program link failed" };
         }
 
         return program;
@@ -68,14 +73,15 @@
      * Create WebGL program and buffer for a pattern canvas.
      * @param {HTMLCanvasElement} canvas
      * @param {string} shaderCode - Fragment shader source (GLSL)
-     * @returns {{ gl: WebGL2RenderingContext, program: WebGLProgram, positionBuffer: WebGLBuffer } | null}
+     * @returns {{ gl, program, positionBuffer } | { error: string } | null}
      */
     function setupPattern(canvas, shaderCode) {
         const gl = createWebGLContext(canvas);
-        if (!gl) return null;
+        if (!gl) return { error: "WebGL 2 not supported" };
 
         const program = createProgram(gl, VERTEX_SHADER_SOURCE, shaderCode);
-        if (!program) return null;
+        if (program && program.error) return { error: program.error };
+        if (!program) return { error: "Shader compile failed" };
 
         const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
 
@@ -249,10 +255,17 @@
         card.appendChild(info);
 
         let patternData = setupPattern(canvas, pattern.shader);
-        if (!patternData) {
+        if (!patternData || patternData.error) {
             const fallback = document.createElement("div");
             fallback.className = "pattern-canvas-fallback";
-            fallback.textContent = "WebGL not available";
+            fallback.textContent =
+                patternData && patternData.error
+                    ? patternData.error
+                    : "WebGL not available";
+            if (patternData && patternData.error && patternData.error.length > 80) {
+                fallback.setAttribute("title", patternData.error);
+                fallback.textContent = "Shader error (hover for details)";
+            }
             card.replaceChild(fallback, canvas);
             return { card: card, canvas: null, patternData: null };
         }
