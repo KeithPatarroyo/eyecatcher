@@ -267,8 +267,12 @@
     }
 
     function onCommunityLoad12() {
+        const n =
+            (window.EvolutionConfig &&
+                window.EvolutionConfig.DEFAULT_POPULATION_SIZE) ||
+            12;
         const first12 = _communityPatternsList
-            .slice(0, 12)
+            .slice(0, n)
             .map((p) => ({ ...p.genome, key: p.id }));
         document.getElementById("community-list-modal").classList.remove("show");
         if (_addToGrid) {

@@ -8,9 +8,14 @@
 
     var API_URL;
     var IDS;
-    var FULLSCREEN_CANVAS_MAX = 1024;
-    var FULLSCREEN_CANVAS_DEFAULT = 800;
-    var FULLSCREEN_CANVAS_MIN = 64;
+    var FULLSCREEN_CANVAS_MAX =
+        (window.EvolutionConfig && window.EvolutionConfig.FULLSCREEN_CANVAS_MAX) ||
+        1024;
+    var FULLSCREEN_CANVAS_DEFAULT =
+        (window.EvolutionConfig && window.EvolutionConfig.FULLSCREEN_CANVAS_DEFAULT) ||
+        800;
+    var FULLSCREEN_CANVAS_MIN =
+        (window.EvolutionConfig && window.EvolutionConfig.FULLSCREEN_CANVAS_MIN) || 64;
 
     var currentPopulation = [];
     var currentGenomes = null;
@@ -428,9 +433,18 @@
         }
 
         var sizeInput = document.getElementById(IDS.populationSizeInput);
+        var cfg = window.EvolutionConfig || {};
+        var minPop =
+            cfg.MIN_POPULATION_SIZE !== undefined ? cfg.MIN_POPULATION_SIZE : 2;
+        var maxPop =
+            cfg.MAX_POPULATION_SIZE !== undefined ? cfg.MAX_POPULATION_SIZE : 50;
+        var defaultPop =
+            cfg.DEFAULT_POPULATION_SIZE !== undefined
+                ? cfg.DEFAULT_POPULATION_SIZE
+                : 12;
         var populationSize = Math.max(
-            2,
-            Math.min(50, parseInt(sizeInput && sizeInput.value, 10) || 12)
+            minPop,
+            Math.min(maxPop, parseInt(sizeInput && sizeInput.value, 10) || defaultPop)
         );
 
         window.ApiClient.breed(parents, populationSize, {

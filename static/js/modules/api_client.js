@@ -7,7 +7,11 @@
 (function () {
     "use strict";
 
-    var DEFAULT_DEV_PORT = 5001;
+    var DEFAULT_DEV_PORT =
+        (typeof window !== "undefined" &&
+            window.EvolutionConfig &&
+            window.EvolutionConfig.DEFAULT_DEV_PORT) ||
+        5001;
 
     function getApiBaseUrl() {
         if (

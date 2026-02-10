@@ -52,7 +52,11 @@
                 /* ignore */
             }
 
-            const d = await window.ApiClient.random(12);
+            const size =
+                (window.EvolutionConfig &&
+                    window.EvolutionConfig.DEFAULT_POPULATION_SIZE) ||
+                12;
+            const d = await window.ApiClient.random(size);
             if (_loadFromStatelessGenomes) {
                 await _loadFromStatelessGenomes(d.genomes || [], 0, true);
             }

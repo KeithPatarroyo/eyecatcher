@@ -110,8 +110,15 @@
         const downBtn = document.getElementById("population-size-down");
         const upBtn = document.getElementById("population-size-up");
         if (!input || !downBtn || !upBtn) return;
+        var cfg = window.EvolutionConfig || {};
+        var minP = cfg.MIN_POPULATION_SIZE !== undefined ? cfg.MIN_POPULATION_SIZE : 2;
+        var maxP = cfg.MAX_POPULATION_SIZE !== undefined ? cfg.MAX_POPULATION_SIZE : 50;
+        var defaultP =
+            cfg.DEFAULT_POPULATION_SIZE !== undefined
+                ? cfg.DEFAULT_POPULATION_SIZE
+                : 12;
         function clamp(v) {
-            return Math.max(2, Math.min(50, isNaN(v) ? 12 : v));
+            return Math.max(minP, Math.min(maxP, isNaN(v) ? defaultP : v));
         }
         function update(val) {
             input.value = clamp(Number(val));
