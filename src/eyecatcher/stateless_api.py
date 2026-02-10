@@ -1,9 +1,10 @@
 """
 Stateless API Blueprint for Eyecatcher.
 
-Provides endpoints that don't depend on server-side population state:
-- /api/compile: Compile genome JSON to GLSL shaders
-- /api/random: Generate random population as genome JSON
+Provides endpoints that don't depend on server-side population state.
+Blueprint is registered in server; engine and compiler are injected via
+init_stateless_api. Endpoints: /api/compile, /api/random, /api/time-output,
+/api/network, /api/adjust-weight.
 """
 
 from flask import Blueprint, jsonify, request
@@ -48,7 +49,7 @@ def _shader_response_for_dual(
     clicks: int = 0,
     compiler=None,
 ):
-    """Build shader response dict for a dual genome. Uses compiler or _compiler."""
+    """Build shader response dict for a dual genome; used by compile and save flows."""
     comp = compiler if compiler is not None else _compiler
     shader_code = comp.compile_dual_to_glsl(
         dual_genome, _engine.config, _engine.time_config

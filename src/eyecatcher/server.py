@@ -8,6 +8,10 @@ Each individual has two CPPNs:
 
 Population state lives on the client; server provides compile, random, breed, save.
 Save returns file contents for client-side download (Railway / no server filesystem).
+
+Where is what: Breed implementation in evolution.breeding.breed_next_generation.
+Compile: stateless_api uses ShaderCompiler from evolution. Save: _save_dual_genome
+uses engine.render_dual_image and evolution.serialization.
 """
 
 import base64
@@ -109,7 +113,7 @@ def breed():
 
 
 def _breed_stateless(data):
-    """Stateless breed: parents in body, return children as genome JSONs."""
+    """Breed: parents in body, return children as JSONs; may save to genealogy."""
     try:
         parents_data = data.get("parents", [])
         population_size = data.get("population_size", DEFAULT_POPULATION_SIZE)

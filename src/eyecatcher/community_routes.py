@@ -100,11 +100,7 @@ def _check_admin_key():
 
 @community_bp.route("/api/community/submit", methods=["POST"])
 def api_community_submit():
-    """
-    Submit a pattern to the community pool.
-    Body: { "genome": { key, visual, time_signal }, "name": "...", "creator": "..." }
-    Returns: { "id": ..., "status": "pending" }
-    """
+    """POST /api/community/submit: body genome, name, creator; returns id, status."""
     try:
         data = request.json or {}
         genome = data.get("genome")
@@ -129,7 +125,7 @@ def api_community_submit():
 
 @community_bp.route("/api/community", methods=["GET"])
 def api_community():
-    """Return approved community submissions (genome list)."""
+    """GET /api/community: approved patterns (id, name, creator, genome)."""
     try:
         with with_db_connection(DATABASE_PATH) as conn:
             rows = conn.execute(
@@ -164,7 +160,7 @@ def api_community():
 
 @community_bp.route("/api/admin/status", methods=["GET"])
 def api_admin_status():
-    """Report if admin key is configured and its length (for debugging 403)."""
+    """GET /api/admin/status: admin key configured and length (debug 403). No auth."""
     return jsonify(
         {
             "configured": bool(ADMIN_KEY),
@@ -175,7 +171,7 @@ def api_admin_status():
 
 @community_bp.route("/api/admin/submissions", methods=["GET"])
 def api_admin_submissions():
-    """List all pending submissions (admin only)."""
+    """GET /api/admin/submissions: list pending. Admin only; X-Admin-Key."""
     ok, err_response, status = _check_admin_key()
     if not ok:
         return err_response, status
@@ -209,7 +205,7 @@ def api_admin_submissions():
 
 @community_bp.route("/api/admin/approve", methods=["POST"])
 def api_admin_approve():
-    """Approve a submission (admin only)."""
+    """POST /api/admin/approve: body id; approve. Admin only; X-Admin-Key."""
     ok, err_response, status = _check_admin_key()
     if not ok:
         return err_response, status
@@ -232,7 +228,7 @@ def api_admin_approve():
 
 @community_bp.route("/api/admin/reject", methods=["POST"])
 def api_admin_reject():
-    """Reject a submission (admin only)."""
+    """POST /api/admin/reject: body id; reject. Admin only; X-Admin-Key."""
     ok, err_response, status = _check_admin_key()
     if not ok:
         return err_response, status

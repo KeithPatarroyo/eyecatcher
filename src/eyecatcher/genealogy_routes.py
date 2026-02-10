@@ -148,21 +148,7 @@ def save_breeding_result(
 
 @genealogy_bp.route("/api/genealogy/save-population", methods=["POST"])
 def save_population():
-    """
-    Save a complete population (generation) to the genealogy tree.
-
-    Body: {
-        "genomes": [{ key, visual, time_signal }, ...],
-        "parent_id": <int or null>,  # parent population ID
-        "generation_num": <int>,
-        "branch_name": <string>,
-        "description": <string>,
-        "user_id": <string>,
-        "fitness_data": [<clicks>, ...]  # optional fitness per genome
-    }
-
-    Returns: { "population_id": <int>, "individual_ids": [<int>, ...] }
-    """
+    """POST save-population: body genomes, parent_id, gen_num, branch; returns ids."""
     try:
         data = request.json or {}
         genomes = data.get("genomes", [])
@@ -243,19 +229,7 @@ def save_population():
     "/api/genealogy/load-population/<int:population_id>", methods=["GET"]
 )
 def load_population(population_id):
-    """
-    Load a complete population by ID.
-
-    Returns: {
-        "population_id": <int>,
-        "parent_id": <int or null>,
-        "generation_num": <int>,
-        "created_at": <timestamp>,
-        "branch_name": <string>,
-        "description": <string>,
-        "genomes": [{ key, visual, time_signal }, ...]
-    }
-    """
+    """GET load-population/<id>: returns population metadata and genomes list."""
     try:
         with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             pop_row = conn.execute(
@@ -298,24 +272,7 @@ def load_population(population_id):
 
 @genealogy_bp.route("/api/genealogy/tree", methods=["GET"])
 def get_tree():
-    """
-    Get the complete genealogical tree structure.
-
-    Returns: {
-        "nodes": [
-            {
-                "id": <int>,
-                "parent_id": <int or null>,
-                "generation_num": <int>,
-                "created_at": <timestamp>,
-                "branch_name": <string>,
-                "description": <string>,
-                "population_size": <int>
-            },
-            ...
-        ]
-    }
-    """
+    """GET tree: nodes (all populations: id, parent_id, generation_num, etc.)."""
     try:
         with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             rows = conn.execute(
@@ -331,21 +288,7 @@ def get_tree():
 
 @genealogy_bp.route("/api/genealogy/branches", methods=["GET"])
 def get_branches():
-    """
-    Get all branch names and their latest generations.
-
-    Returns: {
-        "branches": [
-            {
-                "name": <string>,
-                "latest_generation": <int>,
-                "latest_population_id": <int>,
-                "node_count": <int>
-            },
-            ...
-        ]
-    }
-    """
+    """GET branches: names with latest_generation, latest_population_id, node_count."""
     try:
         with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             rows = conn.execute(
@@ -382,11 +325,7 @@ def get_branches():
 
 @genealogy_bp.route("/api/genealogy/reset", methods=["POST"])
 def reset_genealogy():
-    """
-    Clear all genealogy data (populations and individuals).
-    Use for a fresh start; data cannot be recovered.
-    Returns: { "status": "ok" }
-    """
+    """POST reset: clear all genealogy data; returns { status: ok }."""
     try:
         with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             conn.execute("DELETE FROM individuals")
@@ -399,10 +338,7 @@ def reset_genealogy():
 
 @genealogy_bp.route("/api/genealogy/export-sizes", methods=["GET"])
 def export_sizes():
-    """
-    Return estimated export sizes for full tree and per branch (for download modal).
-    Returns: { "full": { ... }, "branches": [ { "name", "populations", ... }, ... ] }
-    """
+    """GET export-sizes: full and per-branch estimated export sizes (download modal)."""
     try:
         with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             # Full: counts and total genome JSON size
@@ -473,10 +409,7 @@ def export_sizes():
 
 @genealogy_bp.route("/api/genealogy/export", methods=["GET"])
 def export_genealogy():
-    """
-    Export genealogy as JSON (populations + individuals with genomes).
-    Query: ?branch_name=<name> to export only that branch; omit for full tree.
-    """
+    """GET export: ?branch_name= optional; JSON (populations + individuals)."""
     branch_name = request.args.get("branch_name", "").strip() or None
     try:
         with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
@@ -545,16 +478,7 @@ def export_genealogy():
 
 @genealogy_bp.route("/api/genealogy/stats", methods=["GET"])
 def get_stats():
-    """
-    Get overall genealogy statistics.
-
-    Returns: {
-        "total_populations": <int>,
-        "total_individuals": <int>,
-        "total_branches": <int>,
-        "max_generation": <int>
-    }
-    """
+    """GET stats: total_populations, total_individuals, total_branches, max_gen."""
     try:
         with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             stats = conn.execute(
@@ -583,14 +507,7 @@ def get_stats():
     "/api/genealogy/population-thumbnail/<int:population_id>", methods=["GET"]
 )
 def get_population_thumbnail(population_id):
-    """
-    Get the fittest individual's genome from a population for thumbnail rendering.
-
-    Returns: {
-        "genome": <genome JSON>,
-        "fitness": <float>
-    }
-    """
+    """GET population-thumbnail/<id>: fittest genome and fitness for thumbnail."""
     try:
         with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             row = conn.execute(
