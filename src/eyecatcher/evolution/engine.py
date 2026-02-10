@@ -32,8 +32,28 @@ from .rendering import (
 from .rendering import (
     render_image as _render_image,
 )
+from .signals import (
+    TIME_INPUTS,
+    TIME_OUTPUTS,
+    VISUAL_INPUTS,
+    VISUAL_OUTPUTS,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_neat_config(config, signals, outputs, config_name: str) -> None:
+    """Assert NEAT config num_inputs/num_outputs match the signal registry."""
+    actual_in = config.genome_config.num_inputs
+    expected_in = len(signals)
+    assert (
+        actual_in == expected_in
+    ), f"{config_name}: num_inputs={actual_in}, registry has {expected_in}"
+    actual_out = config.genome_config.num_outputs
+    expected_out = len(outputs)
+    assert (
+        actual_out == expected_out
+    ), f"{config_name}: num_outputs={actual_out}, registry has {expected_out}"
 
 
 class CPPNEngine:
@@ -73,6 +93,9 @@ class CPPNEngine:
         )
         register_custom_activations(self.time_config)
 
+        _validate_neat_config(self.config, VISUAL_INPUTS, VISUAL_OUTPUTS, "visual")
+        _validate_neat_config(self.time_config, TIME_INPUTS, TIME_OUTPUTS, "time")
+
         self.population = None
         self.time_population = None
         self.generation = 0
@@ -89,68 +112,39 @@ class CPPNEngine:
     def query_time_signal(
         self,
         time_genome: neat.DefaultGenome,
-        raw_time: float,
-        mouse_speed: float,
-        mouse_distance: float = 0.0,
-        inactivity: float = 0.0,
+        inputs: dict[str, float],
     ) -> float:
-        """Query time signal CPPN for modified time. Returns value in -1 to 1."""
-        return query_time_signal(
-            time_genome,
-            self.time_config,
-            raw_time,
-            mouse_speed,
-            mouse_distance,
-            inactivity,
-        )
+        """Query time signal CPPN for modified time. Returns value in -1 to 1.
+
+        inputs: dict of signal name -> value (raw_time, mouse_speed, ...).
+        """
+        return query_time_signal(time_genome, self.time_config, inputs)
 
     def query_cppn(
         self,
         genome: neat.DefaultGenome,
-        x: float,
-        y: float,
-        time: float = 0.0,
-        mouse_speed: float = 0.0,
-        mouse_distance: float = 0.0,
-        inactivity: float = 0.0,
-        distance: Optional[float] = None,
+        inputs: dict[str, float],
     ) -> tuple[float, float, float]:
-        """Query visual CPPN for RGB at (x, y, time). Returns (r, g, b) in 0–1."""
-        return query_cppn(
-            genome,
-            self.config,
-            x,
-            y,
-            time,
-            mouse_speed,
-            mouse_distance,
-            inactivity,
-            distance,
-        )
+        """Query visual CPPN for RGB. Returns (r, g, b) in 0–1.
+
+        inputs: dict of signal name -> value (x, y, time, ...).
+        """
+        return query_cppn(genome, self.config, inputs)
 
     def query_dual_cppn(
         self,
         dual_genome: DualGenome,
-        x: float,
-        y: float,
-        raw_time: float = 0.0,
-        mouse_speed: float = 0.0,
-        mouse_distance: float = 0.0,
-        inactivity: float = 0.0,
-        distance: Optional[float] = None,
+        inputs: dict[str, float],
     ) -> tuple[float, float, float]:
-        """Query dual CPPN for RGB at (x,y,raw_time). Returns (r,g,b) in 0–1."""
+        """Query dual CPPN for RGB. Returns (r,g,b) in 0–1.
+
+        inputs: dict with x, y and time-CPPN inputs (raw_time, ...).
+        """
         return query_dual_cppn(
             dual_genome,
             self.config,
             self.time_config,
-            x,
-            y,
-            raw_time,
-            mouse_speed,
-            mouse_distance,
-            inactivity,
-            distance,
+            inputs,
         )
 
     def render_image(
@@ -178,21 +172,18 @@ class CPPNEngine:
         self,
         dual_genome: DualGenome,
         resolution: int = evolution_config.PREVIEW_RENDER_RESOLUTION,
-        raw_time: float = 0.5,
-        mouse_speed: float = 0.0,
-        mouse_distance: float = 0.0,
-        inactivity: float = 0.0,
+        extra_inputs: Optional[dict] = None,
     ):
-        """Render a complete image from a dual CPPN at a given raw time."""
+        """Render a complete image from a dual CPPN.
+
+        extra_inputs: dict of signal name -> value (from evolution.signals registry).
+        """
         return _render_dual_image(
             dual_genome,
             self.config,
             self.time_config,
             resolution,
-            raw_time,
-            mouse_speed,
-            mouse_distance,
-            inactivity,
+            extra_inputs,
         )
 
     def render_dual_animation_frames(
@@ -201,11 +192,12 @@ class CPPNEngine:
         resolution: int = evolution_config.PREVIEW_RENDER_RESOLUTION,
         num_frames: int = evolution_config.DEFAULT_NUM_FRAMES,
         time_range: tuple[float, float] = (0.0, 1.0),
-        mouse_speed: float = 0.0,
-        mouse_distance: float = 0.0,
-        inactivity: float = 0.0,
+        extra_inputs: Optional[dict] = None,
     ):
-        """Render multiple frames for a dual CPPN animation."""
+        """Render multiple frames for a dual CPPN animation.
+
+        extra_inputs: optional base signal values (from registry).
+        """
         return _render_dual_animation_frames(
             dual_genome,
             self.config,
@@ -213,9 +205,7 @@ class CPPNEngine:
             resolution,
             num_frames,
             time_range,
-            mouse_speed,
-            mouse_distance,
-            inactivity,
+            extra_inputs,
         )
 
     def save_genome(

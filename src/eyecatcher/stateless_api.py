@@ -127,35 +127,33 @@ def api_random():
 def api_time_output():
     """
     Stateless: query the Time CPPN for a genome with given inputs (for debug panel).
-    Body: { "genome": { ... }, "time", "mouseSpeed", "mouseDist", "activity" } (0-1).
-    Returns: { "timeOutput": float, "inputs": { ... } }.
+    Body: { "genome": { ... }, <enable_key>: value ... } (0-1) for each time CPPN
+    input; keys from evolution.signals TIME_INPUTS (e.g. rawTime, mouseSpeed).
+    Returns: { "timeOutput": float, "inputs": { <enable_key>: value ... } }.
     """
     try:
+        from eyecatcher.evolution.signals import TIME_INPUTS
+
         data = request.json or {}
         genome_data = data.get("genome")
         if not genome_data:
             return api_error("genome required", 400)
-        raw_time = float(data.get("time", 0))
-        mouse_speed = float(data.get("mouseSpeed", 0))
-        mouse_dist = float(data.get("mouseDist", 0))
-        activity = float(data.get("activity", 0))
         dual = dual_genome_from_json(genome_data, _engine)
-        raw_time_n = raw_time * 2.0 - 1.0
-        mouse_speed_n = mouse_speed * 2.0 - 1.0
-        mouse_dist_n = mouse_dist * 2.0 - 1.0
-        activity_n = activity * 2.0 - 1.0
-        time_output = _engine.query_time_signal(
-            dual.time_signal, raw_time_n, mouse_speed_n, mouse_dist_n, activity_n
-        )
+        time_inputs = {}
+        response_inputs = {}
+        for s in TIME_INPUTS:
+            key = s.enable_key or s.name
+            raw_val = data.get(key, data.get(s.name))
+            if raw_val is None and s.name == "raw_time":
+                raw_val = data.get("time")
+            val = float(raw_val if raw_val is not None else s.default)
+            time_inputs[s.name] = val * 2.0 - 1.0
+            response_inputs[key] = val
+        time_output = _engine.query_time_signal(dual.time_signal, time_inputs)
         return jsonify(
             {
                 "timeOutput": time_output,
-                "inputs": {
-                    "rawTime": raw_time,
-                    "mouseSpeed": mouse_speed,
-                    "mouseDist": mouse_dist,
-                    "activity": activity,
-                },
+                "inputs": response_inputs,
             }
         )
     except ValueError as e:
