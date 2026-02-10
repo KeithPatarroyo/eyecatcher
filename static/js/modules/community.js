@@ -184,8 +184,9 @@
                 "community-deselect-all-btn"
             );
             if (!_communityPatternsList.length) {
-                ul.innerHTML =
-                    '<li class="list-empty">No approved community patterns yet.</li>';
+                ul.appendChild(
+                    Utils.createListEmptyEl("li", "No approved community patterns yet.")
+                );
                 if (loadSelectedBtn) loadSelectedBtn.classList.add("hidden");
                 if (load12Btn) load12Btn.classList.add("hidden");
                 if (selectAllBtn) selectAllBtn.classList.add("hidden");
@@ -357,7 +358,7 @@
         const ul = document.getElementById("admin-pending-list");
         ul.innerHTML = "";
         if (!submissions.length) {
-            ul.innerHTML = '<li class="list-empty">No pending submissions.</li>';
+            ul.appendChild(Utils.createListEmptyEl("li", "No pending submissions."));
             return;
         }
         const shadersByKey = await compileListToShaders(submissions, (s) => ({

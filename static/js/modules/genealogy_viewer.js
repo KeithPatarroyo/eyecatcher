@@ -82,7 +82,7 @@ async function loadBranches() {
         branchList.innerHTML = "";
 
         if (!data.branches || data.branches.length === 0) {
-            branchList.innerHTML = '<div class="list-empty">No branches yet</div>';
+            branchList.appendChild(Utils.createListEmptyEl("div", "No branches yet"));
             return;
         }
 

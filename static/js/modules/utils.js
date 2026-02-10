@@ -1,7 +1,7 @@
 /**
  * Shared pure helpers for the frontend.
  * Exposes: formatBytes, escapeHtml, showLoading, safeGetItem, safeSetItem,
- * formatApiError, and constants BYTES_KB, BYTES_MB.
+ * formatApiError, createListEmptyEl, and constants BYTES_KB, BYTES_MB.
  */
 (function () {
     "use strict";
@@ -70,6 +70,19 @@
         return fallback;
     }
 
+    /**
+     * Create an empty-state element (e.g. "No items yet") with class list-empty.
+     * @param {string} tag - "li" or "div"
+     * @param {string} text - Message text
+     * @returns {HTMLElement}
+     */
+    function createListEmptyEl(tag, text) {
+        var el = document.createElement(tag);
+        el.className = "list-empty";
+        el.textContent = text;
+        return el;
+    }
+
     window.Utils = {
         formatBytes: formatBytes,
         escapeHtml: escapeHtml,
@@ -77,6 +90,7 @@
         safeGetItem: safeGetItem,
         safeSetItem: safeSetItem,
         formatApiError: formatApiError,
+        createListEmptyEl: createListEmptyEl,
         BYTES_KB: BYTES_KB,
         BYTES_MB: BYTES_MB,
     };
