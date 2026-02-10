@@ -1,162 +1,116 @@
 # Backend layout
 
-The Python package is grouped so you can quickly see **what to edit for your experiment** vs **what to leave alone**. The same roles as the frontend ([static/js/README.md](../../static/js/README.md)) apply; we use **evolution/**, **glsl/**, **web/**, **lib/**, **data/**.
+This file describes the **actual** layout of `src/eyecatcher/`. Use it to find where to edit for your experiment.
 
 ---
 
-## **evolution/** — Experiment (the algorithm)
+## Repository structure
 
-**Edit when you change how evolution works: genomes, breeding, signals, or CPU rendering.**
-
-Shaders are *not* part of evolution as a concept; they’re how we *display* the result. The GLSL pipeline lives in **glsl/**.
-
-| File | Role |
-|------|------|
-| `signals.py` | Input/output definitions (VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map). |
-| `config.py` | NEAT config paths, population size, crossover rate. |
-| `genome.py` | DualGenome, create_random_dual_genome. |
-| `breeding.py` | breed_next_generation (elitism, selection, mutation vs crossover). |
-| `operators.py` | mutate_dual_genome, crossover_dual_genomes. |
-| `activation.py` | CPU activation helpers for query. |
-| `engine.py` | CPPNEngine: population, query_time_signal, render_dual_image. |
-| `rendering.py` | render_dual_image, render_dual_animation_frames (CPU). |
-| `serialization.py` | genome_to_json, dual_genome_to_json, dual_genome_from_json, extract_network_data. |
-| `genome_visualizer.py` | Network PDF for genealogy save. |
-| `query.py` | CPPN evaluation helpers. |
-
-Public API: `from eyecatcher.evolution import CPPNEngine, create_random_dual_genome, dual_genome_to_json, ShaderCompiler, ...` (see `evolution/__init__.py`; ShaderCompiler is re-exported from glsl).
-
----
-
-## **glsl/** — Display pipeline (genome → GLSL)
-
-**Edit when you change how a genome becomes shader code or GPU output.**
-
-Evolution produces genomes; this package turns them into fragment shaders for the viewer.
-
-| File | Role |
-|------|------|
-| `compiler_topology.py` | Enabled connections, topological sort for evaluation order. |
-| `node_code_generator.py` | Genome → GLSL node computations; ACTIVATION_FUNCTIONS. |
-| `glsl_fragments.py` | Shared GLSL strings (e.g. activation block). |
-| `shader_compiler.py` | Compiles dual CPPN to fragment shader (orchestrates the above). |
-
-Import: `from eyecatcher.glsl import ShaderCompiler`.
-
----
-
-## **web/** — Application & routes (server and HTTP)
-
-**Edit when you change how the app is wired, add endpoints, or change response shape.**
-
-| File | Role |
-|------|------|
-| `app.py` | Flask app, CORS, blueprints, breed/save handlers, static serve. |
-| `stateless_api.py` | Blueprint: /api/compile, /api/random, /api/time-output, /api/network, /api/adjust-weight. |
-| `genealogy_routes.py` | Blueprint: save-population, load-population, tree, branches, reset, export, stats, thumbnail. |
-| `community_routes.py` | Blueprint: community share/browse/admin. |
-| `api_helpers.py` | api_error, error message constants. |
-| `response_builder.py` | build_shader_response (single shape for compile, save, export). |
-
-Entry point: `server.py` at package root re-exports `app` from `web.app`; use `eyecatcher.server:app`.
-
----
-
-## **lib/** — Support (infrastructure)
-
-**Only touch when fixing bugs or adding app-wide support.**
-
-| File | Role |
-|------|------|
-| `db_util.py` | with_db_connection, default_db_path, sqlite_connection. |
-
-Package root `__init__.py`: `get_root_dir()`, `__version__`.
-
----
-
-## **data/** — Data & feature layers
-
-**Edit when you care about that feature (genealogy, community, etc.).**
-
-| File | Role |
-|------|------|
-| `genealogy_db.py` | Genealogy data layer: init, save_breeding_result, save_population, get_population, get_tree_nodes, get_branches, export_genealogy_data, get_stats, get_population_thumbnail, reset_genealogy. No Flask; pure queries. |
-
-Routes in `web/genealogy_routes.py` and `web/community_routes.py` are thin HTTP wrappers.
+```
+src/eyecatcher/
+├── __init__.py          # get_root_dir(), __version__
+├── server.py            # Entry point: re-exports app from web.app (eyecatcher.server:app)
+├── README.md            # This file
+│
+├── evolution/           # Re-export surface + legacy modules (used by web, glsl)
+│   ├── __init__.py      # Re-exports from algorithm, genome, glsl; public API
+│   ├── activation.py
+│   ├── breeding.py
+│   ├── config.py
+│   ├── engine.py
+│   ├── genome.py
+│   ├── genome_visualizer.py
+│   ├── operators.py
+│   ├── query.py
+│   ├── rendering.py
+│   ├── serialization.py
+│   └── signals.py
+│
+├── algorithm/           # Evolution algorithm (config, engine, breeding, operators)
+│   ├── __init__.py
+│   ├── breeding.py
+│   ├── config.py
+│   ├── engine.py
+│   └── operators.py
+│
+├── genome/              # Genome representation and serialization
+│   ├── __init__.py
+│   ├── genome.py
+│   └── serialization.py
+│
+├── signals/             # Input/output signal definitions and activation
+│   ├── __init__.py
+│   ├── activation.py
+│   └── signals.py
+│
+├── evaluation/          # CPU rendering, CPPN query, genome visualization
+│   ├── __init__.py
+│   ├── genome_visualizer.py
+│   ├── query.py
+│   └── rendering.py
+│
+├── glsl/                # Display pipeline: genome → GLSL fragment shader
+│   ├── __init__.py
+│   ├── compiler_topology.py
+│   ├── glsl_fragments.py
+│   ├── node_code_generator.py
+│   └── shader_compiler.py
+│
+├── web/                 # Flask app and HTTP API (routes, blueprints)
+│   ├── __init__.py
+│   ├── app.py
+│   ├── api_helpers.py
+│   ├── community_routes.py
+│   ├── genealogy_routes.py
+│   ├── response_builder.py
+│   └── stateless_api.py
+│
+├── lib/                 # Infrastructure (DB, paths)
+│   ├── __init__.py
+│   └── db_util.py
+│
+└── data/                # Data layers (genealogy, etc.)
+    ├── __init__.py
+    └── genealogy_db.py
+```
 
 ---
 
----
+## What each package is for
 
-## **glsl/** — Display pipeline (genome → GLSL)
-
-**Edit when you change how a genome compiles to shader code or GPU output.**
-
-Evolution produces genomes; this module turns them into fragment shaders for the viewer.
-
-| File | Role |
-|------|------|
-| `compiler_topology.py` | Enabled connections, topological sort for evaluation order. |
-| `node_code_generator.py` | Genome → GLSL node computations; ACTIVATION_FUNCTIONS mapping. |
-| `glsl_fragments.py` | Shared GLSL strings (e.g. activation block, utility functions). |
-| `shader_compiler.py` | ShaderCompiler class; orchestrates topology, node code, and template building. |
-
-Public API: `from eyecatcher.glsl import ShaderCompiler`.
+| Package | Role | When you look here |
+|---------|------|--------------------|
+| **evolution/** | Public API and legacy modules. Re-exports from algorithm, genome, glsl. Web and glsl import from here. | Use `from eyecatcher.evolution import ...` for backward compatibility. |
+| **algorithm/** | NEAT config, CPPNEngine, breeding, mutation, crossover. | Changing the evolution algorithm or NEAT config. |
+| **genome/** | DualGenome, create_random_dual_genome, serialization (genome_to_json, dual_genome_to_json, etc.). | Changing genome representation or serialization. |
+| **signals/** | VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map, activation helpers. | Adding/changing input signals or activation functions. |
+| **evaluation/** | render_dual_image, query (CPPN evaluation), genome_visualizer (network PDF). | Changing CPU rendering, CPPN query, or network visualization. |
+| **glsl/** | ShaderCompiler; topology, node code, GLSL fragments. Genome → fragment shader. | Changing how genomes become shader code (display pipeline). |
+| **web/** | Flask app, /api/compile, /api/breed, /api/save, genealogy routes, community routes, response_builder. | Adding endpoints or changing API response shape. |
+| **lib/** | with_db_connection, default_db_path. | Fixing DB or path helpers. |
+| **data/** | genealogy_db: save_population, get_population, export_genealogy_data, etc. | Changing genealogy storage or export. |
 
 ---
 
-## **web/** — Application & routes (server, HTTP API)
+## Entry points
 
-**Edit when you change how the app is wired, add endpoints, or change API response shape.**
-
-| File | Role |
-|------|------|
-| `app.py` | Flask app, CORS, blueprints, breed/save handlers, static file serving. |
-| `stateless_api.py` | Blueprint: /api/compile, /api/random, /api/time-output, /api/network, /api/adjust-weight. |
-| `genealogy_routes.py` | Blueprint: save-population, load-population, tree, branches, reset, export, stats, thumbnail. |
-| `community_routes.py` | Blueprint: community share/browse/admin routes. |
-| `api_helpers.py` | api_error, HTTP status codes, error message constants. |
-| `response_builder.py` | build_shader_response (unified shape for compile, save, export APIs). |
-
-Entry point: `server.py` at package root re-exports `app` from `web.app`; use `eyecatcher.server:app`.
-
----
-
-## **lib/** — Support utilities (infrastructure)
-
-**Only touch when fixing bugs or adding app-wide support.**
-
-| File | Role |
-|------|------|
-| `db_util.py` | with_db_connection, default_db_path, SQLite helpers. |
-
-Package root `__init__.py`: `get_root_dir()`, `__version__`.
-
----
-
-## **data/** — Data & feature layers (genealogy, community)
-
-**Edit when you care about that feature (genealogy storage, export, community metadata, etc.).**
-
-| File | Role |
-|------|------|
-| `genealogy_db.py` | Genealogy data layer: init, save_breeding_result, save_population, get_population, get_tree_nodes, get_branches, export_genealogy_data, get_stats, get_population_thumbnail, reset_genealogy. No Flask; pure queries. |
-
-Routes in `web/genealogy_routes.py` and `web/community_routes.py` are thin HTTP wrappers that parse requests and call these functions.
+- **Flask app:** `eyecatcher.server:app` (root `server.py` re-exports from `web.app`).
+- **Public API for evolution:** `from eyecatcher.evolution import CPPNEngine, create_random_dual_genome, dual_genome_to_json, ShaderCompiler, ...` (see `evolution/__init__.py`).
 
 ---
 
 ## Summary
 
-| Area | When you look here |
-|------|---------------------|
-| **signals/** | Adding/changing input signals or activation functions. |
-| **genome/** | Changing genome representation, serialization, or network export. |
-| **algorithm/** | Changing the evolution algorithm: breeding, mutation, crossover, NEAT config. |
-| **evaluation/** | Changing CPU rendering, CPPN query, or genome visualization. |
-| **glsl/** | Changing how genomes become shader code (display pipeline). |
-| **web/** | Adding endpoints, changing response shape, or wiring the app. |
-| **lib/** | Fixing DB or path helpers, or adding app-wide infra. |
-| **data/** | Changing genealogy (or community) storage, export, or metadata. |
+| I want to… | Look in |
+|------------|---------|
+| Add/rename a signal | signals/signals.py, NEAT config, frontend evolution_config.js |
+| Change population size or NEAT paths | algorithm/config.py |
+| Change breeding/selection | algorithm/breeding.py, algorithm/operators.py |
+| Change genome or serialization | genome/genome.py, genome/serialization.py |
+| Change CPU rendering or query | evaluation/rendering.py, evaluation/query.py |
+| Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl_fragments.py, node_code_generator.py, compiler_topology.py |
+| Change compile/save/export response shape | web/response_builder.py |
+| Change genealogy storage or export | data/genealogy_db.py |
+| Add an endpoint or change API | web/ (app.py, stateless_api.py, genealogy_routes.py, community_routes.py) |
 
-For a short “I want to…” table and signal/NEAT/shader details, see the main [RESEARCHER_GUIDE.md](../../RESEARCHER_GUIDE.md) in the repo root.
+For signal/NEAT/shader details and a short “I want to…” guide, see [RESEARCHER_GUIDE.md](../../RESEARCHER_GUIDE.md) in the repo root.

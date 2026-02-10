@@ -170,7 +170,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
 - **examples/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
 - **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). To change which NEAT files are used or population size, edit [src/eyecatcher/algorithm/config.py](src/eyecatcher/algorithm/config.py). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
-- **src/eyecatcher/** – Python package. Top-level: `server`, `stateless_api`, `genealogy_routes`, `community_routes`, `api_helpers`, `db_util`. **evolution/** subpackage: `engine`, `genome`, `operators`, `query`, `rendering`, `serialization`, `shader_compiler`, `genome_visualizer`, `signals`, `config`, `breeding`, `activation`. App entrypoint: `eyecatcher.server:app`. Main API for evolution: `eyecatcher.evolution` (CPPNEngine, DualGenome, create_random_dual_genome, serialization, ShaderCompiler).
+- **src/eyecatcher/** – Python package. Top-level: `server.py` (entry point: `eyecatcher.server:app`). **Packages**: `evolution/` (public API + legacy modules), `algorithm/` (engine, breeding, config, operators), `genome/` (DualGenome, serialization), `signals/` (signal registry, activation), `evaluation/` (CPU rendering, query, genome_visualizer), `glsl/` (genome → GLSL shader), `web/` (Flask app, routes, response_builder), `data/` (genealogy_db), `lib/` (db_util). Main API: `from eyecatcher.evolution import CPPNEngine, create_random_dual_genome, dual_genome_to_json, ShaderCompiler, ...`. See [src/eyecatcher/README.md](src/eyecatcher/README.md) for the full layout.
 - **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `package.json`, `package-lock.json`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml` (run with **`make docker-up`**). **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
@@ -201,18 +201,19 @@ The server does not hold population state. The client (web UI) stores genomes (e
 
 ### Core components
 
-- **CPPN Engine** (`src/eyecatcher/algorithm/engine.py`) – `CPPNEngine`, `DualGenome`, mutation/crossover; JSON serialization and helpers in `genome/serialization.py`.
-- **Shader Compiler** (`src/eyecatcher/evolution/shader_compiler.py`) – CPPN → GLSL; `compile_dual_to_glsl()` for the web renderer.
-- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API (in `web/stateless_api.py`; compile, random, breed, save, time-output), breeding logic in `algorithm/breeding.py`, community routes, static serving.
+- **CPPN Engine** – `CPPNEngine`, breeding, mutation/crossover in `algorithm/` (and re-exported via `evolution/`); genome and serialization in `genome/`.
+- **Shader Compiler** (`src/eyecatcher/glsl/`) – CPPN → GLSL; `ShaderCompiler` and `compile_dual_to_glsl()` for the web renderer.
+- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API in `web/` (compile, random, breed, save, time-output), breeding logic in `evolution/breeding.py` or `algorithm/breeding.py`, community and genealogy routes, static serving.
 
 Researchers: see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for where to change signals, NEAT config, breeding, and rendering.
 
 ## API usage (programmatic)
 
-Main API for programmatic use is `eyecatcher.evolution`.
+Main API for programmatic use is via direct imports from submodules.
 
 ```python
-from eyecatcher.evolution import CPPNEngine, create_random_dual_genome
+from eyecatcher.algorithm import CPPNEngine
+from eyecatcher.genome import create_random_dual_genome
 
 engine = CPPNEngine()
 engine.create_population()
@@ -226,7 +227,7 @@ r, g, b = engine.query_dual_cppn(
 )
 ```
 
-Compile to shader: `from eyecatcher.evolution import ShaderCompiler` then `ShaderCompiler().compile_dual_to_glsl(dual, engine.config, engine.time_config)`. Evolution: `engine.mutate_dual_genome()`, `engine.crossover_dual_genomes()`.
+Compile to shader: `from eyecatcher.glsl import compile_dual_to_glsl()`. Evolution: `engine.mutate_dual_genome()`, `engine.crossover_dual_genomes()`.
 
 ## Creating videos
 
