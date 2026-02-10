@@ -203,76 +203,73 @@
         updateStats();
     }
 
-    function loadFromStatelessGenomes(genomes, generationNum, saveToGenealogy) {
-        if (!genomes || !genomes.length) return Promise.resolve();
+    async function loadFromStatelessGenomes(genomes, generationNum, saveToGenealogy) {
+        if (!genomes || !genomes.length) return;
         document.getElementById("loading").style.display = "block";
         document.getElementById("grid").innerHTML = "";
         patterns.clear();
-        return window.ApiClient.compile(genomes, getColorMode())
-            .then(function (compData) {
-                currentGenomes = genomes;
-                currentGenerationNum = generationNum;
-                currentPopulation = compData.shaders || [];
-                document.getElementById("gen-num").textContent = currentGenerationNum;
-                renderGridFromPopulation(currentPopulation);
-                if (saveToGenealogy) {
-                    // New root (Start Fresh): always treat gen 0 as a new branch; clear parent so we don't attach to a loaded node.
-                    var branchName = currentBranchName || "main";
-                    var parentId = currentPopulationId;
-                    if (generationNum === 0) {
-                        parentId = null;
-                        currentPopulationId = null;
-                        syncCurrentPopulationIdToStorage();
-                        var counter = getGenealogyBranchCounter();
-                        branchName = counter === 1 ? "main" : "branch-" + counter;
-                        setGenealogyBranchCounter(counter + 1);
-                        currentBranchName = branchName;
-                    }
-                    var fitnessData = currentPopulation.map(function (p) {
-                        var pat = patterns.get(p.id);
-                        return pat ? pat.clicks || 0 : 0;
-                    });
-                    return fetch(API_URL + "/genealogy/save-population", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            genomes: genomes,
-                            parent_id: parentId,
-                            generation_num: generationNum,
-                            branch_name: branchName,
-                            description:
-                                generationNum === 0
-                                    ? "Random initial population"
-                                    : "Generation " + generationNum,
-                            user_id: "user",
-                            fitness_data: fitnessData,
-                        }),
-                    })
-                        .then(function (r) {
-                            return r.json();
-                        })
-                        .then(function (data) {
-                            if (data.population_id != null) {
-                                currentPopulationId = data.population_id;
-                                syncCurrentPopulationIdToStorage();
-                            }
-                        })
-                        .catch(function (e) {
-                            console.warn("Genealogy save failed:", e);
-                        });
+        try {
+            var compData = await window.ApiClient.compile(genomes, getColorMode());
+            currentGenomes = genomes;
+            currentGenerationNum = generationNum;
+            currentPopulation = compData.shaders || [];
+            document.getElementById("gen-num").textContent = currentGenerationNum;
+            renderGridFromPopulation(currentPopulation);
+            if (saveToGenealogy) {
+                var branchName = currentBranchName || "main";
+                var parentId = currentPopulationId;
+                if (generationNum === 0) {
+                    parentId = null;
+                    currentPopulationId = null;
+                    syncCurrentPopulationIdToStorage();
+                    var counter = getGenealogyBranchCounter();
+                    branchName = counter === 1 ? "main" : "branch-" + counter;
+                    setGenealogyBranchCounter(counter + 1);
+                    currentBranchName = branchName;
                 }
-            })
-            .catch(function (e) {
-                console.error(e);
-                showGridError(e.message || "Failed to compile", true);
-            })
-            .then(function () {
-                document.getElementById("loading").style.display = "none";
-            });
+                var fitnessData = currentPopulation.map(function (p) {
+                    var pat = patterns.get(p.id);
+                    return pat ? pat.clicks || 0 : 0;
+                });
+                try {
+                    var data = await window.ApiClient.apiFetch(
+                        API_URL + "/genealogy/save-population",
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                genomes: genomes,
+                                parent_id: parentId,
+                                generation_num: generationNum,
+                                branch_name: branchName,
+                                description:
+                                    generationNum === 0
+                                        ? "Random initial population"
+                                        : "Generation " + generationNum,
+                                user_id: "user",
+                                fitness_data: fitnessData,
+                            }),
+                        },
+                        "Save failed"
+                    );
+                    if (data.population_id != null) {
+                        currentPopulationId = data.population_id;
+                        syncCurrentPopulationIdToStorage();
+                    }
+                } catch (e) {
+                    console.warn("Genealogy save failed:", e);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            showGridError(e.message || "Failed to compile", true);
+        } finally {
+            document.getElementById("loading").style.display = "none";
+        }
     }
 
-    function addToGrid(genomes) {
-        if (!genomes || !genomes.length) return Promise.resolve();
+    async function addToGrid(genomes) {
+        if (!genomes || !genomes.length) return;
         var nextKey = 0;
         patterns.forEach(function (_, id) {
             nextKey = Math.max(nextKey, id + 1);
@@ -284,65 +281,63 @@
             return copy;
         });
         document.getElementById("loading").style.display = "block";
-        return window.ApiClient.compile(payload, getColorMode())
-            .then(function (compData) {
-                var newShaders = compData.shaders || [];
-                if (!currentGenomes) currentGenomes = [];
-                if (!currentPopulation) currentPopulation = [];
-                currentGenomes.push.apply(currentGenomes, genomes);
-                currentPopulation.push.apply(currentPopulation, newShaders);
-                var grid = document.getElementById("grid");
-                newShaders.forEach(function (pattern) {
-                    var result = window.PatternRenderer.createPatternCard({
-                        pattern: pattern,
-                        onShare: function (id) {
-                            window.CommunityUI.openSubmitCommunityModal(id);
-                        },
-                        onNetwork: function (id, card) {
-                            window.NetworkVisualizer.toggle(id, card);
-                        },
-                        onSave: savePattern,
-                        onFullscreen: openFullscreen,
-                        onClick: clickPattern,
-                        onUnclick: unclickPattern,
-                        onMouseEnter: function (id) {
-                            if (typeof window.EyecatcherDebug !== "undefined")
-                                window.EyecatcherDebug.setHoveredPatternId(id);
-                        },
-                        onMouseLeave: function (id) {
-                            if (
-                                typeof window.EyecatcherDebug !== "undefined" &&
-                                window.EyecatcherDebug.getHoveredPatternId() === id
-                            ) {
-                                window.EyecatcherDebug.setHoveredPatternId(null);
-                            }
-                        },
-                    });
-                    grid.appendChild(result.card);
-                    if (result.patternData) {
-                        patterns.set(pattern.id, {
-                            canvas: result.canvas,
-                            gl: result.patternData.gl,
-                            program: result.patternData.program,
-                            positionBuffer: result.patternData.positionBuffer,
-                            clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
-                        });
-                    }
+        try {
+            var compData = await window.ApiClient.compile(payload, getColorMode());
+            var newShaders = compData.shaders || [];
+            if (!currentGenomes) currentGenomes = [];
+            if (!currentPopulation) currentPopulation = [];
+            currentGenomes.push.apply(currentGenomes, genomes);
+            currentPopulation.push.apply(currentPopulation, newShaders);
+            var grid = document.getElementById("grid");
+            newShaders.forEach(function (pattern) {
+                var result = window.PatternRenderer.createPatternCard({
+                    pattern: pattern,
+                    onShare: function (id) {
+                        window.CommunityUI.openSubmitCommunityModal(id);
+                    },
+                    onNetwork: function (id, card) {
+                        window.NetworkVisualizer.toggle(id, card);
+                    },
+                    onSave: savePattern,
+                    onFullscreen: openFullscreen,
+                    onClick: clickPattern,
+                    onUnclick: unclickPattern,
+                    onMouseEnter: function (id) {
+                        if (typeof window.EyecatcherDebug !== "undefined")
+                            window.EyecatcherDebug.setHoveredPatternId(id);
+                    },
+                    onMouseLeave: function (id) {
+                        if (
+                            typeof window.EyecatcherDebug !== "undefined" &&
+                            window.EyecatcherDebug.getHoveredPatternId() === id
+                        ) {
+                            window.EyecatcherDebug.setHoveredPatternId(null);
+                        }
+                    },
                 });
-                updateStats();
-            })
-            .catch(function (e) {
-                console.error(e);
-                if (window.Toast)
-                    window.Toast.show(
-                        "Add failed",
-                        e.message || "Failed to compile",
-                        "error"
-                    );
-            })
-            .then(function () {
-                document.getElementById("loading").style.display = "none";
+                grid.appendChild(result.card);
+                if (result.patternData) {
+                    patterns.set(pattern.id, {
+                        canvas: result.canvas,
+                        gl: result.patternData.gl,
+                        program: result.patternData.program,
+                        positionBuffer: result.patternData.positionBuffer,
+                        clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
+                    });
+                }
             });
+            updateStats();
+        } catch (e) {
+            console.error(e);
+            if (window.Toast)
+                window.Toast.show(
+                    "Add failed",
+                    e.message || "Failed to compile",
+                    "error"
+                );
+        } finally {
+            document.getElementById("loading").style.display = "none";
+        }
     }
 
     function clickPattern(id, card) {

@@ -763,67 +763,58 @@ document.getElementById("focus-current-btn").onclick = () => {
     }
 };
 
+function bindSliderInput(inputId, valueSpanId, formatter, onValueChange) {
+    const input = document.getElementById(inputId);
+    const valueSpan = document.getElementById(valueSpanId);
+    if (!input || !valueSpan) return;
+    input.addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        valueSpan.textContent = formatter(value);
+        if (onValueChange) onValueChange(value);
+    });
+}
+
 // Initialize physics controls
 function initPhysicsControls() {
-    // Center force
-    document.getElementById("center-force").addEventListener("input", function (e) {
-        const value = parseFloat(e.target.value);
-        document.getElementById("center-force-value").textContent = value.toFixed(2);
+    const setPhysics = (key, value, negate) => {
         if (treeNetwork && !hierarchicalLayout) {
             treeNetwork.setOptions({
                 physics: {
-                    barnesHut: {
-                        centralGravity: value,
-                    },
+                    barnesHut: { [key]: negate ? -value : value },
                 },
             });
         }
-    });
-
-    // Repel force
-    document.getElementById("repel-force").addEventListener("input", function (e) {
-        const value = parseFloat(e.target.value);
-        document.getElementById("repel-force-value").textContent = value;
-        if (treeNetwork && !hierarchicalLayout) {
-            treeNetwork.setOptions({
-                physics: {
-                    barnesHut: {
-                        gravitationalConstant: -value,
-                    },
-                },
-            });
-        }
-    });
-
-    // Link force
-    document.getElementById("link-force").addEventListener("input", function (e) {
-        const value = parseFloat(e.target.value);
-        document.getElementById("link-force-value").textContent = value.toFixed(2);
-        if (treeNetwork && !hierarchicalLayout) {
-            treeNetwork.setOptions({
-                physics: {
-                    barnesHut: {
-                        springConstant: value,
-                    },
-                },
-            });
-        }
-    });
-
-    // Link distance
-    document.getElementById("link-distance").addEventListener("input", function (e) {
-        const value = parseFloat(e.target.value);
-        document.getElementById("link-distance-value").textContent = value;
-        if (treeNetwork && !hierarchicalLayout) {
-            treeNetwork.setOptions({
-                physics: {
-                    barnesHut: {
-                        springLength: value,
-                    },
-                },
-            });
-        }
-    });
+    };
+    bindSliderInput(
+        "center-force",
+        "center-force-value",
+        (v) => v.toFixed(2),
+        (v) => setPhysics("centralGravity", v)
+    );
+    bindSliderInput(
+        "repel-force",
+        "repel-force-value",
+        (v) => String(v),
+        (v) => setPhysics("gravitationalConstant", v, true)
+    );
+    bindSliderInput(
+        "link-force",
+        "link-force-value",
+        (v) => v.toFixed(2),
+        (v) => setPhysics("springConstant", v)
+    );
+    bindSliderInput(
+        "link-distance",
+        "link-distance-value",
+        (v) => String(v),
+        (v) => setPhysics("springLength", v)
+    );
+    bindSliderInput(
+        "damping",
+        "damping-value",
+        (v) => v.toFixed(2),
+        (v) => setPhysics("damping", v)
+    );
 
     // Show arrows
     document.getElementById("show-arrows").addEventListener("change", function (e) {
@@ -844,52 +835,33 @@ function initPhysicsControls() {
         }
     });
 
-    // Node size
-    document.getElementById("node-size").addEventListener("input", function (e) {
-        const value = parseFloat(e.target.value);
-        document.getElementById("node-size-value").textContent = value;
-        if (treeNetwork) {
-            const nodes = treeNetwork.body.data.nodes;
-            const allNodes = nodes.get();
-            allNodes.forEach((node) => {
-                nodes.update({
-                    id: node.id,
-                    size: value / 2, // Divide by 2 for radius
+    bindSliderInput(
+        "node-size",
+        "node-size-value",
+        (v) => String(v),
+        (value) => {
+            if (treeNetwork) {
+                treeNetwork.body.data.nodes.get().forEach((node) => {
+                    treeNetwork.body.data.nodes.update({
+                        id: node.id,
+                        size: value / 2,
+                    });
                 });
-            });
+            }
         }
-    });
-
-    // Link thickness
-    document.getElementById("link-thickness").addEventListener("input", function (e) {
-        const value = parseFloat(e.target.value);
-        document.getElementById("link-thickness-value").textContent = value.toFixed(1);
-        if (treeNetwork) {
-            const edges = treeNetwork.body.data.edges;
-            const allEdges = edges.get();
-            allEdges.forEach((edge) => {
-                edges.update({
-                    id: edge.id,
-                    width: value,
+    );
+    bindSliderInput(
+        "link-thickness",
+        "link-thickness-value",
+        (v) => v.toFixed(1),
+        (value) => {
+            if (treeNetwork) {
+                treeNetwork.body.data.edges.get().forEach((edge) => {
+                    treeNetwork.body.data.edges.update({ id: edge.id, width: value });
                 });
-            });
+            }
         }
-    });
-
-    // Damping
-    document.getElementById("damping").addEventListener("input", function (e) {
-        const value = parseFloat(e.target.value);
-        document.getElementById("damping-value").textContent = value.toFixed(2);
-        if (treeNetwork && !hierarchicalLayout) {
-            treeNetwork.setOptions({
-                physics: {
-                    barnesHut: {
-                        damping: value,
-                    },
-                },
-            });
-        }
-    });
+    );
 
     updateControlsVisibility();
 }
