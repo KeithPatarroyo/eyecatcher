@@ -1,8 +1,11 @@
 """
 Evolution subpackage: dual-CPPN engine, genomes, operators, serialization, rendering.
 
+This is the preferred import surface for evolution; use
+``from eyecatcher.evolution import ...``.
+
 Public API for researchers and the rest of the app:
-- CPPNEngine, DualGenome
+- CPPNEngine, DualGenome, ShaderCompiler
 - create_random_genome, create_random_dual_genome
 - Serialization: genome_to_json, genome_from_json, dual_genome_to_json,
   dual_genome_from_json, copy_genome, copy_dual_genome, dual_genome_network_stats,
@@ -35,10 +38,12 @@ from .serialization import (
     genome_to_json,
     parse_network_node_id,
 )
+from .shader_compiler import ShaderCompiler
 
 __all__ = [
     "CPPNEngine",
     "DualGenome",
+    "ShaderCompiler",
     "create_random_genome",
     "create_random_dual_genome",
     "genome_to_json",
