@@ -104,47 +104,53 @@
     function renderPattern(patternData, time, mouseSpd, mouseDist, inact, signalState) {
         const { gl, program, positionBuffer } = patternData;
         const sig = signalState || { time: {}, visual: {} };
+        const uniformValues = {
+            uTime: time,
+            uMouseSpeed: mouseSpd,
+            uMouseDist: mouseDist,
+            uInactivity: inact,
+        };
 
         gl.useProgram(program);
 
-        gl.uniform1f(gl.getUniformLocation(program, "uTime"), time);
-        gl.uniform1f(gl.getUniformLocation(program, "uMouseSpeed"), mouseSpd);
-        gl.uniform1f(gl.getUniformLocation(program, "uMouseDist"), mouseDist);
-        gl.uniform1f(gl.getUniformLocation(program, "uInactivity"), inact);
+        const baseUniforms = new Set();
+        ["time", "visual"].forEach(function (cppnType) {
+            const inputs =
+                window.EvolutionConfig &&
+                window.EvolutionConfig.SIGNALS &&
+                window.EvolutionConfig.SIGNALS[cppnType].inputs;
+            if (!inputs) return;
+            inputs.forEach(function (s) {
+                if (s.uniform && !baseUniforms.has(s.uniform)) {
+                    const loc = gl.getUniformLocation(program, s.uniform);
+                    if (loc !== null) {
+                        gl.uniform1f(loc, uniformValues[s.uniform]);
+                    }
+                    baseUniforms.add(s.uniform);
+                }
+            });
+        });
 
-        gl.uniform1f(
-            gl.getUniformLocation(program, "uTimeEnableRawTime"),
-            sig.time.rawTime ? 1.0 : 0.0
-        );
-        gl.uniform1f(
-            gl.getUniformLocation(program, "uTimeEnableMouseSpeed"),
-            sig.time.mouseSpeed ? 1.0 : 0.0
-        );
-        gl.uniform1f(
-            gl.getUniformLocation(program, "uTimeEnableMouseDist"),
-            sig.time.mouseDist ? 1.0 : 0.0
-        );
-        gl.uniform1f(
-            gl.getUniformLocation(program, "uTimeEnableInactivity"),
-            sig.time.inactivity ? 1.0 : 0.0
-        );
-
-        gl.uniform1f(
-            gl.getUniformLocation(program, "uVisualEnableTime"),
-            sig.visual.time ? 1.0 : 0.0
-        );
-        gl.uniform1f(
-            gl.getUniformLocation(program, "uVisualEnableMouseSpeed"),
-            sig.visual.mouseSpeed ? 1.0 : 0.0
-        );
-        gl.uniform1f(
-            gl.getUniformLocation(program, "uVisualEnableMouseDist"),
-            sig.visual.mouseDist ? 1.0 : 0.0
-        );
-        gl.uniform1f(
-            gl.getUniformLocation(program, "uVisualEnableInactivity"),
-            sig.visual.inactivity ? 1.0 : 0.0
-        );
+        ["time", "visual"].forEach(function (cppnType) {
+            const inputs =
+                window.EvolutionConfig &&
+                window.EvolutionConfig.SIGNALS &&
+                window.EvolutionConfig.SIGNALS[cppnType].inputs;
+            if (!inputs) return;
+            const prefix =
+                "u" + cppnType.charAt(0).toUpperCase() + cppnType.slice(1) + "Enable";
+            inputs.forEach(function (s) {
+                const uniformName =
+                    prefix + s.enableKey.charAt(0).toUpperCase() + s.enableKey.slice(1);
+                const loc = gl.getUniformLocation(program, uniformName);
+                if (loc !== null) {
+                    gl.uniform1f(
+                        loc,
+                        sig[cppnType] && sig[cppnType][s.enableKey] ? 1.0 : 0.0
+                    );
+                }
+            });
+        });
 
         const positionLocation = gl.getAttribLocation(program, "position");
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
