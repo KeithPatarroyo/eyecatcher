@@ -7,15 +7,15 @@ use temp paths; no real data is modified.
 
 from unittest.mock import patch
 
+import eyecatcher.data.genealogy_db as genealogy_db_module
 import pytest
-
-from eyecatcher import community_routes, genealogy_routes
 from eyecatcher.evolution import (
     CPPNEngine,
     create_random_dual_genome,
     dual_genome_from_json,
 )
 from eyecatcher.server import app
+from eyecatcher.web import community_routes
 
 
 def minimal_dual_genome_one_hidden_visual(engine: CPPNEngine):
@@ -99,8 +99,8 @@ def random_dual_genome(cppn_engine):
 def genealogy_db(tmp_path):
     """Use a temp DB for genealogy so tests don't touch the real one."""
     path = tmp_path / "genealogy.db"
-    with patch.object(genealogy_routes, "GENEALOGY_DB_PATH", str(path)):
-        genealogy_routes._init_genealogy_db()
+    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(path)):
+        genealogy_db_module.init_genealogy_db()
         yield path
 
 

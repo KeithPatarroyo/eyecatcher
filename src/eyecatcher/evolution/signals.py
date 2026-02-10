@@ -1,7 +1,7 @@
 """Central registry of CPPN input and output signals.
 
 Defines VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS so that
-query, shader_compiler, serialization, and genome_visualizer consume one
+query, glsl (shader compiler), serialization, and genome_visualizer consume one
 source of truth. To add/rename a signal, edit this file and
 static/js/modules/evolution_config.js; update NEAT num_inputs/num_outputs
 (and frontend SIGNAL_TOGGLES for toggleable inputs).

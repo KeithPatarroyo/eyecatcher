@@ -18,7 +18,7 @@ from eyecatcher.evolution.config import (
     DEFAULT_POPULATION_SIZE,
     PREVIEW_RENDER_RESOLUTION,
 )
-from eyecatcher.evolution.shader_compiler import ShaderCompiler
+from eyecatcher.glsl import ShaderCompiler
 from PIL import Image
 
 

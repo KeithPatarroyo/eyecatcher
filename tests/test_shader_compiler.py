@@ -1,8 +1,8 @@
 """Tests for shader compiler: CPPN to GLSL."""
 
 from conftest import minimal_dual_genome_one_hidden_visual
-from eyecatcher.evolution.node_code_generator import ACTIVATION_FUNCTIONS
-from eyecatcher.evolution.shader_compiler import ShaderCompiler
+from eyecatcher.glsl import ShaderCompiler
+from eyecatcher.glsl.node_code_generator import ACTIVATION_FUNCTIONS
 
 
 def test_compile_dual_to_glsl_returns_string(cppn_engine, random_dual_genome):

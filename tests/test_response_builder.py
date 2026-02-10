@@ -1,8 +1,8 @@
 """Tests for response_builder.build_shader_response."""
 
 from eyecatcher.evolution import dual_genome_network_stats
-from eyecatcher.evolution.shader_compiler import ShaderCompiler
-from eyecatcher.response_builder import build_shader_response
+from eyecatcher.glsl import ShaderCompiler
+from eyecatcher.web.response_builder import build_shader_response
 
 
 def test_build_shader_response_returns_expected_keys(cppn_engine, random_dual_genome):

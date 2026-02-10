@@ -2,11 +2,26 @@
 
 This guide points you to the files that matter for changing evolution behavior (signals, NEAT config, breeding, rendering). The rest of the app (server, community, genealogy UI) you can mostly ignore for evolution-only work.
 
+## How the backend is grouped
+
+The Python package uses the same mental model as the frontend ([static/js/README.md](static/js/README.md)):
+
+| Area | What it is | When you look here |
+|------|------------|---------------------|
+| **evolution/** | The algorithm: genomes, breeding, signals, CPU rendering, serialization. | Changing how evolution works. |
+| **glsl/** | Display pipeline: genome → GLSL (shader compiler, topology, node code, fragments). | Changing how genomes become shader code. |
+| **web/** | Server, API blueprints, response helpers. | Adding endpoints or changing app wiring. |
+| **lib/** | DB and path utilities. | Fixing infra or adding app-wide support. |
+| **data/** | Genealogy DB, (community). | Changing genealogy storage, export, or a feature. |
+
+Full file-by-file layout: **[src/eyecatcher/README.md](src/eyecatcher/README.md)**.
+
 ## Where evolution logic lives
 
-- All evolution code is in **src/eyecatcher/evolution/**.
-- Public API: `from eyecatcher.evolution import CPPNEngine, create_random_dual_genome, dual_genome_to_json, ...` (see evolution/__init__.py).
-- Entry point for the web app is **server.py**; it uses evolution for compile, breed, save, and query.
+- The *algorithm* (genomes, breeding, operators, engine, CPU rendering) is in **src/eyecatcher/evolution/**.
+- Turning genomes into shader code is in **src/eyecatcher/glsl/** (not part of “evolution” as a concept—it’s the display pipeline).
+- Public API: `from eyecatcher.evolution import CPPNEngine, create_random_dual_genome, dual_genome_to_json, ShaderCompiler, ...` (ShaderCompiler re-exported from glsl).
+- Entry point for the web app is **server.py**; it uses evolution and glsl for compile, breed, save, and query.
 
 ## Add or change a signal (input/output)
 
@@ -28,22 +43,31 @@ This guide points you to the files that matter for changing evolution behavior (
 - **Rendering:** [src/eyecatcher/evolution/rendering.py](src/eyecatcher/evolution/rendering.py) – render_dual_image, render_dual_animation_frames (used for save PNG and batch export). Single-CPPN path: render_image, render_animation_frames (tests and legacy).
 - **Serialization:** [src/eyecatcher/evolution/serialization.py](src/eyecatcher/evolution/serialization.py) – genome_to_json, dual_genome_to_json, dual_genome_from_json, extract_network_data (for network viz and API).
 
-## GLSL / shader compilation
+## GLSL / shader compilation (display pipeline)
 
-Compilation is split into phases so you can test or extend one part at a time:
+Shaders are how we *display* evolved genomes, not part of the evolution algorithm. The pipeline lives in **glsl/**:
 
-- **Phases:** Topology → node code → template. Implemented in [compiler_topology.py](src/eyecatcher/evolution/compiler_topology.py) (enabled connections, evaluation order), [node_code_generator.py](src/eyecatcher/evolution/node_code_generator.py) (genome → GLSL node computations), [glsl_fragments.py](src/eyecatcher/evolution/glsl_fragments.py) (activation function GLSL strings), [shader_compiler.py](src/eyecatcher/evolution/shader_compiler.py) (orchestrates and builds the full shader).
-- **Add an activation:** Register it in [activation.py](src/eyecatcher/evolution/activation.py) for CPU query; add the GLSL implementation to [glsl_fragments.py](src/eyecatcher/evolution/glsl_fragments.py) and the name mapping to [node_code_generator.py](src/eyecatcher/evolution/node_code_generator.py) (`ACTIVATION_FUNCTIONS`); update NEAT config if needed.
-- **Change output (color mode):** Edit `_get_color_output_code()` and `color_mode` in [shader_compiler.py](src/eyecatcher/evolution/shader_compiler.py).
-- **Change inputs/signals:** Edit [signals.py](src/eyecatcher/evolution/signals.py) (VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map); the compiler uses them automatically.
+- **Phases:** Topology → node code → template. Implemented in [glsl/compiler_topology.py](src/eyecatcher/glsl/compiler_topology.py) (enabled connections, evaluation order), [glsl/node_code_generator.py](src/eyecatcher/glsl/node_code_generator.py) (genome → GLSL node computations), [glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) (activation GLSL strings), [glsl/shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py) (orchestrates and builds the full shader).
+- **Add an activation:** Register it in [evolution/activation.py](src/eyecatcher/evolution/activation.py) for CPU query; add the GLSL in [glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) and the name mapping in [glsl/node_code_generator.py](src/eyecatcher/glsl/node_code_generator.py) (`ACTIVATION_FUNCTIONS`); update NEAT config if needed.
+- **Change output (color mode):** Edit `_get_color_output_code()` and `color_mode` in [glsl/shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py).
+- **Change inputs/signals:** Edit [evolution/signals.py](src/eyecatcher/evolution/signals.py) (VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map); the compiler uses them automatically.
 
 ## Shader response (compile / save / export)
 
 The same “shader + network stats” shape is built in one place and used by the compile API, save bundle, and export:
 
-- **Helper:** [src/eyecatcher/response_builder.py](src/eyecatcher/response_builder.py) – `build_shader_response(dual_genome, *, individual_id, clicks, compiler, visual_config, time_config, extra_metadata=None)`.
+- **Helper:** [src/eyecatcher/web/response_builder.py](src/eyecatcher/web/response_builder.py) – `build_shader_response(dual_genome, *, individual_id, clicks, compiler, visual_config, time_config, extra_metadata=None)`.
 - **Returned keys:** `id`, `shader`, `clicks`, `nodes`, `connections`, `visual_nodes`, `visual_connections`, `time_nodes`, `time_connections`. The compile API returns `{ "shaders": [ build_shader_response(...) for each ] }`; save and export use the same stats for bundle metadata.
 - **Extending metadata:** Add fields via `extra_metadata` (merged into the result), or extend the helper (e.g. `compile_version`, `compile_time_ms`); then compile, save, and export all expose them consistently.
+
+## Data collection / genealogy
+
+Genealogy stores evolutionary history (populations, individuals, branches) in SQLite:
+
+- **Data layer:** [src/eyecatcher/data/genealogy_db.py](src/eyecatcher/data/genealogy_db.py) – DB init, `save_breeding_result`, `save_population`, and pure query functions (`get_population`, `get_tree_nodes`, `get_branches`, `export_genealogy_data`, `export_sizes`, `get_stats`, `get_population_thumbnail`, `reset_genealogy`). No Flask; returns Python dicts/lists.
+- **Routes:** [web/genealogy_routes.py](src/eyecatcher/web/genealogy_routes.py) – thin HTTP wrappers: parse request, call genealogy_db, jsonify.
+- **Extending metadata:** The `populations.metadata_json` column stores arbitrary JSON. Pass `metadata={...}` to `save_population` or `save_breeding_result` (e.g. experiment_id, config_hash, selection method) for reproducibility; export includes it.
+- **Custom export:** Export format is the dict returned by `export_genealogy_data`. To add another format (e.g. CSV of fitness over time), add a function in genealogy_db and a route that calls it.
 
 ## Frontend extension points
 
@@ -58,7 +82,7 @@ The viewer frontend is grouped by role; see **[static/js/README.md](static/js/RE
 
 ## What you can ignore for evolution-only work
 
-- **Server and routes:** server.py, stateless_api.py, genealogy_routes.py, community_routes.py – HTTP and DB; you only need to know that they call evolution (breeding, compile, serialization) and engine.
+- **Server and routes:** server.py, web/ (stateless_api, genealogy_routes, community_routes) – HTTP and DB; they call evolution (breeding, serialization), glsl (compile), response_builder, and data (genealogy_db).
 - **Frontend:** static/ – pattern renderer, viewer controls, and evolution_config.js matter for signals and UI; the rest (community UI, genealogy viewer, storage) is optional for "just evolution."
 - **Data and config:** data/ (DBs), config/neat/ (file contents matter; paths set in evolution/config.py).
 
@@ -74,8 +98,9 @@ Some constants exist in both Python and JavaScript; when you change them, update
 | Change population size or NEAT paths | evolution/config.py |
 | Change breeding/selection | evolution/breeding.py, operators.py |
 | Change CPU rendering | evolution/rendering.py |
-| Change how CPPN becomes GLSL | evolution/shader_compiler.py, glsl_fragments.py, node_code_generator.py, compiler_topology.py |
-| Change compile/save/export response shape | response_builder.py |
+| Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl_fragments.py, node_code_generator.py, compiler_topology.py |
+| Change compile/save/export response shape | web/response_builder.py |
+| Change genealogy storage or export | data/genealogy_db.py |
 | Change serialization / network export | evolution/serialization.py |
 
 For full project layout and running the app, see [README.md](README.md). For contributing (tests, style), see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).

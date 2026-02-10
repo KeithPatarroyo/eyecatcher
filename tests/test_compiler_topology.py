@@ -1,6 +1,6 @@
 """Tests for compiler topology: enabled connections and evaluation order."""
 
-from eyecatcher.evolution.compiler_topology import (
+from eyecatcher.glsl.compiler_topology import (
     get_enabled_connections,
     topological_sort,
 )
