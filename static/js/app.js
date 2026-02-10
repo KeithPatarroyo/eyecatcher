@@ -159,36 +159,42 @@
         }
     }
 
+    function patternCardCallbacks(pattern) {
+        return {
+            pattern: pattern,
+            onShare: function (id) {
+                window.CommunityUI.openSubmitCommunityModal(id);
+            },
+            onNetwork: function (id, card) {
+                window.NetworkVisualizer.toggle(id, card);
+            },
+            onSave: savePattern,
+            onFullscreen: openFullscreen,
+            onClick: clickPattern,
+            onUnclick: unclickPattern,
+            onMouseEnter: function (id) {
+                if (typeof window.EyecatcherDebug !== "undefined")
+                    window.EyecatcherDebug.setHoveredPatternId(id);
+            },
+            onMouseLeave: function (id) {
+                if (
+                    typeof window.EyecatcherDebug !== "undefined" &&
+                    window.EyecatcherDebug.getHoveredPatternId() === id
+                ) {
+                    window.EyecatcherDebug.setHoveredPatternId(null);
+                }
+            },
+        };
+    }
+
     function renderGridFromPopulation(population) {
         document.getElementById("grid").innerHTML = "";
         patterns.clear();
         var grid = document.getElementById("grid");
         population.forEach(function (pattern) {
-            var result = window.PatternRenderer.createPatternCard({
-                pattern: pattern,
-                onShare: function (id) {
-                    window.CommunityUI.openSubmitCommunityModal(id);
-                },
-                onNetwork: function (id, card) {
-                    window.NetworkVisualizer.toggle(id, card);
-                },
-                onSave: savePattern,
-                onFullscreen: openFullscreen,
-                onClick: clickPattern,
-                onUnclick: unclickPattern,
-                onMouseEnter: function (id) {
-                    if (typeof window.EyecatcherDebug !== "undefined")
-                        window.EyecatcherDebug.setHoveredPatternId(id);
-                },
-                onMouseLeave: function (id) {
-                    if (
-                        typeof window.EyecatcherDebug !== "undefined" &&
-                        window.EyecatcherDebug.getHoveredPatternId() === id
-                    ) {
-                        window.EyecatcherDebug.setHoveredPatternId(null);
-                    }
-                },
-            });
+            var result = window.PatternRenderer.createPatternCard(
+                patternCardCallbacks(pattern)
+            );
             grid.appendChild(result.card);
             if (result.patternData) {
                 patterns.set(pattern.id, {
@@ -290,31 +296,9 @@
             currentPopulation.push.apply(currentPopulation, newShaders);
             var grid = document.getElementById("grid");
             newShaders.forEach(function (pattern) {
-                var result = window.PatternRenderer.createPatternCard({
-                    pattern: pattern,
-                    onShare: function (id) {
-                        window.CommunityUI.openSubmitCommunityModal(id);
-                    },
-                    onNetwork: function (id, card) {
-                        window.NetworkVisualizer.toggle(id, card);
-                    },
-                    onSave: savePattern,
-                    onFullscreen: openFullscreen,
-                    onClick: clickPattern,
-                    onUnclick: unclickPattern,
-                    onMouseEnter: function (id) {
-                        if (typeof window.EyecatcherDebug !== "undefined")
-                            window.EyecatcherDebug.setHoveredPatternId(id);
-                    },
-                    onMouseLeave: function (id) {
-                        if (
-                            typeof window.EyecatcherDebug !== "undefined" &&
-                            window.EyecatcherDebug.getHoveredPatternId() === id
-                        ) {
-                            window.EyecatcherDebug.setHoveredPatternId(null);
-                        }
-                    },
-                });
+                var result = window.PatternRenderer.createPatternCard(
+                    patternCardCallbacks(pattern)
+                );
                 grid.appendChild(result.card);
                 if (result.patternData) {
                     patterns.set(pattern.id, {
