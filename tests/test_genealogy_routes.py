@@ -1,13 +1,12 @@
 """Tests for genealogy API (save/load population, tree, branches)."""
 
 import pytest
+from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
 
 @pytest.mark.slow
 def test_save_population(client, genealogy_db, cppn_engine):
     """POST save-population with genomes returns population_id and individual_ids."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -52,8 +51,6 @@ def test_load_population_not_found(client, genealogy_db):
 @pytest.mark.slow
 def test_save_and_load_population(client, genealogy_db, cppn_engine):
     """Save a population then load it by id; genomes round-trip."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=7
     )
@@ -93,8 +90,6 @@ def test_tree_empty(client, genealogy_db):
 @pytest.mark.slow
 def test_tree_after_save(client, genealogy_db, cppn_engine):
     """GET tree after save returns one node."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -129,8 +124,6 @@ def test_branches_empty(client, genealogy_db):
 @pytest.mark.slow
 def test_export_genealogy_full(client, genealogy_db, cppn_engine):
     """GET export (no branch): full tree; populations, individuals, exported_at."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual1 = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -169,8 +162,6 @@ def test_export_genealogy_full(client, genealogy_db, cppn_engine):
 @pytest.mark.slow
 def test_export_genealogy_branch(client, genealogy_db, cppn_engine):
     """GET export?branch_name=main returns branch; nonexistent branch returns 404."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -207,8 +198,6 @@ def test_export_genealogy_branch(client, genealogy_db, cppn_engine):
 @pytest.mark.slow
 def test_reset_genealogy(client, genealogy_db, cppn_engine):
     """POST reset clears all data; tree and stats are empty after."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )

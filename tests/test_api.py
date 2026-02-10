@@ -1,6 +1,7 @@
 """Tests for Flask API endpoints using test client."""
 
 import pytest
+from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
 
 def test_health(client):
@@ -57,8 +58,6 @@ def test_api_breed(client):
 
 def test_api_breed_without_genealogy(client, cppn_engine):
     """Breed without parent_population_id returns children only, no population_id."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -102,8 +101,6 @@ def test_api_breed_malformed_parents(client):
 @pytest.mark.slow
 def test_api_breed_with_genealogy(client, genealogy_db, cppn_engine):
     """Breed with parent_population_id saves to genealogy and returns population_id."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -141,8 +138,6 @@ def test_api_breed_with_genealogy(client, genealogy_db, cppn_engine):
 @pytest.mark.slow
 def test_api_save(client, cppn_engine):
     """POST /api/save with genome returns id, status, and downloads."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -162,8 +157,6 @@ def test_api_save(client, cppn_engine):
 @pytest.mark.slow
 def test_save_download_structure(client, cppn_engine):
     """Save returns downloads[0] with .zip filename and non-empty content_base64."""
-    from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
-
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -251,7 +244,6 @@ def test_api_error_response_shape(client):
 def test_api_adjust_weight(client, cppn_engine):
     """POST /api/adjust-weight with valid payload returns shader and genome."""
     from conftest import minimal_dual_genome_one_hidden_visual
-    from eyecatcher.evolution import dual_genome_to_json
 
     dual = minimal_dual_genome_one_hidden_visual(cppn_engine)
     genome = dual_genome_to_json(dual)

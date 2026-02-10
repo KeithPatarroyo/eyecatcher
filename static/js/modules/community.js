@@ -5,7 +5,7 @@
  *
  * Dependencies:
  * - API_URL global
- * - setupPattern, renderPattern functions for previews
+ * - patternRenderer, viewerControls for previews (PatternRenderer.setupPattern, .renderPattern + signalState)
  * - loadFromStatelessGenomes function
  * - addToGrid function (append patterns to current grid)
  */
@@ -18,8 +18,8 @@
     let _loadFromStatelessGenomes = null;
     let _addToGrid = null;
     let _getGenomeForPattern = null;
-    let _setupPattern = null;
-    let _renderPattern = null;
+    let _patternRenderer = null;
+    let _viewerControls = null;
     let _communityPatternsList = [];
     let _submitCommunityGenome = null;
     let _adminKey = "";
@@ -75,9 +75,16 @@
             if (pd) previewPatternData.push(pd);
             ul.appendChild(li);
         });
-        if (_renderPattern) {
+        if (
+            _patternRenderer &&
+            _viewerControls &&
+            _viewerControls.signalState != null
+        ) {
+            const signalState = _viewerControls.signalState;
             requestAnimationFrame(() => {
-                previewPatternData.forEach((pd) => _renderPattern(pd, 0.5, 0, 0, 0));
+                previewPatternData.forEach((pd) =>
+                    _patternRenderer.renderPattern(pd, 0.5, 0, 0, 0, signalState)
+                );
             });
         }
     }
@@ -89,16 +96,16 @@
      * @param {Function} options.loadFromStatelessGenomes - Function to load genomes into the grid (replace)
      * @param {Function} options.addToGrid - Function to append genomes to the current grid
      * @param {Function} options.getGenomeForPattern - Function to get genome for a pattern ID
-     * @param {Function} options.setupPattern - Function to setup WebGL pattern (for previews)
-     * @param {Function} options.renderPattern - Function to render a pattern (for previews)
+     * @param {Object} options.patternRenderer - PatternRenderer module (setupPattern, renderPattern)
+     * @param {Object} options.viewerControls - ViewerControls module (signalState for renderPattern)
      */
     function init(options) {
         _apiUrl = options.apiUrl || "";
         _loadFromStatelessGenomes = options.loadFromStatelessGenomes;
         _addToGrid = options.addToGrid;
         _getGenomeForPattern = options.getGenomeForPattern;
-        _setupPattern = options.setupPattern;
-        _renderPattern = options.renderPattern;
+        _patternRenderer = options.patternRenderer || null;
+        _viewerControls = options.viewerControls || null;
     }
 
     // -------------------------------------------------------------------------
@@ -221,8 +228,11 @@
                         info.textContent =
                             (pat.name || "Unnamed") + " by " + (pat.creator || "?");
                         li.appendChild(info);
-                        if (shaderInfo && shaderInfo.shader && _setupPattern) {
-                            return _setupPattern(canvas, shaderInfo.shader);
+                        if (shaderInfo && shaderInfo.shader && _patternRenderer) {
+                            return _patternRenderer.setupPattern(
+                                canvas,
+                                shaderInfo.shader
+                            );
                         }
                         return null;
                     }
@@ -401,8 +411,8 @@
                 actions.appendChild(approveBtn);
                 actions.appendChild(rejectBtn);
                 li.appendChild(actions);
-                if (shaderInfo && shaderInfo.shader && _setupPattern) {
-                    return _setupPattern(canvas, shaderInfo.shader);
+                if (shaderInfo && shaderInfo.shader && _patternRenderer) {
+                    return _patternRenderer.setupPattern(canvas, shaderInfo.shader);
                 }
                 return null;
             }

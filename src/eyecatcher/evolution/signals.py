@@ -193,13 +193,3 @@ def inputs_array(signals: Sequence[Signal], values: dict) -> list[float]:
 def default_inputs(signals: Sequence[Signal]) -> dict[str, float]:
     """Return a dict of signal name -> default value for all signals."""
     return {s.name: s.default for s in signals}
-
-
-def visual_time_input_name() -> str:
-    """Name of the visual CPPN input that receives the time signal (from time CPPN)."""
-    return VISUAL_TIME_INPUT_NAME
-
-
-def time_cppn_time_input_name() -> str:
-    """Name of the time CPPN input that is varied over animation (raw time)."""
-    return TIME_CPPN_TIME_INPUT_NAME

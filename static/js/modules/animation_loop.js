@@ -26,7 +26,8 @@
     let animating = true;
 
     let _getPatterns = null;
-    let _renderPattern = null;
+    let _patternRenderer = null;
+    let _viewerControls = null;
 
     function getMouseDistanceToCanvas(canvas) {
         const rect = canvas.getBoundingClientRect();
@@ -64,15 +65,22 @@
             activity *= ACTIVITY_DECAY;
 
             const patterns = _getPatterns ? _getPatterns() : null;
-            if (patterns && _renderPattern) {
+            if (
+                patterns &&
+                _patternRenderer &&
+                _viewerControls &&
+                _viewerControls.signalState != null
+            ) {
+                const signalState = _viewerControls.signalState;
                 patterns.forEach(function (patternData) {
                     const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
-                    _renderPattern(
+                    _patternRenderer.renderPattern(
                         patternData,
                         normalizedTime,
                         mouseSpeed,
                         mouseDist,
-                        activity
+                        activity,
+                        signalState
                     );
                 });
             }
@@ -95,7 +103,8 @@
 
     function init(options) {
         _getPatterns = options.getPatterns || null;
-        _renderPattern = options.renderPattern || null;
+        _patternRenderer = options.patternRenderer || null;
+        _viewerControls = options.viewerControls || null;
         lastMouseTime = performance.now();
 
         document.addEventListener("mousemove", function (e) {

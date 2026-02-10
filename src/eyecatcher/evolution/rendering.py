@@ -11,11 +11,11 @@ from . import config as evolution_config
 from .genome import DualGenome
 from .query import query_dual_cppn, query_visual_cppn
 from .signals import (
+    TIME_CPPN_TIME_INPUT_NAME,
     TIME_INPUTS,
     VISUAL_INPUTS,
+    VISUAL_TIME_INPUT_NAME,
     default_inputs,
-    time_cppn_time_input_name,
-    visual_time_input_name,
 )
 
 
@@ -32,15 +32,17 @@ def render_image(
     extra_inputs: Optional[dict] = None,
 ) -> np.ndarray:
     """
-    Render a full image from a CPPN at a given time.
+    Render a full image from a single visual CPPN at a given time (single-CPPN path).
 
+    Used by tests and any legacy single-genome flow.
+    For dual-CPPN use render_dual_image.
     extra_inputs: optional dict of additional signal values (keys = signal names).
     Returns (H, W, 3) uint8 array.
     """
     if resolution is None:
         resolution = evolution_config.PREVIEW_RENDER_RESOLUTION
     base = default_inputs(VISUAL_INPUTS)
-    base[visual_time_input_name()] = -1.0 + time * 2.0
+    base[VISUAL_TIME_INPUT_NAME] = -1.0 + time * 2.0
     if extra_inputs:
         base.update(extra_inputs)
     img = np.zeros((resolution, resolution, 3), dtype=np.uint8)
@@ -61,7 +63,7 @@ def render_animation_frames(
     num_frames: Optional[int] = None,
     time_range: tuple[float, float] = (0.0, 1.0),
 ) -> list:
-    """Render multiple frames for animation."""
+    """Render multiple frames (single-CPPN; dual: render_dual_animation_frames)."""
     if resolution is None:
         resolution = evolution_config.PREVIEW_RENDER_RESOLUTION
     if num_frames is None:
@@ -121,7 +123,7 @@ def render_dual_animation_frames(
         resolution = evolution_config.PREVIEW_RENDER_RESOLUTION
     if num_frames is None:
         num_frames = evolution_config.DEFAULT_NUM_FRAMES
-    time_key = time_cppn_time_input_name()
+    time_key = TIME_CPPN_TIME_INPUT_NAME
     frames = []
     start_time, end_time = time_range
     for frame_idx in range(num_frames):

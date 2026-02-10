@@ -13,9 +13,9 @@ from .signals import (
     TIME_INPUTS,
     VISUAL_DERIVED_INPUTS,
     VISUAL_INPUTS,
+    VISUAL_TIME_INPUT_NAME,
     apply_derived_inputs,
     inputs_array,
-    visual_time_input_name,
 )
 
 
@@ -73,6 +73,6 @@ def query_dual_cppn(
         time_config,
         inputs,
     )
-    time_key = visual_time_input_name()
+    time_key = VISUAL_TIME_INPUT_NAME
     visual_inputs = {**inputs, time_key: modified_time}
     return query_visual_cppn(dual_genome.visual, visual_config, visual_inputs)

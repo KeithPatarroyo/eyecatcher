@@ -45,7 +45,11 @@ def _validate_neat_config(config, signals, outputs, config_name: str) -> None:
 
 class CPPNEngine:
     """
-    Compositional Pattern Producing Network engine.
+    Config holder and facade for dual-CPPN operations.
+
+    Holds NEAT configs (visual and time) and delegates to evolution module
+    functions (query, rendering, operators). Use this as the single entry
+    point from server/stateless API; keep logic in the modules.
     Generates time-varying visual patterns using evolved neural networks.
     Supports dual-CPPN mode: visual network + time signal network per individual.
     """

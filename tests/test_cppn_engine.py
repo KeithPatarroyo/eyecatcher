@@ -28,12 +28,12 @@ def test_create_random_dual_genome(cppn_engine):
 
 
 def test_query_dual_cppn_returns_rgb(cppn_engine, random_dual_genome):
-    """query_dual_cppn returns three values in 0-255."""
+    """query_dual_cppn returns (r, g, b) in 0-1."""
     inputs = {"x": 0.0, "y": 0.0, "raw_time": 0.0}
     r, g, b = cppn_engine.query_dual_cppn(random_dual_genome, inputs)
-    assert 0 <= r <= 255
-    assert 0 <= g <= 255
-    assert 0 <= b <= 255
+    assert 0 <= r <= 1
+    assert 0 <= g <= 1
+    assert 0 <= b <= 1
 
 
 def test_mutate_dual_genome(cppn_engine, random_dual_genome):
