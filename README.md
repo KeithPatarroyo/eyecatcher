@@ -169,8 +169,8 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **data/** – Runtime data: community DB and genealogy DB (both gitignored; created on first run).
 - **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
 - **examples/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
-- **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
-- **src/eyecatcher/** – Python package: `server`, `cppn_engine`, `shader_compiler`, `genome_serialization`, routes, etc. Entrypoint: `eyecatcher.server:app`.
+- **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). To change which NEAT files are used or population size, edit [src/eyecatcher/evolution/config.py](src/eyecatcher/evolution/config.py). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
+- **src/eyecatcher/** – Python package. Top-level: `server`, `stateless_api`, `genealogy_routes`, `community_routes`, `api_helpers`, `db_util`. **evolution/** subpackage: `engine`, `genome`, `operators`, `query`, `rendering`, `serialization`, `shader_compiler`, `genome_visualizer`, `signals`, `config`, `breeding`, `activation`. App entrypoint: `eyecatcher.server:app`. Main API for evolution: `eyecatcher.evolution` (CPPNEngine, DualGenome, create_random_dual_genome, serialization, ShaderCompiler).
 - **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `package.json`, `package-lock.json`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml` (run with **`make docker-up`**). **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
@@ -201,11 +201,15 @@ The server does not hold population state. The client (web UI) stores genomes (e
 
 ### Core components
 
-- **CPPN Engine** (`src/eyecatcher/cppn_engine.py`) – `CPPNEngine`, `DualGenome`, mutation/crossover, JSON serialization.
-- **Shader Compiler** (`src/eyecatcher/shader_compiler.py`) – CPPN → GLSL; `compile_dual_to_glsl()` for the web renderer.
-- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API (compile, random, breed, save, time-output), community routes, static serving.
+- **CPPN Engine** (`src/eyecatcher/evolution/engine.py`) – `CPPNEngine`, `DualGenome`, mutation/crossover; JSON serialization and helpers in `evolution/serialization.py`.
+- **Shader Compiler** (`src/eyecatcher/evolution/shader_compiler.py`) – CPPN → GLSL; `compile_dual_to_glsl()` for the web renderer.
+- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API (in `stateless_api.py`; compile, random, breed, save, time-output), breeding logic in `evolution/breeding.py`, community routes, static serving.
+
+Researchers: evolution logic (signals, NEAT config, breeding, rendering) lives in `src/eyecatcher/evolution/`; see that package's docstrings and, if present, [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md).
 
 ## API usage (programmatic)
+
+Main API for programmatic use is `eyecatcher.evolution`.
 
 ```python
 from eyecatcher.evolution import CPPNEngine, create_random_dual_genome
@@ -222,7 +226,7 @@ r, g, b = engine.query_dual_cppn(
 )
 ```
 
-Compile to shader: `eyecatcher.shader_compiler.ShaderCompiler().compile_dual_to_glsl()`. Evolution: `engine.mutate_dual_genome()`, `engine.crossover_dual_genomes()`.
+Compile to shader: `from eyecatcher.evolution import ShaderCompiler` then `ShaderCompiler().compile_dual_to_glsl(dual, engine.config, engine.time_config)`. Evolution: `engine.mutate_dual_genome()`, `engine.crossover_dual_genomes()`.
 
 ## Creating videos
 
