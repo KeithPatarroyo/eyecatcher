@@ -5,18 +5,13 @@
 - `interactive_viewer.html` – main app (interactive evolution, population grid, breed/save).
 - `genealogy_viewer.html` – genealogy tree (load/save/export populations).
 
-**Scripts (static/js/modules/)**
+**JavaScript is grouped by role** so you can see what to edit vs what to leave alone. See **[js/README.md](js/README.md)** for the full guide.
 
-- `app.js` – wires DOM and inits modules; load last.
-- `pattern_renderer.js` – WebGL, dual-CPPN fragment shaders.
-- `viewer_controls.js` – zoom and signal toggles.
-- `evolution_config.js` – frontend constants aligned with backend.
-- `api_client.js` – fetch for compile, breed, save, random, genealogy.
-- `app_core.js` – state, grid, breed/save logic (no DOM).
-- `population_ui.js`, `community.js` – population and community UI.
-- `network_visualizer.js` – CPPN sidebar, vis.js, weight sliders.
-- `animation_loop.js` – mouse/time, per-frame render.
-- `toolbar_ui.js`, `debug.js`, `storage.js`, `toast.js`, `utils.js`, `cppn_evaluator.js`.
-- `genealogy_viewer.js` – tree UI; uses vis.js, PatternRenderer for thumbnails.
+| Folder | Purpose |
+|--------|---------|
+| **js/evolution/** | Where the experiment lives — signals, breeding, pattern rendering, viewer controls. Edit when you change evolution or viewer behavior. |
+| **js/app/** | Application shell — app.js, state, grid, fullscreen, genealogy sync, animation loop. Edit when you change app structure or flow. |
+| **js/lib/** | Shared infrastructure — API client, utils, toast, storage, debug. Only touch for bugs or app-wide support. |
+| **js/features/** | Optional features — population UI, community, network visualizer, toolbar, genealogy viewer. Edit when you care about that feature. |
 
-Script load order is defined in each HTML entry point.
+Script load order in the HTML: lib → evolution → features → app (shell loads last and wires everything).

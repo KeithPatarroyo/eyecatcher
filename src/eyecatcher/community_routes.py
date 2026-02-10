@@ -14,8 +14,8 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
-from .api_helpers import api_error
-from .db_util import with_db_connection
+from .api_helpers import ERR_GENOME_OBJECT_REQUIRED, ERR_ID_REQUIRED, api_error
+from .db_util import default_db_path, with_db_connection
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +24,7 @@ community_bp = Blueprint("community", __name__)
 
 
 # Database path (configurable via environment)
-def _default_database_path():
-    from . import get_root_dir
-
-    return os.path.join(get_root_dir(), "data", "community.db")
-
-
-DATABASE_PATH = os.environ.get("DATABASE_PATH") or _default_database_path()
+DATABASE_PATH = os.environ.get("DATABASE_PATH") or default_db_path("community.db")
 
 
 def _init_community_db():
@@ -107,7 +101,7 @@ def api_community_submit():
         name = (data.get("name") or "").strip() or "Unnamed"
         creator = (data.get("creator") or "").strip() or "Anonymous"
         if not genome or not isinstance(genome, dict):
-            return api_error("genome object required", 400)
+            return api_error(ERR_GENOME_OBJECT_REQUIRED, 400)
         genome_json = json.dumps(genome)
         with with_db_connection(DATABASE_PATH) as conn:
             cur = conn.execute(
@@ -213,7 +207,7 @@ def api_admin_approve():
         data = request.json or {}
         submission_id = data.get("id")
         if not submission_id:
-            return api_error("id required", 400)
+            return api_error(ERR_ID_REQUIRED, 400)
         with with_db_connection(DATABASE_PATH) as conn:
             conn.execute(
                 """UPDATE submissions SET status = 'approved', approved_at = ?
@@ -236,7 +230,7 @@ def api_admin_reject():
         data = request.json or {}
         submission_id = data.get("id")
         if not submission_id:
-            return api_error("id required", 400)
+            return api_error(ERR_ID_REQUIRED, 400)
         with with_db_connection(DATABASE_PATH) as conn:
             conn.execute(
                 """UPDATE submissions SET status = 'rejected'

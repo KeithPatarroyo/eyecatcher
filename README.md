@@ -18,7 +18,7 @@ Then open **http://localhost:5001**. (Runs `docker compose -f docker/docker-comp
 
 - **Dual-CPPN Architecture**: Each individual has two evolved networks (visual + time signal).
 - **Configurable input signals** (e.g. time, mouse speed, distance, activity); see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) and [evolution/signals.py](src/eyecatcher/evolution/signals.py).
-- **Signal Controls**: Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [evolution/signals.py](src/eyecatcher/evolution/signals.py) and [evolution_config.js](static/js/modules/evolution_config.js)).
+- **Signal Controls**: Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [evolution/signals.py](src/eyecatcher/evolution/signals.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
 - **GPU Rendering**: CPPNs compile to GLSL for real-time WebGL in the browser.
 - **Interactive Evolution**: Web interface for selection, breeding, saving, and community submission.
 - **Genealogical Tree**: Track evolutionary history across generations and branches; explore and continue from any point.
@@ -147,7 +147,7 @@ The web interface lets you:
 4. **Save** – Download patterns as shaders, images, and genome visualizations.
 5. **Population** – New random, from community, or load/save/export from local storage.
 6. **Submit to community** – Share patterns for moderation and inclusion in the community pool.
-7. **Signal controls** – Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [evolution/signals.py](src/eyecatcher/evolution/signals.py) and [evolution_config.js](static/js/modules/evolution_config.js)).
+7. **Signal controls** – Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [evolution/signals.py](src/eyecatcher/evolution/signals.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
 8. **Debug overlay** – Real-time signal values; optional time CPPN output sampling.
 9. **Genealogical tree** – View evolutionary history; branch and continue from any generation.
 

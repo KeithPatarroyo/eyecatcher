@@ -12,7 +12,7 @@ This guide points you to the files that matter for changing evolution behavior (
 
 - **Backend:** [src/eyecatcher/evolution/signals.py](src/eyecatcher/evolution/signals.py) – edit VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS (Signal/Output dataclasses).
 - **NEAT:** Update num_inputs/num_outputs in [config/neat/](config/neat/) (e.g. neat_config_experimental.txt, neat_config_time_experimental.txt). Engine validates at startup that these match the registry.
-- **Frontend:** [static/js/modules/evolution_config.js](static/js/modules/evolution_config.js) – keep SIGNAL_TOGGLES in sync so the UI and shader get the same inputs. There is a test (test_signal_registry) that checks Python vs JS alignment.
+- **Frontend:** [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) – keep SIGNAL_TOGGLES in sync so the UI and shader get the same inputs. There is a test (test_signal_registry) that checks Python vs JS alignment.
 
 ## Change NEAT config paths or population size
 
@@ -32,11 +32,26 @@ This guide points you to the files that matter for changing evolution behavior (
 
 - [src/eyecatcher/evolution/shader_compiler.py](src/eyecatcher/evolution/shader_compiler.py) – compiles dual CPPN to one GLSL fragment shader. Uses signals.py for input/output names; activation functions are mapped here. Researchers extend activation mapping or output interpretation here.
 
+## Frontend extension points
+
+The viewer frontend is grouped by role; see **[static/js/README.md](static/js/README.md)** for the full layout.
+
+- **evolution/** — Where the experiment lives (signals, breeding, rendering). Edit when you change how evolution or the viewer behaves: [evolution_config.js](static/js/evolution/evolution_config.js), [breed_coordinator.js](static/js/evolution/breed_coordinator.js), [pattern_renderer.js](static/js/evolution/pattern_renderer.js), [viewer_controls.js](static/js/evolution/viewer_controls.js).
+- **app/** — Application shell (state, grid, fullscreen, genealogy sync, animation loop). Edit when you change app structure or flow: [app.js](static/js/app/app.js), [population_state.js](static/js/app/population_state.js), etc.
+- **lib/** — Infrastructure (API client, utils, toast, storage). Only touch for bugs or app-wide support.
+- **features/** — Optional features (population UI, community, network viz, toolbar, genealogy viewer). Edit when you care about that feature.
+
+[static/js/app/app.js](static/js/app/app.js) wires everything and passes state + actions to the feature modules.
+
 ## What you can ignore for evolution-only work
 
 - **Server and routes:** server.py, stateless_api.py, genealogy_routes.py, community_routes.py – HTTP and DB; you only need to know that they call evolution (breeding, compile, serialization) and engine.
 - **Frontend:** static/ – pattern renderer, viewer controls, and evolution_config.js matter for signals and UI; the rest (community UI, genealogy viewer, storage) is optional for "just evolution."
 - **Data and config:** data/ (DBs), config/neat/ (file contents matter; paths set in evolution/config.py).
+
+## Keeping frontend in sync
+
+Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). Population size and max: [evolution/config.py](src/eyecatcher/evolution/config.py) and EvolutionConfig in evolution_config.js. Signal toggles: [signals.py](src/eyecatcher/evolution/signals.py) and SIGNAL_TOGGLES in evolution_config.js (test_signal_registry checks alignment).
 
 ## Quick reference
 

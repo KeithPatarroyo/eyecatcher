@@ -277,6 +277,7 @@
     }
 
     function onCommunityLoad12() {
+        // Fallback must match EvolutionConfig; see evolution_config.js
         const n =
             (window.EvolutionConfig &&
                 window.EvolutionConfig.DEFAULT_POPULATION_SIZE) ||

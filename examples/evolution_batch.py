@@ -8,14 +8,19 @@ import os
 import random
 
 import numpy as np
+from PIL import Image
+
 from eyecatcher.evolution import (
     CPPNEngine,
     DualGenome,
     copy_dual_genome,
     create_random_dual_genome,
 )
+from eyecatcher.evolution.config import (
+    DEFAULT_POPULATION_SIZE,
+    PREVIEW_RENDER_RESOLUTION,
+)
 from eyecatcher.evolution.shader_compiler import ShaderCompiler
-from PIL import Image
 
 
 def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:
@@ -63,7 +68,7 @@ def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:
 
 
 def run_evolution(
-    population_size: int = 12,
+    population_size: int = DEFAULT_POPULATION_SIZE,
     num_generations: int = 5,
     output_dir: str = "output/evolution",
 ):
@@ -91,7 +96,9 @@ def run_evolution(
         os.makedirs(gen_dir, exist_ok=True)
         for idx, (dual, _) in enumerate(scores[:4]):
             img = engine.render_dual_image(
-                dual, resolution=128, extra_inputs={"raw_time": 0.0}
+                dual,
+                resolution=PREVIEW_RENDER_RESOLUTION,
+                extra_inputs={"raw_time": 0.0},
             )
             path = os.path.join(gen_dir, f"pattern_{idx:02d}.png")
             Image.fromarray(img, "RGB").save(path)
@@ -100,9 +107,7 @@ def run_evolution(
         best = parents[0]
         genome_counter = max(g.key for g in population) + 1
         new_pop = [
-            copy_dual_genome(
-                best, engine.config, engine.time_config, genome_counter
-            )
+            copy_dual_genome(best, engine.config, engine.time_config, genome_counter)
         ]
         genome_counter += 1
         while len(new_pop) < population_size:
@@ -130,4 +135,4 @@ def run_evolution(
 
 if __name__ == "__main__":
     print("Batch evolution (dual-CPPN) – proxy fitness, no UI")
-    run_evolution(population_size=12, num_generations=5)
+    run_evolution(num_generations=5)

@@ -26,7 +26,11 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from . import get_root_dir
-from .api_helpers import api_error
+from .api_helpers import (
+    ERR_GENOME_REQUIRED_REQUEST_BODY,
+    ERR_PARENTS_ARRAY_REQUIRED,
+    api_error,
+)
 from .community_routes import community_bp
 from .evolution import (
     CROSSOVER_PROBABILITY,
@@ -53,6 +57,8 @@ logger = logging.getLogger(__name__)
 
 ROOT_DIR = get_root_dir()
 STATIC_DIR = os.path.join(ROOT_DIR, "static")
+# Default port when running locally; frontend dev port in evolution_config.js.
+DEFAULT_PORT = 5001
 app = Flask(__name__, static_folder=STATIC_DIR, static_url_path="")
 
 # CORS: allow all in dev, or set CORS_ORIGINS env for production
@@ -108,7 +114,7 @@ def breed():
     """
     data = request.json or {}
     if "parents" not in data:
-        return api_error("parents array required", 400)
+        return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
     return _breed_stateless(data)
 
 
@@ -123,7 +129,7 @@ def _breed_stateless(data):
         branch_name = data.get("branch_name", "main")
 
         if not parents_data:
-            return api_error("parents array required", 400)
+            return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
 
         children = breed_next_generation(
             engine,
@@ -168,7 +174,7 @@ def save_individual():
     individual_id = data.get("id")
     visualize = data.get("visualize", True)
     if not genome_json:
-        return api_error("genome required in request body", 400)
+        return api_error(ERR_GENOME_REQUIRED_REQUEST_BODY, 400)
     try:
         dual_genome = dual_genome_from_json(
             genome_json, engine.config, engine.time_config
@@ -338,7 +344,7 @@ def serve_saved_image(individual_id):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5001))
+    port = int(os.environ.get("PORT", DEFAULT_PORT))
     debug = os.environ.get("FLASK_ENV") == "development"
     logger.info("=" * 60)
     logger.info("EYECATCHER - Interactive Evolution Server")

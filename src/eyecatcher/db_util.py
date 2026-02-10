@@ -8,6 +8,21 @@ from collections.abc import Generator
 from contextlib import contextmanager
 
 
+def default_db_path(filename: str) -> str:
+    """
+    Return the default path for a database file under the project data/ directory.
+
+    Args:
+        filename: Database filename (e.g. "community.db", "genealogy.db").
+
+    Returns:
+        Absolute path: get_root_dir() / "data" / filename.
+    """
+    from . import get_root_dir
+
+    return os.path.join(get_root_dir(), "data", filename)
+
+
 def sqlite_connection(
     path: str,
     pragmas: tuple[str, ...] = (),

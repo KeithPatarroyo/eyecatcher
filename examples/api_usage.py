@@ -5,9 +5,11 @@ Run from repo root: python examples/api_usage.py
 
 import os
 
-from eyecatcher.evolution import CPPNEngine, create_random_dual_genome
-from eyecatcher.evolution.shader_compiler import ShaderCompiler
 from PIL import Image
+
+from eyecatcher.evolution import CPPNEngine, create_random_dual_genome
+from eyecatcher.evolution.config import PREVIEW_RENDER_RESOLUTION
+from eyecatcher.evolution.shader_compiler import ShaderCompiler
 
 
 def main():
@@ -17,13 +19,15 @@ def main():
     compiler = ShaderCompiler()
 
     # Create a few dual genomes
-    dual = create_random_dual_genome(
-        engine.config, engine.time_config, genome_id=0
-    )
+    dual = create_random_dual_genome(engine.config, engine.time_config, genome_id=0)
     print("Created random dual genome (visual + time signal)")
 
     # Render one image (time-signal CPPN shapes the result)
-    img = engine.render_dual_image(dual, resolution=256, extra_inputs={"raw_time": 0.5})
+    img = engine.render_dual_image(
+        dual,
+        resolution=PREVIEW_RENDER_RESOLUTION,
+        extra_inputs={"raw_time": 0.5},
+    )
     Image.fromarray(img, "RGB").save("output/dual_pattern.png")
     print("Saved: output/dual_pattern.png")
 
@@ -42,18 +46,20 @@ def main():
     # Mutate once
     child = engine.mutate_dual_genome(dual, 1)
     img_child = engine.render_dual_image(
-        child, resolution=256, extra_inputs={"raw_time": 0.5}
+        child,
+        resolution=PREVIEW_RENDER_RESOLUTION,
+        extra_inputs={"raw_time": 0.5},
     )
     Image.fromarray(img_child, "RGB").save("output/dual_mutant.png")
     print("Saved: output/dual_mutant.png (one mutation)")
 
     # Crossover: two parents -> one offspring
-    parent2 = create_random_dual_genome(
-        engine.config, engine.time_config, genome_id=2
-    )
+    parent2 = create_random_dual_genome(engine.config, engine.time_config, genome_id=2)
     offspring = engine.crossover_dual_genomes(dual, parent2, 3)
     img_off = engine.render_dual_image(
-        offspring, resolution=256, extra_inputs={"raw_time": 0.5}
+        offspring,
+        resolution=PREVIEW_RENDER_RESOLUTION,
+        extra_inputs={"raw_time": 0.5},
     )
     Image.fromarray(img_off, "RGB").save("output/dual_offspring.png")
     print("Saved: output/dual_offspring.png (crossover)")

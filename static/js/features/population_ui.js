@@ -52,6 +52,7 @@
                 /* ignore */
             }
 
+            // Fallback must match EvolutionConfig; see evolution_config.js
             const size =
                 (window.EvolutionConfig &&
                     window.EvolutionConfig.DEFAULT_POPULATION_SIZE) ||

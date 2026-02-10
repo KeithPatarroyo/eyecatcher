@@ -44,7 +44,7 @@ Thank you for your interest in contributing. This document explains how to get s
    ```
    Then open http://localhost:5001. See [README.md](../README.md) for Docker and other options.
 
-No `.env` file is required for running tests; the app can use defaults for local development.
+No `.env` file is required for running tests; the app can use defaults for local development. Constants that exist in both Python and JS (e.g. default port, population size) are documented in [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md) under "Keeping frontend in sync"; update both sides when changing them.
 
 ## Code style
 

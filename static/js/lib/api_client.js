@@ -7,6 +7,7 @@
 (function () {
     "use strict";
 
+    // Fallback must match EvolutionConfig.DEFAULT_DEV_PORT
     var DEFAULT_DEV_PORT =
         (typeof window !== "undefined" &&
             window.EvolutionConfig &&

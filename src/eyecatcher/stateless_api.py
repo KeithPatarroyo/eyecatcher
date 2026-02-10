@@ -9,7 +9,7 @@ init_stateless_api. Endpoints: /api/compile, /api/random, /api/time-output,
 
 from flask import Blueprint, jsonify, request
 
-from .api_helpers import api_error
+from .api_helpers import ERR_GENOME_REQUIRED, ERR_GENOMES_ARRAY_REQUIRED, api_error
 from .evolution import (
     DEFAULT_POPULATION_SIZE,
     MAX_POPULATION_SIZE,
@@ -79,7 +79,7 @@ def api_compile():
         data = request.json or {}
         genomes_data = data.get("genomes", [])
         if not genomes_data:
-            return api_error("genomes array required", 400)
+            return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
         color_mode = (data.get("color_mode") or "").strip().lower()
         if color_mode and color_mode not in ("hsv", "rgb"):
             color_mode = "hsv"
@@ -139,7 +139,7 @@ def api_time_output():
         data = request.json or {}
         genome_data = data.get("genome")
         if not genome_data:
-            return api_error("genome required", 400)
+            return api_error(ERR_GENOME_REQUIRED, 400)
         dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
         time_inputs = {}
         response_inputs = {}
@@ -175,7 +175,7 @@ def api_network():
         data = request.json or {}
         genome_data = data.get("genome")
         if not genome_data:
-            return api_error("genome required", 400)
+            return api_error(ERR_GENOME_REQUIRED, 400)
 
         dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
         individual_id = genome_data.get("key", dual.key if dual else 0)
@@ -230,7 +230,7 @@ def api_adjust_weight():
         data = request.json or {}
         genome_data = data.get("genome")
         if not genome_data:
-            return api_error("genome required", 400)
+            return api_error(ERR_GENOME_REQUIRED, 400)
 
         network_type = data.get("network")  # 'visual' or 'time'
         source_node = data.get("source")

@@ -11,21 +11,17 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
-from .api_helpers import api_error
-from .db_util import with_db_connection
+from .api_helpers import ERR_GENOMES_ARRAY_REQUIRED, api_error
+from .db_util import default_db_path, with_db_connection
 
 # Create blueprint
 genealogy_bp = Blueprint("genealogy", __name__)
 
 
-# Database path (same location as community DB)
-def _default_genealogy_db_path():
-    from . import get_root_dir
-
-    return os.path.join(get_root_dir(), "data", "genealogy.db")
-
-
-GENEALOGY_DB_PATH = os.environ.get("GENEALOGY_DB_PATH") or _default_genealogy_db_path()
+# Database path (configurable via environment; default under data/ like community DB)
+GENEALOGY_DB_PATH = os.environ.get("GENEALOGY_DB_PATH") or default_db_path(
+    "genealogy.db"
+)
 GENEALOGY_PRAGMAS = ("PRAGMA foreign_keys = ON",)
 
 
@@ -160,7 +156,7 @@ def save_population():
         fitness_data = data.get("fitness_data", [])
 
         if not genomes:
-            return api_error("genomes array required", 400)
+            return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
 
         with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
             if parent_id is not None:
