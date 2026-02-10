@@ -17,8 +17,8 @@ Then open **http://localhost:5001**. (Runs `docker compose -f docker/docker-comp
 ## Features
 
 - **Dual-CPPN Architecture**: Each individual has two evolved networks (visual + time signal).
-- **Configurable input signals** (e.g. time, mouse speed, distance, activity); see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) and [evolution/signals.py](src/eyecatcher/evolution/signals.py).
-- **Signal Controls**: Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [evolution/signals.py](src/eyecatcher/evolution/signals.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
+- **Configurable input signals** (e.g. time, mouse speed, distance, activity); see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) and [signals/signals.py](src/eyecatcher/signals/signals.py).
+- **Signal Controls**: Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [signals/signals.py](src/eyecatcher/signals/signals.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
 - **GPU Rendering**: CPPNs compile to GLSL for real-time WebGL in the browser.
 - **Interactive Evolution**: Web interface for selection, breeding, saving, and community submission.
 - **Genealogical Tree**: Track evolutionary history across generations and branches; explore and continue from any point.
@@ -147,7 +147,7 @@ The web interface lets you:
 4. **Save** – Download patterns as shaders, images, and genome visualizations.
 5. **Population** – New random, from community, or load/save/export from local storage.
 6. **Submit to community** – Share patterns for moderation and inclusion in the community pool.
-7. **Signal controls** – Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [evolution/signals.py](src/eyecatcher/evolution/signals.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
+8. **Signal controls** – Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [signals/signals.py](src/eyecatcher/signals/signals.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
 8. **Debug overlay** – Real-time signal values; optional time CPPN output sampling.
 9. **Genealogical tree** – View evolutionary history; branch and continue from any generation.
 
@@ -169,7 +169,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **data/** – Runtime data: community DB and genealogy DB (both gitignored; created on first run).
 - **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
 - **examples/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
-- **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). To change which NEAT files are used or population size, edit [src/eyecatcher/evolution/config.py](src/eyecatcher/evolution/config.py). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
+- **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). To change which NEAT files are used or population size, edit [src/eyecatcher/algorithm/config.py](src/eyecatcher/algorithm/config.py). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
 - **src/eyecatcher/** – Python package. Top-level: `server`, `stateless_api`, `genealogy_routes`, `community_routes`, `api_helpers`, `db_util`. **evolution/** subpackage: `engine`, `genome`, `operators`, `query`, `rendering`, `serialization`, `shader_compiler`, `genome_visualizer`, `signals`, `config`, `breeding`, `activation`. App entrypoint: `eyecatcher.server:app`. Main API for evolution: `eyecatcher.evolution` (CPPNEngine, DualGenome, create_random_dual_genome, serialization, ShaderCompiler).
 - **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `package.json`, `package-lock.json`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml` (run with **`make docker-up`**). **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 
@@ -187,7 +187,7 @@ Time inputs (see signals.py) → Time Signal CPPN → modifiedTime
 Visual inputs (see signals.py) → Visual CPPN → RGB
 ```
 
-Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. Input/output names and counts are defined in [signals.py](src/eyecatcher/evolution/signals.py); NEAT num_inputs/num_outputs must match. See [config/neat/README.md](config/neat/README.md) for default configs (`*_experimental.txt`) and parameters.
+Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. Input/output names and counts are defined in [signals/signals.py](src/eyecatcher/signals/signals.py); NEAT num_inputs/num_outputs must match. See [config/neat/README.md](config/neat/README.md) for default configs (`*_experimental.txt`) and parameters.
 
 ### Stateless API
 
@@ -201,9 +201,9 @@ The server does not hold population state. The client (web UI) stores genomes (e
 
 ### Core components
 
-- **CPPN Engine** (`src/eyecatcher/evolution/engine.py`) – `CPPNEngine`, `DualGenome`, mutation/crossover; JSON serialization and helpers in `evolution/serialization.py`.
+- **CPPN Engine** (`src/eyecatcher/algorithm/engine.py`) – `CPPNEngine`, `DualGenome`, mutation/crossover; JSON serialization and helpers in `genome/serialization.py`.
 - **Shader Compiler** (`src/eyecatcher/evolution/shader_compiler.py`) – CPPN → GLSL; `compile_dual_to_glsl()` for the web renderer.
-- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API (in `stateless_api.py`; compile, random, breed, save, time-output), breeding logic in `evolution/breeding.py`, community routes, static serving.
+- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API (in `web/stateless_api.py`; compile, random, breed, save, time-output), breeding logic in `algorithm/breeding.py`, community routes, static serving.
 
 Researchers: see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for where to change signals, NEAT config, breeding, and rendering.
 

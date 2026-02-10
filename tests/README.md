@@ -6,10 +6,10 @@
 
 | File | Covers |
 |------|--------|
-| test_cppn_engine.py | Evolution engine: create population, create_random_dual_genome, query_dual_cppn, mutate_dual_genome, crossover_dual_genomes, single-genome path (create_random_genome, mutate_single_genome). |
-| test_genome_serialization.py | evolution.serialization: dual_genome_to_json/from_json round-trip, extract_network_data shape, query consistency after round-trip. |
-| test_shader_compiler.py | evolution.shader_compiler: compile_dual_to_glsl (structure, main, activations, empty connections, single hidden node). |
-| test_signal_registry.py | evolution.signals: NEAT config matches registry; frontend evolution_config.js matches Python (toggleable inputs). |
+| test_cppn_engine.py | Algorithm engine (algorithm.engine.CPPNEngine): create population, create_random_dual_genome, query_dual_cppn, mutate_dual_genome, crossover_dual_genomes, single-genome path. |
+| test_genome_serialization.py | Genome module (genome.serialization): dual_genome_to_json/from_json round-trip, extract_network_data shape, query consistency after round-trip. |
+| test_shader_compiler.py | GLSL module (glsl.shader_compiler): compile_dual_to_glsl (structure, main, activations, empty connections, single hidden node). |
+| test_signal_registry.py | Signals module (signals.signals): NEAT config matches registry; frontend evolution_config.js matches Python (toggleable inputs). |
 | test_api.py | Flask API: /api/random, /api/compile, /api/breed (with/without genealogy), /api/save, save download structure, /api/adjust-weight. Uses test client and cppn_engine/minimal_dual fixtures. |
 | test_genealogy_routes.py | Genealogy API: save-population, load-population, tree, branches, export (full and by branch), reset, stats; uses genealogy_db and cppn_engine. |
 | test_community_routes.py | Community API: submit, list, admin approve/reject; uses community_db and cppn_engine. |

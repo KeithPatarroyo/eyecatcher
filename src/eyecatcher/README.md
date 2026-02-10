@@ -86,11 +86,74 @@ Routes in `web/genealogy_routes.py` and `web/community_routes.py` are thin HTTP 
 
 ---
 
+---
+
+## **glsl/** — Display pipeline (genome → GLSL)
+
+**Edit when you change how a genome compiles to shader code or GPU output.**
+
+Evolution produces genomes; this module turns them into fragment shaders for the viewer.
+
+| File | Role |
+|------|------|
+| `compiler_topology.py` | Enabled connections, topological sort for evaluation order. |
+| `node_code_generator.py` | Genome → GLSL node computations; ACTIVATION_FUNCTIONS mapping. |
+| `glsl_fragments.py` | Shared GLSL strings (e.g. activation block, utility functions). |
+| `shader_compiler.py` | ShaderCompiler class; orchestrates topology, node code, and template building. |
+
+Public API: `from eyecatcher.glsl import ShaderCompiler`.
+
+---
+
+## **web/** — Application & routes (server, HTTP API)
+
+**Edit when you change how the app is wired, add endpoints, or change API response shape.**
+
+| File | Role |
+|------|------|
+| `app.py` | Flask app, CORS, blueprints, breed/save handlers, static file serving. |
+| `stateless_api.py` | Blueprint: /api/compile, /api/random, /api/time-output, /api/network, /api/adjust-weight. |
+| `genealogy_routes.py` | Blueprint: save-population, load-population, tree, branches, reset, export, stats, thumbnail. |
+| `community_routes.py` | Blueprint: community share/browse/admin routes. |
+| `api_helpers.py` | api_error, HTTP status codes, error message constants. |
+| `response_builder.py` | build_shader_response (unified shape for compile, save, export APIs). |
+
+Entry point: `server.py` at package root re-exports `app` from `web.app`; use `eyecatcher.server:app`.
+
+---
+
+## **lib/** — Support utilities (infrastructure)
+
+**Only touch when fixing bugs or adding app-wide support.**
+
+| File | Role |
+|------|------|
+| `db_util.py` | with_db_connection, default_db_path, SQLite helpers. |
+
+Package root `__init__.py`: `get_root_dir()`, `__version__`.
+
+---
+
+## **data/** — Data & feature layers (genealogy, community)
+
+**Edit when you care about that feature (genealogy storage, export, community metadata, etc.).**
+
+| File | Role |
+|------|------|
+| `genealogy_db.py` | Genealogy data layer: init, save_breeding_result, save_population, get_population, get_tree_nodes, get_branches, export_genealogy_data, get_stats, get_population_thumbnail, reset_genealogy. No Flask; pure queries. |
+
+Routes in `web/genealogy_routes.py` and `web/community_routes.py` are thin HTTP wrappers that parse requests and call these functions.
+
+---
+
 ## Summary
 
 | Area | When you look here |
 |------|---------------------|
-| **evolution/** | Changing the algorithm: signals, breeding, genomes, CPU rendering, serialization. |
+| **signals/** | Adding/changing input signals or activation functions. |
+| **genome/** | Changing genome representation, serialization, or network export. |
+| **algorithm/** | Changing the evolution algorithm: breeding, mutation, crossover, NEAT config. |
+| **evaluation/** | Changing CPU rendering, CPPN query, or genome visualization. |
 | **glsl/** | Changing how genomes become shader code (display pipeline). |
 | **web/** | Adding endpoints, changing response shape, or wiring the app. |
 | **lib/** | Fixing DB or path helpers, or adding app-wide infra. |
