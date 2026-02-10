@@ -1,10 +1,29 @@
 /**
  * API client for Eyecatcher backend. Raw fetch calls; no UI.
- * Exposes: ApiClient.init(apiUrl), ApiClient.compile(genomes), ApiClient.breed(parents, populationSize),
- *   ApiClient.save(id, genome), ApiClient.random(size)
+ * Sets window.API_URL and window.DEFAULT_DEV_PORT. Exposes: ApiClient.init(apiUrl),
+ * ApiClient.compile(genomes), ApiClient.breed(parents, populationSize),
+ * ApiClient.save(id, genome), ApiClient.random(size)
  */
 (function () {
     "use strict";
+
+    var DEFAULT_DEV_PORT = 5001;
+
+    function getApiBaseUrl() {
+        if (
+            typeof window !== "undefined" &&
+            window.location &&
+            window.location.origin &&
+            window.location.protocol &&
+            window.location.protocol.indexOf("http") === 0
+        ) {
+            return window.location.origin + "/api";
+        }
+        return "http://localhost:" + DEFAULT_DEV_PORT + "/api";
+    }
+
+    window.DEFAULT_DEV_PORT = DEFAULT_DEV_PORT;
+    window.API_URL = getApiBaseUrl();
 
     let _apiUrl = "";
 
