@@ -1036,7 +1036,7 @@ h1 {
     background: var(--color-bg-tertiary);
 }
 #loading {
-    display: none;
+    display: block;
 }
 #loading > div {
     text-align: center;

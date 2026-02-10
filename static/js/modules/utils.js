@@ -23,7 +23,7 @@
 
     function showLoading(show) {
         var el = document.getElementById("loading");
-        if (el) el.style.display = show ? "block" : "none";
+        if (el) el.classList.toggle("hidden", !show);
     }
 
     /**

@@ -96,15 +96,13 @@ const EyecatcherDebug = (function () {
         // Toggle button
         toggleBtn.addEventListener("click", () => {
             overlay.classList.toggle("hidden");
-            toggleBtn.style.display = overlay.classList.contains("hidden")
-                ? "block"
-                : "none";
+            toggleBtn.classList.toggle("hidden", !overlay.classList.contains("hidden"));
         });
 
         // Double-click overlay to close
         overlay.addEventListener("dblclick", () => {
             overlay.classList.add("hidden");
-            toggleBtn.style.display = "block";
+            toggleBtn.classList.remove("hidden");
         });
 
         // Sample checkbox

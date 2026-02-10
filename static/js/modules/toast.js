@@ -62,7 +62,7 @@
         const a = document.createElement("a");
         a.href = url;
         a.download = filename;
-        a.style.display = "none";
+        a.classList.add("hidden");
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

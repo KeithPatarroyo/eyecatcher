@@ -221,11 +221,11 @@
         const container = document.getElementById("weight-sliders-container");
         if (!panel || !container) return;
         if (!data.connections || data.connections.length === 0) {
-            panel.style.display = "none";
+            panel.classList.add("hidden");
             return;
         }
         container.innerHTML = "";
-        panel.style.display = "flex";
+        panel.classList.remove("hidden");
         const visualConns = data.connections.filter(function (c) {
             return c.network === "visual";
         });
