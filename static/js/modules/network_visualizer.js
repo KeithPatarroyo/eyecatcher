@@ -336,21 +336,19 @@
                                 networkType
                             );
                         } else {
-                            if (typeof showToast === "function")
-                                showToast(
-                                    "Weight update failed",
-                                    data.error || "Server error",
-                                    "error"
-                                );
+                            Toast.show(
+                                "Weight update failed",
+                                data.error || "Server error",
+                                "error"
+                            );
                         }
                     })
                     .catch(function (err) {
-                        if (typeof showToast === "function")
-                            showToast(
-                                "Weight update failed",
-                                err.message || "Network error",
-                                "error"
-                            );
+                        Toast.show(
+                            "Weight update failed",
+                            err.message || "Network error",
+                            "error"
+                        );
                     });
             });
         });
