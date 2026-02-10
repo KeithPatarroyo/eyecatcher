@@ -54,8 +54,7 @@
             : null;
         document.getElementById("loading").style.display = "none";
         if (!genome) {
-            if (window.Toast) Toast.error("Could not get pattern data.");
-            else alert("Could not get pattern data.");
+            Toast.error("Could not get pattern data.");
             return;
         }
         _submitCommunityGenome = genome;
@@ -91,17 +90,14 @@
                 },
                 "Submit failed"
             );
-            if (window.Toast)
-                Toast.show(
-                    "Submitted",
-                    "It will be reviewed before appearing in Community.",
-                    "success"
-                );
-            else alert("Submitted! It will be reviewed before appearing in Community.");
+            Toast.show(
+                "Submitted",
+                "It will be reviewed before appearing in Community.",
+                "success"
+            );
             closeSubmitCommunityModal();
         } catch (e) {
-            if (window.Toast) Toast.error("Error: " + (e.message || String(e)));
-            else alert("Error: " + (e.message || String(e)));
+            Toast.error("Error: " + (e.message || String(e)));
         }
     }
 
@@ -196,8 +192,7 @@
             }
             document.getElementById("community-list-modal").classList.add("show");
         } catch (e) {
-            if (window.Toast) Toast.error("Error: " + (e.message || e));
-            else alert("Error: " + (e.message || e));
+            Toast.error("Error: " + (e.message || e));
         } finally {
             document.getElementById("loading").style.display = "none";
         }
@@ -224,8 +219,7 @@
     function onCommunityLoadSelected() {
         const genomes = getCommunitySelectedGenomes();
         if (!genomes.length) {
-            if (window.Toast) Toast.error("No patterns selected.");
-            else alert("No patterns selected.");
+            Toast.error("No patterns selected.");
             return;
         }
         document.getElementById("community-list-modal").classList.remove("show");
@@ -430,14 +424,9 @@
             );
             rowEl.remove();
         } catch (e) {
-            if (window.Toast)
-                Toast.error(
-                    e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
-                );
-            else
-                alert(
-                    e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
-                );
+            Toast.error(
+                e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
+            );
         }
     }
 
