@@ -12,22 +12,36 @@
         const toast = document.createElement("div");
         toast.className = "toast " + type;
 
-        let html = '<button class="toast-close" aria-label="Close">&times;</button>';
-        html += '<div class="toast-title">' + title + "</div>";
-        if (body) html += '<div class="toast-body">' + body + "</div>";
-        if (options.linkText && options.linkUrl) {
-            html +=
-                '<a class="toast-link" href="' +
-                options.linkUrl +
-                '" target="_blank">' +
-                options.linkText +
-                "</a>";
-        }
-        toast.innerHTML = html;
-
-        toast.querySelector(".toast-close").onclick = function () {
+        const closeBtn = document.createElement("button");
+        closeBtn.className = "toast-close";
+        closeBtn.setAttribute("aria-label", "Close");
+        closeBtn.textContent = "\u00D7";
+        closeBtn.onclick = function () {
             dismiss(toast);
         };
+        toast.appendChild(closeBtn);
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "toast-title";
+        titleEl.textContent = title;
+        toast.appendChild(titleEl);
+
+        if (body) {
+            const bodyEl = document.createElement("div");
+            bodyEl.className = "toast-body";
+            bodyEl.textContent = body;
+            toast.appendChild(bodyEl);
+        }
+        if (options.linkText && options.linkUrl) {
+            const link = document.createElement("a");
+            link.className = "toast-link";
+            link.href = options.linkUrl;
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.textContent = options.linkText;
+            toast.appendChild(link);
+        }
+
         container.appendChild(toast);
 
         const duration = options.duration || (options.linkUrl ? 10000 : 6000);
