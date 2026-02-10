@@ -13,6 +13,11 @@ import neat
 
 from .genome import DualGenome
 from .serialization import dual_genome_network_stats
+from .signals import (
+    TIME_INPUTS,
+    VISUAL_INPUTS,
+    build_glsl_input_map,
+)
 
 
 class ShaderCompiler:
@@ -152,18 +157,8 @@ class ShaderCompiler:
 
         code_lines = []
 
-        # Default input names for visual CPPN (8 inputs)
         if input_names is None:
-            input_names = {
-                -8: "vX",
-                -7: "vY",
-                -6: "vDist",
-                -5: "vTime",
-                -4: "vMouseSpeed",
-                -3: "vMouseDist",
-                -2: "vInactivity",
-                -1: "vBias",
-            }
+            input_names = build_glsl_input_map(VISUAL_INPUTS)
 
         node_vars = input_names.copy()
 
@@ -228,14 +223,7 @@ class ShaderCompiler:
         connections = self._get_enabled_connections(time_genome)
         nodes = self._topological_sort(time_genome, connections, time_config)
 
-        # Time signal: raw_time, mouseSpeed, mouseDistance, activity, bias (5 inputs)
-        time_input_names = {
-            -5: "vRawTime",
-            -4: "vMouseSpeed",
-            -3: "vMouseDist",
-            -2: "vInactivity",
-            -1: "vBias",
-        }
+        time_input_names = build_glsl_input_map(TIME_INPUTS)
 
         return self._generate_node_code(
             time_genome,
@@ -269,30 +257,105 @@ class ShaderCompiler:
 
     fragColor = vec4(rgb, 1.0);"""
 
+    def _glsl_cap(self, key: str) -> str:
+        """Capitalize first letter for GLSL uniform name."""
+        return key[0].upper() + key[1:] if key else ""
+
+    def _glsl_uniform_declarations(self) -> str:
+        """Generate uniform float declarations for shared signal uniforms."""
+        seen = set()
+        lines = []
+        for sig_list in (TIME_INPUTS, VISUAL_INPUTS):
+            for s in sig_list:
+                if s.uniform and s.uniform not in seen:
+                    seen.add(s.uniform)
+                    lines.append(f"uniform float {s.uniform};")
+        return "\n".join(lines)
+
+    def _glsl_enable_declarations(self) -> str:
+        """Generate uniform float declarations for enable toggles (time + visual)."""
+        lines = []
+        for cppn_type, sig_list in (("Time", TIME_INPUTS), ("Visual", VISUAL_INPUTS)):
+            for s in sig_list:
+                if s.enable_key:
+                    cap = self._glsl_cap(s.enable_key)
+                    lines.append(f"uniform float u{cppn_type}Enable{cap};")
+        return "\n".join(lines)
+
+    def _glsl_base_scaling(self) -> str:
+        """Generate base scaled vars (rawTime_base = uTime*2-1 etc) for time."""
+        lines = []
+        for s in TIME_INPUTS:
+            if s.uniform:
+                line = f"    float {s.enable_key}_base = {s.uniform} * 2.0 - 1.0;"
+                lines.append(line)
+        return "\n".join(lines)
+
+    def _glsl_time_enable_gating(self) -> str:
+        """Generate time CPPN gated input assignments."""
+        lines = []
+        for s in TIME_INPUTS:
+            if s.enable_key:
+                cap = self._glsl_cap(s.enable_key)
+                lines.append(
+                    f"    float {s.glsl_var} = {s.enable_key}_base * uTimeEnable{cap};"
+                )
+            elif s.name == "bias":
+                lines.append("    float vBias = 1.0;")
+        return "\n".join(lines)
+
+    def _glsl_visual_enable_gating(self, use_time_from_network: bool) -> str:
+        """Generate visual CPPN gated input assignments.
+
+        If use_time_from_network True, time uses timeFromNetwork and others use _base
+        (reassign without 'float' since time section already declared them).
+        Else all use inline (uniform*2-1) for single-CPPN mode.
+        """
+        lines = []
+        for s in VISUAL_INPUTS:
+            if s.is_spatial or s.name == "bias":
+                if s.name == "bias":
+                    # Dual shader: vBias already in time section; reassign only
+                    if use_time_from_network:
+                        lines.append("    vBias = 1.0;")
+                    else:
+                        lines.append("    float vBias = 1.0;")
+                continue
+            cap = self._glsl_cap(s.enable_key)
+            if use_time_from_network:
+                if s.name == "time":
+                    src = "timeFromNetwork"
+                    lines.append(
+                        f"    float {s.glsl_var} = {src} * uVisualEnable{cap};"
+                    )
+                else:
+                    src = f"{s.enable_key}_base"
+                    line = f"    {s.glsl_var} = {src} * uVisualEnable{cap};"
+                    lines.append(line)
+            else:
+                u = "uTime" if s.name == "time" else s.uniform
+                lines.append(
+                    f"    float {s.glsl_var} = ({u} * 2.0 - 1.0) * uVisualEnable{cap};"
+                )
+        return "\n".join(lines)
+
     def _build_shader_template(self, node_code: str, config: neat.Config) -> str:
         """Build the complete GLSL shader with node computations (single CPPN)."""
 
         color_output = self._get_color_output_code()
+        uniform_decls = self._glsl_uniform_declarations()
+        enable_decls = self._glsl_enable_declarations()
+        visual_gating = self._glsl_visual_enable_gating(use_time_from_network=False)
 
         shader = f"""#version 300 es
 precision highp float;
 
 // Inputs from vertex shader
 in vec2 vUV;  // UV coordinates (0-1)
-uniform float uTime;  // Time uniform (0-1)
-uniform float uMouseSpeed;  // Mouse movement speed (0-1)
-uniform float uMouseDist;  // Distance from mouse to this pattern's center (0-1)
-uniform float uInactivity;  // Activity: boosted by speed, decays when still (0-1)
+{uniform_decls}
 
 // Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
-uniform float uTimeEnableRawTime;
-uniform float uTimeEnableMouseSpeed;
-uniform float uTimeEnableMouseDist;
-uniform float uTimeEnableInactivity;
-uniform float uVisualEnableTime;
-uniform float uVisualEnableMouseSpeed;
-uniform float uVisualEnableMouseDist;
-uniform float uVisualEnableInactivity;
+{enable_decls}
 
 // Output color
 out vec4 fragColor;
@@ -342,11 +405,7 @@ void main() {{
     float vDist = sqrt(vX * vX + vY * vY);
 
     // Apply enable gates (disabled = 0.0 neutral)
-    float vTime = (uTime * 2.0 - 1.0) * uVisualEnableTime;
-    float vMouseSpeed = (uMouseSpeed * 2.0 - 1.0) * uVisualEnableMouseSpeed;
-    float vMouseDist = (uMouseDist * 2.0 - 1.0) * uVisualEnableMouseDist;
-    float vInactivity = (uInactivity * 2.0 - 1.0) * uVisualEnableInactivity;
-    float vBias = 1.0;
+{visual_gating}
 
     // Network computations
 {node_code}
@@ -399,26 +458,21 @@ void main() {{
         """Build the complete GLSL shader for dual CPPN (time signal + visual)."""
 
         color_output = self._get_color_output_code()
+        uniform_decls = self._glsl_uniform_declarations()
+        enable_decls = self._glsl_enable_declarations()
+        base_scaling = self._glsl_base_scaling()
+        time_gating = self._glsl_time_enable_gating()
+        visual_gating = self._glsl_visual_enable_gating(use_time_from_network=True)
 
         shader = f"""#version 300 es
 precision highp float;
 
 // Inputs from vertex shader
 in vec2 vUV;  // UV coordinates (0-1)
-uniform float uTime;  // Time uniform (0-1)
-uniform float uMouseSpeed;  // Mouse movement speed (0-1)
-uniform float uMouseDist;  // Distance from mouse to this pattern's center (0-1)
-uniform float uInactivity;  // Activity: boosted by speed, decays when still (0-1)
+{uniform_decls}
 
 // Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
-uniform float uTimeEnableRawTime;
-uniform float uTimeEnableMouseSpeed;
-uniform float uTimeEnableMouseDist;
-uniform float uTimeEnableInactivity;
-uniform float uVisualEnableTime;
-uniform float uVisualEnableMouseSpeed;
-uniform float uVisualEnableMouseDist;
-uniform float uVisualEnableInactivity;
+{enable_decls}
 
 // Output color
 out vec4 fragColor;
@@ -463,18 +517,11 @@ float inv(float x) {{
 
 void main() {{
     // Raw inputs (before enable gating)
-    float rawTime_base = uTime * 2.0 - 1.0;
-    float mouseSpeed_base = uMouseSpeed * 2.0 - 1.0;
-    float mouseDist_base = uMouseDist * 2.0 - 1.0;
-    float inactivity_base = uInactivity * 2.0 - 1.0;
-    float vBias = 1.0;
+{base_scaling}
 
     // === TIME SIGNAL NETWORK ===
     // Apply enable gates for time CPPN inputs (disabled = 0.0 neutral)
-    float vRawTime = rawTime_base * uTimeEnableRawTime;
-    float vMouseSpeed = mouseSpeed_base * uTimeEnableMouseSpeed;
-    float vMouseDist = mouseDist_base * uTimeEnableMouseDist;
-    float vInactivity = inactivity_base * uTimeEnableInactivity;
+{time_gating}
 
     // Time signal network computation
 {time_code}
@@ -489,10 +536,7 @@ void main() {{
     float vDist = sqrt(vX * vX + vY * vY);
 
     // Apply enable gates for visual CPPN inputs (disabled = 0.0 neutral)
-    float vTime = timeFromNetwork * uVisualEnableTime;
-    vMouseSpeed = mouseSpeed_base * uVisualEnableMouseSpeed;
-    vMouseDist = mouseDist_base * uVisualEnableMouseDist;
-    vInactivity = inactivity_base * uVisualEnableInactivity;
+{visual_gating}
 
     // Visual network computations (using modified time)
 {visual_code}
