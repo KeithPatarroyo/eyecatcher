@@ -21,9 +21,7 @@ def main():
     engine.create_population()
     n_curves = 3
     duals = [
-        create_random_dual_genome(
-            engine.config, engine.time_config, genome_id=i
-        )
+        create_random_dual_genome(engine.config, engine.time_config, genome_id=i)
         for i in range(n_curves)
     ]
     raw_times = [(-1.0 + i / 50.0) for i in range(101)]

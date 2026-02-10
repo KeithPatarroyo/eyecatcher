@@ -8,6 +8,7 @@ use temp paths; no real data is modified.
 from unittest.mock import patch
 
 import pytest
+
 from eyecatcher import community_routes, genealogy_routes
 from eyecatcher.evolution import (
     CPPNEngine,

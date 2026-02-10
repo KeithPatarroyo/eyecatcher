@@ -1,6 +1,7 @@
 """Tests for shader compiler: CPPN to GLSL."""
 
 from conftest import minimal_dual_genome_one_hidden_visual
+
 from eyecatcher.evolution.shader_compiler import ShaderCompiler
 
 
@@ -56,9 +57,9 @@ def test_compile_dual_single_hidden_node(cppn_engine):
         for n in dual.visual.nodes
         if n >= cppn_engine.config.genome_config.num_outputs
     ]
-    assert (
-        len(hidden_visual) == 1
-    ), "test fixture must have exactly one hidden node in visual"
+    assert len(hidden_visual) == 1, (
+        "test fixture must have exactly one hidden node in visual"
+    )
     compiler = ShaderCompiler(color_mode="hsv")
     glsl = compiler.compile_dual_to_glsl(
         dual, cppn_engine.config, cppn_engine.time_config

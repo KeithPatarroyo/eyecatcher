@@ -5,11 +5,10 @@ Run from repo root: python examples/api_usage.py
 
 import os
 
-from PIL import Image
-
 from eyecatcher.evolution import CPPNEngine, create_random_dual_genome
 from eyecatcher.evolution.config import PREVIEW_RENDER_RESOLUTION
 from eyecatcher.evolution.shader_compiler import ShaderCompiler
+from PIL import Image
 
 
 def main():

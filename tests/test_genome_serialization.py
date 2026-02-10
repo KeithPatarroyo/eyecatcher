@@ -1,6 +1,7 @@
 """Tests for genome JSON serialization round-trip."""
 
 import pytest
+
 from eyecatcher.evolution import (
     create_random_dual_genome,
     dual_genome_from_json,

@@ -4,6 +4,7 @@ import os
 from unittest.mock import patch
 
 import pytest
+
 from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
 

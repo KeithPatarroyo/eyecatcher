@@ -1,6 +1,7 @@
 """Tests for Flask API endpoints using test client."""
 
 import pytest
+
 from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
 

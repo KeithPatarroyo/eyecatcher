@@ -1,6 +1,7 @@
 """Tests for genealogy API (save/load population, tree, branches)."""
 
 import pytest
+
 from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
 
