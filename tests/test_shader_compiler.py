@@ -1,7 +1,7 @@
 """Tests for shader compiler: CPPN to GLSL."""
 
 from conftest import minimal_dual_genome_one_hidden_visual
-
+from eyecatcher.evolution.node_code_generator import ACTIVATION_FUNCTIONS
 from eyecatcher.evolution.shader_compiler import ShaderCompiler
 
 
@@ -57,9 +57,9 @@ def test_compile_dual_single_hidden_node(cppn_engine):
         for n in dual.visual.nodes
         if n >= cppn_engine.config.genome_config.num_outputs
     ]
-    assert len(hidden_visual) == 1, (
-        "test fixture must have exactly one hidden node in visual"
-    )
+    assert (
+        len(hidden_visual) == 1
+    ), "test fixture must have exactly one hidden node in visual"
     compiler = ShaderCompiler(color_mode="hsv")
     glsl = compiler.compile_dual_to_glsl(
         dual, cppn_engine.config, cppn_engine.time_config
@@ -74,7 +74,5 @@ def test_compile_dual_activation_functions_in_output(cppn_engine, random_dual_ge
     glsl = compiler.compile_dual_to_glsl(
         random_dual_genome, cppn_engine.config, cppn_engine.time_config
     )
-    activations_found = [
-        name for name in ShaderCompiler.ACTIVATION_FUNCTIONS if f"{name}(" in glsl
-    ]
+    activations_found = [name for name in ACTIVATION_FUNCTIONS if f"{name}(" in glsl]
     assert len(activations_found) >= 1, "expected at least one activation in output"

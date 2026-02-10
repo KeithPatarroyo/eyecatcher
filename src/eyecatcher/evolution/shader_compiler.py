@@ -1,22 +1,21 @@
 """
 Compiles dual CPPN (visual + time) to a single GLSL fragment shader.
 
-Uses signals.py for input/output names; researchers extend activation mapping
-here. Converts NEAT genomes into GPU-executable shader code for the web renderer.
+Orchestrates compiler_topology, node_code_generator, and glsl_fragments.
+Researchers extend: activation in glsl_fragments + node_code_generator;
+output (HSV/RGB) in _get_color_output_code; signals in signals.py.
 """
 
 import json
-from typing import Optional
 
 import neat
 
+from .compiler_topology import get_enabled_connections, topological_sort
 from .genome import DualGenome
+from .glsl_fragments import ACTIVATION_GLSL_BLOCK
+from .node_code_generator import generate_node_code, generate_time_signal_code
 from .serialization import dual_genome_network_stats
-from .signals import (
-    TIME_INPUTS,
-    VISUAL_INPUTS,
-    build_glsl_input_map,
-)
+from .signals import TIME_INPUTS, VISUAL_INPUTS
 
 
 class ShaderCompiler:
@@ -27,25 +26,6 @@ class ShaderCompiler:
     Args:
         color_mode: 'hsv' (Picbreeder-style) or 'rgb' (direct RGB output)
     """
-
-    # Map NEAT activation functions to GLSL
-    ACTIVATION_FUNCTIONS = {
-        "sigmoid": "sigmoid",
-        "tanh": "tanh",
-        "sin": "sin",
-        "cos": "cos",
-        "gauss": "gauss",
-        "relu": "relu",
-        "abs": "abs",
-        "square": "square",
-        "cube": "cube",
-        "identity": "identity",
-        "clamped": "clamped",
-        "exp": "exp",
-        "hat": "hat",
-        "inv": "inv",
-        "log": "log",
-    }
 
     def __init__(self, color_mode: str = "hsv"):
         self.node_order: list = []
@@ -65,180 +45,12 @@ class ShaderCompiler:
         Returns:
             Complete GLSL fragment shader code as string
         """
-        # Analyze network topology
-        connections = self._get_enabled_connections(genome)
-        nodes = self._topological_sort(genome, connections, visual_config)
-
-        # Generate node computation code
-        node_computations = self._generate_node_code(
+        connections = get_enabled_connections(genome)
+        nodes = topological_sort(genome, connections, visual_config)
+        node_computations = generate_node_code(
             genome, connections, nodes, visual_config
         )
-
-        # Build complete shader
-        shader = self._build_shader_template(node_computations, visual_config)
-
-        return shader
-
-    def _get_enabled_connections(self, genome: neat.DefaultGenome) -> list:
-        """Get all enabled connections in the genome."""
-        return [
-            (c.key[0], c.key[1], c.weight)
-            for c in genome.connections.values()
-            if c.enabled
-        ]
-
-    def _topological_sort(
-        self,
-        genome: neat.DefaultGenome,
-        connections: list,
-        visual_config: neat.Config,
-    ) -> list:
-        """
-        Topologically sort nodes for correct evaluation order.
-
-        Returns:
-            List of node IDs in evaluation order
-        """
-        # Build adjacency list
-        in_degree = {}
-        adjacency = {}
-        all_nodes = set()
-
-        # Initialize with input nodes (IDs 0-4: x, y, distance, time, bias)
-        num_inputs = visual_config.genome_config.num_inputs
-        input_nodes = list(range(-num_inputs, 0))
-
-        # Output nodes (IDs starting from 0: R, G, B)
-        num_outputs = visual_config.genome_config.num_outputs
-        output_nodes = list(range(num_outputs))
-
-        all_nodes.update(input_nodes)
-        all_nodes.update(output_nodes)
-        all_nodes.update(genome.nodes.keys())
-
-        # Initialize in-degree and adjacency
-        for node in all_nodes:
-            in_degree[node] = 0
-            adjacency[node] = []
-
-        # Build graph from connections
-        for src, dst, weight in connections:
-            adjacency[src].append(dst)
-            in_degree[dst] += 1
-            all_nodes.add(src)
-            all_nodes.add(dst)
-
-        # Topological sort using Kahn's algorithm
-        queue = [node for node in all_nodes if in_degree[node] == 0]
-        sorted_nodes = []
-
-        while queue:
-            node = queue.pop(0)
-            sorted_nodes.append(node)
-
-            for neighbor in adjacency.get(node, []):
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    queue.append(neighbor)
-
-        return sorted_nodes
-
-    def _generate_node_code(
-        self,
-        genome: neat.DefaultGenome,
-        connections: list,
-        nodes: list,
-        visual_config: neat.Config,
-        input_names: Optional[dict] = None,
-        prefix: str = "",
-    ) -> str:
-        """Generate GLSL code for all node computations."""
-
-        # Build connection map: node_id -> [(input_node, weight), ...]
-        node_inputs = {}
-        for src, dst, weight in connections:
-            if dst not in node_inputs:
-                node_inputs[dst] = []
-            node_inputs[dst].append((src, weight))
-
-        code_lines = []
-
-        if input_names is None:
-            input_names = build_glsl_input_map(VISUAL_INPUTS)
-
-        node_vars = input_names.copy()
-
-        # Generate code for each node
-        for node_id in nodes:
-            # Skip input nodes (already defined)
-            if node_id in input_names:
-                continue
-
-            # Get node configuration
-            if node_id in genome.nodes:
-                node = genome.nodes[node_id]
-                activation = node.activation
-                bias = node.bias
-                response = node.response
-            else:
-                # Output nodes use defaults
-                activation = "identity"
-                bias = 0.0
-                response = 1.0
-
-            # Generate variable name with optional prefix
-            if node_id >= visual_config.genome_config.num_outputs:
-                var_name = f"{prefix}node_{node_id}"
-            else:
-                var_name = f"{prefix}output_{node_id}"
-            node_vars[node_id] = var_name
-
-            # Compute weighted sum of inputs
-            if node_id in node_inputs:
-                input_terms = []
-                for src_id, weight in node_inputs[node_id]:
-                    src_var = node_vars.get(src_id, f"{prefix}node_{src_id}")
-                    input_terms.append(f"{src_var} * {weight:.6f}")
-
-                weighted_sum = " + ".join(input_terms)
-                if bias != 0.0:
-                    weighted_sum += f" + {bias:.6f}"
-
-                # Apply activation function
-                activation_func = self.ACTIVATION_FUNCTIONS.get(activation, "identity")
-
-                if response != 1.0:
-                    code_lines.append(
-                        f"    float {var_name} = {activation_func}"
-                        f"(({weighted_sum}) * {response:.6f});"
-                    )
-                else:
-                    code_lines.append(
-                        f"    float {var_name} = {activation_func}({weighted_sum});"
-                    )
-            else:
-                # Node with no inputs
-                code_lines.append(f"    float {var_name} = {bias:.6f};")
-
-        return "\n".join(code_lines)
-
-    def _generate_time_signal_code(
-        self, time_genome: neat.DefaultGenome, time_config: neat.Config
-    ) -> str:
-        """Generate GLSL code for the time signal CPPN."""
-        connections = self._get_enabled_connections(time_genome)
-        nodes = self._topological_sort(time_genome, connections, time_config)
-
-        time_input_names = build_glsl_input_map(TIME_INPUTS)
-
-        return self._generate_node_code(
-            time_genome,
-            connections,
-            nodes,
-            time_config,
-            input_names=time_input_names,
-            prefix="time_",
-        )
+        return self._build_shader_template(node_computations, visual_config)
 
     def _get_color_output_code(self) -> str:
         """Get GLSL code for converting CPPN outputs to RGB based on color_mode."""
@@ -347,12 +159,10 @@ class ShaderCompiler:
 
     def _build_shader_template(self, node_code: str, visual_config: neat.Config) -> str:
         """Build the complete GLSL shader with node computations (single CPPN)."""
-
         color_output = self._get_color_output_code()
         uniform_decls = self._glsl_uniform_declarations()
         enable_decls = self._glsl_enable_declarations()
         visual_gating = self._glsl_visual_enable_gating(use_time_from_network=False)
-
         shader = f"""#version 300 es
 precision highp float;
 
@@ -365,44 +175,7 @@ in vec2 vUV;  // UV coordinates (0-1)
 
 // Output color
 out vec4 fragColor;
-
-// Activation functions
-float sigmoid(float x) {{
-    return 1.0 / (1.0 + exp(-x));
-}}
-
-float gauss(float x) {{
-    return exp(-x * x);
-}}
-
-float relu(float x) {{
-    return max(0.0, x);
-}}
-
-float square(float x) {{
-    return x * x;
-}}
-
-float cube(float x) {{
-    return x * x * x;
-}}
-
-float identity(float x) {{
-    return x;
-}}
-
-float clamped(float x) {{
-    return clamp(x, -1.0, 1.0);
-}}
-
-float hat(float x) {{
-    return max(0.0, 1.0 - abs(x));
-}}
-
-float inv(float x) {{
-    if (abs(x) < 0.001) return 0.0;
-    return 1.0 / x;
-}}
+{ACTIVATION_GLSL_BLOCK}
 
 void main() {{
     // Convert UV to CPPN coordinate space (-1 to 1)
@@ -441,35 +214,24 @@ void main() {{
         Returns:
             Complete GLSL fragment shader code as string
         """
-        # Generate time signal network code
-        time_code = self._generate_time_signal_code(
-            dual_genome.time_signal, time_config
-        )
-
-        # Generate visual network code
-        visual_connections = self._get_enabled_connections(dual_genome.visual)
-        visual_nodes = self._topological_sort(
+        time_code = generate_time_signal_code(dual_genome.time_signal, time_config)
+        visual_connections = get_enabled_connections(dual_genome.visual)
+        visual_nodes = topological_sort(
             dual_genome.visual, visual_connections, visual_config
         )
-        visual_code = self._generate_node_code(
+        visual_code = generate_node_code(
             dual_genome.visual, visual_connections, visual_nodes, visual_config
         )
-
-        # Build the dual shader
-        shader = self._build_dual_shader_template(time_code, visual_code)
-
-        return shader
+        return self._build_dual_shader_template(time_code, visual_code)
 
     def _build_dual_shader_template(self, time_code: str, visual_code: str) -> str:
         """Build the complete GLSL shader for dual CPPN (time signal + visual)."""
-
         color_output = self._get_color_output_code()
         uniform_decls = self._glsl_uniform_declarations()
         enable_decls = self._glsl_enable_declarations()
         base_scaling = self._glsl_base_scaling()
         time_gating = self._glsl_time_enable_gating()
         visual_gating = self._glsl_visual_enable_gating(use_time_from_network=True)
-
         shader = f"""#version 300 es
 precision highp float;
 
@@ -482,44 +244,7 @@ in vec2 vUV;  // UV coordinates (0-1)
 
 // Output color
 out vec4 fragColor;
-
-// Activation functions
-float sigmoid(float x) {{
-    return 1.0 / (1.0 + exp(-x));
-}}
-
-float gauss(float x) {{
-    return exp(-x * x);
-}}
-
-float relu(float x) {{
-    return max(0.0, x);
-}}
-
-float square(float x) {{
-    return x * x;
-}}
-
-float cube(float x) {{
-    return x * x * x;
-}}
-
-float identity(float x) {{
-    return x;
-}}
-
-float clamped(float x) {{
-    return clamp(x, -1.0, 1.0);
-}}
-
-float hat(float x) {{
-    return max(0.0, 1.0 - abs(x));
-}}
-
-float inv(float x) {{
-    if (abs(x) < 0.001) return 0.0;
-    return 1.0 / x;
-}}
+{ACTIVATION_GLSL_BLOCK}
 
 void main() {{
     // Raw inputs (before enable gating)

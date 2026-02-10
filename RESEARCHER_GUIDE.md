@@ -30,7 +30,12 @@ This guide points you to the files that matter for changing evolution behavior (
 
 ## GLSL / shader compilation
 
-- [src/eyecatcher/evolution/shader_compiler.py](src/eyecatcher/evolution/shader_compiler.py) – compiles dual CPPN to one GLSL fragment shader. Uses signals.py for input/output names; activation functions are mapped here. Researchers extend activation mapping or output interpretation here.
+Compilation is split into phases so you can test or extend one part at a time:
+
+- **Phases:** Topology → node code → template. Implemented in [compiler_topology.py](src/eyecatcher/evolution/compiler_topology.py) (enabled connections, evaluation order), [node_code_generator.py](src/eyecatcher/evolution/node_code_generator.py) (genome → GLSL node computations), [glsl_fragments.py](src/eyecatcher/evolution/glsl_fragments.py) (activation function GLSL strings), [shader_compiler.py](src/eyecatcher/evolution/shader_compiler.py) (orchestrates and builds the full shader).
+- **Add an activation:** Register it in [activation.py](src/eyecatcher/evolution/activation.py) for CPU query; add the GLSL implementation to [glsl_fragments.py](src/eyecatcher/evolution/glsl_fragments.py) and the name mapping to [node_code_generator.py](src/eyecatcher/evolution/node_code_generator.py) (`ACTIVATION_FUNCTIONS`); update NEAT config if needed.
+- **Change output (color mode):** Edit `_get_color_output_code()` and `color_mode` in [shader_compiler.py](src/eyecatcher/evolution/shader_compiler.py).
+- **Change inputs/signals:** Edit [signals.py](src/eyecatcher/evolution/signals.py) (VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map); the compiler uses them automatically.
 
 ## Frontend extension points
 
@@ -61,7 +66,7 @@ Some constants exist in both Python and JavaScript; when you change them, update
 | Change population size or NEAT paths | evolution/config.py |
 | Change breeding/selection | evolution/breeding.py, operators.py |
 | Change CPU rendering | evolution/rendering.py |
-| Change how CPPN becomes GLSL | evolution/shader_compiler.py |
+| Change how CPPN becomes GLSL | evolution/shader_compiler.py, glsl_fragments.py, node_code_generator.py, compiler_topology.py |
 | Change serialization / network export | evolution/serialization.py |
 
 For full project layout and running the app, see [README.md](README.md). For contributing (tests, style), see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
