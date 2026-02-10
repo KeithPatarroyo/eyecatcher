@@ -18,7 +18,6 @@ import os
 import pickle
 import random
 import zipfile
-from datetime import datetime, timezone
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -171,68 +170,18 @@ def _breed_stateless(data):
             children.append(dual_genome_to_json(child))
             next_key += 1
 
-        # Auto-save to genealogy database (only if parent_population_id is provided)
+        # Auto-save to genealogy (only if parent_population_id is provided)
         if parent_population_id is not None:
             try:
-                from .genealogy_routes import _get_db
+                from .genealogy_routes import save_breeding_result
 
-                conn = _get_db()
-                try:
-                    parent_row = conn.execute(
-                        "SELECT generation_num FROM populations WHERE id = ?",
-                        (parent_population_id,),
-                    ).fetchone()
-                    if not parent_row:
-                        return jsonify({"children": children})
-                    if generation_num != parent_row["generation_num"] + 1:
-                        # Skip genealogy save; breeding still succeeds
-                        return jsonify({"children": children})
-
-                    cur = conn.execute(
-                        """INSERT INTO populations
-                           (parent_id, generation_num, created_at, branch_name,
-                            description, user_id, population_size, metadata_json)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (
-                            parent_population_id,
-                            generation_num,
-                            datetime.now(timezone.utc).isoformat(),
-                            branch_name,
-                            f"Generation {generation_num}",
-                            "user",
-                            len(children),
-                            "{}",
-                        ),
-                    )
-                    new_population_id = cur.lastrowid
-
-                    for idx, child_genome in enumerate(children):
-                        genome_json = json.dumps(child_genome)
-                        conn.execute(
-                            """INSERT INTO individuals
-                               (population_id, genome_key, genome_json,
-                                fitness, created_at)
-                               VALUES (?, ?, ?, ?, ?)""",
-                            (
-                                new_population_id,
-                                child_genome.get("key", idx),
-                                genome_json,
-                                0,
-                                datetime.now(timezone.utc).isoformat(),
-                            ),
-                        )
-
-                    conn.commit()
-                    return jsonify(
-                        {"children": children, "population_id": new_population_id}
-                    )
-                finally:
-                    conn.close()
+                new_pop_id = save_breeding_result(
+                    parent_population_id, generation_num, branch_name, children
+                )
+                if new_pop_id is not None:
+                    return jsonify({"children": children, "population_id": new_pop_id})
             except Exception as e:
                 logger.exception("Failed to save to genealogy: %s", e)
-                return jsonify({"children": children})
-
-        # Return children without genealogy tracking
         return jsonify({"children": children})
     except ValueError as e:
         logger.exception("Breed ValueError: %s", e)

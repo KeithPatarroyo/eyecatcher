@@ -87,6 +87,60 @@ def _init_genealogy_db():
 _init_genealogy_db()
 
 
+def save_breeding_result(
+    parent_population_id: int,
+    generation_num: int,
+    branch_name: str,
+    children: list,
+) -> int | None:
+    """
+    Save a breeding result (new population + individuals) to genealogy.
+
+    Returns new population_id if saved, None if parent invalid or generation
+    mismatch. Raises on DB error.
+    """
+    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+        parent_row = conn.execute(
+            "SELECT generation_num FROM populations WHERE id = ?",
+            (parent_population_id,),
+        ).fetchone()
+        if not parent_row or generation_num != parent_row["generation_num"] + 1:
+            return None
+        cur = conn.execute(
+            """INSERT INTO populations
+               (parent_id, generation_num, created_at, branch_name, description,
+                user_id, population_size, metadata_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                parent_population_id,
+                generation_num,
+                datetime.now(timezone.utc).isoformat(),
+                branch_name,
+                f"Generation {generation_num}",
+                "user",
+                len(children),
+                "{}",
+            ),
+        )
+        new_population_id = cur.lastrowid
+        for idx, child_genome in enumerate(children):
+            genome_json = json.dumps(child_genome)
+            conn.execute(
+                """INSERT INTO individuals
+                   (population_id, genome_key, genome_json, fitness, created_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (
+                    new_population_id,
+                    child_genome.get("key", idx),
+                    genome_json,
+                    0,
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
+        conn.commit()
+        return new_population_id
+
+
 # ---------------------------------------------------------------------------
 # API Endpoints
 # ---------------------------------------------------------------------------
