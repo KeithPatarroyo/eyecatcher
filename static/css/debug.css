@@ -29,6 +29,28 @@
     padding-bottom: var(--space-xs);
 }
 
+#debug-overlay h4.debug-section {
+    margin-top: 10px;
+}
+
+#debug-overlay #dbg-pattern-id {
+    color: #0a0;
+}
+
+#debug-overlay h4.debug-section--small {
+    margin-top: 8px;
+    font-size: 9px;
+    color: #666;
+}
+
+.debug-time-output {
+    color: #6ca0dc;
+}
+
+.debug-warning.hidden {
+    display: none;
+}
+
 .debug-row {
     display: flex;
     justify-content: space-between;

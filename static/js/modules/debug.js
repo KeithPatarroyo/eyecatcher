@@ -55,21 +55,21 @@ const EyecatcherDebug = (function () {
                 <span class="debug-label">Mouse Pos:</span>
                 <span class="debug-value" id="dbg-mousePos">0, 0</span>
             </div>
-            <h4 style="margin-top: 10px;">Hovered Pattern <span id="dbg-pattern-id" style="color: #0a0;">(none)</span></h4>
+            <h4 class="debug-section">Hovered Pattern <span id="dbg-pattern-id">(none)</span></h4>
             <div class="debug-row">
                 <span class="debug-label">Mouse Dist:</span>
                 <span class="debug-value" id="dbg-mouseDist">-</span>
             </div>
-            <h4 style="margin-top: 8px; font-size: 9px; color: #666;">Time CPPN → Visual CPPN</h4>
+            <h4 class="debug-section debug-section--small">Time CPPN → Visual CPPN</h4>
             <div class="debug-row">
-                <span class="debug-label" style="color: #6ca0dc;">Time (output):</span>
-                <span class="debug-value" id="dbg-v-time" style="color: #6ca0dc;">-</span>
+                <span class="debug-label debug-time-output">Time (output):</span>
+                <span class="debug-value debug-time-output" id="dbg-v-time">-</span>
             </div>
             <div class="debug-checkbox">
                 <input type="checkbox" id="dbg-sample-time">
                 <label for="dbg-sample-time">Sample time output</label>
             </div>
-            <div class="debug-warning" id="dbg-sample-warning" style="display: none;">
+            <div class="debug-warning hidden" id="dbg-sample-warning">
                 ⚠ Sampling enabled (may add latency)
             </div>
         `;
@@ -110,9 +110,7 @@ const EyecatcherDebug = (function () {
         // Sample checkbox
         elements.sampleCheckbox.addEventListener("change", (e) => {
             timeSamplingEnabled = e.target.checked;
-            elements.sampleWarning.style.display = timeSamplingEnabled
-                ? "block"
-                : "none";
+            elements.sampleWarning.classList.toggle("hidden", !timeSamplingEnabled);
             if (!timeSamplingEnabled) {
                 lastSampledTimeOutput = null;
             }

@@ -136,13 +136,13 @@
         var localUrl = "http://localhost:" + devPort;
         grid.innerHTML =
             '<div class="grid-error">' +
-            '<div style="color:var(--color-danger);font-weight:600;">Could not load CPPN patterns</div>' +
-            '<div style="margin-top:8px;">' +
+            '<div class="grid-error__title">Could not load CPPN patterns</div>' +
+            '<div class="grid-error__message">' +
             message +
             "</div>" +
-            '<div style="margin-top:12px;font-size:13px;color:var(--color-text-secondary);">Start the server: <code>python server.py</code><br>Then open <a href="' +
+            '<div class="grid-error__hint">Start the server: <code>python server.py</code><br>Then open <a href="' +
             localUrl +
-            '" style="color:var(--color-primary);">' +
+            '">' +
             localUrl +
             "</a></div>" +
             (showRetry

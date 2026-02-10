@@ -11,7 +11,6 @@
         const container = document.getElementById("toast-container");
         const toast = document.createElement("div");
         toast.className = "toast " + type;
-        toast.style.position = "relative";
 
         let html = '<button class="toast-close" aria-label="Close">&times;</button>';
         html += '<div class="toast-title">' + title + "</div>";
@@ -41,7 +40,7 @@
 
     function dismiss(toast) {
         if (!toast.parentNode) return;
-        toast.style.animation = "toast-out 0.3s ease-in forwards";
+        toast.classList.add("dismissing");
         setTimeout(function () {
             toast.remove();
         }, 300);

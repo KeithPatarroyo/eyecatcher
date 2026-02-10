@@ -330,6 +330,25 @@ h1 {
     background: var(--color-primary-hover);
 }
 
+.grid-error__title {
+    color: var(--color-danger);
+    font-weight: 600;
+}
+
+.grid-error__message {
+    margin-top: 8px;
+}
+
+.grid-error__hint {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.grid-error__hint a {
+    color: var(--color-primary);
+}
+
 .pattern-card {
     background: var(--color-bg-primary);
     border-radius: var(--radius-lg);
@@ -568,6 +587,7 @@ h1 {
 }
 
 .toast {
+    position: relative;
     background: var(--color-border);
     color: var(--color-text);
     padding: 12px 16px;
@@ -576,6 +596,10 @@ h1 {
     max-width: 320px;
     pointer-events: auto;
     animation: toast-in 0.3s ease-out;
+}
+
+.toast.dismissing {
+    animation: toast-out 0.3s ease-in forwards;
 }
 
 .toast.success {
