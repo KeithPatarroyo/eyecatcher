@@ -161,6 +161,21 @@
                 gap: 8px;
             }
 
+            .list-loading {
+                color: #666;
+                font-size: 12px;
+            }
+
+            details.sidebar-section summary {
+                cursor: pointer;
+                user-select: none;
+            }
+
+            .sidebar-btn-full {
+                width: 100%;
+                margin-top: 15px;
+            }
+
             .branch-item {
                 background: #1a1a1a;
                 padding: 10px;
@@ -636,11 +651,7 @@
                         <span class="info-label">Created:</span>
                         <span class="info-value" id="info-created">-</span>
                     </div>
-                    <button
-                        class="btn"
-                        id="load-population-btn"
-                        style="width: 100%; margin-top: 15px"
-                    >
+                    <button class="btn sidebar-btn-full" id="load-population-btn">
                         Load This Population
                     </button>
                 </div>
@@ -655,11 +666,7 @@
                         <span class="info-label">Generation:</span>
                         <span class="info-value" id="current-generation">-</span>
                     </div>
-                    <button
-                        class="btn"
-                        id="focus-current-btn"
-                        style="width: 100%; margin-top: 15px"
-                    >
+                    <button class="btn sidebar-btn-full" id="focus-current-btn">
                         🔍 Focus Current
                     </button>
                 </div>
@@ -667,18 +674,13 @@
                 <div class="sidebar-section">
                     <div class="sidebar-title">Branches</div>
                     <div id="branch-list" class="branch-list">
-                        <div style="color: #666; font-size: 12px">Loading...</div>
+                        <div class="list-loading">Loading...</div>
                     </div>
                 </div>
 
                 <div id="physics-controls">
                     <details class="sidebar-section">
-                        <summary
-                            class="sidebar-title"
-                            style="cursor: pointer; user-select: none"
-                        >
-                            Forces
-                        </summary>
+                        <summary class="sidebar-title">Forces</summary>
 
                         <div class="slider-control">
                             <label class="slider-label">Center force</label>
@@ -759,12 +761,7 @@
                 </div>
 
                 <details class="sidebar-section">
-                    <summary
-                        class="sidebar-title"
-                        style="cursor: pointer; user-select: none"
-                    >
-                        Display
-                    </summary>
+                    <summary class="sidebar-title">Display</summary>
 
                     <div class="toggle-control">
                         <label class="toggle-label">Arrows</label>
@@ -847,6 +844,13 @@
                 </div>
             </div>
         </div>
+
+        <template id="branch-list-item-tpl">
+            <div class="branch-item">
+                <div class="branch-name"></div>
+                <div class="branch-info"></div>
+            </div>
+        </template>
 
         <template id="export-branch-option-tpl">
             <label class="export-radio-label">

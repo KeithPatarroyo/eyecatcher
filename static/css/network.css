@@ -219,6 +219,18 @@
     border-radius: 50%;
 }
 
+.legend-dot--input {
+    background: #0066cc;
+}
+
+.legend-dot--hidden {
+    background: #28a745;
+}
+
+.legend-dot--output {
+    background: #dc3545;
+}
+
 .weight-adjustment-panel {
     display: flex;
     flex-direction: column;

@@ -12,7 +12,7 @@
         );
     }
 
-    var API_URL = window.API_URL || "http://localhost:5001/api";
+    var API_URL = window.API_URL;
     var FULLSCREEN_CANVAS_MAX = 1024;
     var FULLSCREEN_CANVAS_DEFAULT = 800;
     var FULLSCREEN_CANVAS_MIN = 64;
@@ -60,6 +60,14 @@
     }
     var patterns = new Map();
     var fullscreenPatternData = null;
+
+    function getGrid() {
+        return document.getElementById("grid");
+    }
+    function clearGrid() {
+        var g = getGrid();
+        if (g) g.innerHTML = "";
+    }
 
     function openFullscreen(id) {
         var pattern =
@@ -131,13 +139,20 @@
     }
 
     function showGridError(message, showRetry) {
-        var grid = document.getElementById("grid");
+        var grid = getGrid();
         var tpl = document.getElementById("grid-error-tpl");
         if (!tpl || !tpl.content) {
-            grid.innerHTML =
-                '<div class="grid-error"><div class="grid-error__message">' +
-                window.escapeHtml(message) +
-                "</div></div>";
+            clearGrid();
+            grid = getGrid();
+            if (grid) {
+                var wrap = document.createElement("div");
+                wrap.className = "grid-error";
+                var msg = document.createElement("div");
+                msg.className = "grid-error__message";
+                msg.textContent = message;
+                wrap.appendChild(msg);
+                grid.appendChild(wrap);
+            }
             showLoading(false);
             return;
         }
@@ -159,8 +174,9 @@
             retryBtn.textContent = "New random population";
             root.appendChild(retryBtn);
         }
-        grid.innerHTML = "";
-        grid.appendChild(fragment);
+        clearGrid();
+        grid = getGrid();
+        if (grid) grid.appendChild(fragment);
         showLoading(false);
         if (showRetry) {
             document.getElementById("grid-retry-btn").onclick = function () {
@@ -198,9 +214,9 @@
     }
 
     function renderGridFromPopulation(population) {
-        document.getElementById("grid").innerHTML = "";
+        clearGrid();
         patterns.clear();
-        var grid = document.getElementById("grid");
+        var grid = getGrid();
         population.forEach(function (pattern) {
             var result = window.PatternRenderer.createPatternCard(
                 patternCardCallbacks(pattern)
@@ -222,7 +238,7 @@
     async function loadFromStatelessGenomes(genomes, generationNum, saveToGenealogy) {
         if (!genomes || !genomes.length) return;
         showLoading(true);
-        document.getElementById("grid").innerHTML = "";
+        clearGrid();
         patterns.clear();
         try {
             var compData = await window.ApiClient.compile(genomes, getColorMode());
@@ -304,7 +320,7 @@
             if (!currentPopulation) currentPopulation = [];
             currentGenomes.push.apply(currentGenomes, genomes);
             currentPopulation.push.apply(currentPopulation, newShaders);
-            var grid = document.getElementById("grid");
+            var grid = getGrid();
             newShaders.forEach(function (pattern) {
                 var result = window.PatternRenderer.createPatternCard(
                     patternCardCallbacks(pattern)

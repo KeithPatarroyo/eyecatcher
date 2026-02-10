@@ -852,6 +852,10 @@ h1 {
     align-items: center;
 }
 
+#toolbar a.pop-btn {
+    text-decoration: none;
+}
+
 #toolbar .pop-btn {
     display: inline-block;
     padding: 8px 14px;

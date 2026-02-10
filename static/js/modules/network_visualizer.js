@@ -91,8 +91,6 @@
         try {
             const vizContainer = container.querySelector(".network-visualization");
             vizContainer.innerHTML = "";
-            vizContainer.style.width = "100%";
-            vizContainer.style.height = "100%";
 
             const nodes = new vis.DataSet();
             data.nodes.forEach(function (node) {

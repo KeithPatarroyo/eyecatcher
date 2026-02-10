@@ -375,23 +375,27 @@
                 li.appendChild(canvas.parentElement);
                 const info = document.createElement("div");
                 info.className = "info";
-                info.innerHTML =
-                    "<strong>" +
-                    (sub.name || "Unnamed") +
-                    "</strong> by " +
-                    (sub.creator || "?");
+                const strong = document.createElement("strong");
+                strong.textContent = sub.name || "Unnamed";
+                info.appendChild(strong);
+                info.appendChild(document.createTextNode(" by "));
+                info.appendChild(document.createTextNode(sub.creator || "?"));
                 li.appendChild(info);
                 const actions = document.createElement("div");
                 actions.className = "actions";
-                actions.innerHTML =
-                    '<button type="button" class="approve-btn">Approve</button><button type="button" class="reject-btn">Reject</button>';
+                const approveBtn = document.createElement("button");
+                approveBtn.type = "button";
+                approveBtn.className = "approve-btn";
+                approveBtn.textContent = "Approve";
+                approveBtn.addEventListener("click", () => adminApprove(sub.id, li));
+                const rejectBtn = document.createElement("button");
+                rejectBtn.type = "button";
+                rejectBtn.className = "reject-btn";
+                rejectBtn.textContent = "Reject";
+                rejectBtn.addEventListener("click", () => adminReject(sub.id, li));
+                actions.appendChild(approveBtn);
+                actions.appendChild(rejectBtn);
                 li.appendChild(actions);
-                li.querySelector(".approve-btn").addEventListener("click", () =>
-                    adminApprove(sub.id, li)
-                );
-                li.querySelector(".reject-btn").addEventListener("click", () =>
-                    adminReject(sub.id, li)
-                );
                 if (shaderInfo && shaderInfo.shader && _setupPattern) {
                     return _setupPattern(canvas, shaderInfo.shader);
                 }

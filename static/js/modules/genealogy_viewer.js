@@ -1,4 +1,4 @@
-const API_URL = window.API_URL || "http://localhost:5001/api";
+const API_URL = window.API_URL || "";
 
 let treeNetwork = null;
 let treeData = { nodes: [], edges: [] };
@@ -34,11 +34,16 @@ function showGenealogyToast(title, body, type = "success") {
         const container = document.getElementById("toast-container");
         const toast = document.createElement("div");
         toast.className = "toast " + type;
-        toast.innerHTML =
-            '<div class="toast-title">' +
-            title +
-            "</div>" +
-            (body ? '<div class="toast-body">' + body + "</div>" : "");
+        const titleEl = document.createElement("div");
+        titleEl.className = "toast-title";
+        titleEl.textContent = title;
+        toast.appendChild(titleEl);
+        if (body) {
+            const bodyEl = document.createElement("div");
+            bodyEl.className = "toast-body";
+            bodyEl.textContent = body;
+            toast.appendChild(bodyEl);
+        }
         container.appendChild(toast);
         setTimeout(function () {
             toast.remove();
@@ -81,15 +86,33 @@ async function loadBranches() {
             return;
         }
 
+        const tpl = document.getElementById("branch-list-item-tpl");
         data.branches.forEach((branch) => {
-            const item = document.createElement("div");
-            item.className = "branch-item";
-            item.innerHTML = `
-            <div class="branch-name">${branch.name}</div>
-            <div class="branch-info">
-                Gen ${branch.latest_generation} • ${branch.node_count} node(s)
-            </div>
-        `;
+            let item;
+            if (tpl && tpl.content) {
+                item = tpl.content.cloneNode(true).querySelector(".branch-item");
+            }
+            if (!item) {
+                item = document.createElement("div");
+                item.className = "branch-item";
+                const nameEl = document.createElement("div");
+                nameEl.className = "branch-name";
+                item.appendChild(nameEl);
+                const infoEl = document.createElement("div");
+                infoEl.className = "branch-info";
+                item.appendChild(infoEl);
+            }
+            const nameEl = item.querySelector(".branch-name");
+            const infoEl = item.querySelector(".branch-info");
+            if (nameEl) nameEl.textContent = branch.name;
+            if (infoEl) {
+                infoEl.textContent =
+                    "Gen " +
+                    branch.latest_generation +
+                    " \u2022 " +
+                    branch.node_count +
+                    " node(s)";
+            }
             item.onclick = () => {
                 // Focus on this branch in the tree
                 const branchNodes = treeData.nodes.filter(
