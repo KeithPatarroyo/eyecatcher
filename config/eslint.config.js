@@ -22,7 +22,7 @@ module.exports = [
                 Toast: "readonly",
                 Utils: "readonly",
                 showLoading: "readonly",
-                ZoomSignals: "readonly",
+                ViewerControls: "readonly",
                 Community: "readonly",
                 NetworkVisualizer: "readonly",
                 Debug: "readonly",

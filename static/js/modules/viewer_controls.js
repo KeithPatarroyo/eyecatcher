@@ -1,6 +1,6 @@
 /**
- * Pattern grid zoom and CPPN signal checkbox state.
- * Exposes: ZoomSignals.patternZoom, ZoomSignals.signalState, ZoomSignals.applyZoom(), ZoomSignals.init()
+ * Pattern grid zoom and CPPN signal checkbox state (viewer controls).
+ * Exposes: ViewerControls.patternZoom, ViewerControls.signalState, ViewerControls.applyZoom(), ViewerControls.init()
  */
 (function () {
     "use strict";
@@ -66,7 +66,7 @@
         });
     }
 
-    const ZoomSignals = {
+    const ViewerControls = {
         patternZoom: 1.0,
         signalState: (function () {
             const state = { time: {}, visual: {} };
@@ -147,5 +147,5 @@
         },
     };
 
-    window.ZoomSignals = ZoomSignals;
+    window.ViewerControls = ViewerControls;
 })();

@@ -1,7 +1,7 @@
 /**
  * Eyecatcher app entry: init and DOM wiring. Core logic lives in app_core.js.
  * Load after: app_core.js and all module scripts. Depends on: ApiClient, AnimationLoop,
- * PatternRenderer, ZoomSignals, PopulationUI, CommunityUI, NetworkVisualizer, Toast, initToolbarUI.
+ * PatternRenderer, ViewerControls, PopulationUI, CommunityUI, NetworkVisualizer, Toast, initToolbarUI.
  */
 (function () {
     "use strict";
@@ -62,14 +62,14 @@
     window.ApiClient.init(API_URL);
 
     function renderPattern(patternData, time, mouseSpd, mouseDist, inact) {
-        if (window.PatternRenderer && window.ZoomSignals) {
+        if (window.PatternRenderer && window.ViewerControls) {
             window.PatternRenderer.renderPattern(
                 patternData,
                 time,
                 mouseSpd,
                 mouseDist,
                 inact,
-                window.ZoomSignals.signalState
+                window.ViewerControls.signalState
             );
         }
     }
@@ -204,7 +204,7 @@
         });
     });
 
-    window.ZoomSignals.init();
+    window.ViewerControls.init();
 
     if (typeof window.EyecatcherDebug !== "undefined") {
         window.EyecatcherDebug.init({
@@ -212,7 +212,7 @@
             getMouseDistance: window.AnimationLoop.getMouseDistance,
             getPatterns: AppCore.getPatternsMap,
             getSignalState: function () {
-                return window.ZoomSignals.signalState;
+                return window.ViewerControls.signalState;
             },
             getGenomeForPattern: AppCore.getGenomeForPattern,
         });

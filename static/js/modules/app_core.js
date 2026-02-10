@@ -1,6 +1,6 @@
 /**
  * Eyecatcher app core: state, grid/breed/save logic. No DOM wiring.
- * Load after: utils, api_client, pattern_renderer, toast, zoom_signals (optional).
+ * Load after: utils, api_client, pattern_renderer, toast, viewer_controls (optional).
  * Call AppCore.init(apiUrl, ids) before using; then app.js wires DOM and passes AppCore to PopulationUI, CommunityUI, NetworkVisualizer, AnimationLoop.
  */
 (function () {
