@@ -134,19 +134,7 @@ class CPPNEngine:
         mouse_distance: float = 0.0,
         inactivity: float = 0.0,
     ) -> float:
-        """
-        Query the time signal CPPN to get a modified time value.
-
-        Args:
-            time_genome: Time signal NEAT genome
-            raw_time: Raw time value (normalized -1 to 1)
-            mouse_speed: Mouse movement speed (normalized -1 to 1)
-            mouse_distance: Distance from mouse to center (normalized -1 to 1)
-            inactivity: Activity level, decays when still (normalized -1 to 1)
-
-        Returns:
-            Modified time value (normalized -1 to 1)
-        """
+        """Query time signal CPPN for modified time. Returns value in -1 to 1."""
         # Time signal inputs: raw_time, mouse_speed, mouse_distance, inactivity, bias
         inputs = [raw_time, mouse_speed, mouse_distance, inactivity, 1.0]
 
@@ -168,22 +156,7 @@ class CPPNEngine:
         inactivity: float = 0.0,
         distance: Optional[float] = None,
     ) -> tuple[float, float, float]:
-        """
-        Query a visual CPPN for RGB values at given coordinates and time.
-
-        Args:
-            genome: NEAT genome to evaluate (visual CPPN)
-            x: X coordinate (normalized -1 to 1)
-            y: Y coordinate (normalized -1 to 1)
-            time: Time value (normalized -1 to 1)
-            mouse_speed: Mouse movement speed (normalized -1 to 1)
-            mouse_distance: Distance from mouse to center (normalized -1 to 1)
-            inactivity: Activity level, decays when still (normalized -1 to 1)
-            distance: Distance from center (computed if None)
-
-        Returns:
-            RGB values (each 0-1)
-        """
+        """Query visual CPPN for RGB at (x, y, time). Returns (r, g, b) in 0–1."""
         if distance is None:
             distance = np.sqrt(x**2 + y**2)
 
@@ -212,25 +185,7 @@ class CPPNEngine:
         inactivity: float = 0.0,
         distance: Optional[float] = None,
     ) -> tuple[float, float, float]:
-        """
-        Query a dual CPPN (time signal + visual) for RGB values.
-
-        The time signal CPPN first transforms the raw time based on mouse speed,
-        distance and activity, then the visual CPPN uses this modified time.
-
-        Args:
-            dual_genome: DualGenome containing visual and time_signal genomes
-            x: X coordinate (normalized -1 to 1)
-            y: Y coordinate (normalized -1 to 1)
-            raw_time: Raw time value (normalized -1 to 1)
-            mouse_speed: Mouse movement speed (normalized -1 to 1)
-            mouse_distance: Distance from mouse to center (normalized -1 to 1)
-            inactivity: Activity level, decays when still (normalized -1 to 1)
-            distance: Distance from center (computed if None)
-
-        Returns:
-            RGB values (each 0-1)
-        """
+        """Query dual CPPN for RGB at (x,y,raw_time). Returns (r,g,b) in 0–1."""
         # First, get the modified time from the time signal CPPN
         modified_time = self.query_time_signal(
             dual_genome.time_signal, raw_time, mouse_speed, mouse_distance, inactivity
@@ -254,12 +209,11 @@ class CPPNEngine:
         resolution: int = _DEFAULT_RENDER_RESOLUTION,
         time: float = 0.0,
     ) -> np.ndarray:
-        """
-        Render a complete image from a CPPN at a specific time.
+        """Render a full image from a CPPN at a given time. Returns (H,W) uint8 array.
 
         Args:
             genome: NEAT genome to render
-            resolution: Image size (will be resolution x resolution)
+            resolution: Image size (resolution x resolution)
             time: Time value for animation (0-1)
 
         Returns:
