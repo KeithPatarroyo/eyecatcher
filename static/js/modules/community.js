@@ -397,14 +397,9 @@
             );
             rowEl.remove();
         } catch (e) {
-            if (window.Toast)
-                Toast.error(
-                    e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
-                );
-            else
-                alert(
-                    e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
-                );
+            Toast.error(
+                e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
+            );
         }
     }
 
