@@ -5,7 +5,6 @@ import re
 
 import pytest
 from eyecatcher import get_root_dir
-from eyecatcher.evolution import CPPNEngine
 from eyecatcher.evolution.signals import (
     TIME_INPUTS,
     TIME_OUTPUTS,
@@ -14,13 +13,12 @@ from eyecatcher.evolution.signals import (
 )
 
 
-def test_neat_config_matches_registry():
+def test_neat_config_matches_registry(cppn_engine):
     """NEAT config num_inputs/num_outputs match registry (validated at engine init)."""
-    engine = CPPNEngine()
-    assert engine.config.genome_config.num_inputs == len(VISUAL_INPUTS)
-    assert engine.config.genome_config.num_outputs == len(VISUAL_OUTPUTS)
-    assert engine.time_config.genome_config.num_inputs == len(TIME_INPUTS)
-    assert engine.time_config.genome_config.num_outputs == len(TIME_OUTPUTS)
+    assert cppn_engine.config.genome_config.num_inputs == len(VISUAL_INPUTS)
+    assert cppn_engine.config.genome_config.num_outputs == len(VISUAL_OUTPUTS)
+    assert cppn_engine.time_config.genome_config.num_inputs == len(TIME_INPUTS)
+    assert cppn_engine.time_config.genome_config.num_outputs == len(TIME_OUTPUTS)
 
 
 def test_frontend_signals_match_backend():

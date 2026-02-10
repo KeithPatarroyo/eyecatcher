@@ -4,7 +4,11 @@ from unittest.mock import patch
 
 import pytest
 from eyecatcher import community_routes, genealogy_routes
-from eyecatcher.evolution import CPPNEngine, dual_genome_from_json
+from eyecatcher.evolution import (
+    CPPNEngine,
+    create_random_dual_genome,
+    dual_genome_from_json,
+)
 from eyecatcher.server import app
 
 
@@ -75,6 +79,14 @@ def cppn_engine():
 def minimal_dual(cppn_engine):
     """Dual genome with one hidden node in visual CPPN (deterministic)."""
     return minimal_dual_genome_one_hidden_visual(cppn_engine)
+
+
+@pytest.fixture
+def random_dual_genome(cppn_engine):
+    """Random dual genome with genome_id=0 (for tests that need one random genome)."""
+    return create_random_dual_genome(
+        cppn_engine.config, cppn_engine.time_config, genome_id=0
+    )
 
 
 @pytest.fixture

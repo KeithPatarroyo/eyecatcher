@@ -2,7 +2,6 @@
 
 import pytest
 from eyecatcher.evolution import (
-    CPPNEngine,
     create_random_dual_genome,
     dual_genome_from_json,
     dual_genome_to_json,
@@ -10,12 +9,10 @@ from eyecatcher.evolution import (
 )
 
 
-def test_dual_genome_round_trip():
+def test_dual_genome_round_trip(cppn_engine):
     """Serializing a dual genome and deserializing yields equivalent structure."""
-    engine = CPPNEngine()
-    engine.create_population()
     dual = create_random_dual_genome(
-        engine.config, engine.time_config, genome_id=7
+        cppn_engine.config, cppn_engine.time_config, genome_id=7
     )
     data = dual_genome_to_json(dual)
     assert "key" in data
@@ -25,9 +22,7 @@ def test_dual_genome_round_trip():
     assert "nodes" in data["visual"]
     assert "connections" in data["visual"]
 
-    restored = dual_genome_from_json(
-        data, engine.config, engine.time_config
-    )
+    restored = dual_genome_from_json(data, cppn_engine.config, cppn_engine.time_config)
     assert restored.key == dual.key
     assert len(restored.visual.nodes) == len(dual.visual.nodes)
     assert len(restored.visual.connections) == len(dual.visual.connections)
@@ -35,21 +30,14 @@ def test_dual_genome_round_trip():
 
 
 @pytest.mark.slow
-def test_dual_genome_round_trip_query_consistency():
+def test_dual_genome_round_trip_query_consistency(cppn_engine, random_dual_genome):
     """After round-trip, querying the CPPN gives identical output (fidelity)."""
-    engine = CPPNEngine()
-    engine.create_population()
-    dual = create_random_dual_genome(
-        engine.config, engine.time_config, genome_id=0
-    )
-    data = dual_genome_to_json(dual)
-    restored = dual_genome_from_json(
-        data, engine.config, engine.time_config
-    )
+    data = dual_genome_to_json(random_dual_genome)
+    restored = dual_genome_from_json(data, cppn_engine.config, cppn_engine.time_config)
 
     inputs = {"x": 0.5, "y": 0.5, "raw_time": 0.3}
-    r0, g0, b0 = engine.query_dual_cppn(dual, inputs)
-    r1, g1, b1 = engine.query_dual_cppn(restored, inputs)
+    r0, g0, b0 = cppn_engine.query_dual_cppn(random_dual_genome, inputs)
+    r1, g1, b1 = cppn_engine.query_dual_cppn(restored, inputs)
     assert isinstance(r0, (int, float)) and isinstance(r1, (int, float))
     assert 0 <= r0 <= 255 and 0 <= r1 <= 255
     assert 0 <= g0 <= 255 and 0 <= g1 <= 255
