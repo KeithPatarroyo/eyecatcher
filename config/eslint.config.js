@@ -19,6 +19,8 @@ module.exports = [
                 Storage: "readonly",
                 ToolbarUI: "readonly",
                 Toast: "readonly",
+                Utils: "readonly",
+                showLoading: "readonly",
                 ZoomSignals: "readonly",
                 Community: "readonly",
                 NetworkVisualizer: "readonly",

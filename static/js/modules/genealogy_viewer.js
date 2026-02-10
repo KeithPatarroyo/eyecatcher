@@ -44,10 +44,6 @@ function showGenealogyToast(title, body, type = "success") {
     }
 }
 
-function showLoading(show) {
-    document.getElementById("loading").style.display = show ? "block" : "none";
-}
-
 // Fetch and display genealogy stats
 async function loadStats() {
     try {
@@ -114,7 +110,7 @@ async function loadBranches() {
 
 // Fetch and visualize the tree
 async function loadTree() {
-    showLoading(true);
+    Utils.showLoading(true);
     try {
         const data = await ApiClient.apiFetch(
             `${API_URL}/genealogy/tree`,
@@ -133,7 +129,7 @@ async function loadTree() {
             "error"
         );
     } finally {
-        showLoading(false);
+        Utils.showLoading(false);
     }
 }
 
@@ -362,7 +358,7 @@ function visualizeTree(nodes) {
                     },
                 });
             }, 100);
-            showLoading(false);
+            Utils.showLoading(false);
         });
     } else {
         // For hierarchical, fit immediately
@@ -373,7 +369,7 @@ function visualizeTree(nodes) {
                     easingFunction: "easeInOutQuad",
                 },
             });
-            showLoading(false);
+            Utils.showLoading(false);
         }, 100);
     }
 
@@ -422,7 +418,7 @@ function updateCurrentPopulationInfo() {
 
 // Load a population into the main viewer
 async function loadPopulation(populationId) {
-    showLoading(true);
+    Utils.showLoading(true);
     try {
         const data = await ApiClient.apiFetch(
             `${API_URL}/genealogy/load-population/${populationId}`,
@@ -455,7 +451,7 @@ async function loadPopulation(populationId) {
             "error"
         );
     } finally {
-        showLoading(false);
+        Utils.showLoading(false);
     }
 }
 

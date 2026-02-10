@@ -151,7 +151,7 @@
                 ? '<button type="button" class="retry-btn" id="grid-retry-btn">New random population</button>'
                 : "") +
             "</div>";
-        document.getElementById("loading").style.display = "none";
+        showLoading(false);
         if (showRetry) {
             document.getElementById("grid-retry-btn").onclick = function () {
                 window.PopulationUI.startNewRandomPopulation();
@@ -211,7 +211,7 @@
 
     async function loadFromStatelessGenomes(genomes, generationNum, saveToGenealogy) {
         if (!genomes || !genomes.length) return;
-        document.getElementById("loading").style.display = "block";
+        showLoading(true);
         document.getElementById("grid").innerHTML = "";
         patterns.clear();
         try {
@@ -270,7 +270,7 @@
             console.error(e);
             showGridError(e.message || "Failed to compile", true);
         } finally {
-            document.getElementById("loading").style.display = "none";
+            showLoading(false);
         }
     }
 
@@ -286,7 +286,7 @@
             copy.clicks = 0;
             return copy;
         });
-        document.getElementById("loading").style.display = "block";
+        showLoading(true);
         try {
             var compData = await window.ApiClient.compile(payload, getColorMode());
             var newShaders = compData.shaders || [];
@@ -320,7 +320,7 @@
                     "error"
                 );
         } finally {
-            document.getElementById("loading").style.display = "none";
+            showLoading(false);
         }
     }
 
@@ -364,14 +364,14 @@
     function breedGeneration() {
         if (document.getElementById("breed-btn").classList.contains("disabled")) return;
         setBreedButtonDisabled(true);
-        document.getElementById("loading").style.display = "block";
+        showLoading(true);
 
         if (!currentGenomes) {
             if (window.Toast)
                 window.Toast.error(
                     "No population loaded. Start with New random population or Load population."
                 );
-            document.getElementById("loading").style.display = "none";
+            showLoading(false);
             setBreedButtonDisabled(false);
             updateStats();
             return;
@@ -394,7 +394,7 @@
                 window.Toast.error(
                     "Select at least one pattern (click on it) before breeding."
                 );
-            document.getElementById("loading").style.display = "none";
+            showLoading(false);
             updateStats();
             setBreedButtonDisabled(false);
             return;
@@ -426,7 +426,7 @@
                 console.error("Error breeding:", e);
                 if (window.Toast)
                     window.Toast.error("Breed failed: " + (e.message || String(e)));
-                document.getElementById("loading").style.display = "none";
+                showLoading(false);
                 updateStats();
                 setBreedButtonDisabled(false);
             });

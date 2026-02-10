@@ -1,6 +1,6 @@
 /**
  * Shared pure helpers for the frontend.
- * Exposes: formatBytes, escapeHtml, and constants BYTES_KB, BYTES_MB.
+ * Exposes: formatBytes, escapeHtml, showLoading, and constants BYTES_KB, BYTES_MB.
  */
 (function () {
     "use strict";
@@ -20,12 +20,19 @@
         return div.innerHTML;
     }
 
+    function showLoading(show) {
+        var el = document.getElementById("loading");
+        if (el) el.style.display = show ? "block" : "none";
+    }
+
     window.Utils = {
         formatBytes: formatBytes,
         escapeHtml: escapeHtml,
+        showLoading: showLoading,
         BYTES_KB: BYTES_KB,
         BYTES_MB: BYTES_MB,
     };
     window.formatBytes = formatBytes;
     window.escapeHtml = escapeHtml;
+    window.showLoading = showLoading;
 })();

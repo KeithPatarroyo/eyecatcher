@@ -48,11 +48,11 @@
     // -------------------------------------------------------------------------
 
     async function openSubmitCommunityModal(patternId) {
-        document.getElementById("loading").style.display = "block";
+        showLoading(true);
         const genome = _getGenomeForPattern
             ? await _getGenomeForPattern(patternId)
             : null;
-        document.getElementById("loading").style.display = "none";
+        showLoading(false);
         if (!genome) {
             Toast.error("Could not get pattern data.");
             return;
@@ -106,7 +106,7 @@
     // -------------------------------------------------------------------------
 
     async function onNewFromCommunityClick() {
-        document.getElementById("loading").style.display = "block";
+        showLoading(true);
         try {
             const d = await window.ApiClient.apiFetch(
                 _apiUrl + "/community",
@@ -194,7 +194,7 @@
         } catch (e) {
             Toast.error("Error: " + (e.message || e));
         } finally {
-            document.getElementById("loading").style.display = "none";
+            showLoading(false);
         }
     }
 

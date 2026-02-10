@@ -41,8 +41,7 @@
      * Start a new random population from the server.
      */
     async function startNewRandomPopulation() {
-        const loadingEl = document.getElementById("loading");
-        if (loadingEl) loadingEl.style.display = "block";
+        showLoading(true);
         try {
             // Clear any existing session data when starting fresh
             sessionStorage.removeItem("current_population_data");
@@ -57,7 +56,7 @@
             console.error("Error starting random population:", error);
             Toast.error("Error: " + (error.message || String(error)));
         } finally {
-            if (loadingEl) loadingEl.style.display = "none";
+            showLoading(false);
         }
     }
 
