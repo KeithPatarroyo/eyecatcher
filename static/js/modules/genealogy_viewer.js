@@ -609,15 +609,26 @@ function attachEventListeners() {
             branchList.innerHTML = "";
             const branches = sizes.branches || [];
             branchesGroup.hidden = branches.length === 0;
+            const tpl = document.getElementById("export-branch-option-tpl");
             branches.forEach((b) => {
-                const label = document.createElement("label");
-                label.className = "export-radio-label";
-                const id = "export-branch-" + (b.name || "main").replace(/\W/g, "_");
-                label.innerHTML = `
-            <input type="radio" name="export-scope" value="${window.escapeHtml(b.name || "main")}" id="${id}">
-            <span class="export-option-title">${window.escapeHtml(b.name || "main")}</span>
-            <span class="export-size">${b.populations} pop., ${b.individuals} ind. (~${window.formatBytes(b.estimated_bytes)})</span>
-        `;
+                if (!tpl || !tpl.content) return;
+                const label = tpl.content.cloneNode(true).querySelector("label");
+                if (!label) return;
+                const radio = label.querySelector('input[type="radio"]');
+                const titleSpan = label.querySelector(".export-option-title");
+                const sizeSpan = label.querySelector(".export-size");
+                const branchName = b.name || "main";
+                const safeId = "export-branch-" + branchName.replace(/\W/g, "_");
+                radio.id = safeId;
+                radio.value = branchName;
+                titleSpan.textContent = branchName;
+                sizeSpan.textContent =
+                    b.populations +
+                    " pop., " +
+                    b.individuals +
+                    " ind. (~" +
+                    window.formatBytes(b.estimated_bytes) +
+                    ")";
                 branchList.appendChild(label);
             });
             modal.hidden = false;

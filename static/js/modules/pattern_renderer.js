@@ -179,19 +179,20 @@
 
         const info = document.createElement("div");
         info.className = "pattern-info";
-        info.innerHTML =
-            '<div class="pattern-meta">ID: ' +
+        const meta = document.createElement("div");
+        meta.className = "pattern-meta";
+        meta.textContent =
+            "ID: " +
             id +
             " | Nodes: " +
             pattern.nodes +
             " | Connections: " +
-            pattern.connections +
-            "</div>" +
-            '<div class="click-count' +
-            (clicks === 0 ? " zero" : "") +
-            '">' +
-            clicks +
-            "</div>";
+            pattern.connections;
+        const clickCount = document.createElement("div");
+        clickCount.className = "click-count" + (clicks === 0 ? " zero" : "");
+        clickCount.textContent = String(clicks);
+        info.appendChild(meta);
+        info.appendChild(clickCount);
 
         const actions = document.createElement("div");
         actions.className = "pattern-actions";
