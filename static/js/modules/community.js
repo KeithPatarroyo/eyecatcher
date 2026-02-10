@@ -185,16 +185,16 @@
             );
             if (!_communityPatternsList.length) {
                 ul.innerHTML =
-                    '<li style="color:#888;">No approved community patterns yet.</li>';
-                if (loadSelectedBtn) loadSelectedBtn.style.display = "none";
-                if (load12Btn) load12Btn.style.display = "none";
-                if (selectAllBtn) selectAllBtn.style.display = "none";
-                if (deselectAllBtn) deselectAllBtn.style.display = "none";
+                    '<li class="list-empty">No approved community patterns yet.</li>';
+                if (loadSelectedBtn) loadSelectedBtn.classList.add("hidden");
+                if (load12Btn) load12Btn.classList.add("hidden");
+                if (selectAllBtn) selectAllBtn.classList.add("hidden");
+                if (deselectAllBtn) deselectAllBtn.classList.add("hidden");
             } else {
-                if (loadSelectedBtn) loadSelectedBtn.style.display = "inline-block";
-                if (load12Btn) load12Btn.style.display = "inline-block";
-                if (selectAllBtn) selectAllBtn.style.display = "inline-block";
-                if (deselectAllBtn) deselectAllBtn.style.display = "inline-block";
+                if (loadSelectedBtn) loadSelectedBtn.classList.remove("hidden");
+                if (load12Btn) load12Btn.classList.remove("hidden");
+                if (selectAllBtn) selectAllBtn.classList.remove("hidden");
+                if (deselectAllBtn) deselectAllBtn.classList.remove("hidden");
                 const shadersByKey = await compileListToShaders(
                     _communityPatternsList,
                     (pat) => ({ ...pat.genome, key: pat.id, clicks: 0 })
@@ -298,10 +298,11 @@
     function openAdminModal() {
         _adminKey = "";
         document.getElementById("admin-key-input").value = "";
-        document.getElementById("admin-key-error").style.display = "none";
-        document.getElementById("admin-key-error").textContent = "";
-        document.getElementById("admin-step-key").style.display = "block";
-        document.getElementById("admin-step-list").style.display = "none";
+        const errEl = document.getElementById("admin-key-error");
+        errEl.classList.add("hidden");
+        errEl.textContent = "";
+        document.getElementById("admin-step-key").classList.remove("hidden");
+        document.getElementById("admin-step-list").classList.add("hidden");
         document.getElementById("admin-modal").classList.add("show");
     }
 
@@ -315,7 +316,7 @@
         const errEl = document.getElementById("admin-key-error");
         if (!key) {
             errEl.textContent = "Please enter the API key.";
-            errEl.style.display = "block";
+            errEl.classList.remove("hidden");
             return;
         }
         try {
@@ -327,19 +328,19 @@
             );
             if (r.status === 403) {
                 errEl.textContent = "Invalid API key.";
-                errEl.style.display = "block";
+                errEl.classList.remove("hidden");
                 return;
             }
             if (!r.ok) {
                 errEl.textContent = "Request failed (status " + r.status + ").";
-                errEl.style.display = "block";
+                errEl.classList.remove("hidden");
                 return;
             }
             _adminKey = key;
             const d = await r.json();
             const list = d.submissions || [];
-            document.getElementById("admin-step-key").style.display = "none";
-            document.getElementById("admin-step-list").style.display = "block";
+            document.getElementById("admin-step-key").classList.add("hidden");
+            document.getElementById("admin-step-list").classList.remove("hidden");
             await renderAdminPendingList(list);
         } catch (e) {
             if (e.status === 403) {
@@ -348,7 +349,7 @@
                 errEl.textContent =
                     "Error: " + Utils.formatApiError(e, "Request failed");
             }
-            errEl.style.display = "block";
+            errEl.classList.remove("hidden");
         }
     }
 
@@ -356,8 +357,7 @@
         const ul = document.getElementById("admin-pending-list");
         ul.innerHTML = "";
         if (!submissions.length) {
-            ul.innerHTML =
-                '<li style="color:#888;padding:12px;">No pending submissions.</li>';
+            ul.innerHTML = '<li class="list-empty">No pending submissions.</li>';
             return;
         }
         const shadersByKey = await compileListToShaders(submissions, (s) => ({

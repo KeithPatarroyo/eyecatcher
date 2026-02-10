@@ -81,7 +81,7 @@
             if (!ul) return;
             ul.innerHTML = "";
             if (!list.length) {
-                ul.innerHTML = '<li style="color:#888;">No saved populations</li>';
+                ul.innerHTML = '<li class="list-empty">No saved populations</li>';
             } else {
                 list.forEach((pop) => {
                     const li = document.createElement("li");

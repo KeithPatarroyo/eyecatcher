@@ -11,7 +11,7 @@ let savedPositions = null; // Save positions when switching modes
 function updateControlsVisibility() {
     const physicsControls = document.getElementById("physics-controls");
     if (physicsControls) {
-        physicsControls.style.display = hierarchicalLayout ? "none" : "block";
+        physicsControls.classList.toggle("hidden", hierarchicalLayout);
     }
 }
 
@@ -77,8 +77,7 @@ async function loadBranches() {
         branchList.innerHTML = "";
 
         if (!data.branches || data.branches.length === 0) {
-            branchList.innerHTML =
-                '<div style="color: #666; font-size: 12px;">No branches yet</div>';
+            branchList.innerHTML = '<div class="list-empty">No branches yet</div>';
             return;
         }
 
@@ -381,7 +380,7 @@ function selectNode(nodeId) {
 
     if (!node) return;
 
-    document.getElementById("selected-node-info").style.display = "block";
+    document.getElementById("selected-node-info").classList.remove("hidden");
     document.getElementById("info-id").textContent = node.id;
     document.getElementById("info-generation").textContent = node.generation_num;
     document.getElementById("info-branch").textContent = node.branch_name;
@@ -393,8 +392,9 @@ function selectNode(nodeId) {
 
 // Update current population info display
 function updateCurrentPopulationInfo() {
+    const section = document.getElementById("current-population-section");
     if (!currentPopulationId || !treeData.nodes) {
-        document.getElementById("current-population-section").style.display = "none";
+        section.classList.add("hidden");
         return;
     }
 
@@ -402,11 +402,11 @@ function updateCurrentPopulationInfo() {
     const node = treeData.nodes.find((n) => n.id === popId);
 
     if (!node) {
-        document.getElementById("current-population-section").style.display = "none";
+        section.classList.add("hidden");
         return;
     }
 
-    document.getElementById("current-population-section").style.display = "block";
+    section.classList.remove("hidden");
     document.getElementById("current-id").textContent = node.id;
     document.getElementById("current-generation").textContent = node.generation_num;
 }

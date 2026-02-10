@@ -158,3 +158,14 @@ button:disabled {
     color: var(--color-text-zoom);
     font-size: 13px;
 }
+
+/* Utility: hide element (use with classList.add/remove for display toggles) */
+.hidden {
+    display: none !important;
+}
+
+/* Shared empty list / empty state message */
+.list-empty {
+    color: var(--color-text-secondary);
+    padding: 12px;
+}
