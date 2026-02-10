@@ -51,14 +51,11 @@ function showLoading(show) {
 // Fetch and display genealogy stats
 async function loadStats() {
     try {
-        const response = await fetch(`${API_URL}/genealogy/stats`);
-        const data = await response.json();
-
-        if (data.error) {
-            console.error("Stats error:", data.error);
-            return;
-        }
-
+        const data = await ApiClient.apiFetch(
+            `${API_URL}/genealogy/stats`,
+            {},
+            "Stats failed"
+        );
         document.getElementById("stat-populations").textContent =
             data.total_populations;
         document.getElementById("stat-individuals").textContent =
@@ -73,14 +70,11 @@ async function loadStats() {
 // Fetch and display branches
 async function loadBranches() {
     try {
-        const response = await fetch(`${API_URL}/genealogy/branches`);
-        const data = await response.json();
-
-        if (data.error) {
-            console.error("Branches error:", data.error);
-            return;
-        }
-
+        const data = await ApiClient.apiFetch(
+            `${API_URL}/genealogy/branches`,
+            {},
+            "Branches failed"
+        );
         const branchList = document.getElementById("branch-list");
         branchList.innerHTML = "";
 
@@ -122,22 +116,22 @@ async function loadBranches() {
 async function loadTree() {
     showLoading(true);
     try {
-        const response = await fetch(`${API_URL}/genealogy/tree`);
-        const data = await response.json();
-
-        if (data.error) {
-            showGenealogyToast("Error", data.error, "error");
-            showLoading(false);
-            return;
-        }
-
+        const data = await ApiClient.apiFetch(
+            `${API_URL}/genealogy/tree`,
+            {},
+            "Failed to load tree"
+        );
         visualizeTree(data.nodes);
         loadStats();
         loadBranches();
         updateCurrentPopulationInfo();
-    } catch (error) {
-        console.error("Failed to load tree:", error);
-        showGenealogyToast("Error", "Failed to load genealogy tree", "error");
+    } catch (e) {
+        console.error("Failed to load tree:", e);
+        showGenealogyToast(
+            "Error",
+            (e.data && e.data.error) || e.message || "Failed to load tree",
+            "error"
+        );
     } finally {
         showLoading(false);
     }
@@ -430,17 +424,11 @@ function updateCurrentPopulationInfo() {
 async function loadPopulation(populationId) {
     showLoading(true);
     try {
-        const response = await fetch(
-            `${API_URL}/genealogy/load-population/${populationId}`
+        const data = await ApiClient.apiFetch(
+            `${API_URL}/genealogy/load-population/${populationId}`,
+            {},
+            "Failed to load population"
         );
-        const data = await response.json();
-
-        if (data.error) {
-            showGenealogyToast("Error", data.error, "error");
-            showLoading(false);
-            return;
-        }
-
         // Store in localStorage for cross-tab communication (this tab -> main viewer)
         // localStorage is shared across tabs, enabling genealogy tree -> main viewer handoff
         localStorage.setItem(
@@ -459,9 +447,13 @@ async function loadPopulation(populationId) {
         setTimeout(() => {
             window.location.href = "/";
         }, 1000);
-    } catch (error) {
-        console.error("Failed to load population:", error);
-        showGenealogyToast("Error", "Failed to load population", "error");
+    } catch (e) {
+        console.error("Failed to load population:", e);
+        showGenealogyToast(
+            "Error",
+            (e.data && e.data.error) || e.message || "Failed to load population",
+            "error"
+        );
     } finally {
         showLoading(false);
     }
@@ -486,25 +478,22 @@ async function renderThumbnail(populationId) {
     }
 
     try {
-        // Fetch the fittest genome
-        const response = await fetch(
-            `${API_URL}/genealogy/population-thumbnail/${populationId}`
+        const data = await ApiClient.apiFetch(
+            `${API_URL}/genealogy/population-thumbnail/${populationId}`,
+            {},
+            "No thumbnail"
         );
-        if (!response.ok) {
-            console.warn(`No thumbnail for population ${populationId}`);
-            return null;
-        }
-        const data = await response.json();
         if (!data.genome) return null;
 
-        // Compile to shader
-        const compileResponse = await fetch(`${API_URL}/compile`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ genomes: [data.genome] }),
-        });
-        if (!compileResponse.ok) return null;
-        const compileData = await compileResponse.json();
+        const compileData = await ApiClient.apiFetch(
+            `${API_URL}/compile`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ genomes: [data.genome] }),
+            },
+            "Compile failed"
+        );
         if (!compileData.shaders || !compileData.shaders[0]) return null;
 
         const shader = compileData.shaders[0].shader;
@@ -611,17 +600,11 @@ document.getElementById("refresh-btn").onclick = () => {
 document.getElementById("download-genealogy-btn").onclick = async () => {
     const modal = document.getElementById("export-genealogy-modal");
     try {
-        const r = await fetch(`${API_URL}/genealogy/export-sizes`);
-        if (!r.ok) {
-            const d = await r.json().catch(() => ({}));
-            showGenealogyToast(
-                "Could not load sizes",
-                d.error || "Server error",
-                "error"
-            );
-            return;
-        }
-        const sizes = await r.json();
+        const sizes = await ApiClient.apiFetch(
+            `${API_URL}/genealogy/export-sizes`,
+            {},
+            "Could not load sizes"
+        );
         document.getElementById("export-full-size").textContent =
             sizes.full.populations +
             " populations, " +
@@ -675,13 +658,7 @@ document.getElementById("export-modal-download").onclick = async () => {
         const url = branchName
             ? `${API_URL}/genealogy/export?branch_name=${encodeURIComponent(branchName)}`
             : `${API_URL}/genealogy/export`;
-        const r = await fetch(url);
-        if (!r.ok) {
-            const d = await r.json().catch(() => ({}));
-            showGenealogyToast("Download failed", d.error || "Server error", "error");
-            return;
-        }
-        const data = await r.json();
+        const data = await ApiClient.apiFetch(url, {}, "Download failed");
         const blob = new Blob([JSON.stringify(data, null, 2)], {
             type: "application/json",
         });
@@ -707,14 +684,11 @@ document.getElementById("export-modal-download").onclick = async () => {
 document.getElementById("reset-genealogy-btn").onclick = async () => {
     if (!confirm("Clear all genealogy data? This cannot be undone.")) return;
     try {
-        const r = await fetch(`${API_URL}/genealogy/reset`, {
-            method: "POST",
-        });
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok || data.error) {
-            showGenealogyToast("Reset failed", data.error || "Server error", "error");
-            return;
-        }
+        await ApiClient.apiFetch(
+            `${API_URL}/genealogy/reset`,
+            { method: "POST" },
+            "Reset failed"
+        );
         try {
             localStorage.removeItem("genealogy_branch_counter");
         } catch (_) {
