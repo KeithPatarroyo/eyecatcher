@@ -9,6 +9,8 @@
 (function () {
     "use strict";
 
+    const PATTERN_CANVAS_SIZE = 256;
+
     const VERTEX_SHADER_SOURCE = `#version 300 es
         in vec2 position;
         out vec2 vUV;
@@ -172,8 +174,8 @@
 
         const canvas = document.createElement("canvas");
         canvas.className = "pattern-canvas";
-        canvas.width = 256;
-        canvas.height = 256;
+        canvas.width = PATTERN_CANVAS_SIZE;
+        canvas.height = PATTERN_CANVAS_SIZE;
 
         const info = document.createElement("div");
         info.className = "pattern-info";

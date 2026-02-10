@@ -40,6 +40,9 @@
         time: { opacity: 0.5 },
     };
 
+    const WEIGHT_MIN = -5;
+    const WEIGHT_MAX = 5;
+
     function extractNodeLabel(nodeId) {
         const parts = String(nodeId).split("_");
         if (parts.length >= 3) {
@@ -244,8 +247,6 @@
             "weight-slider-item" + (isTimeNetwork ? " time-network" : "");
         const sourceLabel = extractNodeLabel(connection.source);
         const targetLabel = extractNodeLabel(connection.target);
-        const minWeight = -5;
-        const maxWeight = 5;
         const currentWeight = connection.weight;
         sliderDiv.setAttribute("data-source", connection.source);
         sliderDiv.setAttribute("data-target", connection.target);
@@ -257,9 +258,9 @@
             "</div>" +
             '<div class="weight-slider-row">' +
             '<input type="range" class="weight-slider-input" min="' +
-            minWeight +
+            WEIGHT_MIN +
             '" max="' +
-            maxWeight +
+            WEIGHT_MAX +
             '" step="0.05" value="' +
             currentWeight +
             '" ' +

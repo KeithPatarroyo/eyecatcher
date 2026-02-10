@@ -17,6 +17,8 @@ function updateControlsVisibility() {
 
 const TOAST_DURATION_MS = 5000;
 const DEFAULT_NODE_SIZE = 90;
+const THUMBNAIL_CANVAS_SIZE = 128;
+const MAX_THUMBNAIL_CACHE = 200;
 const PHYSICS_DEFAULTS = {
     repelForce: 5000,
     centerForce: 0.1,
@@ -490,8 +492,8 @@ async function renderThumbnail(populationId) {
 
         // Create a small canvas and render
         const canvas = document.createElement("canvas");
-        canvas.width = 128;
-        canvas.height = 128;
+        canvas.width = THUMBNAIL_CANVAS_SIZE;
+        canvas.height = THUMBNAIL_CANVAS_SIZE;
 
         // Check if PatternRenderer is available
         if (!window.PatternRenderer) {
@@ -526,7 +528,6 @@ async function renderThumbnail(populationId) {
 
         // Convert to data URL
         const dataUrl = canvas.toDataURL("image/png");
-        const MAX_THUMBNAIL_CACHE = 200;
         if (thumbnailCache.size >= MAX_THUMBNAIL_CACHE) {
             const firstKey = thumbnailCache.keys().next().value;
             if (firstKey !== undefined) thumbnailCache.delete(firstKey);

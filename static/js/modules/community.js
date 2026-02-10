@@ -24,6 +24,8 @@
     let _submitCommunityGenome = null;
     let _adminKey = "";
 
+    const PREVIEW_CANVAS_SIZE = 80;
+
     /**
      * Initialize the community UI module.
      * @param {Object} options
@@ -165,8 +167,8 @@
                     const previewWrap = document.createElement("div");
                     previewWrap.className = "preview-wrap";
                     const canvas = document.createElement("canvas");
-                    canvas.width = 80;
-                    canvas.height = 80;
+                    canvas.width = PREVIEW_CANVAS_SIZE;
+                    canvas.height = PREVIEW_CANVAS_SIZE;
                     previewWrap.appendChild(canvas);
                     const info = document.createElement("div");
                     info.className = "info";
@@ -344,8 +346,8 @@
             const previewWrap = document.createElement("div");
             previewWrap.className = "preview-wrap";
             const canvas = document.createElement("canvas");
-            canvas.width = 80;
-            canvas.height = 80;
+            canvas.width = PREVIEW_CANVAS_SIZE;
+            canvas.height = PREVIEW_CANVAS_SIZE;
             previewWrap.appendChild(canvas);
             const info = document.createElement("div");
             info.className = "info";
