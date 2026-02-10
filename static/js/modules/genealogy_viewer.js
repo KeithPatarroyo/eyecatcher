@@ -133,52 +133,44 @@ async function loadTree() {
     }
 }
 
-// Visualize the tree using vis.js
-function visualizeTree(nodes) {
-    const container = document.getElementById("tree-visualization");
-
-    // Convert to vis.js format
+function buildVisNodes(nodes) {
     const visNodes = new vis.DataSet();
-    const visEdges = new vis.DataSet();
-
-    treeData.nodes = nodes;
-
+    const nodeSize = parseInt(
+        document.getElementById("node-size")?.value || DEFAULT_NODE_SIZE,
+        10
+    );
     nodes.forEach((node) => {
         const isCurrent =
             currentPopulationId && node.id === parseInt(currentPopulationId);
         const color = getBranchColor(node.branch_name);
-
-        // Highlight current population with special styling
         const borderColor = isCurrent ? "#FFD700" : "#0066cc";
         const borderWidth = isCurrent ? 5 : 2;
-
-        const nodeSize = parseInt(
-            document.getElementById("node-size")?.value || DEFAULT_NODE_SIZE,
-            10
-        );
-
         visNodes.add({
             id: node.id,
-            label: undefined, // No label - just show the pattern
+            label: undefined,
             color: {
                 background: color,
                 border: borderColor,
                 highlight: { background: "#0080ff", border: borderColor },
             },
-            shape: "dot", // Start as dot, will change to circularImage when thumbnail loads
+            shape: "dot",
             borderWidth: borderWidth,
-            size: nodeSize / 2, // Size for dots (radius)
-            mass: 2, // Heavier nodes for physics
+            size: nodeSize / 2,
+            mass: 2,
             title: `Generation ${node.generation_num} (${node.branch_name})\n${node.population_size} individuals${isCurrent ? "\n★ Current Population" : ""}`,
         });
+    });
+    return visNodes;
+}
 
+function buildVisEdges(nodes) {
+    const visEdges = new vis.DataSet();
+    const showArrows = document.getElementById("show-arrows")?.checked !== false;
+    const linkThickness = parseFloat(
+        document.getElementById("link-thickness")?.value || 2
+    );
+    nodes.forEach((node) => {
         if (node.parent_id !== null) {
-            const showArrows =
-                document.getElementById("show-arrows")?.checked !== false;
-            const linkThickness = parseFloat(
-                document.getElementById("link-thickness")?.value || 2
-            );
-
             visEdges.add({
                 from: node.parent_id,
                 to: node.id,
@@ -198,8 +190,11 @@ function visualizeTree(nodes) {
             });
         }
     });
+    return visEdges;
+}
 
-    const options = {
+function buildNetworkOptions() {
+    return {
         layout: {
             hierarchical: hierarchicalLayout
                 ? {
@@ -215,7 +210,7 @@ function visualizeTree(nodes) {
                 : false,
         },
         physics: {
-            enabled: !hierarchicalLayout, // Enable physics when not hierarchical
+            enabled: !hierarchicalLayout,
             stabilization: {
                 enabled: true,
                 iterations: 300,
@@ -301,18 +296,59 @@ function visualizeTree(nodes) {
                   ),
         },
     };
+}
+
+function attachNetworkHandlers(network, _visNodes) {
+    network.on("click", (params) => {
+        if (params.nodes.length > 0) selectNode(params.nodes[0]);
+    });
+    network.on("dragEnd", (_params) => {
+        if (!hierarchicalLayout) {
+            savedPositions = network.getPositions();
+        }
+    });
+    if (!hierarchicalLayout) {
+        network.once("stabilizationIterationsDone", function () {
+            setTimeout(() => {
+                network.fit({
+                    animation: {
+                        duration: 800,
+                        easingFunction: "easeInOutQuad",
+                    },
+                });
+            }, 100);
+            Utils.showLoading(false);
+        });
+    } else {
+        setTimeout(() => {
+            network.fit({
+                animation: {
+                    duration: 500,
+                    easingFunction: "easeInOutQuad",
+                },
+            });
+            Utils.showLoading(false);
+        }, 100);
+    }
+}
+
+// Visualize the tree using vis.js
+function visualizeTree(nodes) {
+    treeData.nodes = nodes;
+    const container = document.getElementById("tree-visualization");
+    const visNodes = buildVisNodes(nodes);
+    const visEdges = buildVisEdges(nodes);
+    const options = buildNetworkOptions();
 
     if (treeNetwork) {
         treeNetwork.destroy();
     }
-
     treeNetwork = new vis.Network(
         container,
         { nodes: visNodes, edges: visEdges },
         options
     );
 
-    // Restore saved positions if switching back from another mode
     if (savedPositions && !hierarchicalLayout) {
         setTimeout(() => {
             const currentNodes = visNodes.get();
@@ -326,54 +362,11 @@ function visualizeTree(nodes) {
                     });
                 }
             });
-            treeNetwork.stabilize(50); // Brief stabilization to settle
+            treeNetwork.stabilize(50);
         }, 100);
     }
 
-    // Handle node selection
-    treeNetwork.on("click", (params) => {
-        if (params.nodes.length > 0) {
-            const nodeId = params.nodes[0];
-            selectNode(nodeId);
-        }
-    });
-
-    // Save positions when user drags nodes (for mode switching)
-    treeNetwork.on("dragEnd", (_params) => {
-        if (!hierarchicalLayout) {
-            savedPositions = treeNetwork.getPositions();
-        }
-    });
-
-    // Handle stabilization and fitting
-    if (!hierarchicalLayout) {
-        // For physics layout, keep physics enabled for interactivity
-        treeNetwork.once("stabilizationIterationsDone", function () {
-            // Keep physics running for smooth Obsidian-like interaction
-            setTimeout(() => {
-                treeNetwork.fit({
-                    animation: {
-                        duration: 800,
-                        easingFunction: "easeInOutQuad",
-                    },
-                });
-            }, 100);
-            Utils.showLoading(false);
-        });
-    } else {
-        // For hierarchical, fit immediately
-        setTimeout(() => {
-            treeNetwork.fit({
-                animation: {
-                    duration: 500,
-                    easingFunction: "easeInOutQuad",
-                },
-            });
-            Utils.showLoading(false);
-        }, 100);
-    }
-
-    // Load thumbnails asynchronously (don't block UI)
+    attachNetworkHandlers(treeNetwork, visNodes);
     setTimeout(() => {
         renderAllThumbnails(visNodes);
     }, 500);
