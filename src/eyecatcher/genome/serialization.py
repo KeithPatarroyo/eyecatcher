@@ -1,0 +1,318 @@
+"""
+Genome serialization for stateless API and client storage.
+
+JSON serialization/deserialization for NEAT genomes and DualGenomes,
+plus deep copy and network extraction for visualization.
+"""
+
+from typing import Any, Optional
+
+import neat
+
+from ..signals.signals import (
+    NETWORK_SIGNALS,
+    input_labels,
+    output_labels,
+)
+from .genome import DualGenome
+
+
+def genome_to_json(genome: neat.DefaultGenome) -> dict[str, Any]:
+    """Serialize a NEAT DefaultGenome to a JSON-serializable dict."""
+    nodes = {}
+    for node_id, node in genome.nodes.items():
+        nodes[str(node_id)] = {
+            "bias": float(getattr(node, "bias", 0.0)),
+            "response": float(getattr(node, "response", 1.0)),
+            "activation": str(getattr(node, "activation", "sigmoid")),
+            "aggregation": str(getattr(node, "aggregation", "sum")),
+        }
+    connections = {}
+    for key, conn in genome.connections.items():
+        conn_key = f"{key[0]}_{key[1]}"
+        connections[conn_key] = {
+            "innovation": int(getattr(conn, "innovation", 0)),
+            "weight": float(getattr(conn, "weight", 0.0)),
+            "enabled": bool(getattr(conn, "enabled", True)),
+        }
+    return {
+        "key": genome.key if genome.key is not None else 0,
+        "fitness": genome.fitness,
+        "nodes": nodes,
+        "connections": connections,
+    }
+
+
+def genome_from_json(
+    data: dict[str, Any], visual_config: neat.Config
+) -> neat.DefaultGenome:
+    """Deserialize a NEAT DefaultGenome from a dict (e.g. from JSON)."""
+    genome_config = visual_config.genome_config
+    genome = neat.DefaultGenome(data.get("key", 0))
+    genome.fitness = data.get("fitness")
+    genome.nodes = {}
+    genome.connections = {}
+
+    for nid_str, node_data in data.get("nodes", {}).items():
+        nid = int(nid_str)
+        node = genome_config.node_gene_type(nid)
+        node.bias = float(node_data.get("bias", 0.0))
+        node.response = float(node_data.get("response", 1.0))
+        act = str(node_data.get("activation", "sigmoid")).strip()
+        node.activation = act if act else "sigmoid"
+        node.aggregation = str(node_data.get("aggregation", "sum"))
+        genome.nodes[nid] = node
+
+    for conn_key_str, conn_data in data.get("connections", {}).items():
+        parts = conn_key_str.split("_", 1)
+        if len(parts) != 2:
+            continue
+        try:
+            in_id, out_id = int(parts[0]), int(parts[1])
+        except ValueError:
+            continue
+        key = (in_id, out_id)
+        innovation = conn_data.get("innovation")
+        if innovation is None:
+            innovation = abs(hash(key)) % (2**31)
+        else:
+            innovation = int(innovation)
+        conn = genome_config.connection_gene_type(key, innovation=innovation)
+        conn.weight = float(conn_data.get("weight", 0.0))
+        conn.enabled = bool(conn_data.get("enabled", True))
+        genome.connections[key] = conn
+    return genome
+
+
+def dual_genome_network_stats(dual: DualGenome) -> dict[str, int]:
+    """Return node and enabled-connection counts for both genomes."""
+    v_nodes = len(dual.visual.nodes)
+    v_conns = len([c for c in dual.visual.connections.values() if c.enabled])
+    t_nodes = len(dual.time_signal.nodes)
+    t_conns = len([c for c in dual.time_signal.connections.values() if c.enabled])
+    return {
+        "visual_nodes": v_nodes,
+        "visual_connections": v_conns,
+        "time_nodes": t_nodes,
+        "time_connections": t_conns,
+    }
+
+
+def dual_genome_to_json(dual: DualGenome) -> dict[str, Any]:
+    """
+    Serialize a DualGenome to a JSON-serializable dict.
+
+    Args:
+        dual: The dual genome to serialize.
+
+    Returns:
+        Dict with "key", "visual", "time_signal" suitable for JSON.
+    """
+    return {
+        "key": dual.key,
+        "visual": genome_to_json(dual.visual),
+        "time_signal": genome_to_json(dual.time_signal),
+    }
+
+
+def dual_genome_from_json(
+    data: dict[str, Any],
+    visual_config: neat.Config,
+    time_config: neat.Config,
+) -> DualGenome:
+    """
+    Deserialize a DualGenome from a dict (e.g. from JSON).
+
+    Args:
+        data: Dict with "visual" and "time_signal" genome dicts.
+        visual_config: NEAT config for the visual genome.
+        time_config: NEAT config for the time_signal genome.
+
+    Returns:
+        Reconstructed DualGenome.
+    """
+    visual_data = data.get("visual", {})
+    time_data = data.get("time_signal", {})
+    if not visual_data or not time_data:
+        raise ValueError("dual genome JSON must contain 'visual' and 'time_signal'")
+
+    visual = genome_from_json(visual_data, visual_config)
+    time_signal = genome_from_json(time_data, time_config)
+    _update_node_indexer_from_genome(visual, visual_config.genome_config)
+    _update_node_indexer_from_genome(time_signal, time_config.genome_config)
+
+    key = data.get("key", 0)
+    return DualGenome(visual=visual, time_signal=time_signal, key=key)
+
+
+def _update_node_indexer_from_genome(
+    genome: neat.DefaultGenome, genome_config: Any
+) -> None:
+    """Update the genome config's node indexer to prevent ID collisions."""
+    if not genome.nodes:
+        return
+    hidden_node_ids = [
+        nid for nid in genome.nodes.keys() if nid >= genome_config.num_outputs
+    ]
+    if not hidden_node_ids:
+        return
+    max_node_id = max(hidden_node_ids)
+    if hasattr(genome_config, "node_indexer"):
+        import itertools
+
+        genome_config.node_indexer = itertools.count(max_node_id + 1)
+
+
+def copy_genome(
+    genome: neat.DefaultGenome, visual_config: neat.Config
+) -> neat.DefaultGenome:
+    """Create a deep copy of a genome by serializing and deserializing."""
+    return genome_from_json(genome_to_json(genome), visual_config)
+
+
+def copy_dual_genome(
+    dual: DualGenome,
+    visual_config: neat.Config,
+    time_config: neat.Config,
+    new_key: Optional[int] = None,
+) -> DualGenome:
+    """Create a deep copy of a dual genome."""
+    return DualGenome(
+        visual=copy_genome(dual.visual, visual_config),
+        time_signal=copy_genome(dual.time_signal, time_config),
+        key=new_key if new_key is not None else dual.key,
+    )
+
+
+def _append_nodes_for_layer(
+    nodes: list[dict[str, Any]],
+    node_id_map: dict[int, str],
+    network_type: str,
+    layer_type: str,
+    id_label_list: list[tuple[int, str]],
+    x_pos: float,
+    extra_per_node: Optional[list[dict[str, Any]]] = None,
+) -> None:
+    """Append one layer of nodes (input, hidden, or output) with vertical spacing."""
+    n = len(id_label_list)
+    y_positions = [(i - n / 2) * 80 for i in range(n)]
+    extras = extra_per_node if extra_per_node is not None else [{} for _ in range(n)]
+    for i, ((neat_id, label), extra) in enumerate(zip(id_label_list, extras)):
+        vis_id = f"{network_type}_{layer_type}_{neat_id}"
+        node_id_map[neat_id] = vis_id
+        nodes.append(
+            {
+                "id": vis_id,
+                "label": label,
+                "type": layer_type,
+                "network": network_type,
+                "index": neat_id if layer_type == "hidden" else i,
+                "x": x_pos,
+                "y": y_positions[i],
+                **extra,
+            }
+        )
+
+
+def extract_network_data(
+    genome: neat.DefaultGenome, network_type: str, neat_config: neat.Config
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Extract nodes and connections from a genome for network visualization.
+
+    Args:
+        genome: NEAT DefaultGenome (visual or time_signal).
+        network_type: "visual" or "time"; determines which signal registry is used.
+        neat_config: NEAT config for this genome (visual or time).
+
+    Returns:
+        (nodes, connections) as lists of dicts with id, label, type, etc.
+    """
+    nodes = []
+    node_id_map = {}
+    num_inputs = neat_config.genome_config.num_inputs
+    num_outputs = neat_config.genome_config.num_outputs
+    x_offset = 1000 if network_type == "time" else 0
+    signals, outputs = NETWORK_SIGNALS[network_type]
+    input_label_list = input_labels(signals)
+    input_list = [
+        (-(i + 1), input_label_list[i] if i < len(input_label_list) else f"Input {i}")
+        for i in range(num_inputs)
+    ]
+    _append_nodes_for_layer(
+        nodes,
+        node_id_map,
+        network_type,
+        "input",
+        input_list,
+        -400 + x_offset,
+    )
+
+    hidden_list = sorted(genome.nodes.keys())
+    hidden_id_labels = [(nid, f"Node {nid}") for nid in hidden_list]
+    hidden_extras = [
+        {
+            "activation": genome.nodes[nid].activation,
+            "bias": float(genome.nodes[nid].bias),
+        }
+        for nid in hidden_list
+    ]
+    _append_nodes_for_layer(
+        nodes,
+        node_id_map,
+        network_type,
+        "hidden",
+        hidden_id_labels,
+        0 + x_offset,
+        hidden_extras,
+    )
+
+    output_label_list = output_labels(outputs)
+    output_list = [
+        (i, output_label_list[i] if i < len(output_label_list) else f"Output {i}")
+        for i in range(num_outputs)
+    ]
+    _append_nodes_for_layer(
+        nodes,
+        node_id_map,
+        network_type,
+        "output",
+        output_list,
+        400 + x_offset,
+    )
+
+    connections = []
+    for conn_id, conn in genome.connections.items():
+        if conn.enabled:
+            input_node, output_node = conn_id
+            source_id = node_id_map.get(input_node, str(input_node))
+            target_id = node_id_map.get(output_node, str(output_node))
+            connections.append(
+                {
+                    "source": source_id,
+                    "target": target_id,
+                    "weight": float(conn.weight),
+                    "network": network_type,
+                }
+            )
+
+    return nodes, connections
+
+
+def parse_network_node_id(node_id_str: str) -> int:
+    """
+    Parse a frontend node ID string back to the numeric NEAT node ID.
+
+    Args:
+        node_id_str: String like "visual_input_-1" or "time_hidden_5".
+
+    Returns:
+        The integer node ID.
+
+    Raises:
+        ValueError: If the format is invalid.
+    """
+    parts = node_id_str.split("_")
+    if len(parts) >= 3:
+        return int(parts[-1])
+    return int(node_id_str)

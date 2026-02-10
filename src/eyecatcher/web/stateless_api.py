@@ -1,0 +1,285 @@
+"""
+Stateless API Blueprint for Eyecatcher.
+
+Provides endpoints that don't depend on server-side population state.
+Blueprint is registered in server; engine and compiler are injected via
+init_stateless_api. Endpoints: /api/compile, /api/random, /api/time-output,
+/api/network, /api/adjust-weight.
+"""
+
+from flask import Blueprint, jsonify, request
+
+from ..evolution import (
+    DEFAULT_POPULATION_SIZE,
+    MAX_POPULATION_SIZE,
+    CPPNEngine,
+    DualGenome,
+    create_random_dual_genome,
+    dual_genome_from_json,
+    dual_genome_to_json,
+    extract_network_data,
+    parse_network_node_id,
+)
+from ..evolution.signals import TIME_INPUTS
+from ..glsl import ShaderCompiler
+from .api_helpers import ERR_GENOME_REQUIRED, ERR_GENOMES_ARRAY_REQUIRED, api_error
+from .response_builder import build_shader_response
+
+# Create blueprint
+stateless_bp = Blueprint("stateless", __name__)
+
+# Module-level references (set by init_stateless_api)
+_engine: CPPNEngine = None
+_compiler: ShaderCompiler = None
+
+
+def init_stateless_api(engine: CPPNEngine, compiler: ShaderCompiler):
+    """
+    Initialize the stateless API with engine and compiler references.
+    Call this before registering the blueprint with the app.
+    """
+    global _engine, _compiler
+    _engine = engine
+    _compiler = compiler
+
+
+def _shader_response_for_dual(
+    dual_genome: DualGenome,
+    individual_id: int,
+    clicks: int = 0,
+    compiler=None,
+):
+    """Build shader response dict for a dual genome; used by the compile endpoint."""
+    comp = compiler if compiler is not None else _compiler
+    return build_shader_response(
+        dual_genome,
+        individual_id=individual_id,
+        clicks=clicks,
+        compiler=comp,
+        visual_config=_engine.config,
+        time_config=_engine.time_config,
+    )
+
+
+@stateless_bp.route("/api/compile", methods=["POST"])
+def api_compile():
+    """
+    Stateless: compile a list of dual genomes to shaders.
+    Body: { "genomes": [ ... ], "color_mode": "hsv"|"rgb" (optional) }
+    Returns: { "shaders": [ { "id", "shader", "clicks", "nodes", ... }, ... ] }
+    """
+    try:
+        data = request.json or {}
+        genomes_data = data.get("genomes", [])
+        if not genomes_data:
+            return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
+        color_mode = (data.get("color_mode") or "").strip().lower()
+        if color_mode and color_mode not in ("hsv", "rgb"):
+            color_mode = "hsv"
+        compiler = (
+            _compiler
+            if (not color_mode or color_mode == _compiler.color_mode)
+            else ShaderCompiler(color_mode=color_mode)
+        )
+        shaders = []
+        for i, g_data in enumerate(genomes_data):
+            dual = dual_genome_from_json(g_data, _engine.config, _engine.time_config)
+            individual_id = g_data.get("key", dual.key if dual else i)
+            clicks = g_data.get("clicks", 0)
+            shaders.append(
+                _shader_response_for_dual(
+                    dual, individual_id, clicks, compiler=compiler
+                )
+            )
+        return jsonify({"shaders": shaders})
+    except ValueError as e:
+        return api_error(str(e), 400)
+    except Exception as e:
+        return api_error(str(e), 500)
+
+
+@stateless_bp.route("/api/random", methods=["POST"])
+def api_random():
+    """
+    Stateless: create a new random population.
+    Body: { "size": N } (default from config)
+    Returns: { "genomes": [ { "key", "visual", "time_signal" }, ... ] }
+    """
+    try:
+        data = request.json or {}
+        size = data.get("size", DEFAULT_POPULATION_SIZE)
+        size = max(1, min(int(size), MAX_POPULATION_SIZE))
+        genomes = []
+        for i in range(size):
+            dual = create_random_dual_genome(
+                _engine.config, _engine.time_config, genome_id=i
+            )
+            genomes.append(dual_genome_to_json(dual))
+        return jsonify({"genomes": genomes})
+    except Exception as e:
+        return api_error(str(e), 500)
+
+
+@stateless_bp.route("/api/time-output", methods=["POST"])
+def api_time_output():
+    """
+    Stateless: query the Time CPPN for a genome with given inputs (for debug panel).
+    Body: { "genome": { ... }, <enable_key>: value ... } (0-1) for each time CPPN
+    input; keys from evolution.signals TIME_INPUTS (e.g. rawTime, mouseSpeed).
+    Returns: { "timeOutput": float, "inputs": { <enable_key>: value ... } }.
+    """
+    try:
+        data = request.json or {}
+        genome_data = data.get("genome")
+        if not genome_data:
+            return api_error(ERR_GENOME_REQUIRED, 400)
+        dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
+        time_inputs = {}
+        response_inputs = {}
+        for s in TIME_INPUTS:
+            key = s.enable_key or s.name
+            raw_val = data.get(key, data.get(s.name))
+            if raw_val is None and s.name == "raw_time":
+                raw_val = data.get("time")
+            val = float(raw_val if raw_val is not None else s.default)
+            time_inputs[s.name] = val * 2.0 - 1.0
+            response_inputs[key] = val
+        time_output = _engine.query_time_signal(dual.time_signal, time_inputs)
+        return jsonify(
+            {
+                "timeOutput": time_output,
+                "inputs": response_inputs,
+            }
+        )
+    except ValueError as e:
+        return api_error(str(e), 400)
+    except Exception as e:
+        return api_error(str(e), 500)
+
+
+@stateless_bp.route("/api/network", methods=["POST"])
+def api_network():
+    """
+    Stateless: get network visualization data for a genome.
+    Body: { "genome": { "key", "visual", "time_signal" } }
+    Returns: { "id": key, "nodes": [...], "connections": [...] }
+    """
+    try:
+        data = request.json or {}
+        genome_data = data.get("genome")
+        if not genome_data:
+            return api_error(ERR_GENOME_REQUIRED, 400)
+
+        dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
+        individual_id = genome_data.get("key", dual.key if dual else 0)
+
+        all_nodes = []
+        all_connections = []
+
+        # Extract visual network
+        if dual.visual:
+            visual_nodes, visual_conns = extract_network_data(
+                dual.visual, "visual", _engine.config
+            )
+            all_nodes.extend(visual_nodes)
+            all_connections.extend(visual_conns)
+
+        # Extract time signal network
+        if dual.time_signal:
+            time_nodes, time_conns = extract_network_data(
+                dual.time_signal, "time", _engine.time_config
+            )
+            all_nodes.extend(time_nodes)
+            all_connections.extend(time_conns)
+
+        return jsonify(
+            {
+                "id": individual_id,
+                "nodes": all_nodes,
+                "connections": all_connections,
+                "status": "success",
+            }
+        )
+    except ValueError as e:
+        return api_error(str(e), 400)
+    except Exception as e:
+        return api_error(str(e), 500)
+
+
+@stateless_bp.route("/api/adjust-weight", methods=["POST"])
+def api_adjust_weight():
+    """
+    Stateless: adjust a connection weight in a genome and return updated shader.
+    Body: {
+        "genome": { "key", "visual", "time_signal" },
+        "network": "visual" or "time",
+        "source": source_node_id (string like "visual_input_-1"),
+        "target": target_node_id (string like "visual_hidden_5"),
+        "weight": new_weight_value (float)
+    }
+    Returns: { "status": "success", "shader": "...", "genome": {...} }
+    """
+    try:
+        data = request.json or {}
+        genome_data = data.get("genome")
+        if not genome_data:
+            return api_error(ERR_GENOME_REQUIRED, 400)
+
+        network_type = data.get("network")  # 'visual' or 'time'
+        source_node = data.get("source")
+        target_node = data.get("target")
+        new_weight = float(data.get("weight", 0))
+
+        # Parse the genome
+        dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
+
+        # Select the appropriate network
+        if network_type == "visual":
+            genome = dual.visual
+        elif network_type == "time":
+            genome = dual.time_signal
+        else:
+            return api_error(f"Unknown network type: {network_type}", 400)
+
+        try:
+            source_id = parse_network_node_id(source_node)
+            target_id = parse_network_node_id(target_node)
+        except (ValueError, IndexError):
+            return api_error(
+                f"Invalid node ID format: {source_node} or {target_node}", 400
+            )
+
+        # Update the weight in the connection
+        conn_key = (source_id, target_id)
+        if conn_key in genome.connections:
+            genome.connections[conn_key].weight = new_weight
+
+            # Recompile shader with updated weights
+            shader_code = _compiler.compile_dual_to_glsl(
+                dual, _engine.config, _engine.time_config
+            )
+
+            # Return updated genome as JSON so client can update its state
+            updated_genome = dual_genome_to_json(dual)
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "shader": shader_code,
+                    "genome": updated_genome,
+                    "network": network_type,
+                    "source": source_node,
+                    "target": target_node,
+                    "weight": new_weight,
+                }
+            )
+        else:
+            return api_error(
+                f"Connection not found: {conn_key} ({source_node} -> {target_node})",
+                404,
+            )
+
+    except ValueError as e:
+        return api_error(str(e), 400)
+    except Exception as e:
+        return api_error(str(e), 500)
