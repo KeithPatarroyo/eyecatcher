@@ -27,7 +27,6 @@ from .community_routes import community_bp
 from .evolution import (
     DEFAULT_POPULATION_SIZE,
     DEFAULT_RENDER_RESOLUTION,
-    DEFAULT_RENDER_TIME,
     MUTATION_PROBABILITY,
     CPPNEngine,
     DualGenome,
@@ -227,13 +226,12 @@ def _save_dual_genome(
     bundle_json = json.dumps(bundle, indent=2)
     genome_json = json.dumps(dual_genome_to_json(dual_genome), indent=2)
 
-    # PNG image
+    # PNG image (use dual render so time CPPN is applied)
     from PIL import Image
 
-    img = engine.render_image(
-        dual_genome.visual,
+    img = engine.render_dual_image(
+        dual_genome,
         resolution=DEFAULT_RENDER_RESOLUTION,
-        time=DEFAULT_RENDER_TIME,
     )
     img_buffer = io.BytesIO()
     Image.fromarray(img).save(img_buffer, format="PNG")
