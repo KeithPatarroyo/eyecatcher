@@ -78,17 +78,19 @@
             (document.getElementById("community-submit-creator").value || "").trim() ||
             "Anonymous";
         try {
-            const r = await fetch(`${_apiUrl}/community/submit`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ genome: _submitCommunityGenome, name, creator }),
-            });
-            const d = await r.json().catch(() => ({}));
-            if (!r.ok) {
-                if (window.Toast) Toast.error(d.error || "Submit failed");
-                else alert(d.error || "Submit failed");
-                return;
-            }
+            await window.ApiClient.apiFetch(
+                _apiUrl + "/community/submit",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        genome: _submitCommunityGenome,
+                        name,
+                        creator,
+                    }),
+                },
+                "Submit failed"
+            );
             if (window.Toast)
                 Toast.show(
                     "Submitted",
@@ -110,13 +112,11 @@
     async function onNewFromCommunityClick() {
         document.getElementById("loading").style.display = "block";
         try {
-            const r = await fetch(_apiUrl + "/community");
-            if (!r.ok) {
-                if (window.Toast) Toast.error("Failed to load community.");
-                else alert("Failed to load community.");
-                return;
-            }
-            const d = await r.json();
+            const d = await window.ApiClient.apiFetch(
+                _apiUrl + "/community",
+                {},
+                "Failed to load community"
+            );
             _communityPatternsList = d.patterns || [];
             const ul = document.getElementById("community-list");
             if (!ul) return;
@@ -148,17 +148,10 @@
                         key: pat.id,
                         clicks: 0,
                     }));
-                    const comp = await fetch(_apiUrl + "/compile", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ genomes: compilePayload }),
+                    const compData = await window.ApiClient.compile(compilePayload);
+                    (compData.shaders || []).forEach((sh) => {
+                        shadersByKey[sh.id] = sh;
                     });
-                    if (comp.ok) {
-                        const compData = await comp.json();
-                        (compData.shaders || []).forEach((sh) => {
-                            shadersByKey[sh.id] = sh;
-                        });
-                    }
                 } catch (e) {
                     console.warn("Could not compile community previews:", e);
                 }
@@ -318,7 +311,12 @@
             document.getElementById("admin-step-list").style.display = "block";
             await renderAdminPendingList(list);
         } catch (e) {
-            errEl.textContent = "Error: " + (e.message || String(e));
+            if (e.status === 403) {
+                errEl.textContent = "Invalid API key.";
+            } else {
+                errEl.textContent =
+                    "Error: " + (e.message || (e.data && e.data.error) || String(e));
+            }
             errEl.style.display = "block";
         }
     }
@@ -338,17 +336,10 @@
                 key: s.id,
                 clicks: 0,
             }));
-            const comp = await fetch(_apiUrl + "/compile", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ genomes: compilePayload }),
+            const compData = await window.ApiClient.compile(compilePayload);
+            (compData.shaders || []).forEach((sh) => {
+                shadersByKey[sh.id] = sh;
             });
-            if (comp.ok) {
-                const compData = await comp.json();
-                (compData.shaders || []).forEach((sh) => {
-                    shadersByKey[sh.id] = sh;
-                });
-            }
         } catch (e) {
             console.warn("Could not compile previews:", e);
         }
@@ -398,7 +389,7 @@
 
     async function adminApprove(id, rowEl) {
         try {
-            const r = await fetch(
+            await window.ApiClient.apiFetch(
                 _apiUrl + "/admin/approve?admin_key=" + encodeURIComponent(_adminKey),
                 {
                     method: "POST",
@@ -407,28 +398,25 @@
                         "X-Admin-Key": _adminKey,
                     },
                     body: JSON.stringify({ id }),
-                }
+                },
+                "Approve failed"
             );
-            if (r.status === 403) {
-                if (window.Toast) Toast.error("Invalid API key.");
-                else alert("Invalid API key.");
-                return;
-            }
-            if (!r.ok) {
-                if (window.Toast) Toast.error("Approve failed.");
-                else alert("Approve failed.");
-                return;
-            }
             rowEl.remove();
         } catch (e) {
-            if (window.Toast) Toast.error("Error: " + (e.message || e));
-            else alert("Error: " + (e.message || e));
+            if (window.Toast)
+                Toast.error(
+                    e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
+                );
+            else
+                alert(
+                    e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
+                );
         }
     }
 
     async function adminReject(id, rowEl) {
         try {
-            const r = await fetch(
+            await window.ApiClient.apiFetch(
                 _apiUrl + "/admin/reject?admin_key=" + encodeURIComponent(_adminKey),
                 {
                     method: "POST",
@@ -437,22 +425,19 @@
                         "X-Admin-Key": _adminKey,
                     },
                     body: JSON.stringify({ id }),
-                }
+                },
+                "Reject failed"
             );
-            if (r.status === 403) {
-                if (window.Toast) Toast.error("Invalid API key.");
-                else alert("Invalid API key.");
-                return;
-            }
-            if (!r.ok) {
-                if (window.Toast) Toast.error("Reject failed.");
-                else alert("Reject failed.");
-                return;
-            }
             rowEl.remove();
         } catch (e) {
-            if (window.Toast) Toast.error("Error: " + (e.message || e));
-            else alert("Error: " + (e.message || e));
+            if (window.Toast)
+                Toast.error(
+                    e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
+                );
+            else
+                alert(
+                    e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
+                );
         }
     }
 

@@ -49,19 +49,7 @@
             sessionStorage.removeItem("current_population_id");
             sessionStorage.removeItem("has_population");
 
-            const r = await fetch(`${_apiUrl}/random`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ size: 12 }),
-            });
-            if (!r.ok) {
-                const d = await r.json().catch(() => ({}));
-                if (window.Toast)
-                    Toast.error(d.error || "Failed to create random population");
-                else alert(d.error || "Failed to create random population");
-                return;
-            }
-            const d = await r.json();
+            const d = await window.ApiClient.random(12);
             if (_loadFromStatelessGenomes) {
                 await _loadFromStatelessGenomes(d.genomes || [], 0, true);
             }

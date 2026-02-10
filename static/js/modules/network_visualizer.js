@@ -294,20 +294,21 @@
                         );
                     return;
                 }
-                fetch(_apiUrl + "/adjust-weight", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        genome: genome,
-                        network: networkType,
-                        source: connection.source,
-                        target: connection.target,
-                        weight: newWeight,
-                    }),
-                })
-                    .then(function (r) {
-                        return r.json();
-                    })
+                window.ApiClient.apiFetch(
+                    _apiUrl + "/adjust-weight",
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            genome: genome,
+                            network: networkType,
+                            source: connection.source,
+                            target: connection.target,
+                            weight: newWeight,
+                        }),
+                    },
+                    "Weight update failed"
+                )
                     .then(function (data) {
                         if (data.status === "success") {
                             if (typeof _updatePatternShader === "function")
@@ -438,17 +439,15 @@
             return;
         }
         try {
-            const response = await fetch(_apiUrl + "/network", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ genome: genome }),
-            });
-            const data = await response.json();
-            if (data.error) {
-                if (typeof showToast === "function")
-                    showToast("Network error", data.error, "error");
-                return;
-            }
+            const data = await window.ApiClient.apiFetch(
+                _apiUrl + "/network",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ genome: genome }),
+                },
+                "Network error"
+            );
             const infoPanel = sidebar.querySelector(".network-info-panel");
             if (infoPanel) {
                 const visualNodes = data.nodes.filter(function (n) {

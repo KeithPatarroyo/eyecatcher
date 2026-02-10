@@ -140,19 +140,24 @@ const EyecatcherDebug = (function () {
                 pendingSampleRequest = false;
                 return;
             }
-            const response = await fetch(`${apiUrl}/time-output`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    genome,
-                    time,
-                    mouseSpeed: mouseSpd,
-                    mouseDist,
-                    activity: activityLevel,
-                }),
-            });
-            const data = await response.json();
-            if (data.error) {
+            let data;
+            try {
+                data = await window.ApiClient.apiFetch(
+                    apiUrl + "/time-output",
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            genome,
+                            time,
+                            mouseSpeed: mouseSpd,
+                            mouseDist,
+                            activity: activityLevel,
+                        }),
+                    },
+                    "Time output failed"
+                );
+            } catch (_e) {
                 pendingSampleRequest = false;
                 return;
             }
