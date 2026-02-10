@@ -33,46 +33,14 @@ const EyecatcherDebug = (function () {
         toggleBtn.textContent = "Debug";
         document.body.appendChild(toggleBtn);
 
-        // Overlay container
+        // Overlay container (structure from template)
         overlay = document.createElement("div");
         overlay.id = "debug-overlay";
         overlay.className = "hidden";
-        overlay.innerHTML = `
-            <h4>Global Signals</h4>
-            <div class="debug-row">
-                <span class="debug-label">Raw Time:</span>
-                <span class="debug-value" id="dbg-time">0.000</span>
-            </div>
-            <div class="debug-row">
-                <span class="debug-label">Mouse Speed:</span>
-                <span class="debug-value" id="dbg-mouseSpeed">0.000</span>
-            </div>
-            <div class="debug-row">
-                <span class="debug-label">Activity:</span>
-                <span class="debug-value" id="dbg-activity">0.000</span>
-            </div>
-            <div class="debug-row">
-                <span class="debug-label">Mouse Pos:</span>
-                <span class="debug-value" id="dbg-mousePos">0, 0</span>
-            </div>
-            <h4 class="debug-section">Hovered Pattern <span id="dbg-pattern-id">(none)</span></h4>
-            <div class="debug-row">
-                <span class="debug-label">Mouse Dist:</span>
-                <span class="debug-value" id="dbg-mouseDist">-</span>
-            </div>
-            <h4 class="debug-section debug-section--small">Time CPPN → Visual CPPN</h4>
-            <div class="debug-row">
-                <span class="debug-label debug-time-output">Time (output):</span>
-                <span class="debug-value debug-time-output" id="dbg-v-time">-</span>
-            </div>
-            <div class="debug-checkbox">
-                <input type="checkbox" id="dbg-sample-time">
-                <label for="dbg-sample-time">Sample time output</label>
-            </div>
-            <div class="debug-warning hidden" id="dbg-sample-warning">
-                ⚠ Sampling enabled (may add latency)
-            </div>
-        `;
+        const overlayTpl = document.getElementById("debug-overlay-tpl");
+        if (overlayTpl && overlayTpl.content) {
+            overlay.appendChild(overlayTpl.content.cloneNode(true));
+        }
         document.body.appendChild(overlay);
 
         // Cache element references

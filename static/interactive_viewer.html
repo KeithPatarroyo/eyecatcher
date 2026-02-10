@@ -464,10 +464,7 @@
                 <button id="network-fit-btn">Fit View</button>
                 <button id="network-export-btn">Export JSON</button>
             </div>
-            <div
-                class="weight-adjustment-panel hidden"
-                id="weight-adjustment-panel"
-            >
+            <div class="weight-adjustment-panel hidden" id="weight-adjustment-panel">
                 <div class="weight-adjustment-title">Adjust Connection Weights</div>
                 <div id="weight-sliders-container"></div>
             </div>
@@ -504,6 +501,74 @@
             </div>
         </div>
         <div id="toast-container"></div>
+
+        <!-- Templates (cloned by JS; structure lives in HTML) -->
+        <template id="debug-overlay-tpl">
+            <h4>Global Signals</h4>
+            <div class="debug-row">
+                <span class="debug-label">Raw Time:</span>
+                <span class="debug-value" id="dbg-time">0.000</span>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">Mouse Speed:</span>
+                <span class="debug-value" id="dbg-mouseSpeed">0.000</span>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">Activity:</span>
+                <span class="debug-value" id="dbg-activity">0.000</span>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">Mouse Pos:</span>
+                <span class="debug-value" id="dbg-mousePos">0, 0</span>
+            </div>
+            <h4 class="debug-section">
+                Hovered Pattern <span id="dbg-pattern-id">(none)</span>
+            </h4>
+            <div class="debug-row">
+                <span class="debug-label">Mouse Dist:</span>
+                <span class="debug-value" id="dbg-mouseDist">-</span>
+            </div>
+            <h4 class="debug-section debug-section--small">Time CPPN → Visual CPPN</h4>
+            <div class="debug-row">
+                <span class="debug-label debug-time-output">Time (output):</span>
+                <span class="debug-value debug-time-output" id="dbg-v-time">-</span>
+            </div>
+            <div class="debug-checkbox">
+                <input type="checkbox" id="dbg-sample-time" />
+                <label for="dbg-sample-time">Sample time output</label>
+            </div>
+            <div class="debug-warning hidden" id="dbg-sample-warning">
+                ⚠ Sampling enabled (may add latency)
+            </div>
+        </template>
+
+        <template id="grid-error-tpl">
+            <div class="grid-error">
+                <div class="grid-error__title">Could not load CPPN patterns</div>
+                <div class="grid-error__message"></div>
+                <div class="grid-error__hint">
+                    Start the server: <code>python server.py</code><br />Then open
+                    <a id="grid-error-link" href="">...</a>
+                </div>
+            </div>
+        </template>
+
+        <template id="weight-slider-row-tpl">
+            <div class="weight-slider-item">
+                <div class="weight-slider-label"></div>
+                <div class="weight-slider-row">
+                    <input
+                        type="range"
+                        class="weight-slider-input"
+                        min="-2"
+                        max="2"
+                        step="0.05"
+                        value="0"
+                    />
+                    <span class="weight-value"></span>
+                </div>
+            </div>
+        </template>
 
         <script src="js/modules/utils.js"></script>
         <script src="js/modules/storage.js"></script>

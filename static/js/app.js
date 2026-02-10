@@ -132,23 +132,35 @@
 
     function showGridError(message, showRetry) {
         var grid = document.getElementById("grid");
+        var tpl = document.getElementById("grid-error-tpl");
+        if (!tpl || !tpl.content) {
+            grid.innerHTML =
+                '<div class="grid-error"><div class="grid-error__message">' +
+                window.escapeHtml(message) +
+                "</div></div>";
+            showLoading(false);
+            return;
+        }
         var devPort = window.DEFAULT_DEV_PORT || 5001;
         var localUrl = "http://localhost:" + devPort;
-        grid.innerHTML =
-            '<div class="grid-error">' +
-            '<div class="grid-error__title">Could not load CPPN patterns</div>' +
-            '<div class="grid-error__message">' +
-            message +
-            "</div>" +
-            '<div class="grid-error__hint">Start the server: <code>python server.py</code><br>Then open <a href="' +
-            localUrl +
-            '">' +
-            localUrl +
-            "</a></div>" +
-            (showRetry
-                ? '<button type="button" class="retry-btn" id="grid-retry-btn">New random population</button>'
-                : "") +
-            "</div>";
+        var fragment = tpl.content.cloneNode(true);
+        var root = fragment.querySelector(".grid-error");
+        fragment.querySelector(".grid-error__message").textContent = message;
+        var link = fragment.querySelector("#grid-error-link");
+        if (link) {
+            link.href = localUrl;
+            link.textContent = localUrl;
+        }
+        if (showRetry) {
+            var retryBtn = document.createElement("button");
+            retryBtn.type = "button";
+            retryBtn.className = "retry-btn";
+            retryBtn.id = "grid-retry-btn";
+            retryBtn.textContent = "New random population";
+            root.appendChild(retryBtn);
+        }
+        grid.innerHTML = "";
+        grid.appendChild(fragment);
         showLoading(false);
         if (showRetry) {
             document.getElementById("grid-retry-btn").onclick = function () {

@@ -310,50 +310,39 @@
     }
 
     function createWeightSlider(individualId, connection, networkType, container) {
+        const tpl = document.getElementById("weight-slider-row-tpl");
+        if (!tpl || !tpl.content) {
+            return;
+        }
         const isTimeNetwork = networkType === "time";
-        const sliderDiv = document.createElement("div");
-        sliderDiv.className =
-            "weight-slider-item" + (isTimeNetwork ? " time-network" : "");
+        const sliderDiv = tpl.content
+            .cloneNode(true)
+            .querySelector(".weight-slider-item");
+        if (!sliderDiv) return;
+        if (isTimeNetwork) sliderDiv.classList.add("time-network");
         const sourceLabel = extractNodeLabel(connection.source);
         const targetLabel = extractNodeLabel(connection.target);
         const currentWeight = connection.weight;
         sliderDiv.setAttribute("data-source", connection.source);
         sliderDiv.setAttribute("data-target", connection.target);
-        sliderDiv.innerHTML =
-            '<div class="weight-slider-label">' +
-            sourceLabel +
-            " \u2192 " +
-            targetLabel +
-            "</div>" +
-            '<div class="weight-slider-row">' +
-            '<input type="range" class="weight-slider-input" min="' +
-            WEIGHT_MIN +
-            '" max="' +
-            WEIGHT_MAX +
-            '" step="0.05" value="' +
-            currentWeight +
-            '" ' +
-            'data-individual="' +
-            individualId +
-            '" data-network="' +
-            networkType +
-            '" data-source="' +
-            connection.source +
-            '" data-target="' +
-            connection.target +
-            '" />' +
-            '<span class="weight-value">' +
-            currentWeight.toFixed(2) +
-            "</span></div>";
+        sliderDiv.querySelector(".weight-slider-label").textContent =
+            sourceLabel + " \u2192 " + targetLabel;
         const slider = sliderDiv.querySelector("input");
         const valueDisplay = sliderDiv.querySelector(".weight-value");
-
+        slider.min = WEIGHT_MIN;
+        slider.max = WEIGHT_MAX;
+        slider.step = "0.05";
+        slider.value = currentWeight;
+        slider.setAttribute("data-individual", individualId);
+        slider.setAttribute("data-network", networkType);
+        slider.setAttribute("data-source", connection.source);
+        slider.setAttribute("data-target", connection.target);
+        valueDisplay.textContent = currentWeight.toFixed(2);
         slider.addEventListener("input", function (e) {
             const newWeight = parseFloat(e.target.value, 10);
             valueDisplay.textContent = newWeight.toFixed(2);
             applyWeightChange(individualId, connection, networkType, newWeight);
         });
-
         container.appendChild(sliderDiv);
     }
 
