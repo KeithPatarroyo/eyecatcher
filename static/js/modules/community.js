@@ -27,6 +27,62 @@
     const PREVIEW_CANVAS_SIZE = 80;
 
     /**
+     * Compile a list of items to shaders; returns map id -> shader info.
+     * @param {Array} list
+     * @param {Function} toCompileItem - (item) => { genome, key, clicks }
+     * @returns {Promise<Object>} shadersByKey
+     */
+    async function compileListToShaders(list, toCompileItem) {
+        const shadersByKey = {};
+        try {
+            const compilePayload = list.map(toCompileItem);
+            const compData = await window.ApiClient.compile(compilePayload);
+            (compData.shaders || []).forEach((sh) => {
+                shadersByKey[sh.id] = sh;
+            });
+        } catch (e) {
+            console.warn("Could not compile previews:", e);
+        }
+        return shadersByKey;
+    }
+
+    /**
+     * Render a list into ul with canvas previews; buildLiContent(li, item, canvas, shaderInfo) adds content and returns patternData or null.
+     * @param {HTMLUListElement} ul
+     * @param {Array} list
+     * @param {Object} shadersByKey
+     * @param {Function} getItemKey - (item) => id
+     * @param {Function} buildLiContent - (li, item, canvas, shaderInfo) => patternData|null
+     */
+    function renderListWithPreviews(
+        ul,
+        list,
+        shadersByKey,
+        getItemKey,
+        buildLiContent
+    ) {
+        const previewPatternData = [];
+        list.forEach((item) => {
+            const li = document.createElement("li");
+            const previewWrap = document.createElement("div");
+            previewWrap.className = "preview-wrap";
+            const canvas = document.createElement("canvas");
+            canvas.width = PREVIEW_CANVAS_SIZE;
+            canvas.height = PREVIEW_CANVAS_SIZE;
+            previewWrap.appendChild(canvas);
+            const shaderInfo = shadersByKey[getItemKey(item)];
+            const pd = buildLiContent(li, item, canvas, shaderInfo);
+            if (pd) previewPatternData.push(pd);
+            ul.appendChild(li);
+        });
+        if (_renderPattern) {
+            requestAnimationFrame(() => {
+                previewPatternData.forEach((pd) => _renderPattern(pd, 0.5, 0, 0, 0));
+            });
+        }
+    }
+
+    /**
      * Initialize the community UI module.
      * @param {Object} options
      * @param {string} options.apiUrl - Base API URL
@@ -139,62 +195,41 @@
                 if (load12Btn) load12Btn.style.display = "inline-block";
                 if (selectAllBtn) selectAllBtn.style.display = "inline-block";
                 if (deselectAllBtn) deselectAllBtn.style.display = "inline-block";
-                let shadersByKey = {};
-                try {
-                    const compilePayload = _communityPatternsList.map((pat) => ({
-                        ...pat.genome,
-                        key: pat.id,
-                        clicks: 0,
-                    }));
-                    const compData = await window.ApiClient.compile(compilePayload);
-                    (compData.shaders || []).forEach((sh) => {
-                        shadersByKey[sh.id] = sh;
-                    });
-                } catch (e) {
-                    console.warn("Could not compile community previews:", e);
-                }
-                const previewPatternData = [];
-                _communityPatternsList.forEach((pat, idx) => {
-                    const li = document.createElement("li");
-                    li.className = "community-item";
-                    li.dataset.idx = String(idx);
-                    const checkWrap = document.createElement("div");
-                    checkWrap.className = "check-wrap";
-                    const checkbox = document.createElement("input");
-                    checkbox.type = "checkbox";
-                    checkbox.checked = false;
-                    checkWrap.appendChild(checkbox);
-                    const previewWrap = document.createElement("div");
-                    previewWrap.className = "preview-wrap";
-                    const canvas = document.createElement("canvas");
-                    canvas.width = PREVIEW_CANVAS_SIZE;
-                    canvas.height = PREVIEW_CANVAS_SIZE;
-                    previewWrap.appendChild(canvas);
-                    const info = document.createElement("div");
-                    info.className = "info";
-                    info.textContent =
-                        (pat.name || "Unnamed") + " by " + (pat.creator || "?");
-                    li.appendChild(checkWrap);
-                    li.appendChild(previewWrap);
-                    li.appendChild(info);
-                    ul.appendChild(li);
-                    const shaderInfo = shadersByKey[pat.id];
-                    if (shaderInfo && shaderInfo.shader && _setupPattern) {
-                        const pd = _setupPattern(canvas, shaderInfo.shader);
-                        if (pd) previewPatternData.push(pd);
+                const shadersByKey = await compileListToShaders(
+                    _communityPatternsList,
+                    (pat) => ({ ...pat.genome, key: pat.id, clicks: 0 })
+                );
+                renderListWithPreviews(
+                    ul,
+                    _communityPatternsList,
+                    shadersByKey,
+                    (pat) => pat.id,
+                    (li, pat, canvas, shaderInfo) => {
+                        li.className = "community-item";
+                        li.dataset.idx = String(_communityPatternsList.indexOf(pat));
+                        const checkWrap = document.createElement("div");
+                        checkWrap.className = "check-wrap";
+                        const checkbox = document.createElement("input");
+                        checkbox.type = "checkbox";
+                        checkbox.checked = false;
+                        checkWrap.appendChild(checkbox);
+                        li.appendChild(checkWrap);
+                        li.appendChild(canvas.parentElement);
+                        const info = document.createElement("div");
+                        info.className = "info";
+                        info.textContent =
+                            (pat.name || "Unnamed") + " by " + (pat.creator || "?");
+                        li.appendChild(info);
+                        if (shaderInfo && shaderInfo.shader && _setupPattern) {
+                            return _setupPattern(canvas, shaderInfo.shader);
+                        }
+                        return null;
                     }
-                });
-                if (_renderPattern) {
-                    requestAnimationFrame(() => {
-                        previewPatternData.forEach((pd) =>
-                            _renderPattern(pd, 0.5, 0, 0, 0)
-                        );
-                    });
-                }
+                );
             }
             document.getElementById("community-list-modal").classList.add("show");
         } catch (e) {
-            Toast.error("Error: " + (e.message || e));
+            Toast.error("Error: " + Utils.formatApiError(e, "Request failed"));
         } finally {
             showLoading(false);
         }
@@ -325,62 +360,44 @@
                 '<li style="color:#888;padding:12px;">No pending submissions.</li>';
             return;
         }
-        let shadersByKey = {};
-        try {
-            const compilePayload = submissions.map((s) => ({
-                ...s.genome,
-                key: s.id,
-                clicks: 0,
-            }));
-            const compData = await window.ApiClient.compile(compilePayload);
-            (compData.shaders || []).forEach((sh) => {
-                shadersByKey[sh.id] = sh;
-            });
-        } catch (e) {
-            console.warn("Could not compile previews:", e);
-        }
-        const previewPatternData = [];
-        submissions.forEach((sub) => {
-            const li = document.createElement("li");
-            li.className = "pending-item";
-            const previewWrap = document.createElement("div");
-            previewWrap.className = "preview-wrap";
-            const canvas = document.createElement("canvas");
-            canvas.width = PREVIEW_CANVAS_SIZE;
-            canvas.height = PREVIEW_CANVAS_SIZE;
-            previewWrap.appendChild(canvas);
-            const info = document.createElement("div");
-            info.className = "info";
-            info.innerHTML =
-                "<strong>" +
-                (sub.name || "Unnamed") +
-                "</strong> by " +
-                (sub.creator || "?");
-            const actions = document.createElement("div");
-            actions.className = "actions";
-            actions.innerHTML =
-                '<button type="button" class="approve-btn">Approve</button><button type="button" class="reject-btn">Reject</button>';
-            li.appendChild(previewWrap);
-            li.appendChild(info);
-            li.appendChild(actions);
-            li.querySelector(".approve-btn").addEventListener("click", () =>
-                adminApprove(sub.id, li)
-            );
-            li.querySelector(".reject-btn").addEventListener("click", () =>
-                adminReject(sub.id, li)
-            );
-            ul.appendChild(li);
-            const shaderInfo = shadersByKey[sub.id];
-            if (shaderInfo && shaderInfo.shader && _setupPattern) {
-                const pd = _setupPattern(canvas, shaderInfo.shader);
-                if (pd) previewPatternData.push(pd);
+        const shadersByKey = await compileListToShaders(submissions, (s) => ({
+            ...s.genome,
+            key: s.id,
+            clicks: 0,
+        }));
+        renderListWithPreviews(
+            ul,
+            submissions,
+            shadersByKey,
+            (sub) => sub.id,
+            (li, sub, canvas, shaderInfo) => {
+                li.className = "pending-item";
+                li.appendChild(canvas.parentElement);
+                const info = document.createElement("div");
+                info.className = "info";
+                info.innerHTML =
+                    "<strong>" +
+                    (sub.name || "Unnamed") +
+                    "</strong> by " +
+                    (sub.creator || "?");
+                li.appendChild(info);
+                const actions = document.createElement("div");
+                actions.className = "actions";
+                actions.innerHTML =
+                    '<button type="button" class="approve-btn">Approve</button><button type="button" class="reject-btn">Reject</button>';
+                li.appendChild(actions);
+                li.querySelector(".approve-btn").addEventListener("click", () =>
+                    adminApprove(sub.id, li)
+                );
+                li.querySelector(".reject-btn").addEventListener("click", () =>
+                    adminReject(sub.id, li)
+                );
+                if (shaderInfo && shaderInfo.shader && _setupPattern) {
+                    return _setupPattern(canvas, shaderInfo.shader);
+                }
+                return null;
             }
-        });
-        if (_renderPattern) {
-            requestAnimationFrame(() => {
-                previewPatternData.forEach((pd) => _renderPattern(pd, 0.5, 0, 0, 0));
-            });
-        }
+        );
     }
 
     async function adminApprove(id, rowEl) {
