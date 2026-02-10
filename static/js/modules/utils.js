@@ -1,7 +1,7 @@
 /**
  * Shared pure helpers for the frontend.
  * Exposes: formatBytes, escapeHtml, showLoading, safeGetItem, safeSetItem,
- * and constants BYTES_KB, BYTES_MB.
+ * formatApiError, and constants BYTES_KB, BYTES_MB.
  */
 (function () {
     "use strict";
@@ -57,12 +57,26 @@
         }
     }
 
+    /**
+     * Get a user-facing error message from an API error (supports e.data.error and e.message).
+     * @param {Error|{data?:{error?:string}, message?:string}} e
+     * @param {string} fallback
+     * @returns {string}
+     */
+    function formatApiError(e, fallback) {
+        if (!e) return fallback;
+        if (e.data && typeof e.data.error === "string") return e.data.error;
+        if (typeof e.message === "string") return e.message;
+        return fallback;
+    }
+
     window.Utils = {
         formatBytes: formatBytes,
         escapeHtml: escapeHtml,
         showLoading: showLoading,
         safeGetItem: safeGetItem,
         safeSetItem: safeSetItem,
+        formatApiError: formatApiError,
         BYTES_KB: BYTES_KB,
         BYTES_MB: BYTES_MB,
     };

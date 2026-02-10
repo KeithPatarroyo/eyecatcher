@@ -125,7 +125,7 @@ async function loadTree() {
         console.error("Failed to load tree:", e);
         showGenealogyToast(
             "Error",
-            (e.data && e.data.error) || e.message || "Failed to load tree",
+            Utils.formatApiError(e, "Failed to load tree"),
             "error"
         );
     } finally {
@@ -420,7 +420,8 @@ async function loadPopulation(populationId) {
         );
         // Store in localStorage for cross-tab communication (this tab -> main viewer)
         // localStorage is shared across tabs, enabling genealogy tree -> main viewer handoff
-        localStorage.setItem(
+        Utils.safeSetItem(
+            localStorage,
             "genealogy_load",
             JSON.stringify({
                 genomes: data.genomes,
@@ -440,7 +441,7 @@ async function loadPopulation(populationId) {
         console.error("Failed to load population:", e);
         showGenealogyToast(
             "Error",
-            (e.data && e.data.error) || e.message || "Failed to load population",
+            Utils.formatApiError(e, "Failed to load population"),
             "error"
         );
     } finally {
@@ -622,7 +623,7 @@ document.getElementById("download-genealogy-btn").onclick = async () => {
     } catch (e) {
         showGenealogyToast(
             "Could not load sizes",
-            e.message || "Network error",
+            Utils.formatApiError(e, "Network error"),
             "error"
         );
     }
@@ -666,7 +667,11 @@ document.getElementById("export-modal-download").onclick = async () => {
             "success"
         );
     } catch (e) {
-        showGenealogyToast("Download failed", e.message || "Network error", "error");
+        showGenealogyToast(
+            "Download failed",
+            Utils.formatApiError(e, "Network error"),
+            "error"
+        );
     }
 };
 
@@ -700,7 +705,11 @@ document.getElementById("reset-genealogy-btn").onclick = async () => {
         );
         loadTree();
     } catch (e) {
-        showGenealogyToast("Reset failed", e.message || "Network error", "error");
+        showGenealogyToast(
+            "Reset failed",
+            Utils.formatApiError(e, "Network error"),
+            "error"
+        );
     }
 };
 

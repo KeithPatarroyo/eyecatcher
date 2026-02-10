@@ -97,7 +97,7 @@
             );
             closeSubmitCommunityModal();
         } catch (e) {
-            Toast.error("Error: " + (e.message || String(e)));
+            Toast.error("Error: " + Utils.formatApiError(e, "Request failed"));
         }
     }
 
@@ -309,7 +309,7 @@
                 errEl.textContent = "Invalid API key.";
             } else {
                 errEl.textContent =
-                    "Error: " + (e.message || (e.data && e.data.error) || String(e));
+                    "Error: " + Utils.formatApiError(e, "Request failed");
             }
             errEl.style.display = "block";
         }
@@ -420,7 +420,9 @@
             rowEl.remove();
         } catch (e) {
             Toast.error(
-                e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
+                e.status === 403
+                    ? "Invalid API key."
+                    : "Error: " + Utils.formatApiError(e, "Request failed")
             );
         }
     }
