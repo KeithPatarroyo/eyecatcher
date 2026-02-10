@@ -165,7 +165,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 
 ## Project layout
 
-- **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). All browser-loaded files live here.
+- **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). See [static/README.md](static/README.md) for frontend structure and script load order.
 - **data/** – Runtime data: community DB and genealogy DB (both gitignored; created on first run).
 - **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
 - **examples/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
