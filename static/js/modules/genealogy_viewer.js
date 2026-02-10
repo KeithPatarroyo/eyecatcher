@@ -606,67 +606,77 @@ async function renderAllThumbnails(visNodes) {
     }
 }
 
+function onId(id, fn) {
+    const el = document.getElementById(id);
+    if (el) fn(el);
+}
+
 function attachEventListeners() {
-    document.getElementById("refresh-btn").onclick = () => {
-        loadTree();
-    };
+    onId("refresh-btn", (el) => {
+        el.onclick = () => loadTree();
+    });
 
-    document.getElementById("download-genealogy-btn").onclick = async () => {
-        const modal = document.getElementById("export-genealogy-modal");
-        try {
-            const sizes = await ApiClient.apiFetch(
-                `${API_URL}/genealogy/export-sizes`,
-                {},
-                "Could not load sizes"
-            );
-            document.getElementById("export-full-size").textContent =
-                sizes.full.populations +
-                " populations, " +
-                sizes.full.individuals +
-                " individuals (~" +
-                window.formatBytes(sizes.full.estimated_bytes) +
-                ")";
-
-            const branchList = document.getElementById("export-branch-list");
-            const branchesGroup = document.getElementById("export-branches-group");
-            branchList.innerHTML = "";
-            const branches = sizes.branches || [];
-            branchesGroup.hidden = branches.length === 0;
-            const tpl = document.getElementById("export-branch-option-tpl");
-            branches.forEach((b) => {
-                if (!tpl || !tpl.content) return;
-                const label = tpl.content.cloneNode(true).querySelector("label");
-                if (!label) return;
-                const radio = label.querySelector('input[type="radio"]');
-                const titleSpan = label.querySelector(".export-option-title");
-                const sizeSpan = label.querySelector(".export-size");
-                const branchName = b.name || "main";
-                const safeId = "export-branch-" + branchName.replace(/\W/g, "_");
-                radio.id = safeId;
-                radio.value = branchName;
-                titleSpan.textContent = branchName;
-                sizeSpan.textContent =
-                    b.populations +
-                    " pop., " +
-                    b.individuals +
-                    " ind. (~" +
-                    window.formatBytes(b.estimated_bytes) +
+    onId("download-genealogy-btn", (el) => {
+        el.onclick = async () => {
+            const modal = document.getElementById("export-genealogy-modal");
+            try {
+                const sizes = await ApiClient.apiFetch(
+                    `${API_URL}/genealogy/export-sizes`,
+                    {},
+                    "Could not load sizes"
+                );
+                document.getElementById("export-full-size").textContent =
+                    sizes.full.populations +
+                    " populations, " +
+                    sizes.full.individuals +
+                    " individuals (~" +
+                    window.formatBytes(sizes.full.estimated_bytes) +
                     ")";
-                branchList.appendChild(label);
-            });
-            modal.hidden = false;
-        } catch (e) {
-            showGenealogyToast(
-                "Could not load sizes",
-                Utils.formatApiError(e, "Network error"),
-                "error"
-            );
-        }
-    };
 
-    document.getElementById("export-modal-cancel").onclick = () => {
-        document.getElementById("export-genealogy-modal").hidden = true;
-    };
+                const branchList = document.getElementById("export-branch-list");
+                const branchesGroup = document.getElementById("export-branches-group");
+                branchList.innerHTML = "";
+                const branches = sizes.branches || [];
+                branchesGroup.hidden = branches.length === 0;
+                const tpl = document.getElementById("export-branch-option-tpl");
+                branches.forEach((b) => {
+                    if (!tpl || !tpl.content) return;
+                    const label = tpl.content.cloneNode(true).querySelector("label");
+                    if (!label) return;
+                    const radio = label.querySelector('input[type="radio"]');
+                    const titleSpan = label.querySelector(".export-option-title");
+                    const sizeSpan = label.querySelector(".export-size");
+                    const branchName = b.name || "main";
+                    const safeId = "export-branch-" + branchName.replace(/\W/g, "_");
+                    radio.id = safeId;
+                    radio.value = branchName;
+                    titleSpan.textContent = branchName;
+                    sizeSpan.textContent =
+                        b.populations +
+                        " pop., " +
+                        b.individuals +
+                        " ind. (~" +
+                        window.formatBytes(b.estimated_bytes) +
+                        ")";
+                    branchList.appendChild(label);
+                });
+                modal.hidden = false;
+            } catch (e) {
+                showGenealogyToast(
+                    "Could not load sizes",
+                    Utils.formatApiError(e, "Network error"),
+                    "error"
+                );
+            }
+        };
+    });
+
+    onId("export-modal-cancel", (el) => {
+        el.onclick = () => {
+            const modal = document.getElementById("export-genealogy-modal");
+            if (modal) modal.hidden = true;
+        };
+    });
     document.querySelector(".export-modal-backdrop").onclick = () => {
         document.getElementById("export-genealogy-modal").hidden = true;
     };
@@ -674,129 +684,144 @@ function attachEventListeners() {
         const modal = document.getElementById("export-genealogy-modal");
         if (e.key === "Escape" && modal && !modal.hidden) modal.hidden = true;
     });
-    document.getElementById("export-modal-download").onclick = async () => {
-        const scope = document.querySelector('input[name="export-scope"]:checked');
-        const branchName = scope && scope.value !== "full" ? scope.value : null;
-        const modal = document.getElementById("export-genealogy-modal");
-        modal.hidden = true;
-        try {
-            const url = branchName
-                ? `${API_URL}/genealogy/export?branch_name=${encodeURIComponent(branchName)}`
-                : `${API_URL}/genealogy/export`;
-            const data = await ApiClient.apiFetch(url, {}, "Download failed");
-            const blob = new Blob([JSON.stringify(data, null, 2)], {
-                type: "application/json",
-            });
-            const urlObj = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = urlObj;
-            a.download = branchName
-                ? `genealogy-${branchName}-${new Date().toISOString().slice(0, 10)}.json`
-                : `genealogy-export-${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-            URL.revokeObjectURL(urlObj);
-            showGenealogyToast(
-                "Downloaded",
-                (branchName ? 'Branch "' + branchName + '"' : "Full tree") +
-                    " exported as JSON.",
-                "success"
-            );
-        } catch (e) {
-            showGenealogyToast(
-                "Download failed",
-                Utils.formatApiError(e, "Network error"),
-                "error"
-            );
-        }
-    };
-
-    document.getElementById("reset-genealogy-btn").onclick = async () => {
-        if (!confirm("Clear all genealogy data? This cannot be undone.")) return;
-        try {
-            await ApiClient.apiFetch(
-                `${API_URL}/genealogy/reset`,
-                { method: "POST" },
-                "Reset failed"
-            );
+    onId("export-modal-download", (el) => {
+        el.onclick = async () => {
+            const scope = document.querySelector('input[name="export-scope"]:checked');
+            const branchName = scope && scope.value !== "full" ? scope.value : null;
+            const modal = document.getElementById("export-genealogy-modal");
+            if (modal) modal.hidden = true;
             try {
-                if (typeof localStorage !== "undefined")
-                    localStorage.removeItem("genealogy_branch_counter");
-            } catch (_) {
-                /* ignore */
+                const url = branchName
+                    ? `${API_URL}/genealogy/export?branch_name=${encodeURIComponent(branchName)}`
+                    : `${API_URL}/genealogy/export`;
+                const data = await ApiClient.apiFetch(url, {}, "Download failed");
+                const blob = new Blob([JSON.stringify(data, null, 2)], {
+                    type: "application/json",
+                });
+                const urlObj = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = urlObj;
+                a.download = branchName
+                    ? `genealogy-${branchName}-${new Date().toISOString().slice(0, 10)}.json`
+                    : `genealogy-export-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(urlObj);
+                showGenealogyToast(
+                    "Downloaded",
+                    (branchName ? 'Branch "' + branchName + '"' : "Full tree") +
+                        " exported as JSON.",
+                    "success"
+                );
+            } catch (e) {
+                showGenealogyToast(
+                    "Download failed",
+                    Utils.formatApiError(e, "Network error"),
+                    "error"
+                );
             }
+        };
+    });
+
+    onId("reset-genealogy-btn", (el) => {
+        el.onclick = async () => {
+            if (!confirm("Clear all genealogy data? This cannot be undone.")) return;
             try {
-                if (typeof sessionStorage !== "undefined")
-                    sessionStorage.removeItem("current_population_id");
-            } catch (_) {
-                /* ignore */
+                await ApiClient.apiFetch(
+                    `${API_URL}/genealogy/reset`,
+                    { method: "POST" },
+                    "Reset failed"
+                );
+                try {
+                    if (typeof localStorage !== "undefined")
+                        localStorage.removeItem("genealogy_branch_counter");
+                } catch (_) {
+                    /* ignore */
+                }
+                try {
+                    if (typeof sessionStorage !== "undefined")
+                        sessionStorage.removeItem("current_population_id");
+                } catch (_) {
+                    /* ignore */
+                }
+                thumbnailCache.clear();
+                savedPositions = null;
+                selectedNodeId = null;
+                showGenealogyToast(
+                    "Genealogy reset",
+                    "All populations and branches cleared.",
+                    "success"
+                );
+                loadTree();
+            } catch (e) {
+                showGenealogyToast(
+                    "Reset failed",
+                    Utils.formatApiError(e, "Network error"),
+                    "error"
+                );
             }
-            thumbnailCache.clear();
-            savedPositions = null;
-            selectedNodeId = null;
-            showGenealogyToast(
-                "Genealogy reset",
-                "All populations and branches cleared.",
-                "success"
-            );
-            loadTree();
-        } catch (e) {
-            showGenealogyToast(
-                "Reset failed",
-                Utils.formatApiError(e, "Network error"),
-                "error"
-            );
-        }
-    };
+        };
+    });
 
-    document.getElementById("fit-btn").onclick = () => {
-        if (treeNetwork) {
-            treeNetwork.fit({ animation: { duration: 500 } });
-        }
-    };
-
-    document.getElementById("hierarchical-btn").onclick = function () {
-        if (!hierarchicalLayout) {
+    onId("fit-btn", (el) => {
+        el.onclick = () => {
             if (treeNetwork) {
-                savedPositions = treeNetwork.getPositions();
+                treeNetwork.fit({ animation: { duration: 500 } });
             }
-            hierarchicalLayout = true;
-            this.classList.add("active");
-            document.getElementById("physics-btn").classList.remove("active");
-            loadTree();
-            updateControlsVisibility();
-        }
-    };
+        };
+    });
 
-    document.getElementById("physics-btn").onclick = function () {
-        if (hierarchicalLayout) {
-            hierarchicalLayout = false;
-            this.classList.add("active");
-            document.getElementById("hierarchical-btn").classList.remove("active");
-            loadTree();
-            updateControlsVisibility();
-        }
-    };
+    onId("hierarchical-btn", (el) => {
+        el.onclick = function () {
+            if (!hierarchicalLayout) {
+                if (treeNetwork) {
+                    savedPositions = treeNetwork.getPositions();
+                }
+                hierarchicalLayout = true;
+                this.classList.add("active");
+                const physicsBtn = document.getElementById("physics-btn");
+                if (physicsBtn) physicsBtn.classList.remove("active");
+                loadTree();
+                updateControlsVisibility();
+            }
+        };
+    });
 
-    document.getElementById("load-population-btn").onclick = () => {
-        if (selectedNodeId !== null) {
-            loadPopulation(selectedNodeId);
-        }
-    };
+    onId("physics-btn", (el) => {
+        el.onclick = function () {
+            if (hierarchicalLayout) {
+                hierarchicalLayout = false;
+                this.classList.add("active");
+                const hierarchicalBtn = document.getElementById("hierarchical-btn");
+                if (hierarchicalBtn) hierarchicalBtn.classList.remove("active");
+                loadTree();
+                updateControlsVisibility();
+            }
+        };
+    });
 
-    document.getElementById("focus-current-btn").onclick = () => {
-        if (currentPopulationId && treeNetwork) {
-            const popId = parseInt(currentPopulationId);
-            treeNetwork.focus(popId, {
-                scale: 1.5,
-                animation: {
-                    duration: 800,
-                    easingFunction: "easeInOutQuad",
-                },
-            });
-            // Also select it to show info
-            selectNode(popId);
-        }
-    };
+    onId("load-population-btn", (el) => {
+        el.onclick = () => {
+            if (selectedNodeId !== null) {
+                loadPopulation(selectedNodeId);
+            }
+        };
+    });
+
+    onId("focus-current-btn", (el) => {
+        el.onclick = () => {
+            if (currentPopulationId && treeNetwork) {
+                const popId = parseInt(currentPopulationId);
+                treeNetwork.focus(popId, {
+                    scale: 1.5,
+                    animation: {
+                        duration: 800,
+                        easingFunction: "easeInOutQuad",
+                    },
+                });
+                selectNode(popId);
+            }
+        };
+    });
 }
 
 function bindSliderInput(inputId, valueSpanId, formatter, onValueChange) {
@@ -852,23 +877,24 @@ function initPhysicsControls() {
         (v) => setPhysics("damping", v)
     );
 
-    // Show arrows
-    document.getElementById("show-arrows").addEventListener("change", function (e) {
-        if (treeNetwork) {
-            const edges = treeNetwork.body.data.edges;
-            const allEdges = edges.get();
-            allEdges.forEach((edge) => {
-                edges.update({
-                    id: edge.id,
-                    arrows: {
-                        to: {
-                            enabled: e.target.checked,
-                            scaleFactor: 1.0,
+    onId("show-arrows", (el) => {
+        el.addEventListener("change", function (e) {
+            if (treeNetwork) {
+                const edges = treeNetwork.body.data.edges;
+                const allEdges = edges.get();
+                allEdges.forEach((edge) => {
+                    edges.update({
+                        id: edge.id,
+                        arrows: {
+                            to: {
+                                enabled: e.target.checked,
+                                scaleFactor: 1.0,
+                            },
                         },
-                    },
+                    });
                 });
-            });
-        }
+            }
+        });
     });
 
     bindSliderInput(

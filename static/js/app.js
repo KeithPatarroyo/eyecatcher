@@ -70,6 +70,11 @@
         if (g) g.innerHTML = "";
     }
 
+    function onId(id, fn) {
+        var el = document.getElementById(id);
+        if (el) fn(el);
+    }
+
     function openFullscreen(id) {
         var pattern =
             currentPopulation &&
@@ -636,95 +641,88 @@
         });
     });
 
-    var fullscreenCloseBtn = document.getElementById("fullscreen-close");
-    var fullscreenBackdrop = document.getElementById("fullscreen-backdrop");
-    if (fullscreenCloseBtn)
-        fullscreenCloseBtn.addEventListener("click", closeFullscreen);
-    if (fullscreenBackdrop)
-        fullscreenBackdrop.addEventListener("click", closeFullscreen);
+    onId("fullscreen-close", function (el) {
+        el.addEventListener("click", closeFullscreen);
+    });
+    onId("fullscreen-backdrop", function (el) {
+        el.addEventListener("click", closeFullscreen);
+    });
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && fullscreenPatternData) closeFullscreen();
     });
 
-    var breedBtnEl = document.getElementById("breed-btn");
-    if (breedBtnEl) {
-        breedBtnEl.addEventListener("click", breedGeneration);
-        breedBtnEl.addEventListener("keydown", function (e) {
+    onId("breed-btn", function (el) {
+        el.addEventListener("click", breedGeneration);
+        el.addEventListener("keydown", function (e) {
             onRoleButtonKeydown(e, breedGeneration);
         });
-    }
+    });
 
-    var loadModalClose = document.getElementById("load-modal-close");
-    if (loadModalClose)
-        loadModalClose.addEventListener("click", function () {
-            document.getElementById("load-list-modal").classList.remove("show");
+    onId("load-modal-close", function (el) {
+        el.addEventListener("click", function () {
+            var modal = document.getElementById("load-list-modal");
+            if (modal) modal.classList.remove("show");
         });
-    document
-        .getElementById("community-submit-do")
-        .addEventListener("click", window.CommunityUI.submitCommunityForm);
-    document
-        .getElementById("community-submit-cancel")
-        .addEventListener("click", window.CommunityUI.closeSubmitCommunityModal);
-    document
-        .getElementById("community-list-close")
-        .addEventListener("click", function () {
-            document.getElementById("community-list-modal").classList.remove("show");
+    });
+    onId("community-submit-do", function (el) {
+        el.addEventListener("click", window.CommunityUI.submitCommunityForm);
+    });
+    onId("community-submit-cancel", function (el) {
+        el.addEventListener("click", window.CommunityUI.closeSubmitCommunityModal);
+    });
+    onId("community-list-close", function (el) {
+        el.addEventListener("click", function () {
+            var modal = document.getElementById("community-list-modal");
+            if (modal) modal.classList.remove("show");
         });
-    document
-        .getElementById("community-load-selected-btn")
-        .addEventListener("click", window.CommunityUI.onCommunityLoadSelected);
-    document
-        .getElementById("community-load-12-btn")
-        .addEventListener("click", window.CommunityUI.onCommunityLoad12);
-    document
-        .getElementById("community-select-all-btn")
-        .addEventListener("click", window.CommunityUI.onCommunitySelectAll);
-    document
-        .getElementById("community-deselect-all-btn")
-        .addEventListener("click", window.CommunityUI.onCommunityDeselectAll);
-    var newFromCommunityBtn = document.getElementById("new-from-community-btn");
-    if (newFromCommunityBtn) {
-        newFromCommunityBtn.addEventListener(
-            "click",
-            window.CommunityUI.onNewFromCommunityClick
-        );
-        newFromCommunityBtn.addEventListener("keydown", function (e) {
+    });
+    onId("community-load-selected-btn", function (el) {
+        el.addEventListener("click", window.CommunityUI.onCommunityLoadSelected);
+    });
+    onId("community-load-12-btn", function (el) {
+        el.addEventListener("click", window.CommunityUI.onCommunityLoad12);
+    });
+    onId("community-select-all-btn", function (el) {
+        el.addEventListener("click", window.CommunityUI.onCommunitySelectAll);
+    });
+    onId("community-deselect-all-btn", function (el) {
+        el.addEventListener("click", window.CommunityUI.onCommunityDeselectAll);
+    });
+    onId("new-from-community-btn", function (el) {
+        el.addEventListener("click", window.CommunityUI.onNewFromCommunityClick);
+        el.addEventListener("keydown", function (e) {
             onRoleButtonKeydown(e, window.CommunityUI.onNewFromCommunityClick);
         });
-    }
-    document
-        .getElementById("admin-key-submit")
-        .addEventListener("click", window.CommunityUI.submitAdminKey);
-    document
-        .getElementById("admin-modal-cancel")
-        .addEventListener("click", window.CommunityUI.closeAdminModal);
-    document
-        .getElementById("admin-list-close")
-        .addEventListener("click", window.CommunityUI.closeAdminModal);
-    document
-        .getElementById("admin-key-input")
-        .addEventListener("keydown", function (e) {
+    });
+    onId("admin-key-submit", function (el) {
+        el.addEventListener("click", window.CommunityUI.submitAdminKey);
+    });
+    onId("admin-modal-cancel", function (el) {
+        el.addEventListener("click", window.CommunityUI.closeAdminModal);
+    });
+    onId("admin-list-close", function (el) {
+        el.addEventListener("click", window.CommunityUI.closeAdminModal);
+    });
+    onId("admin-key-input", function (el) {
+        el.addEventListener("keydown", function (e) {
             if (e.key === "Enter") window.CommunityUI.submitAdminKey();
         });
-    var saveCurrentBtn = document.getElementById("save-current-btn");
-    if (saveCurrentBtn)
-        saveCurrentBtn.addEventListener(
-            "click",
-            window.PopulationUI.onSaveCurrentClick
-        );
-    var importBtn = document.getElementById("import-btn");
-    var importFile = document.getElementById("import-file");
-    if (importBtn && importFile)
-        importBtn.addEventListener("click", window.PopulationUI.onImportClick);
-    if (importFile) {
-        importFile.addEventListener("change", function (e) {
+    });
+    onId("save-current-btn", function (el) {
+        el.addEventListener("click", window.PopulationUI.onSaveCurrentClick);
+    });
+    onId("import-btn", function (el) {
+        el.addEventListener("click", window.PopulationUI.onImportClick);
+    });
+    onId("import-file", function (el) {
+        el.addEventListener("change", function (e) {
             var file = e.target.files && e.target.files[0];
             e.target.value = "";
             if (file && typeof window.PopulationUI.handleImportFile === "function") {
                 window.PopulationUI.handleImportFile(file);
             }
         });
-    }
+    });
 
     window.ZoomSignals.init();
 
