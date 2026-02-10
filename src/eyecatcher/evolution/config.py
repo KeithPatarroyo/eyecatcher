@@ -2,7 +2,9 @@
 Evolution constants and NEAT config paths.
 
 Single place for researchers to change population size, mutation probability,
-render resolution, and which NEAT config files are used.
+render resolution, and which NEAT config files are used. NEAT config file
+names live in config/neat/; see that folder's README for which are default
+vs alternatives.
 """
 
 # App constants (population, breeding, rendering)
