@@ -95,7 +95,9 @@
             canvas.width = size;
             canvas.height = size;
             wrap.appendChild(canvas);
-            var patternData = setupPattern(canvas, patternRef.shader);
+            var patternData =
+                window.PatternRenderer &&
+                window.PatternRenderer.setupPattern(canvas, patternRef.shader);
             if (!patternData) {
                 wrap.innerHTML = "";
                 modal.hidden = true;
@@ -116,26 +118,6 @@
         var wrap = document.getElementById(IDS.fullscreenCanvasWrap);
         if (wrap) wrap.innerHTML = "";
         if (modal) modal.hidden = true;
-    }
-
-    function setupPattern(canvas, shaderCode) {
-        return (
-            window.PatternRenderer &&
-            window.PatternRenderer.setupPattern(canvas, shaderCode)
-        );
-    }
-
-    function renderPattern(patternData, time, mouseSpd, mouseDist, inact) {
-        if (window.PatternRenderer && window.ZoomSignals) {
-            window.PatternRenderer.renderPattern(
-                patternData,
-                time,
-                mouseSpd,
-                mouseDist,
-                inact,
-                window.ZoomSignals.signalState
-            );
-        }
     }
 
     function showGridError(message, showRetry) {
@@ -626,8 +608,6 @@
         getCurrentGenomesForSave: getCurrentGenomesForSave,
         getGenomeForPattern: getGenomeForPattern,
         updatePatternShader: updatePatternShader,
-        setupPattern: setupPattern,
-        renderPattern: renderPattern,
         openFullscreen: openFullscreen,
         closeFullscreen: closeFullscreen,
         breedGeneration: breedGeneration,

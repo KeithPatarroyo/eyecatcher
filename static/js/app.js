@@ -61,9 +61,29 @@
 
     window.ApiClient.init(API_URL);
 
+    function renderPattern(patternData, time, mouseSpd, mouseDist, inact) {
+        if (window.PatternRenderer && window.ZoomSignals) {
+            window.PatternRenderer.renderPattern(
+                patternData,
+                time,
+                mouseSpd,
+                mouseDist,
+                inact,
+                window.ZoomSignals.signalState
+            );
+        }
+    }
+
+    function setupPattern(canvas, shaderCode) {
+        return (
+            window.PatternRenderer &&
+            window.PatternRenderer.setupPattern(canvas, shaderCode)
+        );
+    }
+
     window.AnimationLoop.init({
         getPatterns: AppCore.getPatterns,
-        renderPattern: AppCore.renderPattern,
+        renderPattern: renderPattern,
     });
 
     window.PopulationUI.init({
@@ -78,8 +98,8 @@
         loadFromStatelessGenomes: AppCore.loadFromStatelessGenomes,
         addToGrid: AppCore.addToGrid,
         getGenomeForPattern: AppCore.getGenomeForPattern,
-        setupPattern: AppCore.setupPattern,
-        renderPattern: AppCore.renderPattern,
+        setupPattern: setupPattern,
+        renderPattern: renderPattern,
     });
 
     window.NetworkVisualizer.init({
