@@ -1,6 +1,6 @@
 /**
  * Network visualization module: CPPN sidebar, vis.js graph, weight sliders.
- * Depends: vis (global from CDN), showToast, base64ToBlob (from toast.js).
+ * Depends: vis (global from CDN), Toast (from toast.js).
  * Call init() with dependencies before use. Exposes: toggle(), close(), fitToView(), exportNetwork().
  */
 (function () {
@@ -82,8 +82,7 @@
 
     function visualizeNetworkInline(individualId, data, container) {
         if (typeof vis === "undefined") {
-            if (typeof showToast === "function")
-                showToast("Visualization error", "vis.js not loaded", "error");
+            Toast.show("Visualization error", "vis.js not loaded", "error");
             return;
         }
         try {
@@ -206,12 +205,11 @@
                 if (net) net.fit({ animation: { duration: 500 } });
             }, 100);
         } catch (err) {
-            if (typeof showToast === "function")
-                showToast(
-                    "Visualization error",
-                    err.message || "Failed to visualize network",
-                    "error"
-                );
+            Toast.show(
+                "Visualization error",
+                err.message || "Failed to visualize network",
+                "error"
+            );
         }
     }
 
@@ -286,12 +284,11 @@
             if (typeof _getGenomeForPattern !== "function") return;
             _getGenomeForPattern(individualId).then(function (genome) {
                 if (!genome) {
-                    if (typeof showToast === "function")
-                        showToast(
-                            "Weight update failed",
-                            "Could not find genome data",
-                            "error"
-                        );
+                    Toast.show(
+                        "Weight update failed",
+                        "Could not find genome data",
+                        "error"
+                    );
                     return;
                 }
                 window.ApiClient.apiFetch(
@@ -424,18 +421,16 @@
         const sidebar = document.getElementById("network-sidebar");
         if (!sidebar) return;
         if (typeof _getGenomeForPattern !== "function") {
-            if (typeof showToast === "function")
-                showToast("Network error", "Not initialized", "error");
+            Toast.show("Network error", "Not initialized", "error");
             return;
         }
         const genome = await _getGenomeForPattern(individualId);
         if (!genome) {
-            if (typeof showToast === "function")
-                showToast(
-                    "Network error",
-                    "Could not find genome data for this pattern",
-                    "error"
-                );
+            Toast.show(
+                "Network error",
+                "Could not find genome data for this pattern",
+                "error"
+            );
             return;
         }
         try {
@@ -472,12 +467,11 @@
             visualizeNetworkInline(individualId, data, sidebar);
             sidebar.classList.add("open");
         } catch (err) {
-            if (typeof showToast === "function")
-                showToast(
-                    "Network error",
-                    err.message || "Failed to load network",
-                    "error"
-                );
+            Toast.show(
+                "Network error",
+                err.message || "Failed to load network",
+                "error"
+            );
         }
     }
 

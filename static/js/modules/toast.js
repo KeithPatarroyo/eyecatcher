@@ -1,7 +1,6 @@
 /**
  * Toast notifications and download helpers.
  * Exposes: window.Toast (show, dismiss, error, base64ToBlob, triggerDownload).
- * Also exposes legacy globals: showToast, dismissToast, base64ToBlob, triggerDownload.
  */
 (function () {
     "use strict";
@@ -80,8 +79,4 @@
     };
 
     window.Toast = Toast;
-    window.showToast = show;
-    window.dismissToast = dismiss;
-    window.base64ToBlob = base64ToBlob;
-    window.triggerDownload = triggerDownload;
 })();
