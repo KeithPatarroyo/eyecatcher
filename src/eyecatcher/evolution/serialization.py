@@ -10,6 +10,14 @@ from typing import TYPE_CHECKING, Any, Optional
 import neat
 
 from .genome import DualGenome
+from .signals import (
+    TIME_INPUTS,
+    TIME_OUTPUTS,
+    VISUAL_INPUTS,
+    VISUAL_OUTPUTS,
+    input_names,
+    output_names,
+)
 
 if TYPE_CHECKING:
     from .engine import CPPNEngine
@@ -198,18 +206,9 @@ def extract_network_data(
     x_offset = 1000 if network_type == "time" else 0
 
     input_labels = (
-        ["raw_time", "mouse_speed", "mouse_distance", "inactivity", "bias"]
+        input_names(TIME_INPUTS)
         if network_type == "time"
-        else [
-            "x",
-            "y",
-            "distance",
-            "time",
-            "mouse_speed",
-            "mouse_distance",
-            "inactivity",
-            "bias",
-        ]
+        else input_names(VISUAL_INPUTS)
     )
     input_list = [
         (-(i + 1), input_labels[i] if i < len(input_labels) else f"Input {i}")
@@ -243,7 +242,11 @@ def extract_network_data(
         hidden_extras,
     )
 
-    output_labels = ["output"] if network_type == "time" else ["red", "green", "blue"]
+    output_labels = (
+        output_names(TIME_OUTPUTS)
+        if network_type == "time"
+        else output_names(VISUAL_OUTPUTS)
+    )
     output_list = [
         (i, output_labels[i] if i < len(output_labels) else f"Output {i}")
         for i in range(num_outputs)

@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import neat  # noqa: E402
 from matplotlib.patches import FancyArrowPatch  # noqa: E402
 
+from .signals import VISUAL_INPUTS, VISUAL_OUTPUTS, input_names, output_labels
+
 logger = logging.getLogger(__name__)
 
 
@@ -283,17 +285,8 @@ class GenomeVisualizer:
 
     def _draw_nodes(self, ax, genome: neat.DefaultGenome, positions: dict):
         """Draw nodes."""
-        input_names = [
-            "x",
-            "y",
-            "distance",
-            "time",
-            "mouse_speed",
-            "mouse_dist",
-            "inactivity",
-            "bias",
-        ]
-        output_names = ["R", "G", "B"]
+        input_name_list = input_names(VISUAL_INPUTS)
+        output_name_list = output_labels(VISUAL_OUTPUTS)
 
         # Identify which nodes are connected to outputs (active nodes)
         active_nodes = self._get_nodes_required_for_output(genome)
@@ -307,7 +300,9 @@ class GenomeVisualizer:
                 # Input node
                 color = self.COLORS["input"]
                 idx = node_id + self.num_inputs
-                label = input_names[idx] if idx < len(input_names) else str(node_id)
+                label = (
+                    input_name_list[idx] if idx < len(input_name_list) else str(node_id)
+                )
             elif node_id < self.num_outputs:
                 # Output node
                 color = self.COLORS["output"]
@@ -315,15 +310,15 @@ class GenomeVisualizer:
                 if node_id in genome.nodes:
                     activation = genome.nodes[node_id].activation
                     label = (
-                        f"{output_names[node_id]}\n{activation}"
-                        if node_id < len(output_names)
+                        f"{output_name_list[node_id]}\n{activation}"
+                        if node_id < len(output_name_list)
                         else f"{node_id}\n{activation}"
                     )
                 else:
                     # Output node not in genome.nodes, uses default (typically identity)
                     label = (
-                        f"{output_names[node_id]}\nidentity"
-                        if node_id < len(output_names)
+                        f"{output_name_list[node_id]}\nidentity"
+                        if node_id < len(output_name_list)
                         else f"{node_id}\nidentity"
                     )
             else:
