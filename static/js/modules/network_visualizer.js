@@ -49,33 +49,38 @@
             const network = parts[0];
             const type = parts[1];
             const id = parts.slice(2).join("_");
+            const config =
+                typeof window !== "undefined" &&
+                window.EvolutionConfig &&
+                window.EvolutionConfig.NETWORK_INPUT_LABELS &&
+                window.EvolutionConfig.OUTPUTS
+                    ? window.EvolutionConfig
+                    : null;
             if (type === "input") {
-                if (network === "time") {
-                    const timeInputNames = {
-                        "-1": "rawTime",
-                        "-2": "mSpeed",
-                        "-3": "mDist",
-                        "-4": "inact",
-                        "-5": "bias",
-                    };
-                    return timeInputNames[id] || "in" + id;
+                if (config) {
+                    const labels = config.NETWORK_INPUT_LABELS[network];
+                    if (labels) {
+                        const idNum = parseInt(id, 10);
+                        const index = labels.length + idNum;
+                        if (index >= 0 && index < labels.length) {
+                            return labels[index];
+                        }
+                    }
                 }
-                const visualInputNames = {
-                    "-1": "x",
-                    "-2": "y",
-                    "-3": "dist",
-                    "-4": "time",
-                    "-5": "mSpeed",
-                    "-6": "mDist",
-                    "-7": "inact",
-                    "-8": "bias",
-                };
-                return visualInputNames[id] || "in" + id;
+                return "in" + id;
             }
             if (type === "output") {
+                if (config) {
+                    const outputs = config.OUTPUTS[network];
+                    const idx = parseInt(id, 10);
+                    if (outputs && outputs[idx]) {
+                        const o = outputs[idx];
+                        return o.label ? o.label.charAt(0) : o.name;
+                    }
+                }
                 if (network === "time") return "timeOut";
-                const outputNames = { 0: "R", 1: "G", 2: "B" };
-                return outputNames[id] || "out" + id;
+                const fallbackOutputs = { 0: "R", 1: "G", 2: "B" };
+                return fallbackOutputs[id] || "out" + id;
             }
             if (type === "hidden") return "h" + id;
             return id;
