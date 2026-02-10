@@ -122,63 +122,47 @@ class GenomeVisualizer:
         else:
             plt.close()
 
+    @staticmethod
+    def _position_column(
+        node_ids: list[int], x: float, node_spacing: float
+    ) -> dict[int, tuple[float, float]]:
+        """Place nodes in a column at x with vertical spacing; returns {id: (x, y)}."""
+        if not node_ids:
+            return {}
+        n = len(node_ids)
+        total_height = (n - 1) * node_spacing
+        start_y = total_height / 2
+        return {
+            node_id: (x, 0.5 + start_y - (i * node_spacing))
+            for i, node_id in enumerate(node_ids)
+        }
+
     def _calculate_positions(
         self, genome: neat.DefaultGenome
     ) -> dict[int, tuple[float, float]]:
         """Calculate (x, y) positions for all nodes with equal spacing."""
+        node_spacing = 0.25
         positions = {}
 
-        # Calculate vertical spacing based on number of nodes
-        # Each node needs about 0.25 units of vertical space to avoid overlap
-        node_spacing = 0.25
-
-        # Input nodes on left (x = 0)
         input_ids = list(range(-self.num_inputs, 0))
-        total_input_height = (self.num_inputs - 1) * node_spacing
-        start_y = total_input_height / 2  # Center around y=0.5
-        for i, node_id in enumerate(input_ids):
-            y = 0.5 + start_y - (i * node_spacing)
-            positions[node_id] = (0.0, y)
-
-        # Output nodes on right (x = 1)
+        positions.update(self._position_column(input_ids, 0.0, node_spacing))
         output_ids = list(range(self.num_outputs))
-        total_output_height = (self.num_outputs - 1) * node_spacing
-        start_y = total_output_height / 2
-        for i, node_id in enumerate(output_ids):
-            y = 0.5 + start_y - (i * node_spacing)
-            positions[node_id] = (1.0, y)
+        positions.update(self._position_column(output_ids, 1.0, node_spacing))
 
-        # Hidden nodes in middle (layered with equal spacing)
         hidden_nodes = [n for n in genome.nodes.keys() if n not in output_ids]
         if hidden_nodes:
-            # Use simple layering based on connectivity
             layers = self._assign_layers(genome, input_ids, output_ids)
-
             if layers:
-                num_layers = max(layers.values()) + 1 if layers else 1
-
-                # Group nodes by layer
-                layer_groups = {}
+                num_layers = max(layers.values()) + 1
+                layer_groups: dict[int, list[int]] = {}
                 for node_id, layer in layers.items():
-                    if layer not in layer_groups:
-                        layer_groups[layer] = []
-                    layer_groups[layer].append(node_id)
-
-                for layer, nodes_in_layer in layer_groups.items():
-                    # Sort nodes for consistent ordering
+                    layer_groups.setdefault(layer, []).append(node_id)
+                for layer, nodes_in_layer in sorted(layer_groups.items()):
                     nodes_in_layer.sort()
-
-                    # X position: evenly space layers between input (0) and output (1)
                     x = 0.2 + (layer + 1) * 0.6 / (num_layers + 1)
-
-                    # Y position: use same spacing as input/output nodes
-                    n = len(nodes_in_layer)
-                    total_height = (n - 1) * node_spacing
-                    start_y = total_height / 2
-                    for idx, node_id in enumerate(nodes_in_layer):
-                        y = 0.5 + start_y - (idx * node_spacing)
-                        positions[node_id] = (x, y)
-
+                    positions.update(
+                        self._position_column(nodes_in_layer, x, node_spacing)
+                    )
         return positions
 
     def _assign_layers(
