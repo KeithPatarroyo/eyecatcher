@@ -2,7 +2,7 @@
  * API client for Eyecatcher backend. Raw fetch calls; no UI.
  * Sets window.API_URL and window.DEFAULT_DEV_PORT. Exposes: ApiClient.init(apiUrl),
  * ApiClient.compile(genomes), ApiClient.breed(parents, populationSize),
- * ApiClient.save(id, genome), ApiClient.random(size)
+ * ApiClient.save(id, genome), ApiClient.randomPopulation(size)
  */
 (function () {
     "use strict";
@@ -48,21 +48,15 @@
         });
         const body = { genomes: payload };
         if (colorMode === "hsv" || colorMode === "rgb") body.color_mode = colorMode;
-        const r = await fetch(_apiUrl + "/compile", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-        });
-        const data = await r.json().catch(function () {
-            return {};
-        });
-        if (!r.ok) {
-            const err = new Error(data.error || "Compile failed");
-            err.status = r.status;
-            err.data = data;
-            throw err;
-        }
-        return data;
+        return apiFetch(
+            _apiUrl + "/compile",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            },
+            "Compile failed"
+        );
     }
 
     /**
@@ -81,22 +75,15 @@
                 body.generation_num = genealogy.generationNum;
             if (genealogy.branchName) body.branch_name = genealogy.branchName;
         }
-        const r = await fetch(_apiUrl + "/breed", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-        });
-        const data = await r.json().catch(function () {
-            return {};
-        });
-        if (!r.ok || data.error) {
-            const err = new Error(
-                data.error || "Breed failed (status " + r.status + ")"
-            );
-            err.status = r.status;
-            err.data = data;
-            throw err;
-        }
+        const data = await apiFetch(
+            _apiUrl + "/breed",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            },
+            "Breed failed"
+        );
         if (!Array.isArray(data.children)) {
             throw new Error("Breed failed: no children in response");
         }
@@ -109,20 +96,15 @@
      * @param {Object} genome - Genome object
      */
     async function save(id, genome) {
-        const r = await fetch(_apiUrl + "/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: id, genome: genome }),
-        });
-        const data = await r.json().catch(function () {
-            return {};
-        });
-        if (data.error) {
-            const err = new Error(data.error);
-            err.data = data;
-            throw err;
-        }
-        return data;
+        return apiFetch(
+            _apiUrl + "/save",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: id, genome: genome }),
+            },
+            "Save failed"
+        );
     }
 
     /**
@@ -152,22 +134,16 @@
      * Get a new random population. Returns { genomes } or throws.
      * @param {number} size - Population size
      */
-    async function random(size) {
-        const r = await fetch(_apiUrl + "/random", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ size: size }),
-        });
-        const data = await r.json().catch(function () {
-            return {};
-        });
-        if (!r.ok) {
-            const err = new Error(data.error || "Failed to create random population");
-            err.status = r.status;
-            err.data = data;
-            throw err;
-        }
-        return data;
+    async function randomPopulation(size) {
+        return apiFetch(
+            _apiUrl + "/random",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ size: size }),
+            },
+            "Failed to create random population"
+        );
     }
 
     window.ApiClient = {
@@ -175,7 +151,7 @@
         compile: compile,
         breed: breed,
         save: save,
-        random: random,
+        randomPopulation: randomPopulation,
         apiFetch: apiFetch,
     };
 })();

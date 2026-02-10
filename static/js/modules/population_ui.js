@@ -56,7 +56,7 @@
                 (window.EvolutionConfig &&
                     window.EvolutionConfig.DEFAULT_POPULATION_SIZE) ||
                 12;
-            const d = await window.ApiClient.random(size);
+            const d = await window.ApiClient.randomPopulation(size);
             if (_loadFromStatelessGenomes) {
                 await _loadFromStatelessGenomes(d.genomes || [], 0, true);
             }
