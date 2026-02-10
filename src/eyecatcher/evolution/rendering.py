@@ -9,7 +9,7 @@ import numpy as np
 
 from . import config as evolution_config
 from .genome import DualGenome
-from .query import query_cppn, query_dual_cppn
+from .query import query_dual_cppn, query_visual_cppn
 from .signals import (
     TIME_INPUTS,
     VISUAL_INPUTS,
@@ -49,7 +49,7 @@ def render_image(
             x = -1.0 + (i / resolution) * 2.0
             y = -1.0 + (j / resolution) * 2.0
             inputs = {**base, "x": x, "y": y}
-            r, g, b = query_cppn(genome, visual_config, inputs)
+            r, g, b = query_visual_cppn(genome, visual_config, inputs)
             img[j, i] = _rgb_uint8(r, g, b)
     return img
 

@@ -35,7 +35,7 @@ def query_time_signal(
     return max(-1.0, min(1.0, outputs[0]))
 
 
-def query_cppn(
+def query_visual_cppn(
     genome: neat.DefaultGenome,
     visual_config: neat.Config,
     inputs: dict[str, float],
@@ -75,4 +75,4 @@ def query_dual_cppn(
     )
     time_key = visual_time_input_name()
     visual_inputs = {**inputs, time_key: modified_time}
-    return query_cppn(dual_genome.visual, visual_config, visual_inputs)
+    return query_visual_cppn(dual_genome.visual, visual_config, visual_inputs)

@@ -19,7 +19,7 @@ from .operators import (
     mutate_dual_genome,
     mutate_single_genome,
 )
-from .query import query_cppn, query_dual_cppn, query_time_signal
+from .query import query_dual_cppn, query_time_signal, query_visual_cppn
 from .rendering import (
     render_animation_frames as _render_animation_frames,
 )
@@ -120,7 +120,7 @@ class CPPNEngine:
         """
         return query_time_signal(time_genome, self.time_config, inputs)
 
-    def query_cppn(
+    def query_visual_cppn(
         self,
         genome: neat.DefaultGenome,
         inputs: dict[str, float],
@@ -129,7 +129,7 @@ class CPPNEngine:
 
         inputs: dict of signal name -> value (x, y, time, ...).
         """
-        return query_cppn(genome, self.config, inputs)
+        return query_visual_cppn(genome, self.config, inputs)
 
     def query_dual_cppn(
         self,
