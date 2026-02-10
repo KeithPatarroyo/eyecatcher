@@ -12,7 +12,8 @@
         );
     }
 
-    var API_URL = window.API_URL;
+    // Set by api_client.js (must load before this script). Fallback for edge cases.
+    var API_URL = window.API_URL || "";
     var FULLSCREEN_CANVAS_MAX = 1024;
     var FULLSCREEN_CANVAS_DEFAULT = 800;
     var FULLSCREEN_CANVAS_MIN = 64;
