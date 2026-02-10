@@ -14,6 +14,38 @@
 
     // Set by api_client.js (must load before this script). Fallback for edge cases.
     var API_URL = window.API_URL || "";
+    // Single source of truth for interactive_viewer.html element IDs used by app wiring.
+    var IDS = {
+        grid: "grid",
+        fullscreenModal: "fullscreen-modal",
+        fullscreenCanvasWrap: "fullscreen-canvas-wrap",
+        gridErrorTpl: "grid-error-tpl",
+        gridRetryBtn: "grid-retry-btn",
+        genNum: "gen-num",
+        breedBtn: "breed-btn",
+        populationSizeInput: "population-size-input",
+        totalClicks: "total-clicks",
+        loadListModal: "load-list-modal",
+        communityListModal: "community-list-modal",
+        fullscreenClose: "fullscreen-close",
+        fullscreenBackdrop: "fullscreen-backdrop",
+        loadModalClose: "load-modal-close",
+        communitySubmitDo: "community-submit-do",
+        communitySubmitCancel: "community-submit-cancel",
+        communityListClose: "community-list-close",
+        communityLoadSelectedBtn: "community-load-selected-btn",
+        communityLoad12Btn: "community-load-12-btn",
+        communitySelectAllBtn: "community-select-all-btn",
+        communityDeselectAllBtn: "community-deselect-all-btn",
+        newFromCommunityBtn: "new-from-community-btn",
+        adminKeySubmit: "admin-key-submit",
+        adminModalCancel: "admin-modal-cancel",
+        adminListClose: "admin-list-close",
+        adminKeyInput: "admin-key-input",
+        saveCurrentBtn: "save-current-btn",
+        importBtn: "import-btn",
+        importFile: "import-file",
+    };
     var FULLSCREEN_CANVAS_MAX = 1024;
     var FULLSCREEN_CANVAS_DEFAULT = 800;
     var FULLSCREEN_CANVAS_MIN = 64;
@@ -63,7 +95,7 @@
     var fullscreenPatternData = null;
 
     function getGrid() {
-        return document.getElementById("grid");
+        return document.getElementById(IDS.grid);
     }
     function clearGrid() {
         var g = getGrid();
@@ -83,8 +115,8 @@
             });
         if (!pattern || !pattern.shader) return;
         closeFullscreen();
-        var modal = document.getElementById("fullscreen-modal");
-        var wrap = document.getElementById("fullscreen-canvas-wrap");
+        var modal = document.getElementById(IDS.fullscreenModal);
+        var wrap = document.getElementById(IDS.fullscreenCanvasWrap);
         if (!modal || !wrap) return;
         modal.hidden = false;
         wrap.innerHTML = "";
@@ -118,8 +150,8 @@
 
     function closeFullscreen() {
         fullscreenPatternData = null;
-        var modal = document.getElementById("fullscreen-modal");
-        var wrap = document.getElementById("fullscreen-canvas-wrap");
+        var modal = document.getElementById(IDS.fullscreenModal);
+        var wrap = document.getElementById(IDS.fullscreenCanvasWrap);
         if (wrap) wrap.innerHTML = "";
         if (modal) modal.hidden = true;
     }
@@ -146,7 +178,7 @@
 
     function showGridError(message, showRetry) {
         var grid = getGrid();
-        var tpl = document.getElementById("grid-error-tpl");
+        var tpl = document.getElementById(IDS.gridErrorTpl);
         if (!tpl || !tpl.content) {
             clearGrid();
             grid = getGrid();
@@ -185,9 +217,11 @@
         if (grid) grid.appendChild(fragment);
         showLoading(false);
         if (showRetry) {
-            document.getElementById("grid-retry-btn").onclick = function () {
-                window.PopulationUI.startNewRandomPopulation();
-            };
+            var retryEl = document.getElementById(IDS.gridRetryBtn);
+            if (retryEl)
+                retryEl.onclick = function () {
+                    window.PopulationUI.startNewRandomPopulation();
+                };
         }
     }
 
@@ -383,7 +417,7 @@
     }
 
     function setBreedButtonDisabled(disabled) {
-        var el = document.getElementById("breed-btn");
+        var el = document.getElementById(IDS.breedBtn);
         if (disabled) {
             el.classList.add("disabled");
             el.setAttribute("aria-disabled", "true");
@@ -394,7 +428,8 @@
     }
 
     function breedGeneration() {
-        if (document.getElementById("breed-btn").classList.contains("disabled")) return;
+        var breedEl = document.getElementById(IDS.breedBtn);
+        if (breedEl && breedEl.classList.contains("disabled")) return;
         setBreedButtonDisabled(true);
         showLoading(true);
 
@@ -432,7 +467,7 @@
             return;
         }
 
-        var sizeInput = document.getElementById("population-size-input");
+        var sizeInput = document.getElementById(IDS.populationSizeInput);
         var populationSize = Math.max(
             2,
             Math.min(50, parseInt(sizeInput && sizeInput.value, 10) || 12)
@@ -641,30 +676,30 @@
         });
     });
 
-    onId("fullscreen-close", function (el) {
+    onId(IDS.fullscreenClose, function (el) {
         el.addEventListener("click", closeFullscreen);
     });
-    onId("fullscreen-backdrop", function (el) {
+    onId(IDS.fullscreenBackdrop, function (el) {
         el.addEventListener("click", closeFullscreen);
     });
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && fullscreenPatternData) closeFullscreen();
     });
 
-    onId("breed-btn", function (el) {
+    onId(IDS.breedBtn, function (el) {
         el.addEventListener("click", breedGeneration);
         el.addEventListener("keydown", function (e) {
             onRoleButtonKeydown(e, breedGeneration);
         });
     });
 
-    onId("load-modal-close", function (el) {
+    onId(IDS.loadModalClose, function (el) {
         el.addEventListener("click", function () {
-            var modal = document.getElementById("load-list-modal");
+            var modal = document.getElementById(IDS.loadListModal);
             if (modal) modal.classList.remove("show");
         });
     });
-    onId("community-submit-do", function (el) {
+    onId(IDS.communitySubmitDo, function (el) {
         el.addEventListener("click", window.CommunityUI.submitCommunityForm);
     });
     onId("community-submit-cancel", function (el) {
@@ -676,45 +711,45 @@
             if (modal) modal.classList.remove("show");
         });
     });
-    onId("community-load-selected-btn", function (el) {
+    onId(IDS.communityLoadSelectedBtn, function (el) {
         el.addEventListener("click", window.CommunityUI.onCommunityLoadSelected);
     });
-    onId("community-load-12-btn", function (el) {
+    onId(IDS.communityLoad12Btn, function (el) {
         el.addEventListener("click", window.CommunityUI.onCommunityLoad12);
     });
-    onId("community-select-all-btn", function (el) {
+    onId(IDS.communitySelectAllBtn, function (el) {
         el.addEventListener("click", window.CommunityUI.onCommunitySelectAll);
     });
-    onId("community-deselect-all-btn", function (el) {
+    onId(IDS.communityDeselectAllBtn, function (el) {
         el.addEventListener("click", window.CommunityUI.onCommunityDeselectAll);
     });
-    onId("new-from-community-btn", function (el) {
+    onId(IDS.newFromCommunityBtn, function (el) {
         el.addEventListener("click", window.CommunityUI.onNewFromCommunityClick);
         el.addEventListener("keydown", function (e) {
             onRoleButtonKeydown(e, window.CommunityUI.onNewFromCommunityClick);
         });
     });
-    onId("admin-key-submit", function (el) {
+    onId(IDS.adminKeySubmit, function (el) {
         el.addEventListener("click", window.CommunityUI.submitAdminKey);
     });
-    onId("admin-modal-cancel", function (el) {
+    onId(IDS.adminModalCancel, function (el) {
         el.addEventListener("click", window.CommunityUI.closeAdminModal);
     });
-    onId("admin-list-close", function (el) {
+    onId(IDS.adminListClose, function (el) {
         el.addEventListener("click", window.CommunityUI.closeAdminModal);
     });
-    onId("admin-key-input", function (el) {
+    onId(IDS.adminKeyInput, function (el) {
         el.addEventListener("keydown", function (e) {
             if (e.key === "Enter") window.CommunityUI.submitAdminKey();
         });
     });
-    onId("save-current-btn", function (el) {
+    onId(IDS.saveCurrentBtn, function (el) {
         el.addEventListener("click", window.PopulationUI.onSaveCurrentClick);
     });
-    onId("import-btn", function (el) {
+    onId(IDS.importBtn, function (el) {
         el.addEventListener("click", window.PopulationUI.onImportClick);
     });
-    onId("import-file", function (el) {
+    onId(IDS.importFile, function (el) {
         el.addEventListener("change", function (e) {
             var file = e.target.files && e.target.files[0];
             e.target.value = "";
