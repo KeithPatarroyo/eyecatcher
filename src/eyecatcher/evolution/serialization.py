@@ -11,10 +11,7 @@ import neat
 
 from .genome import DualGenome
 from .signals import (
-    TIME_INPUTS,
-    TIME_OUTPUTS,
-    VISUAL_INPUTS,
-    VISUAL_OUTPUTS,
+    NETWORK_SIGNALS,
     input_labels,
     output_labels,
 )
@@ -213,12 +210,8 @@ def extract_network_data(
     num_inputs = neat_config.genome_config.num_inputs
     num_outputs = neat_config.genome_config.num_outputs
     x_offset = 1000 if network_type == "time" else 0
-
-    input_label_list = (
-        input_labels(TIME_INPUTS)
-        if network_type == "time"
-        else input_labels(VISUAL_INPUTS)
-    )
+    signals, outputs = NETWORK_SIGNALS[network_type]
+    input_label_list = input_labels(signals)
     input_list = [
         (-(i + 1), input_label_list[i] if i < len(input_label_list) else f"Input {i}")
         for i in range(num_inputs)
@@ -251,11 +244,7 @@ def extract_network_data(
         hidden_extras,
     )
 
-    output_label_list = (
-        output_labels(TIME_OUTPUTS)
-        if network_type == "time"
-        else output_labels(VISUAL_OUTPUTS)
-    )
+    output_label_list = output_labels(outputs)
     output_list = [
         (i, output_label_list[i] if i < len(output_label_list) else f"Output {i}")
         for i in range(num_outputs)

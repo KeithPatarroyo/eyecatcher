@@ -120,6 +120,18 @@ TIME_OUTPUTS: list[Output] = [
     Output("output", "Modified Time"),
 ]
 
+# Map network_type to (inputs, outputs) for extract_network_data and similar.
+NETWORK_SIGNALS: dict[str, tuple[list[Signal], list[Output]]] = {
+    "visual": (VISUAL_INPUTS, VISUAL_OUTPUTS),
+    "time": (TIME_INPUTS, TIME_OUTPUTS),
+}
+
+# Names for the time-related input in each CPPN (avoid repeated lookups).
+VISUAL_TIME_INPUT_NAME: str = next(
+    s.name for s in VISUAL_INPUTS if s.enable_key == "time"
+)
+TIME_CPPN_TIME_INPUT_NAME: str = TIME_INPUTS[0].name
+
 # Derived inputs: computed from other inputs when not provided.
 # List of (output_signal_name, (dependency_names, ...), compute_fn).
 # compute_fn(*values) receives dependency values in order.
@@ -185,9 +197,9 @@ def default_inputs(signals: Sequence[Signal]) -> dict[str, float]:
 
 def visual_time_input_name() -> str:
     """Name of the visual CPPN input that receives the time signal (from time CPPN)."""
-    return next(s.name for s in VISUAL_INPUTS if s.enable_key == "time")
+    return VISUAL_TIME_INPUT_NAME
 
 
 def time_cppn_time_input_name() -> str:
     """Name of the time CPPN input that is varied over animation (raw time)."""
-    return TIME_INPUTS[0].name
+    return TIME_CPPN_TIME_INPUT_NAME
