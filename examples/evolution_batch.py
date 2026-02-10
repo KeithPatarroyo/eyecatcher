@@ -29,30 +29,30 @@ def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:
     for t in times:
         raw_t = -1.0 + t * 2.0
         for x, y in coords:
-            r, g, b = engine.query_dual_cppn(
-                dual_genome,
-                x,
-                y,
-                raw_t,
-                mouse_speed=0.0,
-                mouse_distance=0.0,
-                inactivity=0.0,
-            )
+            inputs = {
+                "x": x,
+                "y": y,
+                "raw_time": raw_t,
+                "mouse_speed": 0.0,
+                "mouse_distance": 0.0,
+                "inactivity": 0.0,
+            }
+            r, g, b = engine.query_dual_cppn(dual_genome, inputs)
             samples.append([r, g, b])
     samples = np.array(samples)
     color_variance = np.var(samples)
     temporal_samples = []
     for t in times:
         raw_t = -1.0 + t * 2.0
-        r, g, b = engine.query_dual_cppn(
-            dual_genome,
-            0,
-            0,
-            raw_t,
-            mouse_speed=0.0,
-            mouse_distance=0.0,
-            inactivity=0.0,
-        )
+        inputs = {
+            "x": 0.0,
+            "y": 0.0,
+            "raw_time": raw_t,
+            "mouse_speed": 0.0,
+            "mouse_distance": 0.0,
+            "inactivity": 0.0,
+        }
+        r, g, b = engine.query_dual_cppn(dual_genome, inputs)
         temporal_samples.append([r, g, b])
     temporal_variance = np.var(temporal_samples)
     fitness = color_variance * 10 + temporal_variance * 5
@@ -88,7 +88,9 @@ def run_evolution(
         gen_dir = os.path.join(output_dir, f"gen_{gen:03d}")
         os.makedirs(gen_dir, exist_ok=True)
         for idx, (dual, _) in enumerate(scores[:4]):
-            img = engine.render_dual_image(dual, resolution=128, raw_time=0.0)
+            img = engine.render_dual_image(
+                dual, resolution=128, extra_inputs={"raw_time": 0.0}
+            )
             path = os.path.join(gen_dir, f"pattern_{idx:02d}.png")
             Image.fromarray(img, "RGB").save(path)
 

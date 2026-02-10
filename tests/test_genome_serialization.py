@@ -39,8 +39,9 @@ def test_dual_genome_round_trip_query_consistency():
     data = dual_genome_to_json(dual)
     restored = dual_genome_from_json(data, engine)
 
-    r0, g0, b0 = engine.query_dual_cppn(dual, 0.5, 0.5, raw_time=0.3)
-    r1, g1, b1 = engine.query_dual_cppn(restored, 0.5, 0.5, raw_time=0.3)
+    inputs = {"x": 0.5, "y": 0.5, "raw_time": 0.3}
+    r0, g0, b0 = engine.query_dual_cppn(dual, inputs)
+    r1, g1, b1 = engine.query_dual_cppn(restored, inputs)
     assert isinstance(r0, (int, float)) and isinstance(r1, (int, float))
     assert 0 <= r0 <= 255 and 0 <= r1 <= 255
     assert 0 <= g0 <= 255 and 0 <= g1 <= 255

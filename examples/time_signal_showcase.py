@@ -25,7 +25,15 @@ def main():
     plt.figure(figsize=(8, 5))
     for idx, dual in enumerate(duals):
         modified = [
-            engine.query_time_signal(dual.time_signal, rt, 0.0, 0.0, 0.0)
+            engine.query_time_signal(
+                dual.time_signal,
+                {
+                    "raw_time": rt,
+                    "mouse_speed": 0.0,
+                    "mouse_distance": 0.0,
+                    "inactivity": 0.0,
+                },
+            )
             for rt in raw_times
         ]
         plt.plot(raw_times, modified, label=f"Genome {idx}")

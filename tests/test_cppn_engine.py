@@ -34,7 +34,8 @@ def test_query_dual_cppn_returns_rgb():
     engine = CPPNEngine()
     engine.create_population()
     dual = create_random_dual_genome(engine, genome_id=0)
-    r, g, b = engine.query_dual_cppn(dual, 0.0, 0.0, raw_time=0.0)
+    inputs = {"x": 0.0, "y": 0.0, "raw_time": 0.0}
+    r, g, b = engine.query_dual_cppn(dual, inputs)
     assert 0 <= r <= 255
     assert 0 <= g <= 255
     assert 0 <= b <= 255

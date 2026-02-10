@@ -21,7 +21,7 @@ def main():
     print("Created random dual genome (visual + time signal)")
 
     # Render one image (time-signal CPPN shapes the result)
-    img = engine.render_dual_image(dual, resolution=256, raw_time=0.5)
+    img = engine.render_dual_image(dual, resolution=256, extra_inputs={"raw_time": 0.5})
     Image.fromarray(img, "RGB").save("output/dual_pattern.png")
     print("Saved: output/dual_pattern.png")
 
@@ -39,14 +39,18 @@ def main():
 
     # Mutate once
     child = engine.mutate_dual_genome(dual, 1)
-    img_child = engine.render_dual_image(child, resolution=256, raw_time=0.5)
+    img_child = engine.render_dual_image(
+        child, resolution=256, extra_inputs={"raw_time": 0.5}
+    )
     Image.fromarray(img_child, "RGB").save("output/dual_mutant.png")
     print("Saved: output/dual_mutant.png (one mutation)")
 
     # Crossover: two parents -> one offspring
     parent2 = create_random_dual_genome(engine, genome_id=2)
     offspring = engine.crossover_dual_genomes(dual, parent2, 3)
-    img_off = engine.render_dual_image(offspring, resolution=256, raw_time=0.5)
+    img_off = engine.render_dual_image(
+        offspring, resolution=256, extra_inputs={"raw_time": 0.5}
+    )
     Image.fromarray(img_off, "RGB").save("output/dual_offspring.png")
     print("Saved: output/dual_offspring.png (crossover)")
     print("Done. Check output/ for shader, bundle, and images.")
