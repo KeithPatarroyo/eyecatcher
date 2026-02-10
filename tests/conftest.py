@@ -52,7 +52,7 @@ def minimal_dual_genome_one_hidden_visual(engine: CPPNEngine):
             "connections": time_conns,
         },
     }
-    return dual_genome_from_json(data, engine)
+    return dual_genome_from_json(data, engine.config, engine.time_config)
 
 
 @pytest.fixture

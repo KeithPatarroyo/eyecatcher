@@ -74,7 +74,9 @@ def run_evolution(
     population = []
     genome_counter = 0
     for i in range(population_size):
-        dual = create_random_dual_genome(engine, genome_id=genome_counter)
+        dual = create_random_dual_genome(
+            engine.config, engine.time_config, genome_id=genome_counter
+        )
         genome_counter += 1
         population.append(dual)
 
@@ -97,7 +99,11 @@ def run_evolution(
         # Breed: elitism + offspring
         best = parents[0]
         genome_counter = max(g.key for g in population) + 1
-        new_pop = [copy_dual_genome(best, engine, genome_counter)]
+        new_pop = [
+            copy_dual_genome(
+                best, engine.config, engine.time_config, genome_counter
+            )
+        ]
         genome_counter += 1
         while len(new_pop) < population_size:
             if random.random() < 0.7:

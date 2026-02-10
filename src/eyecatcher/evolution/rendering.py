@@ -26,7 +26,7 @@ def _rgb_uint8(r: float, g: float, b: float) -> list[int]:
 
 def render_image(
     genome: neat.DefaultGenome,
-    config: neat.Config,
+    visual_config: neat.Config,
     resolution: Optional[int] = None,
     time: float = 0.0,
     extra_inputs: Optional[dict] = None,
@@ -49,14 +49,14 @@ def render_image(
             x = -1.0 + (i / resolution) * 2.0
             y = -1.0 + (j / resolution) * 2.0
             inputs = {**base, "x": x, "y": y}
-            r, g, b = query_cppn(genome, config, inputs)
+            r, g, b = query_cppn(genome, visual_config, inputs)
             img[j, i] = _rgb_uint8(r, g, b)
     return img
 
 
 def render_animation_frames(
     genome: neat.DefaultGenome,
-    config: neat.Config,
+    visual_config: neat.Config,
     resolution: Optional[int] = None,
     num_frames: Optional[int] = None,
     time_range: tuple[float, float] = (0.0, 1.0),
@@ -70,7 +70,7 @@ def render_animation_frames(
     start_time, end_time = time_range
     for frame_idx in range(num_frames):
         t = start_time + (end_time - start_time) * (frame_idx / num_frames)
-        frame = render_image(genome, config, resolution, t)
+        frame = render_image(genome, visual_config, resolution, t)
         frames.append(frame)
     return frames
 

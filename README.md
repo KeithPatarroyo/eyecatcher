@@ -208,16 +208,17 @@ The server does not hold population state. The client (web UI) stores genomes (e
 ## API usage (programmatic)
 
 ```python
-from eyecatcher.cppn_engine import CPPNEngine, create_random_dual_genome
+from eyecatcher.evolution import CPPNEngine, create_random_dual_genome
 
 engine = CPPNEngine()
 engine.create_population()
-dual_genome = create_random_dual_genome(engine, genome_id=0)
+dual_genome = create_random_dual_genome(
+    engine.config, engine.time_config, genome_id=0
+)
 
 # Query
 r, g, b = engine.query_dual_cppn(
-    dual_genome, x=0.5, y=0.5, raw_time=0.5,
-    mouse_speed=0.2, mouse_distance=0.3, inactivity=0.0
+    dual_genome, {"x": 0.5, "y": 0.5, "raw_time": 0.5}
 )
 ```
 

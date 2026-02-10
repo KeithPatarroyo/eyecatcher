@@ -14,7 +14,9 @@ def test_dual_genome_round_trip():
     """Serializing a dual genome and deserializing yields equivalent structure."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=7)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=7
+    )
     data = dual_genome_to_json(dual)
     assert "key" in data
     assert data["key"] == 7
@@ -23,7 +25,9 @@ def test_dual_genome_round_trip():
     assert "nodes" in data["visual"]
     assert "connections" in data["visual"]
 
-    restored = dual_genome_from_json(data, engine)
+    restored = dual_genome_from_json(
+        data, engine.config, engine.time_config
+    )
     assert restored.key == dual.key
     assert len(restored.visual.nodes) == len(dual.visual.nodes)
     assert len(restored.visual.connections) == len(dual.visual.connections)
@@ -35,9 +39,13 @@ def test_dual_genome_round_trip_query_consistency():
     """After round-trip, querying the CPPN gives identical output (fidelity)."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=0)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
     data = dual_genome_to_json(dual)
-    restored = dual_genome_from_json(data, engine)
+    restored = dual_genome_from_json(
+        data, engine.config, engine.time_config
+    )
 
     inputs = {"x": 0.5, "y": 0.5, "raw_time": 0.3}
     r0, g0, b0 = engine.query_dual_cppn(dual, inputs)

@@ -38,11 +38,11 @@ class GenomeVisualizer:
         "negative": "#E74C3C",  # Red
     }
 
-    def __init__(self, config: neat.Config):
-        """Initialize visualizer with NEAT config."""
-        self.config = config
-        self.num_inputs = config.genome_config.num_inputs
-        self.num_outputs = config.genome_config.num_outputs
+    def __init__(self, visual_config: neat.Config):
+        """Initialize visualizer with NEAT config (visual CPPN)."""
+        self.config = visual_config
+        self.num_inputs = visual_config.genome_config.num_inputs
+        self.num_outputs = visual_config.genome_config.num_outputs
 
     def visualize_genome(
         self,
@@ -392,7 +392,7 @@ class GenomeVisualizer:
 
 def render_genome_network_pdf(
     genome: neat.DefaultGenome,
-    config: neat.Config,
+    visual_config: neat.Config,
     output: Union[str, BinaryIO],
 ) -> Optional[bytes]:
     """
@@ -406,7 +406,7 @@ def render_genome_network_pdf(
         PDF bytes when output is file-like, else None.
     """
     try:
-        visualizer = GenomeVisualizer(config)
+        visualizer = GenomeVisualizer(visual_config)
         visualizer.visualize_genome(genome, output)
         if isinstance(output, io.BytesIO):
             return output.getvalue()

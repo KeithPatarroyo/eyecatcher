@@ -5,7 +5,7 @@ JSON serialization/deserialization for NEAT genomes and DualGenomes,
 plus deep copy and network extraction for visualization.
 """
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 import neat
 
@@ -18,9 +18,6 @@ from .signals import (
     input_labels,
     output_labels,
 )
-
-if TYPE_CHECKING:
-    from .engine import CPPNEngine
 
 
 def genome_to_json(genome: neat.DefaultGenome) -> dict[str, Any]:
@@ -49,25 +46,27 @@ def genome_to_json(genome: neat.DefaultGenome) -> dict[str, Any]:
     }
 
 
-def genome_from_json(data: dict[str, Any], config: neat.Config) -> neat.DefaultGenome:
+def genome_from_json(
+    data: dict[str, Any], visual_config: neat.Config
+) -> neat.DefaultGenome:
     """Deserialize a NEAT DefaultGenome from a dict (e.g. from JSON)."""
-    gc = config.genome_config
+    genome_config = visual_config.genome_config
     genome = neat.DefaultGenome(data.get("key", 0))
     genome.fitness = data.get("fitness")
     genome.nodes = {}
     genome.connections = {}
 
-    for nid_str, nd in data.get("nodes", {}).items():
+    for nid_str, node_data in data.get("nodes", {}).items():
         nid = int(nid_str)
-        node = gc.node_gene_type(nid)
-        node.bias = float(nd.get("bias", 0.0))
-        node.response = float(nd.get("response", 1.0))
-        act = str(nd.get("activation", "sigmoid")).strip()
+        node = genome_config.node_gene_type(nid)
+        node.bias = float(node_data.get("bias", 0.0))
+        node.response = float(node_data.get("response", 1.0))
+        act = str(node_data.get("activation", "sigmoid")).strip()
         node.activation = act if act else "sigmoid"
-        node.aggregation = str(nd.get("aggregation", "sum"))
+        node.aggregation = str(node_data.get("aggregation", "sum"))
         genome.nodes[nid] = node
 
-    for conn_key_str, cd in data.get("connections", {}).items():
+    for conn_key_str, conn_data in data.get("connections", {}).items():
         parts = conn_key_str.split("_", 1)
         if len(parts) != 2:
             continue
@@ -76,14 +75,14 @@ def genome_from_json(data: dict[str, Any], config: neat.Config) -> neat.DefaultG
         except ValueError:
             continue
         key = (in_id, out_id)
-        innovation = cd.get("innovation")
+        innovation = conn_data.get("innovation")
         if innovation is None:
             innovation = abs(hash(key)) % (2**31)
         else:
             innovation = int(innovation)
-        conn = gc.connection_gene_type(key, innovation=innovation)
-        conn.weight = float(cd.get("weight", 0.0))
-        conn.enabled = bool(cd.get("enabled", True))
+        conn = genome_config.connection_gene_type(key, innovation=innovation)
+        conn.weight = float(conn_data.get("weight", 0.0))
+        conn.enabled = bool(conn_data.get("enabled", True))
         genome.connections[key] = conn
     return genome
 
@@ -111,17 +110,21 @@ def dual_genome_to_json(dual: DualGenome) -> dict[str, Any]:
     }
 
 
-def dual_genome_from_json(data: dict[str, Any], engine: "CPPNEngine") -> DualGenome:
+def dual_genome_from_json(
+    data: dict[str, Any],
+    visual_config: neat.Config,
+    time_config: neat.Config,
+) -> DualGenome:
     """Deserialize a DualGenome from a dict (e.g. from JSON)."""
     visual_data = data.get("visual", {})
     time_data = data.get("time_signal", {})
     if not visual_data or not time_data:
         raise ValueError("dual genome JSON must contain 'visual' and 'time_signal'")
 
-    visual = genome_from_json(visual_data, engine.config)
-    time_signal = genome_from_json(time_data, engine.time_config)
-    _update_node_indexer_from_genome(visual, engine.config.genome_config)
-    _update_node_indexer_from_genome(time_signal, engine.time_config.genome_config)
+    visual = genome_from_json(visual_data, visual_config)
+    time_signal = genome_from_json(time_data, time_config)
+    _update_node_indexer_from_genome(visual, visual_config.genome_config)
+    _update_node_indexer_from_genome(time_signal, time_config.genome_config)
 
     key = data.get("key", 0)
     return DualGenome(visual=visual, time_signal=time_signal, key=key)
@@ -145,18 +148,23 @@ def _update_node_indexer_from_genome(
         genome_config.node_indexer = itertools.count(max_node_id + 1)
 
 
-def copy_genome(genome: neat.DefaultGenome, config: neat.Config) -> neat.DefaultGenome:
+def copy_genome(
+    genome: neat.DefaultGenome, visual_config: neat.Config
+) -> neat.DefaultGenome:
     """Create a deep copy of a genome by serializing and deserializing."""
-    return genome_from_json(genome_to_json(genome), config)
+    return genome_from_json(genome_to_json(genome), visual_config)
 
 
 def copy_dual_genome(
-    dual: DualGenome, engine: "CPPNEngine", new_key: Optional[int] = None
+    dual: DualGenome,
+    visual_config: neat.Config,
+    time_config: neat.Config,
+    new_key: Optional[int] = None,
 ) -> DualGenome:
     """Create a deep copy of a dual genome."""
     return DualGenome(
-        visual=copy_genome(dual.visual, engine.config),
-        time_signal=copy_genome(dual.time_signal, engine.time_config),
+        visual=copy_genome(dual.visual, visual_config),
+        time_signal=copy_genome(dual.time_signal, time_config),
         key=new_key if new_key is not None else dual.key,
     )
 
@@ -192,17 +200,18 @@ def _append_nodes_for_layer(
 
 
 def extract_network_data(
-    genome: neat.DefaultGenome, network_type: str, config: neat.Config
+    genome: neat.DefaultGenome, network_type: str, neat_config: neat.Config
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
     Extract nodes and connections from a genome for network visualization.
 
+    neat_config: NEAT config for this genome (visual or time depending on network_type).
     Returns (nodes, connections) as lists of dicts with id, label, type, etc.
     """
     nodes = []
     node_id_map = {}
-    num_inputs = config.genome_config.num_inputs
-    num_outputs = config.genome_config.num_outputs
+    num_inputs = neat_config.genome_config.num_inputs
+    num_outputs = neat_config.genome_config.num_outputs
     x_offset = 1000 if network_type == "time" else 0
 
     input_label_list = (

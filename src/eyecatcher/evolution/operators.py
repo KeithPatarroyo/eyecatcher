@@ -9,16 +9,16 @@ from .serialization import _update_node_indexer_from_genome
 
 
 def mutate_single_genome(
-    genome: neat.DefaultGenome, config: neat.Config
+    genome: neat.DefaultGenome, visual_config: neat.Config
 ) -> neat.DefaultGenome:
     """Create a mutated copy of a single genome."""
-    _update_node_indexer_from_genome(genome, config.genome_config)
+    _update_node_indexer_from_genome(genome, visual_config.genome_config)
     if genome.fitness is None:
         genome.fitness = 0.0
     parent_key = genome.key if genome.key is not None else 0
     child = neat.DefaultGenome(parent_key + 1)
-    child.configure_crossover(genome, genome, config.genome_config)
-    child.mutate(config.genome_config)
+    child.configure_crossover(genome, genome, visual_config.genome_config)
+    child.mutate(visual_config.genome_config)
     child.fitness = None
     return child
 
@@ -26,7 +26,7 @@ def mutate_single_genome(
 def crossover_single_genomes(
     genome1: neat.DefaultGenome,
     genome2: neat.DefaultGenome,
-    config: neat.Config,
+    visual_config: neat.Config,
 ) -> neat.DefaultGenome:
     """Create offspring from two single genomes."""
     if genome1.fitness is None:
@@ -36,7 +36,7 @@ def crossover_single_genomes(
     key1 = genome1.key if genome1.key is not None else 0
     key2 = genome2.key if genome2.key is not None else 0
     child = neat.DefaultGenome(max(key1, key2) + 1)
-    child.configure_crossover(genome1, genome2, config.genome_config)
+    child.configure_crossover(genome1, genome2, visual_config.genome_config)
     child.fitness = None
     return child
 

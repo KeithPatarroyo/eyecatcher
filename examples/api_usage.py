@@ -17,7 +17,9 @@ def main():
     compiler = ShaderCompiler()
 
     # Create a few dual genomes
-    dual = create_random_dual_genome(engine, genome_id=0)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
     print("Created random dual genome (visual + time signal)")
 
     # Render one image (time-signal CPPN shapes the result)
@@ -46,7 +48,9 @@ def main():
     print("Saved: output/dual_mutant.png (one mutation)")
 
     # Crossover: two parents -> one offspring
-    parent2 = create_random_dual_genome(engine, genome_id=2)
+    parent2 = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=2
+    )
     offspring = engine.crossover_dual_genomes(dual, parent2, 3)
     img_off = engine.render_dual_image(
         offspring, resolution=256, extra_inputs={"raw_time": 0.5}

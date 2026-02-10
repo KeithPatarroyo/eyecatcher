@@ -22,7 +22,9 @@ def test_create_random_dual_genome():
     """create_random_dual_genome returns a DualGenome with visual and time_signal."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=3)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=3
+    )
     assert isinstance(dual, DualGenome)
     assert dual.visual is not None
     assert dual.time_signal is not None
@@ -33,7 +35,9 @@ def test_query_dual_cppn_returns_rgb():
     """query_dual_cppn returns three values in 0-255."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=0)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
     inputs = {"x": 0.0, "y": 0.0, "raw_time": 0.0}
     r, g, b = engine.query_dual_cppn(dual, inputs)
     assert 0 <= r <= 255
@@ -45,7 +49,9 @@ def test_mutate_dual_genome():
     """mutate_dual_genome returns a new DualGenome."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=0)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
     mutated = engine.mutate_dual_genome(dual, new_key=1)
     assert isinstance(mutated, DualGenome)
     assert mutated.key == 1
@@ -58,8 +64,12 @@ def test_crossover_dual_genomes():
     """crossover_dual_genomes returns a child DualGenome."""
     engine = CPPNEngine()
     engine.create_population()
-    a = create_random_dual_genome(engine, genome_id=0)
-    b = create_random_dual_genome(engine, genome_id=1)
+    a = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
+    b = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=1
+    )
     child = engine.crossover_dual_genomes(a, b, new_key=2)
     assert isinstance(child, DualGenome)
     assert child.key == 2
@@ -71,7 +81,9 @@ def test_create_random_genome_and_mutate():
     """Single-genome path: create_random_genome and mutate_genome work."""
     engine = CPPNEngine()
     engine.create_population()
-    genome = create_random_genome(engine.config, genome_id=42)
+    genome = create_random_genome(
+        engine.config, genome_id=42
+    )
     assert genome is not None
     mutated = engine.mutate_genome(genome)
     assert mutated is not None

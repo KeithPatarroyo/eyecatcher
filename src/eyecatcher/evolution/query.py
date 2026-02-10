@@ -37,7 +37,7 @@ def query_time_signal(
 
 def query_cppn(
     genome: neat.DefaultGenome,
-    config: neat.Config,
+    visual_config: neat.Config,
     inputs: dict[str, float],
 ) -> tuple[float, float, float]:
     """Query visual CPPN for RGB. Returns (r, g, b) in 0–1.
@@ -49,7 +49,7 @@ def query_cppn(
     full = {s.name: inputs.get(s.name, s.default) for s in VISUAL_INPUTS}
     apply_derived_inputs(full, VISUAL_DERIVED_INPUTS)
     in_arr = inputs_array(VISUAL_INPUTS, full)
-    net = neat.nn.FeedForwardNetwork.create(genome, config)
+    net = neat.nn.FeedForwardNetwork.create(genome, visual_config)
     outputs = net.activate(in_arr)
     r = max(0.0, min(1.0, (outputs[0] + 1.0) / 2.0))
     g = max(0.0, min(1.0, (outputs[1] + 1.0) / 2.0))
@@ -59,7 +59,7 @@ def query_cppn(
 
 def query_dual_cppn(
     dual_genome: DualGenome,
-    config: neat.Config,
+    visual_config: neat.Config,
     time_config: neat.Config,
     inputs: dict[str, float],
 ) -> tuple[float, float, float]:
@@ -75,4 +75,4 @@ def query_dual_cppn(
     )
     time_key = visual_time_input_name()
     visual_inputs = {**inputs, time_key: modified_time}
-    return query_cppn(dual_genome.visual, config, visual_inputs)
+    return query_cppn(dual_genome.visual, visual_config, visual_inputs)

@@ -17,7 +17,9 @@ def test_community_submit(client, community_db, cppn_engine):
     """POST submit with genome returns id and status pending."""
     from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
-    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    dual = create_random_dual_genome(
+        cppn_engine.config, cppn_engine.time_config, genome_id=0
+    )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
 
@@ -70,7 +72,9 @@ def test_admin_submit_then_list_and_approve(
     """Submit, list pending as admin, approve, then list public shows pattern."""
     from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
-    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    dual = create_random_dual_genome(
+        cppn_engine.config, cppn_engine.time_config, genome_id=0
+    )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
 

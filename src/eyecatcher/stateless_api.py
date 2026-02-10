@@ -88,7 +88,7 @@ def api_compile():
         )
         shaders = []
         for i, g_data in enumerate(genomes_data):
-            dual = dual_genome_from_json(g_data, _engine)
+            dual = dual_genome_from_json(g_data, _engine.config, _engine.time_config)
             individual_id = g_data.get("key", dual.key if dual else i)
             clicks = g_data.get("clicks", 0)
             shaders.append(
@@ -116,7 +116,9 @@ def api_random():
         size = max(1, min(int(size), MAX_POPULATION_SIZE))
         genomes = []
         for i in range(size):
-            dual = create_random_dual_genome(_engine, genome_id=i)
+            dual = create_random_dual_genome(
+                _engine.config, _engine.time_config, genome_id=i
+            )
             genomes.append(dual_genome_to_json(dual))
         return jsonify({"genomes": genomes})
     except Exception as e:
@@ -138,7 +140,9 @@ def api_time_output():
         genome_data = data.get("genome")
         if not genome_data:
             return api_error("genome required", 400)
-        dual = dual_genome_from_json(genome_data, _engine)
+        dual = dual_genome_from_json(
+            genome_data, _engine.config, _engine.time_config
+        )
         time_inputs = {}
         response_inputs = {}
         for s in TIME_INPUTS:
@@ -175,7 +179,9 @@ def api_network():
         if not genome_data:
             return api_error("genome required", 400)
 
-        dual = dual_genome_from_json(genome_data, _engine)
+        dual = dual_genome_from_json(
+            genome_data, _engine.config, _engine.time_config
+        )
         individual_id = genome_data.get("key", dual.key if dual else 0)
 
         all_nodes = []
@@ -236,7 +242,9 @@ def api_adjust_weight():
         new_weight = float(data.get("weight", 0))
 
         # Parse the genome
-        dual = dual_genome_from_json(genome_data, _engine)
+        dual = dual_genome_from_json(
+            genome_data, _engine.config, _engine.time_config
+        )
 
         # Select the appropriate network
         if network_type == "visual":

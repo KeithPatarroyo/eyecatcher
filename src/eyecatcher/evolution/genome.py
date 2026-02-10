@@ -2,12 +2,7 @@
 Genome types and creation: DualGenome and random genome creation.
 """
 
-from typing import TYPE_CHECKING
-
 import neat
-
-if TYPE_CHECKING:
-    from .engine import CPPNEngine
 
 
 class DualGenome:
@@ -40,33 +35,40 @@ class DualGenome:
         self.time_signal.fitness = value
 
 
-def create_random_genome(config: neat.Config, genome_id: int = 0) -> neat.DefaultGenome:
+def create_random_genome(
+    visual_config: neat.Config, genome_id: int = 0
+) -> neat.DefaultGenome:
     """
     Create a random genome with the given configuration.
 
     Args:
-        config: NEAT configuration
+        visual_config: NEAT configuration for the genome
         genome_id: ID for the genome
 
     Returns:
         Randomly initialized genome
     """
     genome = neat.DefaultGenome(genome_id)
-    genome.configure_new(config.genome_config)
+    genome.configure_new(visual_config.genome_config)
     return genome
 
 
-def create_random_dual_genome(engine: "CPPNEngine", genome_id: int = 0) -> DualGenome:
+def create_random_dual_genome(
+    visual_config: neat.Config,
+    time_config: neat.Config,
+    genome_id: int = 0,
+) -> DualGenome:
     """
     Create a random dual genome (visual + time signal CPPNs).
 
     Args:
-        engine: CPPNEngine instance with both configs loaded
+        visual_config: NEAT configuration for the visual CPPN
+        time_config: NEAT configuration for the time signal CPPN
         genome_id: ID for the dual genome
 
     Returns:
         Randomly initialized DualGenome
     """
-    visual_genome = create_random_genome(engine.config, genome_id)
-    time_genome = create_random_genome(engine.time_config, genome_id)
+    visual_genome = create_random_genome(visual_config, genome_id)
+    time_genome = create_random_genome(time_config, genome_id)
     return DualGenome(visual=visual_genome, time_signal=time_genome, key=genome_id)

@@ -168,7 +168,9 @@ def save_individual():
     if not genome_json:
         return api_error("genome required in request body", 400)
     try:
-        dual_genome = dual_genome_from_json(genome_json, engine)
+        dual_genome = dual_genome_from_json(
+            genome_json, engine.config, engine.time_config
+        )
         return _save_dual_genome(
             dual_genome, individual_id or dual_genome.key, visualize=visualize
         )

@@ -9,7 +9,9 @@ def test_compile_dual_to_glsl_returns_string():
     """compile_dual_to_glsl returns a non-empty GLSL string."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=0)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
     compiler = ShaderCompiler(color_mode="hsv")
     glsl = compiler.compile_dual_to_glsl(dual, engine.config, engine.time_config)
     assert isinstance(glsl, str)
@@ -20,7 +22,9 @@ def test_compile_dual_to_glsl_contains_main():
     """Output GLSL contains void main()."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=0)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
     compiler = ShaderCompiler(color_mode="hsv")
     glsl = compiler.compile_dual_to_glsl(dual, engine.config, engine.time_config)
     assert "void main()" in glsl
@@ -30,7 +34,9 @@ def test_compile_dual_to_glsl_rgb_mode():
     """Compiler works with color_mode='rgb'."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=0)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
     compiler = ShaderCompiler(color_mode="rgb")
     glsl = compiler.compile_dual_to_glsl(dual, engine.config, engine.time_config)
     assert "void main()" in glsl
@@ -41,7 +47,9 @@ def test_compile_dual_empty_connections():
     """Compiler handles genome with no enabled connections (minimal output)."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=0)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
     for conn in dual.visual.connections.values():
         conn.enabled = False
     for conn in dual.time_signal.connections.values():
@@ -73,7 +81,9 @@ def test_compile_dual_activation_functions_in_output():
     """Compiled GLSL contains at least one known activation function call."""
     engine = CPPNEngine()
     engine.create_population()
-    dual = create_random_dual_genome(engine, genome_id=0)
+    dual = create_random_dual_genome(
+        engine.config, engine.time_config, genome_id=0
+    )
     compiler = ShaderCompiler(color_mode="hsv")
     glsl = compiler.compile_dual_to_glsl(dual, engine.config, engine.time_config)
     # GLSL calls look like "sigmoid(", "tanh(", etc.

@@ -59,7 +59,9 @@ def test_api_breed_without_genealogy(client, cppn_engine):
     """Breed without parent_population_id returns children only, no population_id."""
     from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
-    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    dual = create_random_dual_genome(
+        cppn_engine.config, cppn_engine.time_config, genome_id=0
+    )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
     parents = [{"genome": genome, "clicks": 0}]
@@ -102,7 +104,9 @@ def test_api_breed_with_genealogy(client, genealogy_db, cppn_engine):
     """Breed with parent_population_id saves to genealogy and returns population_id."""
     from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
-    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    dual = create_random_dual_genome(
+        cppn_engine.config, cppn_engine.time_config, genome_id=0
+    )
     payload = dual_genome_to_json(dual)
     payload["key"] = 0
     save_rv = client.post(
@@ -139,7 +143,9 @@ def test_api_save(client, cppn_engine):
     """POST /api/save with genome returns id, status, and downloads."""
     from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
-    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    dual = create_random_dual_genome(
+        cppn_engine.config, cppn_engine.time_config, genome_id=0
+    )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
     rv = client.post("/api/save", json={"genome": genome})
@@ -158,7 +164,9 @@ def test_save_download_structure(client, cppn_engine):
     """Save returns downloads[0] with .zip filename and non-empty content_base64."""
     from eyecatcher.evolution import create_random_dual_genome, dual_genome_to_json
 
-    dual = create_random_dual_genome(cppn_engine, genome_id=0)
+    dual = create_random_dual_genome(
+        cppn_engine.config, cppn_engine.time_config, genome_id=0
+    )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
     rv = client.post("/api/save", json={"genome": genome})

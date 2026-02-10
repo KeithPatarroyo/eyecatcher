@@ -53,26 +53,30 @@ class ShaderCompiler:
         self.node_code: dict = {}
         self.color_mode = color_mode  # 'hsv' or 'rgb'
 
-    def compile_to_glsl(self, genome: neat.DefaultGenome, config: neat.Config) -> str:
+    def compile_to_glsl(
+        self, genome: neat.DefaultGenome, visual_config: neat.Config
+    ) -> str:
         """
         Compile a CPPN genome into GLSL shader code.
 
         Args:
             genome: NEAT genome to compile
-            config: NEAT configuration
+            visual_config: NEAT configuration for the genome
 
         Returns:
             Complete GLSL fragment shader code as string
         """
         # Analyze network topology
         connections = self._get_enabled_connections(genome)
-        nodes = self._topological_sort(genome, connections, config)
+        nodes = self._topological_sort(genome, connections, visual_config)
 
         # Generate node computation code
-        node_computations = self._generate_node_code(genome, connections, nodes, config)
+        node_computations = self._generate_node_code(
+            genome, connections, nodes, visual_config
+        )
 
         # Build complete shader
-        shader = self._build_shader_template(node_computations, config)
+        shader = self._build_shader_template(node_computations, visual_config)
 
         return shader
 
@@ -85,7 +89,10 @@ class ShaderCompiler:
         ]
 
     def _topological_sort(
-        self, genome: neat.DefaultGenome, connections: list, config: neat.Config
+        self,
+        genome: neat.DefaultGenome,
+        connections: list,
+        visual_config: neat.Config,
     ) -> list:
         """
         Topologically sort nodes for correct evaluation order.
@@ -99,11 +106,11 @@ class ShaderCompiler:
         all_nodes = set()
 
         # Initialize with input nodes (IDs 0-4: x, y, distance, time, bias)
-        num_inputs = config.genome_config.num_inputs
+        num_inputs = visual_config.genome_config.num_inputs
         input_nodes = list(range(-num_inputs, 0))
 
         # Output nodes (IDs starting from 0: R, G, B)
-        num_outputs = config.genome_config.num_outputs
+        num_outputs = visual_config.genome_config.num_outputs
         output_nodes = list(range(num_outputs))
 
         all_nodes.update(input_nodes)
@@ -142,7 +149,7 @@ class ShaderCompiler:
         genome: neat.DefaultGenome,
         connections: list,
         nodes: list,
-        config: neat.Config,
+        visual_config: neat.Config,
         input_names: Optional[dict] = None,
         prefix: str = "",
     ) -> str:
@@ -181,7 +188,7 @@ class ShaderCompiler:
                 response = 1.0
 
             # Generate variable name with optional prefix
-            if node_id >= config.genome_config.num_outputs:
+            if node_id >= visual_config.genome_config.num_outputs:
                 var_name = f"{prefix}node_{node_id}"
             else:
                 var_name = f"{prefix}output_{node_id}"
@@ -339,7 +346,9 @@ class ShaderCompiler:
                 )
         return "\n".join(lines)
 
-    def _build_shader_template(self, node_code: str, config: neat.Config) -> str:
+    def _build_shader_template(
+        self, node_code: str, visual_config: neat.Config
+    ) -> str:
         """Build the complete GLSL shader with node computations (single CPPN)."""
 
         color_output = self._get_color_output_code()

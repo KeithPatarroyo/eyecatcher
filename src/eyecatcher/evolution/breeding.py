@@ -48,7 +48,9 @@ def breed_next_generation(
     for idx, p in enumerate(parents_data):
         try:
             genome_data = p.get("genome", p)
-            dual = serialization.dual_genome_from_json(genome_data, engine)
+            dual = serialization.dual_genome_from_json(
+                genome_data, engine.config, engine.time_config
+            )
             dual.fitness = p.get("clicks", 0)
             parents.append({"genome": dual, "clicks": p.get("clicks", 0)})
         except Exception as e:
@@ -64,7 +66,9 @@ def breed_next_generation(
 
     if elitism:
         best = max(parents, key=lambda x: x["clicks"])
-        elite = serialization.copy_dual_genome(best["genome"], engine, next_key)
+        elite = serialization.copy_dual_genome(
+            best["genome"], engine.config, engine.time_config, next_key
+        )
         children.append(serialization.dual_genome_to_json(elite))
         next_key += 1
 
