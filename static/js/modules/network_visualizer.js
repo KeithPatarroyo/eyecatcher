@@ -46,42 +46,10 @@
     function extractNodeLabel(nodeId) {
         const parts = String(nodeId).split("_");
         if (parts.length >= 3) {
-            const network = parts[0];
             const type = parts[1];
             const id = parts.slice(2).join("_");
-            const config =
-                typeof window !== "undefined" &&
-                window.EvolutionConfig &&
-                window.EvolutionConfig.NETWORK_INPUT_LABELS &&
-                window.EvolutionConfig.OUTPUTS
-                    ? window.EvolutionConfig
-                    : null;
-            if (type === "input") {
-                if (config) {
-                    const labels = config.NETWORK_INPUT_LABELS[network];
-                    if (labels) {
-                        const idNum = parseInt(id, 10);
-                        const index = labels.length + idNum;
-                        if (index >= 0 && index < labels.length) {
-                            return labels[index];
-                        }
-                    }
-                }
-                return "in" + id;
-            }
-            if (type === "output") {
-                if (config) {
-                    const outputs = config.OUTPUTS[network];
-                    const idx = parseInt(id, 10);
-                    if (outputs && outputs[idx]) {
-                        const o = outputs[idx];
-                        return o.label ? o.label.charAt(0) : o.name;
-                    }
-                }
-                if (network === "time") return "timeOut";
-                const fallbackOutputs = { 0: "R", 1: "G", 2: "B" };
-                return fallbackOutputs[id] || "out" + id;
-            }
+            if (type === "input") return "in" + id;
+            if (type === "output") return "out" + id;
             if (type === "hidden") return "h" + id;
             return id;
         }
@@ -229,6 +197,12 @@
         }
         container.innerHTML = "";
         panel.classList.remove("hidden");
+        const nodeIdToLabel = {};
+        if (data.nodes && data.nodes.length) {
+            data.nodes.forEach(function (node) {
+                nodeIdToLabel[node.id] = node.label;
+            });
+        }
         const visualConns = data.connections.filter(function (c) {
             return c.network === "visual";
         });
@@ -236,10 +210,10 @@
             return c.network === "time";
         });
         visualConns.forEach(function (conn) {
-            createWeightSlider(individualId, conn, "visual", container);
+            createWeightSlider(individualId, conn, "visual", container, nodeIdToLabel);
         });
         timeConns.forEach(function (conn) {
-            createWeightSlider(individualId, conn, "time", container);
+            createWeightSlider(individualId, conn, "time", container, nodeIdToLabel);
         });
     }
 
@@ -312,7 +286,13 @@
         });
     }
 
-    function createWeightSlider(individualId, connection, networkType, container) {
+    function createWeightSlider(
+        individualId,
+        connection,
+        networkType,
+        container,
+        labelMap
+    ) {
         const tpl = document.getElementById("weight-slider-row-tpl");
         if (!tpl || !tpl.content) {
             return;
@@ -323,8 +303,12 @@
             .querySelector(".weight-slider-item");
         if (!sliderDiv) return;
         if (isTimeNetwork) sliderDiv.classList.add("time-network");
-        const sourceLabel = extractNodeLabel(connection.source);
-        const targetLabel = extractNodeLabel(connection.target);
+        const sourceLabel =
+            (labelMap && labelMap[connection.source]) ||
+            extractNodeLabel(connection.source);
+        const targetLabel =
+            (labelMap && labelMap[connection.target]) ||
+            extractNodeLabel(connection.target);
         const currentWeight = connection.weight;
         sliderDiv.setAttribute("data-source", connection.source);
         sliderDiv.setAttribute("data-target", connection.target);

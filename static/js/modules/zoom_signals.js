@@ -26,7 +26,7 @@
             group.appendChild(titleEl);
             const checkboxesWrap = document.createElement("div");
             checkboxesWrap.className = "signal-checkboxes";
-            config[cppnType].inputs.forEach(function (s) {
+            config[cppnType].toggleableInputs.forEach(function (s) {
                 const wrap = document.createElement("div");
                 wrap.className =
                     "signal-checkbox" + (s.derived ? " signal-derived" : "");
@@ -73,14 +73,14 @@
             if (
                 typeof window !== "undefined" &&
                 window.EvolutionConfig &&
-                window.EvolutionConfig.SIGNALS
+                window.EvolutionConfig.SIGNAL_TOGGLES
             ) {
                 ["time", "visual"].forEach(function (cppnType) {
-                    window.EvolutionConfig.SIGNALS[cppnType].inputs.forEach(
-                        function (s) {
-                            state[cppnType][s.enableKey] = true;
-                        }
-                    );
+                    window.EvolutionConfig.SIGNAL_TOGGLES[
+                        cppnType
+                    ].toggleableInputs.forEach(function (s) {
+                        state[cppnType][s.enableKey] = true;
+                    });
                 });
             }
             return state;
@@ -98,13 +98,13 @@
             const config =
                 typeof window !== "undefined" &&
                 window.EvolutionConfig &&
-                window.EvolutionConfig.SIGNALS
-                    ? window.EvolutionConfig.SIGNALS
+                window.EvolutionConfig.SIGNAL_TOGGLES
+                    ? window.EvolutionConfig.SIGNAL_TOGGLES
                     : null;
             if (config) {
                 populateSignalControls(config);
                 ["time", "visual"].forEach(function (cppnType) {
-                    config[cppnType].inputs.forEach(function (s) {
+                    config[cppnType].toggleableInputs.forEach(function (s) {
                         const checkbox = document.getElementById(
                             cppnType + "-" + s.enableKey
                         );

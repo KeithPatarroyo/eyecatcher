@@ -537,10 +537,12 @@ async function renderThumbnail(populationId) {
         if (
             typeof window !== "undefined" &&
             window.EvolutionConfig &&
-            window.EvolutionConfig.SIGNALS
+            window.EvolutionConfig.SIGNAL_TOGGLES
         ) {
             ["time", "visual"].forEach(function (cppnType) {
-                window.EvolutionConfig.SIGNALS[cppnType].inputs.forEach(function (s) {
+                window.EvolutionConfig.SIGNAL_TOGGLES[
+                    cppnType
+                ].toggleableInputs.forEach(function (s) {
                     signalState[cppnType][s.enableKey] = true;
                 });
             });

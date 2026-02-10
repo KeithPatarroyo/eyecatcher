@@ -20,10 +20,10 @@
         // Dev server (api_client fallback when not served from same origin)
         DEFAULT_DEV_PORT: 5001,
 
-        // Signal registry (mirror backend evolution/signals.py; toggleable inputs only, no spatial/bias)
-        SIGNALS: {
+        // Inputs that have on/off toggles in the UI (mirror backend toggleable signals only)
+        SIGNAL_TOGGLES: {
             time: {
-                inputs: [
+                toggleableInputs: [
                     {
                         name: "rawTime",
                         uniform: "uTime",
@@ -51,7 +51,7 @@
                 ],
             },
             visual: {
-                inputs: [
+                toggleableInputs: [
                     {
                         name: "time",
                         uniform: null,
@@ -86,12 +86,7 @@
                 { name: "green", label: "Green" },
                 { name: "blue", label: "Blue" },
             ],
-            time: [{ name: "modified_time", label: "Modified Time" }],
-        },
-        // Full input labels for network viz (order matches backend; includes spatial/bias)
-        NETWORK_INPUT_LABELS: {
-            time: ["rawTime", "mSpeed", "mDist", "inact", "bias"],
-            visual: ["x", "y", "dist", "time", "mSpeed", "mDist", "inact", "bias"],
+            time: [{ name: "output", label: "Modified Time" }],
         },
     };
 

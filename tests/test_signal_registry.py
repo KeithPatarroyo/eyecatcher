@@ -24,7 +24,7 @@ def test_neat_config_matches_registry():
 
 
 def test_frontend_signals_match_backend():
-    """JS evolution_config.js SIGNALS match Python registry (toggleable inputs)."""
+    """JS SIGNAL_TOGGLES in evolution_config.js match Python registry (toggleable)."""
     root = get_root_dir()
     js_path = os.path.join(root, "static", "js", "modules", "evolution_config.js")
     if not os.path.isfile(js_path):
@@ -36,9 +36,8 @@ def test_frontend_signals_match_backend():
     time_toggleable = [s.enable_key for s in TIME_INPUTS if s.enable_key]
     visual_toggleable = [s.enable_key for s in VISUAL_INPUTS if s.enable_key]
 
-    # JS: extract enableKey values in order (time inputs first, then visual inputs)
+    # JS: enableKey order = time then visual (SIGNAL_TOGGLES.toggleableInputs)
     all_enable_keys = re.findall(r'enableKey:\s*["\']([^"\']+)["\']', text)
-    # SIGNALS has time.inputs (4) then visual.inputs (4)
     n_time = len(time_toggleable)
     n_visual = len(visual_toggleable)
     if len(all_enable_keys) < n_time + n_visual:

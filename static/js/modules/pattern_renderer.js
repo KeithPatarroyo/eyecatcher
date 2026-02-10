@@ -117,8 +117,8 @@
         ["time", "visual"].forEach(function (cppnType) {
             const inputs =
                 window.EvolutionConfig &&
-                window.EvolutionConfig.SIGNALS &&
-                window.EvolutionConfig.SIGNALS[cppnType].inputs;
+                window.EvolutionConfig.SIGNAL_TOGGLES &&
+                window.EvolutionConfig.SIGNAL_TOGGLES[cppnType].toggleableInputs;
             if (!inputs) return;
             inputs.forEach(function (s) {
                 if (s.uniform && !baseUniforms.has(s.uniform)) {
@@ -134,8 +134,8 @@
         ["time", "visual"].forEach(function (cppnType) {
             const inputs =
                 window.EvolutionConfig &&
-                window.EvolutionConfig.SIGNALS &&
-                window.EvolutionConfig.SIGNALS[cppnType].inputs;
+                window.EvolutionConfig.SIGNAL_TOGGLES &&
+                window.EvolutionConfig.SIGNAL_TOGGLES[cppnType].toggleableInputs;
             if (!inputs) return;
             const prefix =
                 "u" + cppnType.charAt(0).toUpperCase() + cppnType.slice(1) + "Enable";

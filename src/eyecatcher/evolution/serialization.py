@@ -15,8 +15,8 @@ from .signals import (
     TIME_OUTPUTS,
     VISUAL_INPUTS,
     VISUAL_OUTPUTS,
-    input_names,
-    output_names,
+    input_labels,
+    output_labels,
 )
 
 if TYPE_CHECKING:
@@ -205,13 +205,13 @@ def extract_network_data(
     num_outputs = config.genome_config.num_outputs
     x_offset = 1000 if network_type == "time" else 0
 
-    input_labels = (
-        input_names(TIME_INPUTS)
+    input_label_list = (
+        input_labels(TIME_INPUTS)
         if network_type == "time"
-        else input_names(VISUAL_INPUTS)
+        else input_labels(VISUAL_INPUTS)
     )
     input_list = [
-        (-(i + 1), input_labels[i] if i < len(input_labels) else f"Input {i}")
+        (-(i + 1), input_label_list[i] if i < len(input_label_list) else f"Input {i}")
         for i in range(num_inputs)
     ]
     _append_nodes_for_layer(
@@ -242,13 +242,13 @@ def extract_network_data(
         hidden_extras,
     )
 
-    output_labels = (
-        output_names(TIME_OUTPUTS)
+    output_label_list = (
+        output_labels(TIME_OUTPUTS)
         if network_type == "time"
-        else output_names(VISUAL_OUTPUTS)
+        else output_labels(VISUAL_OUTPUTS)
     )
     output_list = [
-        (i, output_labels[i] if i < len(output_labels) else f"Output {i}")
+        (i, output_label_list[i] if i < len(output_label_list) else f"Output {i}")
         for i in range(num_outputs)
     ]
     _append_nodes_for_layer(
