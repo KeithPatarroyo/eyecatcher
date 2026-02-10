@@ -686,12 +686,14 @@ document.getElementById("reset-genealogy-btn").onclick = async () => {
             "Reset failed"
         );
         try {
-            localStorage.removeItem("genealogy_branch_counter");
+            if (typeof localStorage !== "undefined")
+                localStorage.removeItem("genealogy_branch_counter");
         } catch (_) {
             /* ignore */
         }
         try {
-            sessionStorage.removeItem("current_population_id");
+            if (typeof sessionStorage !== "undefined")
+                sessionStorage.removeItem("current_population_id");
         } catch (_) {
             /* ignore */
         }
@@ -866,7 +868,11 @@ function initPhysicsControls() {
 function initialize() {
     // Get current population ID from session storage (tab-specific state)
     // This is set by the main viewer when a population is loaded
-    currentPopulationId = sessionStorage.getItem("current_population_id");
+    currentPopulationId = Utils.safeGetItem(
+        sessionStorage,
+        "current_population_id",
+        null
+    );
     if (currentPopulationId) {
         console.log("Current population:", currentPopulationId);
     }

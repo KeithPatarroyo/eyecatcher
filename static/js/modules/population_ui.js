@@ -44,9 +44,13 @@
         showLoading(true);
         try {
             // Clear any existing session data when starting fresh
-            sessionStorage.removeItem("current_population_data");
-            sessionStorage.removeItem("current_population_id");
-            sessionStorage.removeItem("has_population");
+            try {
+                sessionStorage.removeItem("current_population_data");
+                sessionStorage.removeItem("current_population_id");
+                sessionStorage.removeItem("has_population");
+            } catch (_e) {
+                /* ignore */
+            }
 
             const d = await window.ApiClient.random(12);
             if (_loadFromStatelessGenomes) {

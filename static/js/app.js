@@ -24,36 +24,34 @@
     var currentBranchName = "main";
     // Persisted so multiple "Start Fresh" (across tabs) get distinct branches; cleared when user resets genealogy.
     function getGenealogyBranchCounter() {
-        try {
-            var v =
-                typeof localStorage !== "undefined" &&
-                localStorage.getItem("genealogy_branch_counter");
-            return v != null ? parseInt(v, 10) : 1;
-        } catch (_e) {
-            return 1;
-        }
+        var v = Utils.safeGetItem(
+            typeof localStorage !== "undefined" ? localStorage : null,
+            "genealogy_branch_counter",
+            "1"
+        );
+        return parseInt(v, 10) || 1;
     }
     function setGenealogyBranchCounter(n) {
-        try {
-            if (typeof localStorage !== "undefined")
-                localStorage.setItem("genealogy_branch_counter", String(n));
-        } catch (_e) {
-            /* ignore */
-        }
+        Utils.safeSetItem(
+            typeof localStorage !== "undefined" ? localStorage : null,
+            "genealogy_branch_counter",
+            String(n)
+        );
     }
     function syncCurrentPopulationIdToStorage() {
-        try {
-            if (typeof sessionStorage === "undefined") return;
-            if (currentPopulationId != null) {
-                sessionStorage.setItem(
-                    "current_population_id",
-                    String(currentPopulationId)
-                );
-            } else {
+        if (typeof sessionStorage === "undefined") return;
+        if (currentPopulationId != null) {
+            Utils.safeSetItem(
+                sessionStorage,
+                "current_population_id",
+                String(currentPopulationId)
+            );
+        } else {
+            try {
                 sessionStorage.removeItem("current_population_id");
+            } catch (_e) {
+                /* ignore */
             }
-        } catch (_e) {
-            /* ignore */
         }
     }
     function getColorMode() {
@@ -718,16 +716,22 @@
     // If we arrived from the genealogy viewer ("Load This Population"), restore that population
     // so the generation counter and branch are correct and evolving continues as a child of that node.
     var genealogyLoad = null;
-    try {
-        var raw =
-            typeof localStorage !== "undefined" &&
-            localStorage.getItem("genealogy_load");
-        if (raw) {
+    var raw = Utils.safeGetItem(
+        typeof localStorage !== "undefined" ? localStorage : null,
+        "genealogy_load",
+        null
+    );
+    if (raw) {
+        try {
             genealogyLoad = JSON.parse(raw);
-            localStorage.removeItem("genealogy_load");
+            try {
+                localStorage.removeItem("genealogy_load");
+            } catch (_e) {
+                /* ignore */
+            }
+        } catch (e) {
+            console.warn("Genealogy load parse failed:", e);
         }
-    } catch (e) {
-        console.warn("Genealogy load parse failed:", e);
     }
     if (genealogyLoad && genealogyLoad.genomes && genealogyLoad.genomes.length) {
         currentPopulationId =
