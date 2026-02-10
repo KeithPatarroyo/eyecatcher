@@ -12,6 +12,7 @@ module.exports = [
             sourceType: "script",
             globals: {
                 ...globals.browser,
+                AppCore: "readonly",
                 ApiClient: "readonly",
                 PatternRenderer: "readonly",
                 AnimationLoop: "readonly",
