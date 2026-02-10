@@ -527,26 +527,39 @@ async function renderThumbnail(populationId) {
         }
 
         const patternData = PatternRenderer.setupPattern(canvas, shader);
-        if (!patternData) {
+        if (!patternData || patternData.error) {
             console.warn(`Failed to setup pattern for population ${populationId}`);
             return null;
         }
 
-        // Render a single frame
-        const signalState = {
-            time: {
-                rawTime: true,
-                mouseSpeed: true,
-                mouseDist: true,
-                inactivity: true,
-            },
-            visual: {
-                time: true,
-                mouseSpeed: true,
-                mouseDist: true,
-                inactivity: true,
-            },
-        };
+        // Render a single frame (signal state from config or default all on)
+        let signalState = { time: {}, visual: {} };
+        if (
+            typeof window !== "undefined" &&
+            window.EvolutionConfig &&
+            window.EvolutionConfig.SIGNALS
+        ) {
+            ["time", "visual"].forEach(function (cppnType) {
+                window.EvolutionConfig.SIGNALS[cppnType].inputs.forEach(function (s) {
+                    signalState[cppnType][s.enableKey] = true;
+                });
+            });
+        } else {
+            signalState = {
+                time: {
+                    rawTime: true,
+                    mouseSpeed: true,
+                    mouseDist: true,
+                    inactivity: true,
+                },
+                visual: {
+                    time: true,
+                    mouseSpeed: true,
+                    mouseDist: true,
+                    inactivity: true,
+                },
+            };
+        }
         PatternRenderer.renderPattern(patternData, 0.5, 0, 0, 0, signalState);
 
         // Convert to data URL
