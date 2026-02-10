@@ -240,6 +240,75 @@
         });
     }
 
+    function applyWeightChange(individualId, connection, networkType, newWeight) {
+        if (typeof _getGenomeForPattern !== "function") return Promise.resolve();
+        return _getGenomeForPattern(individualId).then(function (genome) {
+            if (!genome) {
+                Toast.show(
+                    "Weight update failed",
+                    "Could not find genome data",
+                    "error"
+                );
+                return;
+            }
+            return window.ApiClient.apiFetch(
+                _apiUrl + "/adjust-weight",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        genome: genome,
+                        network: networkType,
+                        source: connection.source,
+                        target: connection.target,
+                        weight: newWeight,
+                    }),
+                },
+                "Weight update failed"
+            )
+                .then(function (data) {
+                    if (data.status === "success") {
+                        if (typeof _updatePatternShader === "function")
+                            _updatePatternShader(individualId, data.shader);
+                        if (
+                            typeof _onGenomeUpdated === "function" &&
+                            data.genome &&
+                            typeof _getCurrentPopulation === "function"
+                        ) {
+                            const pop = _getCurrentPopulation();
+                            if (pop && pop.length) {
+                                const idx = pop.findIndex(function (p) {
+                                    return p.id === individualId;
+                                });
+                                if (idx >= 0)
+                                    _onGenomeUpdated(individualId, idx, data.genome);
+                            }
+                        }
+                        updateNetworkEdgeWeight(
+                            individualId,
+                            connection.source,
+                            connection.target,
+                            newWeight,
+                            networkType
+                        );
+                    } else {
+                        Toast.show(
+                            "Weight update failed",
+                            data.error || "Server error",
+                            "error"
+                        );
+                    }
+                })
+                .catch(function (err) {
+                    Toast.show(
+                        "Weight update failed",
+                        err.message || "Network error",
+                        "error"
+                    );
+                });
+        });
+    }
+
     function createWeightSlider(individualId, connection, networkType, container) {
         const isTimeNetwork = networkType === "time";
         const sliderDiv = document.createElement("div");
@@ -282,76 +351,7 @@
         slider.addEventListener("input", function (e) {
             const newWeight = parseFloat(e.target.value, 10);
             valueDisplay.textContent = newWeight.toFixed(2);
-            if (typeof _getGenomeForPattern !== "function") return;
-            _getGenomeForPattern(individualId).then(function (genome) {
-                if (!genome) {
-                    Toast.show(
-                        "Weight update failed",
-                        "Could not find genome data",
-                        "error"
-                    );
-                    return;
-                }
-                window.ApiClient.apiFetch(
-                    _apiUrl + "/adjust-weight",
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            genome: genome,
-                            network: networkType,
-                            source: connection.source,
-                            target: connection.target,
-                            weight: newWeight,
-                        }),
-                    },
-                    "Weight update failed"
-                )
-                    .then(function (data) {
-                        if (data.status === "success") {
-                            if (typeof _updatePatternShader === "function")
-                                _updatePatternShader(individualId, data.shader);
-                            if (
-                                typeof _onGenomeUpdated === "function" &&
-                                data.genome &&
-                                typeof _getCurrentPopulation === "function"
-                            ) {
-                                const pop = _getCurrentPopulation();
-                                if (pop && pop.length) {
-                                    const idx = pop.findIndex(function (p) {
-                                        return p.id === individualId;
-                                    });
-                                    if (idx >= 0)
-                                        _onGenomeUpdated(
-                                            individualId,
-                                            idx,
-                                            data.genome
-                                        );
-                                }
-                            }
-                            updateNetworkEdgeWeight(
-                                individualId,
-                                connection.source,
-                                connection.target,
-                                newWeight,
-                                networkType
-                            );
-                        } else {
-                            Toast.show(
-                                "Weight update failed",
-                                data.error || "Server error",
-                                "error"
-                            );
-                        }
-                    })
-                    .catch(function (err) {
-                        Toast.show(
-                            "Weight update failed",
-                            err.message || "Network error",
-                            "error"
-                        );
-                    });
-            });
+            applyWeightChange(individualId, connection, networkType, newWeight);
         });
 
         container.appendChild(sliderDiv);
