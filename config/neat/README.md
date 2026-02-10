@@ -10,3 +10,7 @@
 **Alternatives:** `neat_config.txt` and `neat_config_time.txt` are alternative configs (e.g. different topology or activation options). Use them by updating the two path constants in `evolution/config.py`.
 
 **Signal counts:** Input/output counts must match the signal registry in [src/eyecatcher/evolution/signals.py](../../src/eyecatcher/evolution/signals.py) (`VISUAL_INPUTS`, `TIME_INPUTS`, `VISUAL_OUTPUTS`, `TIME_OUTPUTS`). The engine validates this at startup.
+
+**Mutation:** Gene-level mutation rates (`weight_mutate_rate`, `bias_mutate_rate`, `activation_mutate_rate`, etc.) are in these files. The crossover rate (probability of crossover vs mutate-one-parent when breeding) is in [evolution/config.py](../../src/eyecatcher/evolution/config.py) as `CROSSOVER_PROBABILITY`.
+
+**Population size:** The app's population size (how many individuals per generation in the UI) is set in [evolution/config.py](../../src/eyecatcher/evolution/config.py) (`DEFAULT_POPULATION_SIZE`, `MAX_POPULATION_SIZE`). The `pop_size` in the `[NEAT]` section is used by the NEAT library when creating Population objects; it can be aligned with `MAX_POPULATION_SIZE` for consistency if desired.

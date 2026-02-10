@@ -552,6 +552,7 @@ async function renderThumbnail(populationId) {
                 });
             });
         } else {
+            // Fallback must match SIGNAL_TOGGLES in evolution_config.js; see signals.py for canonical list
             signalState = {
                 time: {
                     rawTime: true,

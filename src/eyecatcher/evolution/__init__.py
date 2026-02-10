@@ -10,17 +10,18 @@ Public API for researchers and the rest of the app:
 - Serialization: genome_to_json, genome_from_json, dual_genome_to_json,
   dual_genome_from_json, copy_genome, copy_dual_genome, dual_genome_network_stats,
   extract_network_data, parse_network_node_id
-- Config constants (e.g. NEAT_CONFIG_PATH, DEFAULT_POPULATION_SIZE) via evolution.config
+- Config constants (e.g. NEAT_CONFIG_PATH, DEFAULT_POPULATION_SIZE,
+  CROSSOVER_PROBABILITY) via evolution.config
 """
 
 from . import serialization
 from .config import (
+    CROSSOVER_PROBABILITY,
     DEFAULT_NUM_FRAMES,
     DEFAULT_POPULATION_SIZE,
     DEFAULT_RENDER_RESOLUTION,
     DEFAULT_RENDER_TIME,
     MAX_POPULATION_SIZE,
-    MUTATION_PROBABILITY,
     NEAT_CONFIG_PATH,
     NEAT_TIME_CONFIG_PATH,
     PREVIEW_RENDER_RESOLUTION,
@@ -59,7 +60,7 @@ __all__ = [
     "NEAT_CONFIG_PATH",
     "NEAT_TIME_CONFIG_PATH",
     "DEFAULT_POPULATION_SIZE",
-    "MUTATION_PROBABILITY",
+    "CROSSOVER_PROBABILITY",
     "MAX_POPULATION_SIZE",
     "DEFAULT_RENDER_RESOLUTION",
     "DEFAULT_RENDER_TIME",

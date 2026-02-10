@@ -29,9 +29,9 @@ from . import get_root_dir
 from .api_helpers import api_error
 from .community_routes import community_bp
 from .evolution import (
+    CROSSOVER_PROBABILITY,
     DEFAULT_POPULATION_SIZE,
     DEFAULT_RENDER_RESOLUTION,
-    MUTATION_PROBABILITY,
     CPPNEngine,
     DualGenome,
     dual_genome_from_json,
@@ -130,7 +130,7 @@ def _breed_stateless(data):
             parents_data,
             population_size=population_size,
             elitism=elitism,
-            mutation_probability=MUTATION_PROBABILITY,
+            crossover_probability=CROSSOVER_PROBABILITY,
         )
 
         if parent_population_id is not None:

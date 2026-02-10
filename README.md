@@ -17,8 +17,8 @@ Then open **http://localhost:5001**. (Runs `docker compose -f docker/docker-comp
 ## Features
 
 - **Dual-CPPN Architecture**: Each individual has two evolved networks (visual + time signal).
-- **Rich Input Signals**: Patterns react to mouse speed, distance to cursor, and activity (smoothed, speed-boosted).
-- **Signal Controls**: Toggle which inputs affect each CPPN via the web UI.
+- **Configurable input signals** (e.g. time, mouse speed, distance, activity); see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) and [evolution/signals.py](src/eyecatcher/evolution/signals.py).
+- **Signal Controls**: Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [evolution/signals.py](src/eyecatcher/evolution/signals.py) and [evolution_config.js](static/js/modules/evolution_config.js)).
 - **GPU Rendering**: CPPNs compile to GLSL for real-time WebGL in the browser.
 - **Interactive Evolution**: Web interface for selection, breeding, saving, and community submission.
 - **Genealogical Tree**: Track evolutionary history across generations and branches; explore and continue from any point.
@@ -147,7 +147,7 @@ The web interface lets you:
 4. **Save** – Download patterns as shaders, images, and genome visualizations.
 5. **Population** – New random, from community, or load/save/export from local storage.
 6. **Submit to community** – Share patterns for moderation and inclusion in the community pool.
-7. **Signal controls** – Toggle which inputs (time, mouseSpeed, mouseDist, activity) feed into each CPPN.
+7. **Signal controls** – Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [evolution/signals.py](src/eyecatcher/evolution/signals.py) and [evolution_config.js](static/js/modules/evolution_config.js)).
 8. **Debug overlay** – Real-time signal values; optional time CPPN output sampling.
 9. **Genealogical tree** – View evolutionary history; branch and continue from any generation.
 
@@ -182,12 +182,12 @@ Generated content (saved patterns, network PDFs, frames) goes under `output/` (g
 Each individual has two CPPNs that evolve together:
 
 ```
-[rawTime, mouseSpeed, mouseDist, activity, bias] → Time Signal CPPN → modifiedTime
-                                                                            ↓
-[x, y, dist, modifiedTime, mouseSpeed, mouseDist, activity, bias] → Visual CPPN → RGB
+Time inputs (see signals.py) → Time Signal CPPN → modifiedTime
+                                                    ↓
+Visual inputs (see signals.py) → Visual CPPN → RGB
 ```
 
-Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. See [config/neat/neat_config_time.txt](config/neat/neat_config_time.txt) and [config/neat/neat_config.txt](config/neat/neat_config.txt) for exact parameters and activation options.
+Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. Input/output names and counts are defined in [signals.py](src/eyecatcher/evolution/signals.py); NEAT num_inputs/num_outputs must match. See [config/neat/README.md](config/neat/README.md) for default configs (`*_experimental.txt`) and parameters.
 
 ### Stateless API
 

@@ -24,7 +24,7 @@ def breed_next_generation(
     parents_data: list[dict[str, Any]],
     population_size: Optional[int] = None,
     elitism: bool = False,
-    mutation_probability: Optional[float] = None,
+    crossover_probability: Optional[float] = None,
 ) -> list:
     """
     Produce children from parent payloads (stateless).
@@ -35,15 +35,16 @@ def breed_next_generation(
             optional "clicks" (fitness).
         population_size: Number of children to produce. Default from config.
         elitism: If True, best parent is copied as first child.
-        mutation_probability: Probability of mutation vs crossover. Default from config.
+        crossover_probability: Probability of crossover (two parents) vs
+            mutate one parent. Default from config.
 
     Returns:
         List of dual-genome JSON dicts (dual_genome_to_json per child).
     """
     if population_size is None:
         population_size = evolution_config.DEFAULT_POPULATION_SIZE
-    if mutation_probability is None:
-        mutation_probability = evolution_config.MUTATION_PROBABILITY
+    if crossover_probability is None:
+        crossover_probability = evolution_config.CROSSOVER_PROBABILITY
 
     parents = []
     for idx, p in enumerate(parents_data):
@@ -77,14 +78,14 @@ def breed_next_generation(
         if len(parents) == 1:
             child = engine.mutate_dual_genome(parents[0]["genome"], next_key)
         else:
-            if random.random() < mutation_probability:
-                parent = random.choice(parents)
-                child = engine.mutate_dual_genome(parent["genome"], next_key)
-            else:
+            if random.random() < crossover_probability:
                 p1, p2 = random.sample(parents, 2)
                 child = engine.crossover_dual_genomes(
                     p1["genome"], p2["genome"], next_key
                 )
+            else:
+                parent = random.choice(parents)
+                child = engine.mutate_dual_genome(parent["genome"], next_key)
         children.append(serialization.dual_genome_to_json(child))
         next_key += 1
 

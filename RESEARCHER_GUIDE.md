@@ -16,7 +16,7 @@ This guide points you to the files that matter for changing evolution behavior (
 
 ## Change NEAT config paths or population size
 
-- [src/eyecatcher/evolution/config.py](src/eyecatcher/evolution/config.py) – NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH, DEFAULT_POPULATION_SIZE, MUTATION_PROBABILITY, etc. Config files live in [config/neat/](config/neat/); see config/neat/README.md for which are default.
+- [src/eyecatcher/evolution/config.py](src/eyecatcher/evolution/config.py) – NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH, DEFAULT_POPULATION_SIZE, CROSSOVER_PROBABILITY, etc. Config files live in [config/neat/](config/neat/); see config/neat/README.md for which are default. Crossover rate (probability of crossover vs mutate-one-parent when breeding) is here; gene-level mutation rates are in the NEAT .txt files.
 
 ## Breeding and selection
 
