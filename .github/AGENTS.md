@@ -45,6 +45,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 
 ## Architecture notes
 
+- **Researchers and evolution-only changes:** See [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md) for touchpoints (signals, NEAT, breeding, rendering).
 - **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from .evolution import CPPNEngine` or `from .evolution.engine import CPPNEngine`). Code outside the package (examples, tests) imports with `from eyecatcher.evolution import ...`.
 - **Stateless API:** The server does **not** hold population state. Clients send full genome payloads in requests (e.g. `/api/compile`, `/api/breed`). Do not add server-side population storage.
 - **Dual-CPPN:** Each individual is a `DualGenome`: two NEAT genomes (`visual` and `time_signal`) evolved together. Mutations and crossovers operate on both; keep the pairing consistent.

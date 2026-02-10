@@ -205,7 +205,7 @@ The server does not hold population state. The client (web UI) stores genomes (e
 - **Shader Compiler** (`src/eyecatcher/evolution/shader_compiler.py`) – CPPN → GLSL; `compile_dual_to_glsl()` for the web renderer.
 - **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API (in `stateless_api.py`; compile, random, breed, save, time-output), breeding logic in `evolution/breeding.py`, community routes, static serving.
 
-Researchers: evolution logic (signals, NEAT config, breeding, rendering) lives in `src/eyecatcher/evolution/`; see that package's docstrings and, if present, [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md).
+Researchers: see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for where to change signals, NEAT config, breeding, and rendering.
 
 ## API usage (programmatic)
 

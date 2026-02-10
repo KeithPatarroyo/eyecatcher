@@ -1,4 +1,9 @@
-"""Shared pytest fixtures and helpers for Eyecatcher tests."""
+"""Shared pytest fixtures for Eyecatcher.
+
+Provides client (Flask test client), cppn_engine (CPPNEngine with population),
+random_dual_genome, minimal_dual, genealogy_db, community_db. All DB fixtures
+use temp paths; no real data is modified.
+"""
 
 from unittest.mock import patch
 

@@ -4,7 +4,7 @@ Thank you for your interest in contributing. This document explains how to get s
 
 ## Ways to contribute
 
-- **Code**: Bug fixes, new features, refactors.
+- **Code**: Bug fixes, new features, refactors. If you're focused on evolution logic (signals, NEAT, breeding), see [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md).
 - **Documentation**: Improve README, docstrings, or add guides.
 - **Issues**: Report bugs or suggest features via [GitHub Issues](https://github.com/KeithPatarroyo/eyecatcher/issues).
 - **Testing**: Add or improve tests, or help verify behaviour on different setups.
@@ -36,7 +36,7 @@ Thank you for your interest in contributing. This document explains how to get s
    ```bash
    make test
    ```
-   Or `pytest` directly; run a specific file: `pytest tests/test_visualization.py -v`. See **`make help`** for other targets.
+   Or `pytest` directly; run a specific file: `pytest tests/test_visualization.py -v`. For a breakdown of what each test file covers and which fixtures are available, see [tests/README.md](../tests/README.md). See **`make help`** for other targets.
 
 5. **Optional: run the app locally**
    ```bash
