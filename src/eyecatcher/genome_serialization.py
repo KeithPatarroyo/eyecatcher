@@ -183,6 +183,36 @@ def copy_dual_genome(
     )
 
 
+def _append_nodes_for_layer(
+    nodes: list[dict[str, Any]],
+    node_id_map: dict[int, str],
+    network_type: str,
+    layer_type: str,
+    id_label_list: list[tuple[int, str]],
+    x_pos: float,
+    extra_per_node: list[dict[str, Any]] | None = None,
+) -> None:
+    """Append one layer of nodes (input, hidden, or output) with vertical spacing."""
+    n = len(id_label_list)
+    y_positions = [(i - n / 2) * 80 for i in range(n)]
+    extras = extra_per_node if extra_per_node is not None else [{} for _ in range(n)]
+    for i, ((neat_id, label), extra) in enumerate(zip(id_label_list, extras)):
+        vis_id = f"{network_type}_{layer_type}_{neat_id}"
+        node_id_map[neat_id] = vis_id
+        nodes.append(
+            {
+                "id": vis_id,
+                "label": label,
+                "type": layer_type,
+                "network": network_type,
+                "index": neat_id if layer_type == "hidden" else i,
+                "x": x_pos,
+                "y": y_positions[i],
+                **extra,
+            }
+        )
+
+
 def extract_network_data(
     genome: neat.DefaultGenome, network_type: str, config: neat.Config
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -193,22 +223,14 @@ def extract_network_data(
     """
     nodes = []
     node_id_map = {}
-
     num_inputs = config.genome_config.num_inputs
     num_outputs = config.genome_config.num_outputs
-
     x_offset = 1000 if network_type == "time" else 0
 
-    if network_type == "time":
-        input_labels = [
-            "raw_time",
-            "mouse_speed",
-            "mouse_distance",
-            "inactivity",
-            "bias",
-        ]
-    else:
-        input_labels = [
+    input_labels = (
+        ["raw_time", "mouse_speed", "mouse_distance", "inactivity", "bias"]
+        if network_type == "time"
+        else [
             "x",
             "y",
             "distance",
@@ -218,64 +240,52 @@ def extract_network_data(
             "inactivity",
             "bias",
         ]
-
-    for i in range(num_inputs):
-        neat_id = -(i + 1)
-        vis_id = f"{network_type}_input_{neat_id}"
-        node_id_map[neat_id] = vis_id
-        label = input_labels[i] if i < len(input_labels) else f"Input {i}"
-        nodes.append(
-            {
-                "id": vis_id,
-                "label": label,
-                "type": "input",
-                "network": network_type,
-                "index": i,
-                "x": -400 + x_offset,
-                "y": (i - num_inputs / 2) * 80,
-            }
-        )
+    )
+    input_list = [
+        (-(i + 1), input_labels[i] if i < len(input_labels) else f"Input {i}")
+        for i in range(num_inputs)
+    ]
+    _append_nodes_for_layer(
+        nodes,
+        node_id_map,
+        network_type,
+        "input",
+        input_list,
+        -400 + x_offset,
+    )
 
     hidden_list = sorted(genome.nodes.keys())
-    for idx, neat_id in enumerate(hidden_list):
-        node = genome.nodes[neat_id]
-        vis_id = f"{network_type}_hidden_{neat_id}"
-        node_id_map[neat_id] = vis_id
-        nodes.append(
-            {
-                "id": vis_id,
-                "label": f"Node {neat_id}",
-                "type": "hidden",
-                "network": network_type,
-                "activation": node.activation,
-                "bias": float(node.bias),
-                "index": neat_id,
-                "x": 0 + x_offset,
-                "y": (idx - len(hidden_list) / 2) * 80,
-            }
-        )
+    hidden_id_labels = [(nid, f"Node {nid}") for nid in hidden_list]
+    hidden_extras = [
+        {
+            "activation": genome.nodes[nid].activation,
+            "bias": float(genome.nodes[nid].bias),
+        }
+        for nid in hidden_list
+    ]
+    _append_nodes_for_layer(
+        nodes,
+        node_id_map,
+        network_type,
+        "hidden",
+        hidden_id_labels,
+        0 + x_offset,
+        hidden_extras,
+    )
 
-    if network_type == "time":
-        output_labels = ["output"]
-    else:
-        output_labels = ["red", "green", "blue"]
-
-    for i in range(num_outputs):
-        neat_id = i
-        vis_id = f"{network_type}_output_{neat_id}"
-        node_id_map[neat_id] = vis_id
-        label = output_labels[i] if i < len(output_labels) else f"Output {i}"
-        nodes.append(
-            {
-                "id": vis_id,
-                "label": label,
-                "type": "output",
-                "network": network_type,
-                "index": i,
-                "x": 400 + x_offset,
-                "y": (i - num_outputs / 2) * 80,
-            }
-        )
+    output_labels = ["output"] if network_type == "time" else ["red", "green", "blue"]
+    output_list = [
+        (i, output_labels[i] if i < len(output_labels) else f"Output {i}")
+        for i in range(num_outputs)
+    ]
+    _append_nodes_for_layer(
+        nodes,
+        node_id_map,
+        network_type,
+        "output",
+        output_list,
+        400 + x_offset,
+    )
 
     connections = []
     for conn_id, conn in genome.connections.items():
