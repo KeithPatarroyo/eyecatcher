@@ -5,11 +5,8 @@ Run from repo root: python examples/api_usage.py
 
 import os
 
-from eyecatcher.cppn_engine import (
-    CPPNEngine,
-    create_random_dual_genome,
-)
-from eyecatcher.shader_compiler import ShaderCompiler
+from eyecatcher.evolution import CPPNEngine, create_random_dual_genome
+from eyecatcher.evolution.shader_compiler import ShaderCompiler
 from PIL import Image
 
 

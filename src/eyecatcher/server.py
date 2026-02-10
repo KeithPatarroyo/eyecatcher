@@ -16,7 +16,6 @@ import json
 import logging
 import os
 import pickle
-import random
 import zipfile
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -24,22 +23,21 @@ from flask_cors import CORS
 
 from . import get_root_dir
 from .api_helpers import api_error
-from .app_config import (
+from .community_routes import community_bp
+from .evolution import (
     DEFAULT_POPULATION_SIZE,
     DEFAULT_RENDER_RESOLUTION,
     DEFAULT_RENDER_TIME,
     MUTATION_PROBABILITY,
-)
-from .community_routes import community_bp
-from .cppn_engine import (
     CPPNEngine,
     DualGenome,
     dual_genome_from_json,
+    dual_genome_network_stats,
     dual_genome_to_json,
 )
+from .evolution.breeding import breed_next_generation
+from .evolution.shader_compiler import ShaderCompiler
 from .genealogy_routes import _init_genealogy_db, genealogy_bp
-from .genome_serialization import dual_genome_network_stats
-from .shader_compiler import ShaderCompiler
 from .stateless_api import init_stateless_api, stateless_bp
 
 _log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -114,63 +112,25 @@ def breed():
 
 def _breed_stateless(data):
     """Stateless breed: parents in body, return children as genome JSONs."""
-    from .cppn_engine import copy_dual_genome, dual_genome_to_json
-
     try:
         parents_data = data.get("parents", [])
         population_size = data.get("population_size", DEFAULT_POPULATION_SIZE)
         elitism = data.get("elitism", False)
-
-        # Genealogy metadata
-        parent_population_id = data.get(
-            "parent_population_id"
-        )  # ID of parent generation
+        parent_population_id = data.get("parent_population_id")
         generation_num = data.get("generation_num", 0)
         branch_name = data.get("branch_name", "main")
 
         if not parents_data:
             return api_error("parents array required", 400)
-        parents = []
-        for idx, p in enumerate(parents_data):
-            try:
-                genome_data = p.get("genome", p)
-                dual = dual_genome_from_json(genome_data, engine)
-                dual.fitness = p.get("clicks", 0)
-                parents.append({"genome": dual, "clicks": p.get("clicks", 0)})
-            except Exception as e:
-                logger.warning(
-                    "Failed to parse parent %s: %s. Parent data: %s", idx, e, p
-                )
-                continue
-        if not parents:
-            return jsonify(
-                {"error": "No valid parents - check server logs for details"}
-            ), 400
-        max_key = max(p["genome"].key for p in parents)
-        next_key = max_key + 1
-        children = []
-        # Elitism: optionally keep best parent unchanged
-        if elitism:
-            best = max(parents, key=lambda x: x["clicks"])
-            elite = copy_dual_genome(best["genome"], engine, next_key)
-            children.append(dual_genome_to_json(elite))
-            next_key += 1
-        while len(children) < population_size:
-            if len(parents) == 1:
-                child = engine.mutate_dual_genome(parents[0]["genome"], next_key)
-            else:
-                if random.random() < MUTATION_PROBABILITY:
-                    parent = random.choice(parents)
-                    child = engine.mutate_dual_genome(parent["genome"], next_key)
-                else:
-                    p1, p2 = random.sample(parents, 2)
-                    child = engine.crossover_dual_genomes(
-                        p1["genome"], p2["genome"], next_key
-                    )
-            children.append(dual_genome_to_json(child))
-            next_key += 1
 
-        # Auto-save to genealogy (only if parent_population_id is provided)
+        children = breed_next_generation(
+            engine,
+            parents_data,
+            population_size=population_size,
+            elitism=elitism,
+            mutation_probability=MUTATION_PROBABILITY,
+        )
+
         if parent_population_id is not None:
             try:
                 from .genealogy_routes import save_breeding_result
@@ -291,7 +251,7 @@ def _save_dual_genome(
 
     pdf_bytes = None
     if visualize:
-        from .genome_visualizer import render_genome_network_pdf
+        from .evolution.genome_visualizer import render_genome_network_pdf
 
         pdf_buffer = io.BytesIO()
         pdf_bytes = render_genome_network_pdf(

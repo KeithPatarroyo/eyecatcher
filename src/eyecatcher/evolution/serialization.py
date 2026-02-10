@@ -1,22 +1,22 @@
 """
-Genome serialization utilities for stateless API and client storage.
+Genome serialization for stateless API and client storage.
 
-Provides JSON serialization/deserialization for NEAT genomes and DualGenomes,
-plus deep copy utilities.
+JSON serialization/deserialization for NEAT genomes and DualGenomes,
+plus deep copy and network extraction for visualization.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 import neat
 
+from .genome import DualGenome
+
 if TYPE_CHECKING:
-    from .cppn_engine import CPPNEngine, DualGenome
+    from .engine import CPPNEngine
 
 
 def genome_to_json(genome: neat.DefaultGenome) -> dict[str, Any]:
-    """
-    Serialize a NEAT DefaultGenome to a JSON-serializable dict.
-    """
+    """Serialize a NEAT DefaultGenome to a JSON-serializable dict."""
     nodes = {}
     for node_id, node in genome.nodes.items():
         nodes[str(node_id)] = {
@@ -42,10 +42,7 @@ def genome_to_json(genome: neat.DefaultGenome) -> dict[str, Any]:
 
 
 def genome_from_json(data: dict[str, Any], config: neat.Config) -> neat.DefaultGenome:
-    """
-    Deserialize a NEAT DefaultGenome from a dict (e.g. from JSON).
-    Uses the given config's genome_config for gene types.
-    """
+    """Deserialize a NEAT DefaultGenome from a dict (e.g. from JSON)."""
     gc = config.genome_config
     genome = neat.DefaultGenome(data.get("key", 0))
     genome.fitness = data.get("fitness")
@@ -71,10 +68,8 @@ def genome_from_json(data: dict[str, Any], config: neat.Config) -> neat.DefaultG
         except ValueError:
             continue
         key = (in_id, out_id)
-        # NEAT-python requires innovation number for DefaultConnectionGene
         innovation = cd.get("innovation")
         if innovation is None:
-            # Synthetic innovation when JSON omitted it (e.g. legacy or imported)
             innovation = abs(hash(key)) % (2**31)
         else:
             innovation = int(innovation)
@@ -85,13 +80,8 @@ def genome_from_json(data: dict[str, Any], config: neat.Config) -> neat.DefaultG
     return genome
 
 
-def dual_genome_network_stats(dual: "DualGenome") -> dict[str, int]:
-    """
-    Return node and enabled-connection counts for both genomes.
-
-    Returns:
-        Dict with visual_nodes, visual_connections, time_nodes, time_connections.
-    """
+def dual_genome_network_stats(dual: DualGenome) -> dict[str, int]:
+    """Return node and enabled-connection counts for both genomes."""
     v_nodes = len(dual.visual.nodes)
     v_conns = len([c for c in dual.visual.connections.values() if c.enabled])
     t_nodes = len(dual.time_signal.nodes)
@@ -104,7 +94,7 @@ def dual_genome_network_stats(dual: "DualGenome") -> dict[str, int]:
     }
 
 
-def dual_genome_to_json(dual: "DualGenome") -> dict[str, Any]:
+def dual_genome_to_json(dual: DualGenome) -> dict[str, Any]:
     """Serialize a DualGenome to a JSON-serializable dict."""
     return {
         "key": dual.key,
@@ -113,22 +103,15 @@ def dual_genome_to_json(dual: "DualGenome") -> dict[str, Any]:
     }
 
 
-def dual_genome_from_json(data: dict[str, Any], engine: "CPPNEngine") -> "DualGenome":
+def dual_genome_from_json(data: dict[str, Any], engine: "CPPNEngine") -> DualGenome:
     """Deserialize a DualGenome from a dict (e.g. from JSON)."""
-    # Import here to avoid circular dependency
-    from .cppn_engine import DualGenome
-
     visual_data = data.get("visual", {})
     time_data = data.get("time_signal", {})
     if not visual_data or not time_data:
         raise ValueError("dual genome JSON must contain 'visual' and 'time_signal'")
 
-    # Deserialize both genomes
     visual = genome_from_json(visual_data, engine.config)
     time_signal = genome_from_json(time_data, engine.time_config)
-
-    # Additional safety: update node indexers globally to prevent collisions
-    # Important when loading from genealogy
     _update_node_indexer_from_genome(visual, engine.config.genome_config)
     _update_node_indexer_from_genome(time_signal, engine.time_config.genome_config)
 
@@ -137,30 +120,20 @@ def dual_genome_from_json(data: dict[str, Any], engine: "CPPNEngine") -> "DualGe
 
 
 def _update_node_indexer_from_genome(
-    genome: "neat.DefaultGenome", genome_config: "neat.DefaultGenomeConfig"
-):
+    genome: neat.DefaultGenome, genome_config: Any
+) -> None:
     """Update the genome config's node indexer to prevent ID collisions."""
     if not genome.nodes:
         return
-
-    # Find max node ID (hidden nodes have positive IDs)
-    # Input nodes have negative IDs, output nodes are 0+, hidden nodes are higher
     hidden_node_ids = [
         nid for nid in genome.nodes.keys() if nid >= genome_config.num_outputs
     ]
-
     if not hidden_node_ids:
-        # No hidden nodes yet, nothing to update
         return
-
     max_node_id = max(hidden_node_ids)
-
-    # Update the indexer by replacing it with a new counter starting at max_node_id + 1
-    # This prevents ID collisions when mutating loaded genomes
     if hasattr(genome_config, "node_indexer"):
         import itertools
 
-        # Replace the counter to start at max_node_id + 1
         genome_config.node_indexer = itertools.count(max_node_id + 1)
 
 
@@ -170,12 +143,9 @@ def copy_genome(genome: neat.DefaultGenome, config: neat.Config) -> neat.Default
 
 
 def copy_dual_genome(
-    dual: "DualGenome", engine: "CPPNEngine", new_key: int = None
-) -> "DualGenome":
+    dual: DualGenome, engine: "CPPNEngine", new_key: Optional[int] = None
+) -> DualGenome:
     """Create a deep copy of a dual genome."""
-    # Import here to avoid circular dependency
-    from .cppn_engine import DualGenome
-
     return DualGenome(
         visual=copy_genome(dual.visual, engine.config),
         time_signal=copy_genome(dual.time_signal, engine.time_config),
@@ -190,7 +160,7 @@ def _append_nodes_for_layer(
     layer_type: str,
     id_label_list: list[tuple[int, str]],
     x_pos: float,
-    extra_per_node: list[dict[str, Any]] | None = None,
+    extra_per_node: Optional[list[dict[str, Any]]] = None,
 ) -> None:
     """Append one layer of nodes (input, hidden, or output) with vertical spacing."""
     n = len(id_label_list)
@@ -309,14 +279,11 @@ def parse_network_node_id(node_id_str: str) -> int:
     """
     Parse a frontend node ID string back to the numeric NEAT node ID.
 
-    Frontend IDs are produced by extract_network_data, e.g. "visual_input_-1",
-    "time_hidden_5". The last part after splitting on "_" is the numeric ID.
-
     Args:
         node_id_str: String like "visual_input_-1" or "time_hidden_5".
 
     Returns:
-        The integer node ID (e.g. -1, 5).
+        The integer node ID.
 
     Raises:
         ValueError: If the format is invalid.

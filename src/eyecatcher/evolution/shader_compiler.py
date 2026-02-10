@@ -7,14 +7,12 @@ the time input to a visual CPPN.
 """
 
 import json
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import neat
 
-from .genome_serialization import dual_genome_network_stats
-
-if TYPE_CHECKING:
-    from .cppn_engine import DualGenome
+from .genome import DualGenome
+from .serialization import dual_genome_network_stats
 
 
 class ShaderCompiler:
@@ -46,8 +44,8 @@ class ShaderCompiler:
     }
 
     def __init__(self, color_mode: str = "hsv"):
-        self.node_order: list[int] = []
-        self.node_code: dict[int, str] = {}
+        self.node_order: list = []
+        self.node_code: dict = {}
         self.color_mode = color_mode  # 'hsv' or 'rgb'
 
     def compile_to_glsl(self, genome: neat.DefaultGenome, config: neat.Config) -> str:
@@ -73,7 +71,7 @@ class ShaderCompiler:
 
         return shader
 
-    def _get_enabled_connections(self, genome: neat.DefaultGenome) -> list[tuple]:
+    def _get_enabled_connections(self, genome: neat.DefaultGenome) -> list:
         """Get all enabled connections in the genome."""
         return [
             (c.key[0], c.key[1], c.weight)
@@ -82,8 +80,8 @@ class ShaderCompiler:
         ]
 
     def _topological_sort(
-        self, genome: neat.DefaultGenome, connections: list[tuple], config: neat.Config
-    ) -> list[int]:
+        self, genome: neat.DefaultGenome, connections: list, config: neat.Config
+    ) -> list:
         """
         Topologically sort nodes for correct evaluation order.
 
@@ -137,10 +135,10 @@ class ShaderCompiler:
     def _generate_node_code(
         self,
         genome: neat.DefaultGenome,
-        connections: list[tuple],
-        nodes: list[int],
+        connections: list,
+        nodes: list,
         config: neat.Config,
-        input_names: Optional[dict[int, str]] = None,
+        input_names: Optional[dict] = None,
         prefix: str = "",
     ) -> str:
         """Generate GLSL code for all node computations."""
@@ -360,7 +358,7 @@ void main() {{
 
     def compile_dual_to_glsl(
         self,
-        dual_genome: "DualGenome",
+        dual_genome: DualGenome,
         visual_config: neat.Config,
         time_config: neat.Config,
     ) -> str:
@@ -533,7 +531,7 @@ void main() {{
 
     def export_dual_shader_bundle(
         self,
-        dual_genome: "DualGenome",
+        dual_genome: DualGenome,
         visual_config: neat.Config,
         time_config: neat.Config,
         filepath: str,

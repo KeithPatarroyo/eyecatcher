@@ -8,13 +8,13 @@ import os
 import random
 
 import numpy as np
-from eyecatcher.cppn_engine import (
+from eyecatcher.evolution import (
     CPPNEngine,
     DualGenome,
     copy_dual_genome,
     create_random_dual_genome,
 )
-from eyecatcher.shader_compiler import ShaderCompiler
+from eyecatcher.evolution.shader_compiler import ShaderCompiler
 from PIL import Image
 
 

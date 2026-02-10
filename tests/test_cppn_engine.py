@@ -1,6 +1,6 @@
 """Tests for CPPN engine: population, mutation, crossover, query."""
 
-from eyecatcher.cppn_engine import (
+from eyecatcher.evolution import (
     CPPNEngine,
     DualGenome,
     create_random_dual_genome,

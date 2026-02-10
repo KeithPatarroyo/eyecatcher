@@ -4,8 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from eyecatcher import community_routes, genealogy_routes
-from eyecatcher.cppn_engine import CPPNEngine
-from eyecatcher.genome_serialization import dual_genome_from_json
+from eyecatcher.evolution import CPPNEngine, dual_genome_from_json
 from eyecatcher.server import app
 
 

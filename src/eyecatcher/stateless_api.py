@@ -9,15 +9,19 @@ Provides endpoints that don't depend on server-side population state:
 from flask import Blueprint, jsonify, request
 
 from .api_helpers import api_error
-from .app_config import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
-from .cppn_engine import CPPNEngine, DualGenome, create_random_dual_genome
-from .genome_serialization import (
+from .evolution import (
+    DEFAULT_POPULATION_SIZE,
+    MAX_POPULATION_SIZE,
+    CPPNEngine,
+    DualGenome,
+    create_random_dual_genome,
     dual_genome_from_json,
     dual_genome_network_stats,
     dual_genome_to_json,
+    extract_network_data,
     parse_network_node_id,
 )
-from .shader_compiler import ShaderCompiler
+from .evolution.shader_compiler import ShaderCompiler
 
 # Create blueprint
 stateless_bp = Blueprint("stateless", __name__)
@@ -181,8 +185,6 @@ def api_network():
 
         # Extract visual network
         if dual.visual:
-            from .genome_serialization import extract_network_data
-
             visual_nodes, visual_conns = extract_network_data(
                 dual.visual, "visual", _engine.config
             )
@@ -191,8 +193,6 @@ def api_network():
 
         # Extract time signal network
         if dual.time_signal:
-            from .genome_serialization import extract_network_data
-
             time_nodes, time_conns = extract_network_data(
                 dual.time_signal, "time", _engine.time_config
             )
@@ -267,8 +267,6 @@ def api_adjust_weight():
             )
 
             # Return updated genome as JSON so client can update its state
-            from .genome_serialization import dual_genome_to_json
-
             updated_genome = dual_genome_to_json(dual)
 
             return jsonify(

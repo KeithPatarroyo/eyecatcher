@@ -8,7 +8,7 @@ from pathlib import Path
 
 import neat
 import pytest
-from eyecatcher.cppn_engine import create_random_genome
+from eyecatcher.evolution import create_random_genome
 from PIL import Image
 
 

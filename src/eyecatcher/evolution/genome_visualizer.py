@@ -47,7 +47,7 @@ class GenomeVisualizer:
         genome: neat.DefaultGenome,
         output: Union[str, BinaryIO],
         view: bool = False,
-        figsize: Optional[tuple[int, int]] = None,
+        figsize: Optional[tuple] = None,
     ):
         """
         Create a visualization of the genome network structure.
@@ -123,9 +123,7 @@ class GenomeVisualizer:
             plt.close()
 
     @staticmethod
-    def _position_column(
-        node_ids: list[int], x: float, node_spacing: float
-    ) -> dict[int, tuple[float, float]]:
+    def _position_column(node_ids: list, x: float, node_spacing: float) -> dict:
         """Place nodes in a column at x with vertical spacing; returns {id: (x, y)}."""
         if not node_ids:
             return {}
@@ -137,9 +135,7 @@ class GenomeVisualizer:
             for i, node_id in enumerate(node_ids)
         }
 
-    def _calculate_positions(
-        self, genome: neat.DefaultGenome
-    ) -> dict[int, tuple[float, float]]:
+    def _calculate_positions(self, genome: neat.DefaultGenome) -> dict:
         """Calculate (x, y) positions for all nodes with equal spacing."""
         node_spacing = 0.25
         positions = {}
@@ -154,7 +150,7 @@ class GenomeVisualizer:
             layers = self._assign_layers(genome, input_ids, output_ids)
             if layers:
                 num_layers = max(layers.values()) + 1
-                layer_groups: dict[int, list[int]] = {}
+                layer_groups: dict = {}
                 for node_id, layer in layers.items():
                     layer_groups.setdefault(layer, []).append(node_id)
                 for layer, nodes_in_layer in sorted(layer_groups.items()):
@@ -166,8 +162,8 @@ class GenomeVisualizer:
         return positions
 
     def _assign_layers(
-        self, genome: neat.DefaultGenome, input_ids: list[int], output_ids: list[int]
-    ) -> dict[int, int]:
+        self, genome: neat.DefaultGenome, input_ids: list, output_ids: list
+    ) -> dict:
         """Assign hidden nodes to layers based on connectivity."""
         layers = {}
 
@@ -210,7 +206,7 @@ class GenomeVisualizer:
 
         return layers
 
-    def _get_nodes_required_for_output(self, genome: neat.DefaultGenome) -> set[int]:
+    def _get_nodes_required_for_output(self, genome: neat.DefaultGenome) -> set:
         """
         Find nodes required to compute outputs (backward trace from outputs).
         Returns set of node IDs that contribute to at least one output.
@@ -245,9 +241,7 @@ class GenomeVisualizer:
 
         return required
 
-    def _draw_connections(
-        self, ax, genome: neat.DefaultGenome, positions: dict[int, tuple[float, float]]
-    ):
+    def _draw_connections(self, ax, genome: neat.DefaultGenome, positions: dict):
         """Draw connections between nodes."""
         for conn in genome.connections.values():
             src_id, dst_id = conn.key
@@ -287,9 +281,7 @@ class GenomeVisualizer:
             )
             ax.add_patch(arrow)
 
-    def _draw_nodes(
-        self, ax, genome: neat.DefaultGenome, positions: dict[int, tuple[float, float]]
-    ):
+    def _draw_nodes(self, ax, genome: neat.DefaultGenome, positions: dict):
         """Draw nodes."""
         input_names = [
             "x",
