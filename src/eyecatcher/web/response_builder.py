@@ -11,8 +11,7 @@ from typing import Any
 
 import neat
 
-from ..evolution.genome import DualGenome
-from ..evolution.serialization import dual_genome_network_stats
+from ..genome import DualGenome, dual_genome_network_stats
 from ..glsl import ShaderCompiler
 
 

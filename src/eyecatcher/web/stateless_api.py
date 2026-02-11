@@ -9,10 +9,8 @@ init_stateless_api. Endpoints: /api/compile, /api/random, /api/time-output,
 
 from flask import Blueprint, jsonify, request
 
-from ..evolution import (
-    DEFAULT_POPULATION_SIZE,
-    MAX_POPULATION_SIZE,
-    CPPNEngine,
+from ..algorithm import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE, CPPNEngine
+from ..genome import (
     DualGenome,
     create_random_dual_genome,
     dual_genome_from_json,
@@ -20,8 +18,8 @@ from ..evolution import (
     extract_network_data,
     parse_network_node_id,
 )
-from ..evolution.signals import TIME_INPUTS
 from ..glsl import ShaderCompiler
+from ..signals import TIME_INPUTS
 from .api_helpers import ERR_GENOME_REQUIRED, ERR_GENOMES_ARRAY_REQUIRED, api_error
 from .response_builder import build_shader_response
 

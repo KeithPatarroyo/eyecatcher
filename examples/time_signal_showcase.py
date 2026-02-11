@@ -7,7 +7,8 @@ Requires matplotlib: pip install matplotlib
 
 import os
 
-from eyecatcher.evolution import CPPNEngine, create_random_dual_genome
+from eyecatcher.algorithm import CPPNEngine
+from eyecatcher.genome import create_random_dual_genome
 
 
 def main():

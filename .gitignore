@@ -12,8 +12,10 @@ output/
 .pytest_cache/
 .coverage
 .ruff_cache/
+.cursor
+.vscode
 uv.lock
-data/
+/data/
 
 # Node (JS tooling)
 node_modules/

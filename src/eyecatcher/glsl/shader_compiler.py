@@ -10,8 +10,8 @@ import json
 
 import neat
 
-from ..evolution.genome import DualGenome
-from ..evolution.signals import TIME_INPUTS, VISUAL_INPUTS
+from ..genome import DualGenome
+from ..signals import TIME_INPUTS, VISUAL_INPUTS
 from .compiler_topology import get_enabled_connections, topological_sort
 from .glsl_fragments import ACTIVATION_GLSL_BLOCK
 from .node_code_generator import generate_node_code, generate_time_signal_code

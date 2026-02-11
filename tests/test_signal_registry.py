@@ -4,9 +4,8 @@ import os
 import re
 
 import pytest
-
 from eyecatcher import get_root_dir
-from eyecatcher.evolution.signals import (
+from eyecatcher.signals import (
     TIME_INPUTS,
     TIME_OUTPUTS,
     VISUAL_INPUTS,
@@ -47,16 +46,16 @@ def test_frontend_signals_match_backend():
     js_time = all_enable_keys[:n_time]
     js_visual = all_enable_keys[n_time : n_time + n_visual]
 
-    assert len(js_time) == len(time_toggleable), (
-        f"Time inputs: JS has {len(js_time)}, Python has {len(time_toggleable)}"
-    )
-    assert len(js_visual) == len(visual_toggleable), (
-        f"Visual inputs: JS has {len(js_visual)}, Python has {len(visual_toggleable)}"
-    )
+    assert len(js_time) == len(
+        time_toggleable
+    ), f"Time inputs: JS has {len(js_time)}, Python has {len(time_toggleable)}"
+    assert len(js_visual) == len(
+        visual_toggleable
+    ), f"Visual inputs: JS has {len(js_visual)}, Python has {len(visual_toggleable)}"
     # Python enable_key is camelCase in registry (matches JS enableKey)
-    assert js_time == time_toggleable, (
-        f"Time enableKeys: JS {js_time} vs Python {time_toggleable}"
-    )
-    assert js_visual == visual_toggleable, (
-        f"Visual enableKeys: JS {js_visual} vs Python {visual_toggleable}"
-    )
+    assert (
+        js_time == time_toggleable
+    ), f"Time enableKeys: JS {js_time} vs Python {time_toggleable}"
+    assert (
+        js_visual == visual_toggleable
+    ), f"Visual enableKeys: JS {js_visual} vs Python {visual_toggleable}"

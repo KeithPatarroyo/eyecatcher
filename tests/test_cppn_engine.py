@@ -1,11 +1,11 @@
 """Tests for CPPN engine: population, mutation, crossover, query."""
 
-from eyecatcher.evolution import (
+from eyecatcher.algorithm import mutate_single_genome
+from eyecatcher.genome import (
     DualGenome,
     create_random_dual_genome,
     create_random_genome,
 )
-from eyecatcher.evolution.operators import mutate_single_genome
 
 
 def test_engine_create_population(cppn_engine):

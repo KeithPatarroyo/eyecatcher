@@ -4,7 +4,6 @@ CPPN engine: main entry point that wires config, query, rendering, and operators
 
 import logging
 import os
-import pickle
 from typing import Optional
 
 import neat
@@ -215,17 +214,10 @@ class CPPNEngine:
         Returns:
             None.
         """
-        with open(filepath, "wb") as f:
-            pickle.dump(
-                {
-                    "visual": dual_genome.visual,
-                    "time_signal": dual_genome.time_signal,
-                    "key": dual_genome.key,
-                },
-                f,
-            )
+        from ..data.genome_persistence import save_dual_genome_to_path
+
+        save_dual_genome_to_path(dual_genome, filepath)
         if visualize:
-            # Import here to avoid circular dependency
             from ..evaluation.genome_visualizer import render_genome_network_pdf
 
             viz_path = filepath.replace(".pkl", "_network.pdf")
@@ -241,10 +233,6 @@ class CPPNEngine:
         Returns:
             The restored DualGenome.
         """
-        with open(filepath, "rb") as f:
-            data = pickle.load(f)
-            return DualGenome(
-                visual=data["visual"],
-                time_signal=data["time_signal"],
-                key=data.get("key", 0),
-            )
+        from ..data.genome_persistence import load_dual_genome_from_path
+
+        return load_dual_genome_from_path(filepath)

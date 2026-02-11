@@ -12,20 +12,6 @@ src/eyecatcher/
 ├── server.py            # Entry point: re-exports app from web.app (eyecatcher.server:app)
 ├── README.md            # This file
 │
-├── evolution/           # Re-export surface + legacy modules (used by web, glsl)
-│   ├── __init__.py      # Re-exports from algorithm, genome, glsl; public API
-│   ├── activation.py
-│   ├── breeding.py
-│   ├── config.py
-│   ├── engine.py
-│   ├── genome.py
-│   ├── genome_visualizer.py
-│   ├── operators.py
-│   ├── query.py
-│   ├── rendering.py
-│   ├── serialization.py
-│   └── signals.py
-│
 ├── algorithm/           # Evolution algorithm (config, engine, breeding, operators)
 │   ├── __init__.py
 │   ├── breeding.py
@@ -43,9 +29,10 @@ src/eyecatcher/
 │   ├── activation.py
 │   └── signals.py
 │
-├── evaluation/          # CPU rendering, CPPN query, genome visualization
+├── evaluation/          # CPU rendering, query, genome viz, network graph/stats for UI/API
 │   ├── __init__.py
 │   ├── genome_visualizer.py
+│   ├── network_data.py  # extract_network_data, dual_genome_network_stats, parse_network_node_id
 │   ├── query.py
 │   └── rendering.py
 │
@@ -69,9 +56,10 @@ src/eyecatcher/
 │   ├── __init__.py
 │   └── db_util.py
 │
-└── data/                # Data layers (genealogy, etc.)
+└── data/                # Data layers (genealogy, genome file persistence)
     ├── __init__.py
-    └── genealogy_db.py
+    ├── genealogy_db.py
+    └── genome_persistence.py  # save_dual_genome_to_path, load_dual_genome_from_path
 ```
 
 ---
@@ -80,22 +68,21 @@ src/eyecatcher/
 
 | Package | Role | When you look here |
 |---------|------|--------------------|
-| **evolution/** | Public API and legacy modules. Re-exports from algorithm, genome, glsl. Web and glsl import from here. | Use `from eyecatcher.evolution import ...` for backward compatibility. |
-| **algorithm/** | NEAT config, CPPNEngine, breeding, mutation, crossover. | Changing the evolution algorithm or NEAT config. |
-| **genome/** | DualGenome, create_random_dual_genome, serialization (genome_to_json, dual_genome_to_json, etc.). | Changing genome representation or serialization. |
+| **algorithm/** | NEAT config, CPPNEngine, breeding, mutation, crossover. Engine uses data.genome_persistence for save/load. | Changing the evolution algorithm or NEAT config. |
+| **genome/** | DualGenome, create_random_dual_genome, wire serialization (genome_to_json, dual_genome_to_json, copy_*). Network graph/stats re-exported from evaluation. | Changing genome representation or JSON serialization. |
 | **signals/** | VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map, activation helpers. | Adding/changing input signals or activation functions. |
-| **evaluation/** | render_dual_image, query (CPPN evaluation), genome_visualizer (network PDF). | Changing CPU rendering, CPPN query, or network visualization. |
+| **evaluation/** | render_dual_image, query, genome_visualizer, network_data (extract_network_data, dual_genome_network_stats for UI/API). | Changing CPU rendering, CPPN query, network visualization, or API graph/stats. |
 | **glsl/** | ShaderCompiler; topology, node code, GLSL fragments. Genome → fragment shader. | Changing how genomes become shader code (display pipeline). |
 | **web/** | Flask app, /api/compile, /api/breed, /api/save, genealogy routes, community routes, response_builder. | Adding endpoints or changing API response shape. |
 | **lib/** | with_db_connection, default_db_path. | Fixing DB or path helpers. |
-| **data/** | genealogy_db: save_population, get_population, export_genealogy_data, etc. | Changing genealogy storage or export. |
+| **data/** | genealogy_db; genome_persistence (pickle save/load). | Changing genealogy storage, genome file storage, or export. |
 
 ---
 
 ## Entry points
 
 - **Flask app:** `eyecatcher.server:app` (root `server.py` re-exports from `web.app`).
-- **Public API for evolution:** `from eyecatcher.evolution import CPPNEngine, create_random_dual_genome, dual_genome_to_json, ShaderCompiler, ...` (see `evolution/__init__.py`).
+- **Public API:** `from eyecatcher.algorithm import CPPNEngine, ...`; `from eyecatcher.genome import DualGenome, dual_genome_to_json, ...`; `from eyecatcher.glsl import ShaderCompiler`; `from eyecatcher.signals import ...`; `from eyecatcher.evaluation import ...`.
 
 ---
 
@@ -106,11 +93,13 @@ src/eyecatcher/
 | Add/rename a signal | signals/signals.py, NEAT config, frontend evolution_config.js |
 | Change population size or NEAT paths | algorithm/config.py |
 | Change breeding/selection | algorithm/breeding.py, algorithm/operators.py |
-| Change genome or serialization | genome/genome.py, genome/serialization.py |
+| Change genome or wire serialization | genome/genome.py, genome/serialization.py |
+| Change network graph/stats for UI or API | evaluation/network_data.py |
 | Change CPU rendering or query | evaluation/rendering.py, evaluation/query.py |
 | Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl_fragments.py, node_code_generator.py, compiler_topology.py |
 | Change compile/save/export response shape | web/response_builder.py |
 | Change genealogy storage or export | data/genealogy_db.py |
+| Change genome file save/load (pickle) | data/genome_persistence.py |
 | Add an endpoint or change API | web/ (app.py, stateless_api.py, genealogy_routes.py, community_routes.py) |
 
 For signal/NEAT/shader details and a short “I want to…” guide, see [RESEARCHER_GUIDE.md](../../RESEARCHER_GUIDE.md) in the repo root.

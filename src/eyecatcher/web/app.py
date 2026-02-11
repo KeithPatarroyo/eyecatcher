@@ -9,9 +9,8 @@ Each individual has two CPPNs:
 Population state lives on the client; server provides compile, random, breed, save.
 Save returns file contents for client-side download (Railway / no server filesystem).
 
-Where is what: Breed implementation in evolution.breeding.breed_next_generation.
-Compile: stateless_api uses ShaderCompiler from evolution. Save: _save_dual_genome
-uses engine.render_dual_image and evolution.serialization.
+Where is what: Breed in algorithm.breeding; compile uses glsl.ShaderCompiler;
+save uses engine.render_dual_image and genome serialization.
 """
 
 import base64
@@ -26,16 +25,14 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from .. import get_root_dir
-from ..evolution import (
+from ..algorithm import (
     CROSSOVER_PROBABILITY,
     DEFAULT_POPULATION_SIZE,
     DEFAULT_RENDER_RESOLUTION,
     CPPNEngine,
-    DualGenome,
-    dual_genome_from_json,
-    dual_genome_to_json,
 )
-from ..evolution.breeding import breed_next_generation
+from ..algorithm.breeding import breed_next_generation
+from ..genome import DualGenome, dual_genome_from_json, dual_genome_to_json
 from ..glsl import ShaderCompiler
 from .api_helpers import (
     ERR_GENOME_REQUIRED_REQUEST_BODY,
@@ -265,7 +262,7 @@ def _save_dual_genome(
 
     pdf_bytes = None
     if visualize:
-        from ..evolution.genome_visualizer import render_genome_network_pdf
+        from ..evaluation.genome_visualizer import render_genome_network_pdf
 
         pdf_buffer = io.BytesIO()
         pdf_bytes = render_genome_network_pdf(

@@ -1,19 +1,21 @@
 """Test that all major imports work correctly."""
 
 
-def test_evolution_imports():
-    """Test that evolution module re-exports work."""
-    from eyecatcher.evolution import (
-        CPPNEngine,
+def test_canonical_package_imports():
+    """Test that algorithm, genome, glsl export the main API."""
+    from eyecatcher.algorithm import CPPNEngine
+    from eyecatcher.genome import (
         DualGenome,
         create_random_dual_genome,
         dual_genome_to_json,
     )
+    from eyecatcher.glsl import ShaderCompiler
 
     assert CPPNEngine is not None
     assert DualGenome is not None
     assert create_random_dual_genome is not None
     assert dual_genome_to_json is not None
+    assert ShaderCompiler is not None
 
 
 def test_new_submodule_imports():

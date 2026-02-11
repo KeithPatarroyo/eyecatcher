@@ -1,6 +1,6 @@
 """Tests for response_builder.build_shader_response."""
 
-from eyecatcher.evolution import dual_genome_network_stats
+from eyecatcher.genome import dual_genome_network_stats
 from eyecatcher.glsl import ShaderCompiler
 from eyecatcher.web.response_builder import build_shader_response
 

@@ -9,7 +9,7 @@ from typing import Optional
 
 import neat
 
-from ..evolution.signals import TIME_INPUTS, VISUAL_INPUTS, build_glsl_input_map
+from ..signals import TIME_INPUTS, VISUAL_INPUTS, build_glsl_input_map
 from .compiler_topology import get_enabled_connections, topological_sort
 
 # NEAT activation name -> GLSL name (must exist in glsl_fragments).

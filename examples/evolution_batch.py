@@ -8,16 +8,12 @@ import os
 import random
 
 import numpy as np
-from eyecatcher.evolution import (
-    CPPNEngine,
-    DualGenome,
-    copy_dual_genome,
-    create_random_dual_genome,
-)
-from eyecatcher.evolution.config import (
+from eyecatcher.algorithm import (
     DEFAULT_POPULATION_SIZE,
     PREVIEW_RENDER_RESOLUTION,
+    CPPNEngine,
 )
+from eyecatcher.genome import DualGenome, copy_dual_genome, create_random_dual_genome
 from eyecatcher.glsl import ShaderCompiler
 from PIL import Image
 
