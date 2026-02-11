@@ -1,6 +1,6 @@
 /**
  * Eyecatcher app entry: init and DOM wiring. State and coordinators live in
- * population_state, grid_renderer, fullscreen_modal, breed_coordinator, genealogy_sync.
+ * population_state, grid_renderer, fullscreen_modal, evolution_coordinator, genealogy_sync.
  * Load after: those modules, api_client, pattern_renderer, viewer_controls, animation_loop,
  * population_ui, community, network_visualizer, toolbar_ui.
  */
@@ -21,7 +21,7 @@
         gridErrorTpl: "grid-error-tpl",
         gridRetryBtn: "grid-retry-btn",
         genNum: "gen-num",
-        breedBtn: "breed-btn",
+        evolveBtn: "evolve-btn",
         populationSizeInput: "population-size-input",
         totalClicks: "total-clicks",
         loadListModal: "load-list-modal",
@@ -63,8 +63,8 @@
         return el && el.value === "rgb" ? "rgb" : "hsv";
     }
 
-    function setBreedButtonDisabled(disabled) {
-        var el = document.getElementById(IDS.breedBtn);
+    function setEvolveButtonDisabled(disabled) {
+        var el = document.getElementById(IDS.evolveBtn);
         if (el) {
             if (disabled) {
                 el.classList.add("disabled");
@@ -81,12 +81,12 @@
         var totalClicks = 0;
         var hasFitness = false;
         state.patterns.forEach(function (p) {
-            totalClicks += (p.clicks || 0);
+            totalClicks += p.clicks || 0;
             if (p.clicks > 0) hasFitness = true;
         });
         var totalEl = document.getElementById(IDS.totalClicks);
         if (totalEl) totalEl.textContent = totalClicks;
-        setBreedButtonDisabled(!hasFitness);
+        setEvolveButtonDisabled(!hasFitness);
     }
 
     function showGridError(message, showRetry) {
@@ -182,10 +182,15 @@
         var idx = state.currentPopulation.findIndex(function (p) {
             return p.id === id;
         });
-        var genome = idx >= 0 && state.currentGenomes[idx] ? state.currentGenomes[idx] : null;
+        var genome =
+            idx >= 0 && state.currentGenomes[idx] ? state.currentGenomes[idx] : null;
         if (!genome) {
             if (window.Toast) {
-                window.Toast.show("Cannot save", "Could not get pattern data.", "error");
+                window.Toast.show(
+                    "Cannot save",
+                    "Could not get pattern data.",
+                    "error"
+                );
             }
             return;
         }
@@ -211,7 +216,11 @@
                         );
                     }
                 } else if (window.Toast) {
-                    window.Toast.show("Pattern saved!", "No download in response.", "success");
+                    window.Toast.show(
+                        "Pattern saved!",
+                        "No download in response.",
+                        "success"
+                    );
                 }
             })
             .catch(function (error) {
@@ -315,21 +324,24 @@
                     return pat ? pat.clicks || 0 : 0;
                 });
                 try {
-                    var data = await window.GenealogySync.saveCurrentPopulationToGenealogy(
-                        API_URL,
-                        genomes,
-                        generationNum,
-                        branchName,
-                        parentId,
-                        fitnessData,
-                        window.ApiClient.apiFetch
-                    );
+                    var data =
+                        await window.GenealogySync.saveCurrentPopulationToGenealogy(
+                            API_URL,
+                            genomes,
+                            generationNum,
+                            branchName,
+                            parentId,
+                            fitnessData,
+                            window.ApiClient.apiFetch
+                        );
                     if (data && data.population_id != null) {
                         window.PopulationState.dispatch({
-                            type: "SET_BREED_RESULT",
+                            type: "SET_EVOLVE_RESULT",
                             payload: { populationId: data.population_id },
                         });
-                        window.GenealogySync.syncCurrentPopulationIdToStorage(data.population_id);
+                        window.GenealogySync.syncCurrentPopulationIdToStorage(
+                            data.population_id
+                        );
                     }
                 } catch (e) {
                     console.warn("Genealogy save failed:", e);
@@ -392,7 +404,11 @@
         } catch (e) {
             console.error(e);
             if (window.Toast) {
-                window.Toast.show("Add failed", e.message || "Failed to compile", "error");
+                window.Toast.show(
+                    "Add failed",
+                    e.message || "Failed to compile",
+                    "error"
+                );
             }
         } finally {
             if (typeof showLoading !== "undefined") showLoading(false);
@@ -400,10 +416,10 @@
         }
     }
 
-    function breedGeneration() {
-        var breedEl = document.getElementById(IDS.breedBtn);
-        if (breedEl && breedEl.classList.contains("disabled")) return;
-        setBreedButtonDisabled(true);
+    function evolveGeneration() {
+        var evolveEl = document.getElementById(IDS.evolveBtn);
+        if (evolveEl && evolveEl.classList.contains("disabled")) return;
+        setEvolveButtonDisabled(true);
         if (typeof showLoading !== "undefined") showLoading(true);
         window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
 
@@ -412,14 +428,14 @@
             return parseInt(el && el.value, 10);
         }
 
-        window.BreedCoordinator.breedGeneration(
+        window.EvolutionCoordinator.evolveGeneration(
             window.PopulationState.getState,
             getPopulationSize,
-            window.ApiClient.breed.bind(window.ApiClient),
+            window.ApiClient.evolve.bind(window.ApiClient),
             function (children, newGenerationNum, populationId) {
                 if (populationId != null) {
                     window.PopulationState.dispatch({
-                        type: "SET_BREED_RESULT",
+                        type: "SET_EVOLVE_RESULT",
                         payload: { populationId: populationId },
                     });
                     window.GenealogySync.syncCurrentPopulationIdToStorage(populationId);
@@ -427,13 +443,18 @@
                 loadFromStatelessGenomes(children, newGenerationNum, false);
             },
             function (err) {
-                console.error("Error breeding:", err);
+                console.error("Error evolving:", err);
                 if (window.Toast) {
-                    window.Toast.error("Breed failed: " + (err.message || String(err)));
+                    window.Toast.error(
+                        "Evolve failed: " + (err.message || String(err))
+                    );
                 }
                 if (typeof showLoading !== "undefined") showLoading(false);
-                window.PopulationState.dispatch({ type: "SET_LOADING", payload: false });
-                setBreedButtonDisabled(false);
+                window.PopulationState.dispatch({
+                    type: "SET_LOADING",
+                    payload: false,
+                });
+                setEvolveButtonDisabled(false);
                 updateStats();
             }
         );
@@ -575,10 +596,10 @@
         if (e.key === "Escape") closeFullscreen();
     });
 
-    onId(IDS.breedBtn, function (el) {
-        el.addEventListener("click", breedGeneration);
+    onId(IDS.evolveBtn, function (el) {
+        el.addEventListener("click", evolveGeneration);
         el.addEventListener("keydown", function (e) {
-            onRoleButtonKeydown(e, breedGeneration);
+            onRoleButtonKeydown(e, evolveGeneration);
         });
     });
 

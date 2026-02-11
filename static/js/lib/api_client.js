@@ -1,7 +1,7 @@
 /**
  * API client for Eyecatcher backend. Raw fetch calls; no UI.
  * Sets window.API_URL and window.DEFAULT_DEV_PORT. Exposes: ApiClient.init(apiUrl),
- * ApiClient.compile(genomes), ApiClient.breed(parents, populationSize),
+ * ApiClient.compile(genomes), ApiClient.evolve(parents, populationSize),
  * ApiClient.save(id, genome), ApiClient.randomPopulation(size)
  */
 (function () {
@@ -61,13 +61,13 @@
     }
 
     /**
-     * Breed next generation. Returns { children, population_id? } or throws.
-     * When genealogy is provided, the backend auto-saves to the genealogy tree; do not call save-population after breeding.
+     * Evolve next generation (selection, crossover, mutation). Returns { children, population_id? } or throws.
+     * When genealogy is provided, the backend auto-saves to the genealogy tree; do not call save-population after evolve.
      * @param {Array} parents - Array of { genome, clicks }
      * @param {number} populationSize - Desired population size
      * @param {Object} [genealogy] - Optional { parentPopulationId, generationNum, branchName } for genealogy tree
      */
-    async function breed(parents, populationSize, genealogy) {
+    async function evolve(parents, populationSize, genealogy) {
         const body = { parents: parents, population_size: populationSize };
         if (genealogy) {
             if (genealogy.parentPopulationId != null)
@@ -77,16 +77,16 @@
             if (genealogy.branchName) body.branch_name = genealogy.branchName;
         }
         const data = await apiFetch(
-            _apiUrl + "/breed",
+            _apiUrl + "/evolve",
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
             },
-            "Breed failed"
+            "Evolve failed"
         );
         if (!Array.isArray(data.children)) {
-            throw new Error("Breed failed: no children in response");
+            throw new Error("Evolve failed: no children in response");
         }
         return data;
     }
@@ -150,7 +150,7 @@
     window.ApiClient = {
         init: init,
         compile: compile,
-        breed: breed,
+        evolve: evolve,
         save: save,
         randomPopulation: randomPopulation,
         apiFetch: apiFetch,

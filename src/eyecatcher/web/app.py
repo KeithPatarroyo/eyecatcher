@@ -1,15 +1,15 @@
 """
 Interactive Evolution Server
-Serves dual-CPPN population and handles breeding (stateless API only).
+Serves dual-CPPN population and handles evolution (stateless API only).
 
 Each individual has two CPPNs:
 - Visual CPPN: (x, y, dist, time, mouseSpeed, bias) -> (R, G, B)
 - Time Signal CPPN: (rawTime, mouseSpeed, bias) -> (modifiedTime)
 
-Population state lives on the client; server provides compile, random, breed, save.
+Population state lives on the client; server provides compile, random, evolve, save.
 Save returns file contents for client-side download (Railway / no server filesystem).
 
-Where is what: Breed in algorithm.breeding; compile uses glsl.ShaderCompiler;
+Where: Evolve in algorithm.reproduction; compile in glsl.ShaderCompiler;
 save uses engine.render_dual_image and genome serialization.
 """
 
@@ -31,7 +31,7 @@ from ..algorithm import (
     DEFAULT_RENDER_RESOLUTION,
     CPPNEngine,
 )
-from ..algorithm.breeding import breed_next_generation
+from ..algorithm.reproduction import produce_next_generation
 from ..genome import DualGenome, dual_genome_from_json, dual_genome_to_json
 from ..glsl import ShaderCompiler
 from .api_helpers import (
@@ -98,10 +98,10 @@ def genealogy():
     return send_from_directory(STATIC_DIR, "genealogy_viewer.html")
 
 
-@app.route("/api/breed", methods=["POST"])
-def breed():
+@app.route("/api/evolve", methods=["POST"])
+def evolve():
     """
-    Breed next generation (stateless).
+    Produce next generation (stateless). Selection, crossover, mutation.
     Body: {
         "parents": [...],
         "population_size": 12,  (optional, default from config)
@@ -112,11 +112,11 @@ def breed():
     data = request.json or {}
     if "parents" not in data:
         return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
-    return _breed_stateless(data)
+    return _evolve_stateless(data)
 
 
-def _breed_stateless(data):
-    """Breed: parents in body, return children as JSONs; may save to genealogy."""
+def _evolve_stateless(data):
+    """Evolve: parents in body, return children as JSONs; may save to genealogy."""
     try:
         parents_data = data.get("parents", [])
         population_size = data.get("population_size", DEFAULT_POPULATION_SIZE)
@@ -128,7 +128,7 @@ def _breed_stateless(data):
         if not parents_data:
             return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
 
-        children = breed_next_generation(
+        children = produce_next_generation(
             engine,
             parents_data,
             population_size=population_size,
@@ -138,9 +138,9 @@ def _breed_stateless(data):
 
         if parent_population_id is not None:
             try:
-                from ..data.genealogy_db import save_breeding_result
+                from ..data.genealogy_db import save_generation_result
 
-                new_pop_id = save_breeding_result(
+                new_pop_id = save_generation_result(
                     parent_population_id, generation_num, branch_name, children
                 )
                 if new_pop_id is not None:

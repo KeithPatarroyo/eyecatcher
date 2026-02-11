@@ -34,7 +34,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 
 | Path | Purpose |
 |------|---------|
-| `src/eyecatcher/` | Python package. **Packages**: `algorithm/` (engine, breeding, config, operators), `genome/`, `signals/`, `evaluation/`, `glsl/`, `web/`, `data/`, `lib/`. Top-level: `server`, etc. |
+| `src/eyecatcher/` | Python package. **Packages**: `algorithm/` (engine, reproduction, config, operators), `genome/`, `signals/`, `evaluation/`, `glsl/`, `web/`, `data/`, `lib/`. Top-level: `server`, etc. |
 | `static/` | Frontend: HTML, CSS, JS modules; served by Flask from repo root |
 | `config/` | NEAT config files in **config/neat/** (read at runtime via `get_root_dir()`). Also `config/eslint.config.js`, `config/.env.example` (copy to root `.env`). |
 | `tests/` | Pytest test suite |
@@ -45,9 +45,9 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 
 ## Architecture notes
 
-- **Researchers and evolution-only changes:** See [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md) for touchpoints (signals, NEAT, breeding, rendering).
+- **Researchers and evolution-only changes:** See [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md) for touchpoints (signals, NEAT, reproduction, rendering).
 - **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from ..algorithm import CPPNEngine`). Code outside the package (examples, tests) imports from `eyecatcher.algorithm`, `eyecatcher.genome`, `eyecatcher.glsl`, etc.
-- **Stateless API:** The server does **not** hold population state. Clients send full genome payloads in requests (e.g. `/api/compile`, `/api/breed`). Do not add server-side population storage.
+- **Stateless API:** The server does **not** hold population state. Clients send full genome payloads in requests (e.g. `/api/compile`, `/api/evolve`). Do not add server-side population storage.
 - **Dual-CPPN:** Each individual is a `DualGenome`: two NEAT genomes (`visual` and `time_signal`) evolved together. Mutations and crossovers operate on both; keep the pairing consistent.
 - **Paths:** `get_root_dir()` in `src/eyecatcher/__init__.py` returns the repo root. Use it (or paths relative to it) for `config/`, `static/`, `data/`. Flask's `static_folder` is set to that root `static/` directory.
 

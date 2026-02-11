@@ -12,7 +12,7 @@ src/eyecatcher/
 ├── server.py            # Entry point: re-exports app from web.app (eyecatcher.server:app)
 ├── README.md            # This file
 │
-├── algorithm/           # Evolution algorithm (config, engine, breeding, operators)
+├── algorithm/           # Evolution algorithm (config, engine, reproduction, operators)
 │   ├── __init__.py
 │   ├── breeding.py
 │   ├── config.py
@@ -68,12 +68,12 @@ src/eyecatcher/
 
 | Package | Role | When you look here |
 |---------|------|--------------------|
-| **algorithm/** | NEAT config, CPPNEngine, breeding, mutation, crossover. Engine uses data.genome_persistence for save/load. | Changing the evolution algorithm or NEAT config. |
+| **algorithm/** | NEAT config, CPPNEngine, reproduction, mutation, crossover. Engine uses data.genome_persistence for save/load. | Changing the evolution algorithm or NEAT config. |
 | **genome/** | DualGenome, create_random_dual_genome, wire serialization (genome_to_json, dual_genome_to_json, copy_*). Network graph/stats re-exported from evaluation. | Changing genome representation or JSON serialization. |
 | **signals/** | VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map, activation helpers. | Adding/changing input signals or activation functions. |
 | **evaluation/** | render_dual_image, query, genome_visualizer, network_data (extract_network_data, dual_genome_network_stats for UI/API). | Changing CPU rendering, CPPN query, network visualization, or API graph/stats. |
 | **glsl/** | ShaderCompiler; topology, node code, GLSL fragments. Genome → fragment shader. | Changing how genomes become shader code (display pipeline). |
-| **web/** | Flask app, /api/compile, /api/breed, /api/save, genealogy routes, community routes, response_builder. | Adding endpoints or changing API response shape. |
+| **web/** | Flask app, /api/compile, /api/evolve, /api/save, genealogy routes, community routes, response_builder. | Adding endpoints or changing API response shape. |
 | **lib/** | with_db_connection, default_db_path. | Fixing DB or path helpers. |
 | **data/** | genealogy_db; genome_persistence (pickle save/load). | Changing genealogy storage, genome file storage, or export. |
 
@@ -92,7 +92,7 @@ src/eyecatcher/
 |------------|---------|
 | Add/rename a signal | signals/signals.py, NEAT config, frontend evolution_config.js |
 | Change population size or NEAT paths | algorithm/config.py |
-| Change breeding/selection | algorithm/breeding.py, algorithm/operators.py |
+| Change reproduction/selection | algorithm/reproduction.py, algorithm/operators.py |
 | Change genome or wire serialization | genome/genome.py, genome/serialization.py |
 | Change network graph/stats for UI or API | evaluation/network_data.py |
 | Change CPU rendering or query | evaluation/rendering.py, evaluation/query.py |

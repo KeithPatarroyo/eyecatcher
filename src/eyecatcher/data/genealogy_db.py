@@ -67,7 +67,7 @@ def init_genealogy_db() -> None:
         conn.commit()
 
 
-def save_breeding_result(
+def save_generation_result(
     parent_population_id: int,
     generation_num: int,
     branch_name: str,
@@ -75,7 +75,7 @@ def save_breeding_result(
     metadata: dict[str, Any] | None = None,
 ) -> int | None:
     """
-    Save a breeding result (new population + individuals) to genealogy.
+    Save a generation result (new population + individuals) to genealogy.
 
     Returns new population_id if saved, None if parent invalid or generation
     mismatch. metadata is stored in populations.metadata_json (for research).

@@ -40,7 +40,8 @@
             case "LOAD_POPULATION":
                 state.currentPopulation = action.payload.population || [];
                 state.currentGenomes = action.payload.genomes || null;
-                state.generationNum = action.payload.generationNum ?? state.generationNum;
+                state.generationNum =
+                    action.payload.generationNum ?? state.generationNum;
                 if (action.payload.populationId !== undefined) {
                     state.populationId = action.payload.populationId;
                 }
@@ -76,7 +77,7 @@
                     p.clicks = action.payload.clicks;
                 }
                 break;
-            case "SET_BREED_RESULT":
+            case "SET_EVOLVE_RESULT":
                 if (action.payload.populationId != null) {
                     state.populationId = action.payload.populationId;
                 }

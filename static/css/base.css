@@ -119,11 +119,11 @@ button:disabled {
     transform: translateY(-1px);
 }
 
-.btn-action.breed {
+.btn-action.evolve {
     background: var(--color-success);
 }
 
-.btn-action.breed:hover:not(.disabled) {
+.btn-action.evolve:hover:not(.disabled) {
     background: var(--color-success-hover);
 }
 

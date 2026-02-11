@@ -1,9 +1,9 @@
 """
-Stateless breeding: produce next generation from parent genome payloads.
+Stateless reproduction: produce next generation from parent genome payloads.
 
-Used by the server /api/breed endpoint. Callers pass an engine and parent
-data; this module returns children as list of genome JSON dicts. Researchers
-can change selection/elitism here.
+Selection, crossover, and mutation. Used by the server /api/evolve endpoint.
+Callers pass an engine and parent data; this module returns children as list
+of genome JSON dicts. Researchers can change selection/elitism here.
 """
 
 import logging
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def breed_next_generation(
+def produce_next_generation(
     engine: "CPPNEngine",
     parents_data: list[dict[str, Any]],
     population_size: Optional[int] = None,
@@ -27,7 +27,10 @@ def breed_next_generation(
     crossover_probability: Optional[float] = None,
 ) -> list:
     """
-    Produce children from parent payloads (stateless).
+    Produce next generation from parent payloads (stateless).
+
+    Uses selection (from parents_data), optional elitism, and crossover or
+    mutation per child. Args and returns match /api/evolve.
 
     Args:
         engine: CPPNEngine instance for mutation/crossover and deserialization.

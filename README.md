@@ -20,7 +20,7 @@ Then open **http://localhost:5001**. (Runs `docker compose -f docker/docker-comp
 - **Configurable input signals** (e.g. time, mouse speed, distance, activity); see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) and [signals/signals.py](src/eyecatcher/signals/signals.py).
 - **Signal Controls**: Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [signals/signals.py](src/eyecatcher/signals/signals.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
 - **GPU Rendering**: CPPNs compile to GLSL for real-time WebGL in the browser.
-- **Interactive Evolution**: Web interface for selection, breeding, saving, and community submission.
+- **Interactive Evolution**: Web interface for selection, evolution, saving, and community submission.
 - **Genealogical Tree**: Track evolutionary history across generations and branches; explore and continue from any point.
 - **Debug Overlay**: Real-time signal values; optional time-output sampling.
 
@@ -170,7 +170,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
 - **examples/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
 - **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). To change which NEAT files are used or population size, edit [src/eyecatcher/algorithm/config.py](src/eyecatcher/algorithm/config.py). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
-- **src/eyecatcher/** – Python package. Top-level: `server.py` (entry point: `eyecatcher.server:app`). **Packages**: `algorithm/` (engine, breeding, config, operators), `genome/` (DualGenome, serialization), `signals/` (signal registry, activation), `evaluation/` (CPU rendering, query, genome_visualizer, network_data), `glsl/` (genome → GLSL shader), `web/` (Flask app, routes, response_builder), `data/` (genealogy_db, genome_persistence), `lib/` (db_util). Main API: import from `eyecatcher.algorithm`, `eyecatcher.genome`, `eyecatcher.glsl`, `eyecatcher.signals`, `eyecatcher.evaluation`. See [src/eyecatcher/README.md](src/eyecatcher/README.md) for the full layout.
+- **src/eyecatcher/** – Python package. Top-level: `server.py` (entry point: `eyecatcher.server:app`). **Packages**: `algorithm/` (engine, reproduction, config, operators), `genome/` (DualGenome, serialization), `signals/` (signal registry, activation), `evaluation/` (CPU rendering, query, genome_visualizer, network_data), `glsl/` (genome → GLSL shader), `web/` (Flask app, routes, response_builder), `data/` (genealogy_db, genome_persistence), `lib/` (db_util). Main API: import from `eyecatcher.algorithm`, `eyecatcher.genome`, `eyecatcher.glsl`, `eyecatcher.signals`, `eyecatcher.evaluation`. See [src/eyecatcher/README.md](src/eyecatcher/README.md) for the full layout.
 - **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `package.json`, `package-lock.json`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml` (run with **`make docker-up`**). **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
@@ -193,19 +193,19 @@ Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. Input/output
 
 The server does not hold population state. The client (web UI) stores genomes (e.g. in IndexedDB) and sends them when needed.
 
-- **Endpoints:** `POST /api/compile` (genomes → shaders), `POST /api/random` (size → new genome JSONs), `POST /api/breed` (body: `parents`, optional `population_size`, optional `elitism` → `children`), `POST /api/save` (body: `genome`, optional `visualize` for network PDF), `POST /api/time-output` (body: genome + inputs, for debug), `POST /api/network` (body: genome → nodes/connections for visualization), `POST /api/adjust-weight` (body: genome, network, source, target, weight → updated shader and genome).
-- **Flow:** Open the page → "New random population" (or "New from Seeds" / "Load Saved") → client receives and stores genomes; compile, breed, and save all send or use those genomes. No server-side lookup by id.
+- **Endpoints:** `POST /api/compile` (genomes → shaders), `POST /api/random` (size → new genome JSONs), `POST /api/evolve` (body: `parents`, optional `population_size`, optional `elitism` → `children`), `POST /api/save` (body: `genome`, optional `visualize` for network PDF), `POST /api/time-output` (body: genome + inputs, for debug), `POST /api/network` (body: genome → nodes/connections for visualization), `POST /api/adjust-weight` (body: genome, network, source, target, weight → updated shader and genome).
+- **Flow:** Open the page → "New random population" (or "New from Seeds" / "Load Saved") → client receives and stores genomes; compile, evolve, and save all send or use those genomes. No server-side lookup by id.
 - **Consequences:** Works with load balancing and multiple instances; sessions survive server restarts via client storage; local testing needs only the stateless endpoints. You can run multiple Gunicorn workers (no in-memory population to share).
 - **Breeding options:** `elitism` (default `false`) keeps the best parent unchanged in the next generation; set to `true` to preserve top performers.
 - **Save options:** `visualize` (default `true`) generates a network PDF alongside pkl, glsl, bundle, and PNG; set to `false` to skip the PDF. The server packages PNG, GLSL, bundle JSON, genome pickle, and optional network PDF into a single zip and returns it in the response; the client triggers one download, so save works on Railway and other hostings with no server filesystem. Set `SAVE_TO_DISK=1` in the environment to also write files under `output/saved/` (e.g. for local dev).
 
 ### Core components
 
-- **CPPN Engine** – `CPPNEngine`, breeding, mutation/crossover in `algorithm/` (and re-exported via `evolution/`); genome and serialization in `genome/`.
+- **CPPN Engine** – `CPPNEngine`, reproduction, mutation/crossover in `algorithm/` (and re-exported via `evolution/`); genome and serialization in `genome/`.
 - **Shader Compiler** (`src/eyecatcher/glsl/`) – CPPN → GLSL; `ShaderCompiler` and `compile_dual_to_glsl()` for the web renderer.
-- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API in `web/` (compile, random, breed, save, time-output), breeding logic in `evolution/breeding.py` or `algorithm/breeding.py`, community and genealogy routes, static serving.
+- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API in `web/` (compile, random, evolve, save, time-output), reproduction logic in `algorithm/reproduction.py`, community and genealogy routes, static serving.
 
-Researchers: see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for where to change signals, NEAT config, breeding, and rendering.
+Researchers: see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for where to change signals, NEAT config, reproduction, and rendering.
 
 ## API usage (programmatic)
 

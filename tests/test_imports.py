@@ -41,11 +41,11 @@ def test_web_imports():
 def test_data_imports():
     """Test that data layer imports work."""
     from eyecatcher.data.genealogy_db import (
-        save_breeding_result,
+        save_generation_result,
         save_population,
     )
 
-    assert save_breeding_result is not None
+    assert save_generation_result is not None
     assert save_population is not None
 
 

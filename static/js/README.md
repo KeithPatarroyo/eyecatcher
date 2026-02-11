@@ -9,12 +9,12 @@ The JS code is grouped into four folders so you can quickly see **what to edit**
 **Edit this when you change how evolution, signals, or rendering work.**
 
 - `evolution_config.js` — Population size, signal toggles, canvas limits (align with backend).
-- `breed_coordinator.js` — Parent selection, breed API call, population size from UI.
+- `evolution_coordinator.js` — Parent selection, evolve API call, population size from UI.
 - `pattern_renderer.js` — WebGL: compile and draw dual-CPPN fragment shaders.
 - `viewer_controls.js` — Zoom and CPPN signal checkboxes (time/visual inputs).
 - `cppn_evaluator.js` — CPPN evaluation helpers if used.
 
-Signals, breeding behavior, and how patterns are drawn are defined here. This is the code that defines your experiment.
+Signals, evolution behavior, and how patterns are drawn are defined here. This is the code that defines your experiment.
 
 ---
 
@@ -37,7 +37,7 @@ You’ll rarely need to change these unless you’re changing app structure or a
 
 **Only touch when fixing bugs or adding cross‑cutting support.**
 
-- `api_client.js` — Fetch for compile, breed, save, random, genealogy.
+- `api_client.js` — Fetch for compile, evolve, save, random, genealogy.
 - `utils.js` — Formatting, storage helpers, showLoading.
 - `toast.js` — Notifications and download trigger.
 - `storage.js` — IndexedDB wrapper for saved populations.
@@ -65,7 +65,7 @@ Each file is a self-contained feature; you can ignore the ones you don’t use.
 
 | Folder      | When you look here |
 |------------|---------------------|
-| **evolution/** | Changing signals, breeding, rendering, or viewer behavior. |
+| **evolution/** | Changing signals, evolution, rendering, or viewer behavior. |
 | **app/**      | Changing how the app is structured or how state/flow works. |
 | **lib/**      | Fixing API, utils, or adding app-wide support. |
 | **features/**  | Changing a specific feature (community, genealogy, network viz, etc.). |

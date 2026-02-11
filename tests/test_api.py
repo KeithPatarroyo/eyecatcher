@@ -40,14 +40,14 @@ def test_api_compile(client):
         assert "void main()" in s["shader"]
 
 
-def test_api_breed(client):
-    """POST /api/breed with parents returns children."""
+def test_api_evolve(client):
+    """POST /api/evolve with parents returns children."""
     rv = client.post("/api/random", json={"size": 2})
     assert rv.status_code == 200
     genomes = rv.get_json()["genomes"]
     parents = [{"genome": g, "clicks": 1} for g in genomes]
     rv = client.post(
-        "/api/breed",
+        "/api/evolve",
         json={"parents": parents, "population_size": 4},
     )
     assert rv.status_code == 200
@@ -56,8 +56,8 @@ def test_api_breed(client):
     assert len(data["children"]) == 4
 
 
-def test_api_breed_without_genealogy(client, cppn_engine):
-    """Breed without parent_population_id returns children only, no population_id."""
+def test_api_evolve_without_genealogy(client, cppn_engine):
+    """Evolve without parent_population_id returns children only, no population_id."""
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -65,7 +65,7 @@ def test_api_breed_without_genealogy(client, cppn_engine):
     genome["key"] = 0
     parents = [{"genome": genome, "clicks": 0}]
     rv = client.post(
-        "/api/breed",
+        "/api/evolve",
         json={"parents": parents, "population_size": 2},
     )
     assert rv.status_code == 200
@@ -75,23 +75,23 @@ def test_api_breed_without_genealogy(client, cppn_engine):
     assert "population_id" not in data
 
 
-def test_api_breed_missing_parents(client):
-    """POST /api/breed without parents returns 400."""
-    rv = client.post("/api/breed", json={})
+def test_api_evolve_missing_parents(client):
+    """POST /api/evolve without parents returns 400."""
+    rv = client.post("/api/evolve", json={})
     assert rv.status_code == 400
     assert "parents" in rv.get_json().get("error", "").lower()
 
 
-def test_api_breed_empty_parents(client):
-    """POST /api/breed with empty parents returns 400."""
-    rv = client.post("/api/breed", json={"parents": []})
+def test_api_evolve_empty_parents(client):
+    """POST /api/evolve with empty parents returns 400."""
+    rv = client.post("/api/evolve", json={"parents": []})
     assert rv.status_code == 400
 
 
-def test_api_breed_malformed_parents(client):
-    """POST /api/breed with invalid genome in parents returns 400."""
+def test_api_evolve_malformed_parents(client):
+    """POST /api/evolve with invalid genome in parents returns 400."""
     rv = client.post(
-        "/api/breed",
+        "/api/evolve",
         json={"parents": [{"genome": "not a genome", "clicks": 0}]},
     )
     assert rv.status_code == 400
@@ -99,8 +99,8 @@ def test_api_breed_malformed_parents(client):
 
 
 @pytest.mark.slow
-def test_api_breed_with_genealogy(client, genealogy_db, cppn_engine):
-    """Breed with parent_population_id saves to genealogy and returns population_id."""
+def test_api_evolve_with_genealogy(client, genealogy_db, cppn_engine):
+    """Evolve with parent_population_id saves to genealogy and returns population_id."""
     dual = create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
@@ -118,8 +118,8 @@ def test_api_breed_with_genealogy(client, genealogy_db, cppn_engine):
     assert save_rv.status_code == 200
     pop_id = save_rv.get_json()["population_id"]
     parents = [{"genome": payload, "clicks": 1}]
-    breed_rv = client.post(
-        "/api/breed",
+    evolve_rv = client.post(
+        "/api/evolve",
         json={
             "parents": parents,
             "population_size": 2,
@@ -128,8 +128,8 @@ def test_api_breed_with_genealogy(client, genealogy_db, cppn_engine):
             "branch_name": "main",
         },
     )
-    assert breed_rv.status_code == 200
-    data = breed_rv.get_json()
+    assert evolve_rv.status_code == 200
+    data = evolve_rv.get_json()
     assert "children" in data
     assert "population_id" in data
     assert data["population_id"] != pop_id
@@ -233,7 +233,7 @@ def test_api_network_missing_genome(client):
 
 def test_api_error_response_shape(client):
     """Error responses have exactly one key 'error' with a string value."""
-    rv = client.post("/api/breed", json={})
+    rv = client.post("/api/evolve", json={})
     assert rv.status_code == 400
     data = rv.get_json()
     assert list(data.keys()) == ["error"]

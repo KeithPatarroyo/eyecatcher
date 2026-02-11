@@ -14,9 +14,9 @@ Frontend static/js/modules/evolution_config.js mirrors DEFAULT_POPULATION_SIZE
 and MAX_POPULATION_SIZE; update both when changing.
 """
 
-# App constants (population, breeding, rendering)
+# App constants (population, reproduction, rendering)
 DEFAULT_POPULATION_SIZE = 12
-# Probability of crossover (two parents) when breeding; else mutate one parent.
+# Crossover (two parents) when producing next generation; else mutate one parent.
 # Gene-level mutation rates are in config/neat/*.txt.
 CROSSOVER_PROBABILITY = 0.3
 MAX_POPULATION_SIZE = 50

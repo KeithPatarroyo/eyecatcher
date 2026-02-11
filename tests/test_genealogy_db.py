@@ -215,8 +215,8 @@ def test_reset_genealogy(db_path):
         assert genealogy_db_module.get_stats()["total_populations"] == 0
 
 
-def test_save_breeding_result(db_path):
-    """save_breeding_result inserts population and individuals."""
+def test_save_generation_result(db_path):
+    """save_generation_result inserts population and individuals."""
     with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
         genealogy_db_module.save_population(
             genomes=[_genome_payload(0)],
@@ -224,7 +224,7 @@ def test_save_breeding_result(db_path):
             generation_num=0,
             branch_name="main",
         )
-        new_id = genealogy_db_module.save_breeding_result(
+        new_id = genealogy_db_module.save_generation_result(
             parent_population_id=1,
             generation_num=1,
             branch_name="main",

@@ -10,7 +10,7 @@ from .genealogy_db import (
     get_tree_nodes,
     init_genealogy_db,
     reset_genealogy,
-    save_breeding_result,
+    save_generation_result,
     save_population,
 )
 from .genome_persistence import load_dual_genome_from_path, save_dual_genome_to_path
@@ -25,7 +25,7 @@ __all__ = [
     "get_tree_nodes",
     "init_genealogy_db",
     "reset_genealogy",
-    "save_breeding_result",
+    "save_generation_result",
     "save_population",
     "save_dual_genome_to_path",
     "load_dual_genome_from_path",

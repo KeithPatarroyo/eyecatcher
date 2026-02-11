@@ -1,6 +1,6 @@
 # Researcher guide
 
-This guide points you to the files that matter for changing evolution behavior (signals, NEAT config, breeding, rendering). The rest of the app (server, community, genealogy UI) you can mostly ignore for evolution-only work.
+This guide points you to the files that matter for changing evolution behavior (signals, NEAT config, reproduction, rendering). The rest of the app (server, community, genealogy UI) you can mostly ignore for evolution-only work.
 
 ## How the backend is grouped
 
@@ -8,7 +8,7 @@ The Python package is under `src/eyecatcher/`. Main packages:
 
 | Area | What it is | When you look here |
 |------|------------|---------------------|
-| **algorithm/** | Config, CPPNEngine, breeding, operators. | Changing the evolution algorithm or NEAT config. |
+| **algorithm/** | Config, CPPNEngine, reproduction, operators. | Changing the evolution algorithm or NEAT config. |
 | **genome/** | DualGenome, wire serialization (JSON, copy). | Changing genome representation or serialization. |
 | **signals/** | Input/output definitions, activation. | Adding/changing signals or activation functions. |
 | **evaluation/** | CPU rendering, query, genome_visualizer, network_data (graph/stats for UI/API). | Changing rendering, CPPN evaluation, or network export. |
@@ -22,13 +22,13 @@ Exact file tree and file-by-file roles: **[src/eyecatcher/README.md](src/eyecatc
 ## Where evolution logic lives
 
 - **Public API:** Import from **eyecatcher.algorithm** (CPPNEngine, config), **eyecatcher.genome** (DualGenome, serialization), **eyecatcher.signals**, **eyecatcher.evaluation**, **eyecatcher.glsl** (ShaderCompiler).
-- **Algorithm** (config, engine, breeding, operators): **src/eyecatcher/algorithm/**.
+- **Algorithm** (config, engine, reproduction, operators): **src/eyecatcher/algorithm/**.
 - **Genome and wire serialization:** **src/eyecatcher/genome/**; network graph/stats for UI/API: **src/eyecatcher/evaluation/network_data.py**.
 - **Signals and activation:** **src/eyecatcher/signals/**.
 - **CPU rendering, query, visualization:** **src/eyecatcher/evaluation/**.
 - **Shader pipeline** (genome to GLSL): **src/eyecatcher/glsl/** (display only).
 - **Genome file save/load:** **src/eyecatcher/data/genome_persistence.py**.
-- **Entry point:** **server.py** at package root; uses algorithm, genome, glsl, etc. for compile, breed, save, and query.
+- **Entry point:** **server.py** at package root; uses algorithm, genome, glsl, etc. for compile, evolve, save, and query.
 
 ## Add or change a signal (input/output)
 
@@ -38,12 +38,12 @@ Exact file tree and file-by-file roles: **[src/eyecatcher/README.md](src/eyecatc
 
 ## Change NEAT config paths or population size
 
-- [src/eyecatcher/algorithm/config.py](src/eyecatcher/algorithm/config.py) – NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH, DEFAULT_POPULATION_SIZE, CROSSOVER_PROBABILITY, etc. Config files live in [config/neat/](config/neat/); see config/neat/README.md for which are default. Crossover rate (probability of crossover vs mutate-one-parent when breeding) is here; gene-level mutation rates are in the NEAT .txt files.
+- [src/eyecatcher/algorithm/config.py](src/eyecatcher/algorithm/config.py) – NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH, DEFAULT_POPULATION_SIZE, CROSSOVER_PROBABILITY, etc. Config files live in [config/neat/](config/neat/); see config/neat/README.md for which are default. Crossover rate (probability of crossover vs mutate-one-parent when producing next generation) is here; gene-level mutation rates are in the NEAT .txt files.
 
 ## Breeding and selection
 
-- [src/eyecatcher/algorithm/breeding.py](src/eyecatcher/algorithm/breeding.py) – `breed_next_generation()` (parent handling, elitism, mutation vs crossover). Called by the server's breed endpoint.
-- [src/eyecatcher/algorithm/operators.py](src/eyecatcher/algorithm/operators.py) – `mutate_dual_genome`, `crossover_dual_genomes`. Change selection or add tournament selection by editing breeding.py and/or operators.
+- [src/eyecatcher/algorithm/reproduction.py](src/eyecatcher/algorithm/reproduction.py) – `produce_next_generation()` (parent handling, elitism, mutation vs crossover). Called by the server's evolve endpoint.
+- [src/eyecatcher/algorithm/operators.py](src/eyecatcher/algorithm/operators.py) – `mutate_dual_genome`, `crossover_dual_genomes`. Change selection or add tournament selection by editing reproduction.py and/or operators.
 
 ## Rendering (CPU) and serialization
 
@@ -71,16 +71,16 @@ The same “shader + network stats” shape is built in one place and used by th
 
 Genealogy stores evolutionary history (populations, individuals, branches) in SQLite:
 
-- **Data layer:** [src/eyecatcher/data/genealogy_db.py](src/eyecatcher/data/genealogy_db.py) – DB init, `save_breeding_result`, `save_population`, and pure query functions. [src/eyecatcher/data/genome_persistence.py](src/eyecatcher/data/genome_persistence.py) – `save_dual_genome_to_path`, `load_dual_genome_from_path` (pickle). No Flask; returns Python dicts/lists or genome objects.
+- **Data layer:** [src/eyecatcher/data/genealogy_db.py](src/eyecatcher/data/genealogy_db.py) – DB init, `save_generation_result`, `save_population`, and pure query functions. [src/eyecatcher/data/genome_persistence.py](src/eyecatcher/data/genome_persistence.py) – `save_dual_genome_to_path`, `load_dual_genome_from_path` (pickle). No Flask; returns Python dicts/lists or genome objects.
 - **Routes:** [web/genealogy_routes.py](src/eyecatcher/web/genealogy_routes.py) – thin HTTP wrappers: parse request, call genealogy_db, jsonify.
-- **Extending metadata:** The `populations.metadata_json` column stores arbitrary JSON. Pass `metadata={...}` to `save_population` or `save_breeding_result` (e.g. experiment_id, config_hash, selection method) for reproducibility; export includes it.
+- **Extending metadata:** The `populations.metadata_json` column stores arbitrary JSON. Pass `metadata={...}` to `save_population` or `save_generation_result` (e.g. experiment_id, config_hash, selection method) for reproducibility; export includes it.
 - **Custom export:** Export format is the dict returned by `export_genealogy_data`. To add another format (e.g. CSV of fitness over time), add a function in genealogy_db and a route that calls it.
 
 ## Frontend extension points
 
 The viewer frontend is grouped by role; see **[static/js/README.md](static/js/README.md)** for the full layout.
 
-- **evolution/** — Where the experiment lives (signals, breeding, rendering). Edit when you change how evolution or the viewer behaves: [evolution_config.js](static/js/evolution/evolution_config.js), [breed_coordinator.js](static/js/evolution/breed_coordinator.js), [pattern_renderer.js](static/js/evolution/pattern_renderer.js), [viewer_controls.js](static/js/evolution/viewer_controls.js).
+- **evolution/** — Where the experiment lives (signals, reproduction, rendering). Edit when you change how evolution or the viewer behaves: [evolution_config.js](static/js/evolution/evolution_config.js), [evolution_coordinator.js](static/js/evolution/evolution_coordinator.js), [pattern_renderer.js](static/js/evolution/pattern_renderer.js), [viewer_controls.js](static/js/evolution/viewer_controls.js).
 - **app/** — Application shell (state, grid, fullscreen, genealogy sync, animation loop). Edit when you change app structure or flow: [app.js](static/js/app/app.js), [population_state.js](static/js/app/population_state.js), etc.
 - **lib/** — Infrastructure (API client, utils, toast, storage). Only touch for bugs or app-wide support.
 - **features/** — Optional features (population UI, community, network viz, toolbar, genealogy viewer). Edit when you care about that feature.
@@ -89,7 +89,7 @@ The viewer frontend is grouped by role; see **[static/js/README.md](static/js/RE
 
 ## What you can ignore for evolution-only work
 
-- **Server and routes:** server.py, web/ (stateless_api, genealogy_routes, community_routes) – HTTP and DB; they call algorithm (breeding), genome (serialization), glsl (compile), response_builder, and data (genealogy_db).
+- **Server and routes:** server.py, web/ (stateless_api, genealogy_routes, community_routes) – HTTP and DB; they call algorithm (reproduction), genome (serialization), glsl (compile), response_builder, and data (genealogy_db).
 - **Frontend:** static/ – pattern renderer, viewer controls, and evolution_config.js matter for signals and UI; the rest (community UI, genealogy viewer, storage) is optional for "just evolution."
 - **Data and config:** data/ (DBs), config/neat/ (file contents matter; paths set in algorithm/config.py).
 
@@ -103,7 +103,7 @@ Some constants exist in both Python and JavaScript; when you change them, update
 |------------|---------|
 | Add/rename a signal | signals/signals.py, evolution_config.js, NEAT num_inputs/num_outputs |
 | Change population size or NEAT paths | algorithm/config.py |
-| Change breeding/selection | algorithm/breeding.py, algorithm/operators.py |
+| Change reproduction/selection | algorithm/reproduction.py, algorithm/operators.py |
 | Change CPU rendering | evaluation/rendering.py |
 | Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl/glsl_fragments.py, glsl/node_code_generator.py, glsl/compiler_topology.py |
 | Change compile/save/export response shape | web/response_builder.py |

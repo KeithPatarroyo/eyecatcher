@@ -1,9 +1,9 @@
 /**
- * BreedCoordinator: coordinates breed API call and callbacks. No DOM; reads from getState
- * and EvolutionConfig. Researchers change selection or breed params here or in EvolutionConfig.
+ * EvolutionCoordinator: coordinates evolve API call and callbacks. No DOM; reads from getState
+ * and EvolutionConfig. Researchers change selection or evolve params here or in EvolutionConfig.
  *
  * Dependencies: window.EvolutionConfig (MIN/MAX/DEFAULT_POPULATION_SIZE)
- * Exposes: BreedCoordinator.breedGeneration
+ * Exposes: EvolutionCoordinator.evolveGeneration
  */
 (function () {
     "use strict";
@@ -13,26 +13,39 @@
         return {
             min: cfg.MIN_POPULATION_SIZE !== undefined ? cfg.MIN_POPULATION_SIZE : 2,
             max: cfg.MAX_POPULATION_SIZE !== undefined ? cfg.MAX_POPULATION_SIZE : 50,
-            default: cfg.DEFAULT_POPULATION_SIZE !== undefined ? cfg.DEFAULT_POPULATION_SIZE : 12,
+            default:
+                cfg.DEFAULT_POPULATION_SIZE !== undefined
+                    ? cfg.DEFAULT_POPULATION_SIZE
+                    : 12,
         };
     }
 
     /**
-     * Run one breed cycle: compute parents from state, call apiBreed, then onSuccess or onError.
+     * Run one evolution cycle: compute parents from state, call apiEvolve, then onSuccess or onError.
      * @param {function()} getState - returns { currentPopulation, currentGenomes, patterns, populationId, branchName, generationNum }
      * @param {function()} getPopulationSize - returns number (from toolbar input or config)
-     * @param {function(parents, size, opts)} apiBreed - (parents, populationSize, { parentPopulationId, generationNum, branchName }) => Promise<{ children, population_id? }>
+     * @param {function(parents, size, opts)} apiEvolve - (parents, populationSize, { parentPopulationId, generationNum, branchName }) => Promise<{ children, population_id? }>
      * @param {function(children, newGenerationNum)} onSuccess
      * @param {function(err)} onError
      */
-    function breedGeneration(getState, getPopulationSize, apiBreed, onSuccess, onError) {
+    function evolveGeneration(
+        getState,
+        getPopulationSize,
+        apiEvolve,
+        onSuccess,
+        onError
+    ) {
         var state = getState();
         var genomes = state.currentGenomes;
         var population = state.currentPopulation;
         var patterns = state.patterns;
 
         if (!genomes || !genomes.length) {
-            onError(new Error("No population loaded. Start with New random population or Load population."));
+            onError(
+                new Error(
+                    "No population loaded. Start with New random population or Load population."
+                )
+            );
             return;
         }
 
@@ -49,7 +62,9 @@
             });
 
         if (!parents.length) {
-            onError(new Error("Select at least one pattern (click on it) before breeding."));
+            onError(
+                new Error("Select at least one pattern (click on it) before evolving.")
+            );
             return;
         }
 
@@ -67,12 +82,12 @@
             branchName: state.branchName || "main",
         };
 
-        apiBreed(parents, populationSize, opts)
+        apiEvolve(parents, populationSize, opts)
             .then(function (data) {
                 if (data.children) {
                     onSuccess(data.children, newGenerationNum, data.population_id);
                 } else {
-                    onError(new Error("No children in breed response"));
+                    onError(new Error("No children in evolve response"));
                 }
             })
             .catch(function (err) {
@@ -80,7 +95,7 @@
             });
     }
 
-    window.BreedCoordinator = {
-        breedGeneration: breedGeneration,
+    window.EvolutionCoordinator = {
+        evolveGeneration: evolveGeneration,
     };
 })();

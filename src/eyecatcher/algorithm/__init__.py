@@ -1,10 +1,9 @@
 """
-Evolution algorithm: engine, breeding, and optimization operators.
+Evolution algorithm: engine, reproduction, and optimization operators.
 
 Core neuroevolution for dual-CPPN genomes.
 """
 
-from .breeding import breed_next_generation
 from .config import (
     CROSSOVER_PROBABILITY,
     DEFAULT_NUM_FRAMES,
@@ -23,10 +22,11 @@ from .operators import (
     mutate_dual_genome,
     mutate_single_genome,
 )
+from .reproduction import produce_next_generation
 
 __all__ = [
     "CPPNEngine",
-    "breed_next_generation",
+    "produce_next_generation",
     "mutate_single_genome",
     "mutate_dual_genome",
     "crossover_single_genomes",

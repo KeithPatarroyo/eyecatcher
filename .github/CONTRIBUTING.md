@@ -4,7 +4,7 @@ Thank you for your interest in contributing. This document explains how to get s
 
 ## Ways to contribute
 
-- **Code**: Bug fixes, new features, refactors. If you're focused on evolution logic (signals, NEAT, breeding), see [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md).
+- **Code**: Bug fixes, new features, refactors. If you're focused on evolution logic (signals, NEAT, reproduction), see [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md).
 - **Documentation**: Improve README, docstrings, or add guides.
 - **Issues**: Report bugs or suggest features via [GitHub Issues](https://github.com/KeithPatarroyo/eyecatcher/issues).
 - **Testing**: Add or improve tests, or help verify behaviour on different setups.

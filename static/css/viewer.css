@@ -116,11 +116,11 @@ h1 {
     flex-wrap: wrap;
 }
 
-#breed-btn {
+#evolve-btn {
     background: var(--color-success);
 }
 
-#breed-btn:hover {
+#evolve-btn:hover {
     background: var(--color-success-hover);
 }
 
