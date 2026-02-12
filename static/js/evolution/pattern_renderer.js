@@ -147,27 +147,60 @@
 
     /**
      * Draw one frame of a pattern with given uniforms.
-     * Uses SubstrateAdapters.getAdapter(substrateId).render when available; else infers adapter from patternData (caRule -> ca, else dual_cppn).
+     * Uses SubstrateAdapters (substrateId then findAdapterByGenome from patternData).
      * @param {Object} patternData - From setupPattern
      * @param {Object} uniformValues - Keys match uniform names (u_raw_time, u_mouse_speed, ...); use buildUniformValues(signalValues) to build from signal ids
      * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
      */
     function renderPattern(patternData, uniformValues, signalState) {
-        var substrateId =
-            window.PopulationState && window.PopulationState.getState
-                ? window.PopulationState.getState().substrateId
-                : null;
+        var substrateId = window.PopulationState.getState().substrateId;
         var SubstrateAdapters = window.SubstrateAdapters;
-        var adapter =
-            SubstrateAdapters && SubstrateAdapters.getAdapter
-                ? SubstrateAdapters.getAdapter(substrateId)
-                : null;
-        if (!adapter && SubstrateAdapters && SubstrateAdapters.getAdapter) {
-            var inferredId = patternData.caRule != null ? "ca" : "dual_cppn";
-            adapter = SubstrateAdapters.getAdapter(inferredId);
+        var adapter = SubstrateAdapters.getAdapter(substrateId);
+        if (!adapter && patternData.caRule != null) {
+            adapter = SubstrateAdapters.findAdapterByGenome({
+                rule: patternData.caRule,
+            });
+        }
+        if (!adapter) {
+            adapter = SubstrateAdapters.getAdapter("dual_cppn");
         }
         if (adapter && typeof adapter.render === "function") {
             adapter.render(patternData, uniformValues, signalState);
+        }
+    }
+
+    function createErrorFallback(errorMsg) {
+        var fallback = document.createElement("div");
+        fallback.className = "pattern-canvas-fallback";
+        fallback.textContent = errorMsg || "WebGL not available";
+        if (errorMsg && errorMsg.length > 80) {
+            fallback.setAttribute("title", errorMsg);
+            fallback.textContent = "Shader error (hover for details)";
+        }
+        return fallback;
+    }
+
+    function attachCardEvents(card, id, options) {
+        if (options.onClick) {
+            card.addEventListener("click", function () {
+                options.onClick(id, card);
+            });
+        }
+        if (options.onUnclick) {
+            card.addEventListener("contextmenu", function (e) {
+                e.preventDefault();
+                options.onUnclick(id, card);
+            });
+        }
+        if (options.onMouseEnter) {
+            card.addEventListener("mouseenter", function () {
+                options.onMouseEnter(id);
+            });
+        }
+        if (options.onMouseLeave) {
+            card.addEventListener("mouseleave", function () {
+                options.onMouseLeave(id);
+            });
         }
     }
 
@@ -190,11 +223,8 @@
         const pattern = options.pattern;
         const substrateId = options.substrateId || null;
         const SubstrateAdapters = window.SubstrateAdapters;
-        var adapter =
-            SubstrateAdapters && SubstrateAdapters.getAdapter
-                ? SubstrateAdapters.getAdapter(substrateId)
-                : null;
-        if (!adapter && SubstrateAdapters && SubstrateAdapters.findAdapterByGenome) {
+        var adapter = SubstrateAdapters.getAdapter(substrateId);
+        if (!adapter) {
             adapter = SubstrateAdapters.findAdapterByGenome(pattern);
         }
         const id = pattern.id;
@@ -282,48 +312,24 @@
             canvas.className = "pattern-canvas";
             canvas.width = PATTERN_CANVAS_SIZE;
             canvas.height = PATTERN_CANVAS_SIZE;
-            card.appendChild(canvas);
-            card.appendChild(actions);
-            card.appendChild(info);
             let patternData = setupPattern(canvas, pattern.shader);
             if (!patternData || patternData.error) {
-                const fallback = document.createElement("div");
-                fallback.className = "pattern-canvas-fallback";
-                fallback.textContent =
-                    patternData && patternData.error
-                        ? patternData.error
-                        : "WebGL not available";
-                if (patternData && patternData.error && patternData.error.length > 80) {
-                    fallback.setAttribute("title", patternData.error);
-                    fallback.textContent = "Shader error (hover for details)";
-                }
-                card.replaceChild(fallback, canvas);
+                var fallback = createErrorFallback(
+                    patternData && patternData.error ? patternData.error : null
+                );
+                card.appendChild(fallback);
+                card.appendChild(actions);
+                card.appendChild(info);
+                attachCardEvents(card, id, options);
                 return { card: card, canvas: null, patternData: null };
             }
             if (adapter && typeof adapter.preparePatternData === "function") {
                 adapter.preparePatternData(patternData, pattern);
             }
-            if (options.onClick) {
-                card.addEventListener("click", function () {
-                    options.onClick(id, card);
-                });
-            }
-            if (options.onUnclick) {
-                card.addEventListener("contextmenu", function (e) {
-                    e.preventDefault();
-                    options.onUnclick(id, card);
-                });
-            }
-            if (options.onMouseEnter) {
-                card.addEventListener("mouseenter", function () {
-                    options.onMouseEnter(id);
-                });
-            }
-            if (options.onMouseLeave) {
-                card.addEventListener("mouseleave", function () {
-                    options.onMouseLeave(id);
-                });
-            }
+            card.appendChild(canvas);
+            card.appendChild(actions);
+            card.appendChild(info);
+            attachCardEvents(card, id, options);
             return { card: card, canvas: canvas, patternData: patternData };
         }
 
@@ -337,27 +343,7 @@
             card.appendChild(img);
             card.appendChild(actions);
             card.appendChild(info);
-            if (options.onClick) {
-                card.addEventListener("click", function () {
-                    options.onClick(id, card);
-                });
-            }
-            if (options.onUnclick) {
-                card.addEventListener("contextmenu", function (e) {
-                    e.preventDefault();
-                    options.onUnclick(id, card);
-                });
-            }
-            if (options.onMouseEnter) {
-                card.addEventListener("mouseenter", function () {
-                    options.onMouseEnter(id);
-                });
-            }
-            if (options.onMouseLeave) {
-                card.addEventListener("mouseleave", function () {
-                    options.onMouseLeave(id);
-                });
-            }
+            attachCardEvents(card, id, options);
             return { card: card, canvas: null, patternData: null };
         }
 
@@ -365,48 +351,21 @@
         canvas.className = "pattern-canvas";
         canvas.width = PATTERN_CANVAS_SIZE;
         canvas.height = PATTERN_CANVAS_SIZE;
+        let patternData = setupPattern(canvas, pattern.shader);
+        if (!patternData || patternData.error) {
+            var fallbackEl = createErrorFallback(
+                patternData && patternData.error ? patternData.error : null
+            );
+            card.appendChild(fallbackEl);
+            card.appendChild(actions);
+            card.appendChild(info);
+            attachCardEvents(card, id, options);
+            return { card: card, canvas: null, patternData: null };
+        }
         card.appendChild(canvas);
         card.appendChild(actions);
         card.appendChild(info);
-
-        let patternData = setupPattern(canvas, pattern.shader);
-        if (!patternData || patternData.error) {
-            const fallback = document.createElement("div");
-            fallback.className = "pattern-canvas-fallback";
-            fallback.textContent =
-                patternData && patternData.error
-                    ? patternData.error
-                    : "WebGL not available";
-            if (patternData && patternData.error && patternData.error.length > 80) {
-                fallback.setAttribute("title", patternData.error);
-                fallback.textContent = "Shader error (hover for details)";
-            }
-            card.replaceChild(fallback, canvas);
-            return { card: card, canvas: null, patternData: null };
-        }
-
-        if (options.onClick) {
-            card.addEventListener("click", function () {
-                options.onClick(id, card);
-            });
-        }
-        if (options.onUnclick) {
-            card.addEventListener("contextmenu", function (e) {
-                e.preventDefault();
-                options.onUnclick(id, card);
-            });
-        }
-        if (options.onMouseEnter) {
-            card.addEventListener("mouseenter", function () {
-                options.onMouseEnter(id);
-            });
-        }
-        if (options.onMouseLeave) {
-            card.addEventListener("mouseleave", function () {
-                options.onMouseLeave(id);
-            });
-        }
-
+        attachCardEvents(card, id, options);
         return { card: card, canvas: canvas, patternData: patternData };
     }
 
