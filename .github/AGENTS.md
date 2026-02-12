@@ -20,6 +20,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 | `make test` | pytest --tb=short -v |
 | `make lint` | Ruff (Python) + ESLint (JS) |
 | `make format` | Ruff format + Prettier (JS) |
+| `make generate-signals` | Generate evolution_config_signals.generated.js from Python registry; validate NEAT (run after changing signals) |
 | `make dev` | Run Flask dev server |
 | `make docker-up` | docker compose -f docker/docker-compose.yml up --build |
 | `make clean` | Remove build artifacts, caches |
