@@ -1,15 +1,15 @@
-"""Tests for CPPN engine: population, mutation, crossover, query."""
+"""Tests for dual-CPPN substrate: population, mutation, crossover, query."""
 
 from eyecatcher.algorithm import mutate_single_genome
+from eyecatcher.evaluation.query import query_dual_cppn
 from eyecatcher.genome import (
     DualGenome,
-    create_random_dual_genome,
     create_random_genome,
 )
 
 
 def test_engine_create_population(cppn_engine):
-    """Engine creates population and has configs."""
+    """Substrate has configs and population."""
     assert cppn_engine.config is not None
     assert cppn_engine.time_config is not None
     assert cppn_engine.population is not None
@@ -17,10 +17,8 @@ def test_engine_create_population(cppn_engine):
 
 
 def test_create_random_dual_genome(cppn_engine):
-    """create_random_dual_genome returns a DualGenome with visual and time_signal."""
-    dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=3
-    )
+    """create_random returns a DualGenome with visual and time_signal."""
+    dual = cppn_engine.create_random(key=3)
     assert isinstance(dual, DualGenome)
     assert dual.visual is not None
     assert dual.time_signal is not None
@@ -30,15 +28,17 @@ def test_create_random_dual_genome(cppn_engine):
 def test_query_dual_cppn_returns_rgb(cppn_engine, random_dual_genome):
     """query_dual_cppn returns (r, g, b) in 0-1."""
     inputs = {"x": 0.0, "y": 0.0, "raw_time": 0.0}
-    r, g, b = cppn_engine.query_dual_cppn(random_dual_genome, inputs)
+    r, g, b = query_dual_cppn(
+        random_dual_genome, cppn_engine.config, cppn_engine.time_config, inputs
+    )
     assert 0 <= r <= 1
     assert 0 <= g <= 1
     assert 0 <= b <= 1
 
 
 def test_mutate_dual_genome(cppn_engine, random_dual_genome):
-    """mutate_dual_genome returns a new DualGenome."""
-    mutated = cppn_engine.mutate_dual_genome(random_dual_genome, new_key=1)
+    """substrate.mutate returns a new DualGenome."""
+    mutated = cppn_engine.mutate(random_dual_genome, 1)
     assert isinstance(mutated, DualGenome)
     assert mutated.key == 1
     assert (
@@ -48,14 +48,10 @@ def test_mutate_dual_genome(cppn_engine, random_dual_genome):
 
 
 def test_crossover_dual_genomes(cppn_engine):
-    """crossover_dual_genomes returns a child DualGenome."""
-    a = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
-    )
-    b = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=1
-    )
-    child = cppn_engine.crossover_dual_genomes(a, b, new_key=2)
+    """substrate.crossover returns a child DualGenome."""
+    a = cppn_engine.create_random(key=0)
+    b = cppn_engine.create_random(key=1)
+    child = cppn_engine.crossover(a, b, 2)
     assert isinstance(child, DualGenome)
     assert child.key == 2
     assert child.visual is not None

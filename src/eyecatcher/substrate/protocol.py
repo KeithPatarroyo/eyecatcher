@@ -108,6 +108,36 @@ class Substrate(Protocol[IndividualT]):
         """
         return {}
 
+    def query_time_output(
+        self, ind: IndividualT, inputs: dict[str, float]
+    ) -> dict[str, Any] | None:
+        """
+        Optional: query time/signal output for debug panel.
+        Returns {"timeOutput": float, "inputs": {...}} or None if unsupported.
+        """
+        return None
+
+    def get_network_data(self, ind: IndividualT) -> dict[str, Any] | None:
+        """
+        Optional: return network visualization data for a genome.
+        Returns {"nodes": [...], "connections": [...]} or None if unsupported.
+        """
+        return None
+
+    def adjust_weight(
+        self,
+        ind: IndividualT,
+        network: str,
+        source: str,
+        target: str,
+        weight: float,
+    ) -> dict[str, Any] | None:
+        """
+        Optional: adjust a connection weight and return updated shader and genome.
+        Returns {"shader": str, "genome": dict} or None if unsupported.
+        """
+        return None
+
 
 def get_substrate_capabilities(substrate: Any) -> dict[str, bool]:
     """

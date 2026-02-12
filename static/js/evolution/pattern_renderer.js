@@ -167,7 +167,11 @@
             });
         }
         if (!adapter) {
-            adapter = SubstrateAdapters.getAdapter("dual_cppn");
+            adapter = SubstrateAdapters.getAdapter(
+                (window.EvolutionConfig &&
+                    window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
+                    "dual_cppn"
+            );
         }
         if (adapter && typeof adapter.render === "function") {
             adapter.render(patternData, uniformValues, signalState);

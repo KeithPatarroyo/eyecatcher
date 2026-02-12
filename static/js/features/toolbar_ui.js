@@ -32,19 +32,24 @@
             }
         });
         menu.querySelectorAll("[data-action]").forEach(function (item) {
-            item.addEventListener("click", function () {
+            function act() {
                 if (item.dataset.action === "random")
                     window.PopulationUI.startNewRandomPopulation();
                 else if (item.dataset.action === "load")
                     window.PopulationUI.onLoadSavedClick();
                 close();
-            });
-            item.addEventListener("keydown", function (e) {
-                if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    item.click();
-                }
-            });
+            }
+            if (window.Utils && window.Utils.onRoleButtonKeydown) {
+                window.Utils.onRoleButtonKeydown(item, act);
+            } else {
+                item.addEventListener("click", act);
+                item.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        act();
+                    }
+                });
+            }
         });
         document.addEventListener("click", close);
         document.addEventListener("keydown", function (e) {
@@ -56,19 +61,24 @@
         const helpBtn = document.getElementById("help-btn");
         const instructions = document.getElementById("instructions");
         if (!helpBtn || !instructions) return;
-        helpBtn.addEventListener("click", function () {
+        function toggleHelp() {
             instructions.hidden = !instructions.hidden;
             helpBtn.setAttribute(
                 "title",
                 instructions.hidden ? "Show help" : "Hide help"
             );
-        });
-        helpBtn.addEventListener("keydown", function (e) {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                helpBtn.click();
-            }
-        });
+        }
+        if (window.Utils && window.Utils.onRoleButtonKeydown) {
+            window.Utils.onRoleButtonKeydown(helpBtn, toggleHelp);
+        } else {
+            helpBtn.addEventListener("click", toggleHelp);
+            helpBtn.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleHelp();
+                }
+            });
+        }
     }
 
     function initSettingsPanel() {
@@ -124,24 +134,31 @@
         function update(val) {
             input.value = clamp(Number(val));
         }
-        downBtn.addEventListener("click", function () {
+        function stepDown() {
             update(Number(input.value) - 1);
-        });
-        upBtn.addEventListener("click", function () {
+        }
+        function stepUp() {
             update(Number(input.value) + 1);
-        });
-        downBtn.addEventListener("keydown", function (e) {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                downBtn.click();
-            }
-        });
-        upBtn.addEventListener("keydown", function (e) {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                upBtn.click();
-            }
-        });
+        }
+        if (window.Utils && window.Utils.onRoleButtonKeydown) {
+            window.Utils.onRoleButtonKeydown(downBtn, stepDown);
+            window.Utils.onRoleButtonKeydown(upBtn, stepUp);
+        } else {
+            downBtn.addEventListener("click", stepDown);
+            downBtn.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    stepDown();
+                }
+            });
+            upBtn.addEventListener("click", stepUp);
+            upBtn.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    stepUp();
+                }
+            });
+        }
         input.addEventListener("change", function () {
             update(input.value);
         });

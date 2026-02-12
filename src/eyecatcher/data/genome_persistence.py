@@ -2,7 +2,7 @@
 Genome file persistence: save/load DualGenome to pickle files.
 
 Data layer for genome storage. Edit here when changing where or how genomes
-are stored on disk. Used by algorithm.engine and web save flow.
+are stored on disk. Used by substrate build_save_assets and web save flow.
 """
 
 from ..genome.genome import DualGenome

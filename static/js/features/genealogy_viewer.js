@@ -33,27 +33,10 @@ const PHYSICS_DEFAULTS = {
     damping: 0.09,
 };
 
-function showGenealogyToast(title, body, type = "success") {
-    if (typeof window.Toast !== "undefined" && window.Toast.show) {
+function showGenealogyToast(title, body, type) {
+    type = type || "success";
+    if (window.Toast && window.Toast.show) {
         window.Toast.show(title, body, type, { duration: TOAST_DURATION_MS });
-    } else {
-        const container = document.getElementById("toast-container");
-        const toast = document.createElement("div");
-        toast.className = "toast " + type;
-        const titleEl = document.createElement("div");
-        titleEl.className = "toast-title";
-        titleEl.textContent = title;
-        toast.appendChild(titleEl);
-        if (body) {
-            const bodyEl = document.createElement("div");
-            bodyEl.className = "toast-body";
-            bodyEl.textContent = body;
-            toast.appendChild(bodyEl);
-        }
-        container.appendChild(toast);
-        setTimeout(function () {
-            toast.remove();
-        }, TOAST_DURATION_MS);
     }
 }
 

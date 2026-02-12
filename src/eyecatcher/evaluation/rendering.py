@@ -11,6 +11,7 @@ import numpy as np
 
 from ..algorithm import config as evolution_config
 from ..genome.genome import DualGenome
+from ..lib.math_utils import normalize_to_bipolar
 from ..signals.signals import (
     TIME_CPPN_TIME_INPUT_NAME,
     TIME_INPUTS,
@@ -35,8 +36,8 @@ def _render_pixel_grid(
     img = np.zeros((resolution, resolution, 3), dtype=np.uint8)
     for i in range(resolution):
         for j in range(resolution):
-            x = -1.0 + (i / resolution) * 2.0
-            y = -1.0 + (j / resolution) * 2.0
+            x = normalize_to_bipolar(i / resolution)
+            y = normalize_to_bipolar(j / resolution)
             inputs = {**base_inputs, "x": x, "y": y}
             r, g, b = query_fn(inputs)
             img[j, i] = _rgb_uint8(r, g, b)
@@ -70,7 +71,7 @@ def render_image(
     if resolution is None:
         resolution = evolution_config.PREVIEW_RENDER_RESOLUTION
     base = default_inputs(VISUAL_INPUTS)
-    base[VISUAL_TIME_INPUT_NAME] = -1.0 + time * 2.0
+    base[VISUAL_TIME_INPUT_NAME] = normalize_to_bipolar(time)
     if extra_inputs:
         base.update(extra_inputs)
 
@@ -138,7 +139,7 @@ def render_dual_animation_frames(
 
     def render_at(t: float) -> np.ndarray:
         frame_inputs = dict(extra_inputs) if extra_inputs else {}
-        frame_inputs[time_key] = -1.0 + t * 2.0
+        frame_inputs[time_key] = normalize_to_bipolar(t)
         return render_dual_image(
             dual_genome,
             visual_config,

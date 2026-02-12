@@ -93,6 +93,22 @@
         if (el) fn(el);
     }
 
+    /**
+     * Attach click and keydown (Enter/Space) to a button-like element so it activates on click or keyboard.
+     * @param {HTMLElement} el - Button or role="button" element
+     * @param {function(): void} fn - Callback to run on activate
+     */
+    function onRoleButtonKeydown(el, fn) {
+        if (!el) return;
+        el.addEventListener("click", fn);
+        el.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fn();
+            }
+        });
+    }
+
     window.Utils = {
         formatBytes: formatBytes,
         escapeHtml: escapeHtml,
@@ -102,6 +118,7 @@
         formatApiError: formatApiError,
         createListEmptyEl: createListEmptyEl,
         onId: onId,
+        onRoleButtonKeydown: onRoleButtonKeydown,
         BYTES_KB: BYTES_KB,
         BYTES_MB: BYTES_MB,
     };

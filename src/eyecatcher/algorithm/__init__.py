@@ -1,7 +1,7 @@
 """
-Evolution algorithm: engine, reproduction, and optimization operators.
+Evolution algorithm: config, reproduction, and optimization operators.
 
-Core neuroevolution for dual-CPPN genomes.
+Core neuroevolution for CPPN and other substrates.
 """
 
 from .config import (
@@ -15,7 +15,6 @@ from .config import (
     NEAT_TIME_CONFIG_PATH,
     PREVIEW_RENDER_RESOLUTION,
 )
-from .engine import CPPNEngine
 from .operators import (
     crossover_dual_genomes,
     crossover_single_genomes,
@@ -25,7 +24,6 @@ from .operators import (
 from .reproduction import produce_next_generation
 
 __all__ = [
-    "CPPNEngine",
     "produce_next_generation",
     "mutate_single_genome",
     "mutate_dual_genome",

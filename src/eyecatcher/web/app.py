@@ -56,11 +56,9 @@ else:
 
 # Substrate from experiment preset (config/experiments.json, EXPERIMENT_CONFIG)
 substrate = evolution_config.get_configured_substrate()
-engine = getattr(substrate, "engine", None)
-compiler = getattr(substrate, "compiler", None)
 
 # Initialize and register API blueprints
-init_stateless_api(substrate, engine, compiler)
+init_stateless_api(substrate)
 app.register_blueprint(stateless_bp)
 app.register_blueprint(community_bp)
 app.register_blueprint(genealogy_bp)

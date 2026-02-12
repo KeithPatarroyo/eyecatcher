@@ -152,14 +152,6 @@ class ElementaryCASubstrate:
             ),
         }
 
-    def get_capabilities(self) -> dict[str, bool]:
-        return {
-            "save": True,
-            "network": False,
-            "time_output": False,
-            "adjust_weight": False,
-        }
-
 
 # Grid size for CA display; 36 = chunky, readable cells.
 CA_GRID_SIZE = 36

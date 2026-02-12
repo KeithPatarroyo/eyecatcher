@@ -3,7 +3,7 @@ Pluggable fitness registry for batch evolution.
 
 Researchers register fitness functions by name. Each function receives
 (individual, substrate) and returns a float. Substrate-specific fitness
-can use substrate.evaluate, substrate.engine (when available), or custom logic.
+can use substrate.evaluate, substrate.config/time_config when available.
 """
 
 from __future__ import annotations
@@ -12,7 +12,19 @@ from typing import Any, Callable
 
 import numpy as np
 
+from ..lib.math_utils import normalize_to_bipolar
+
 FITNESS_REGISTRY: dict[str, Callable[..., float]] = {}
+
+# Shared constants for built-in fitness
+SAMPLE_COORDS = [(-0.5, -0.5), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0, 0)]
+COLOR_VARIANCE_MULTIPLIER = 10
+TEMPORAL_VARIANCE_MULTIPLIER = 5
+MEAN_COLOR_PENALTY = 0.5
+MEAN_COLOR_LOW = 0.1
+MEAN_COLOR_HIGH = 0.9
+TEMPORAL_SAMPLES = [0.2, 0.5, 0.8]
+BIT_COUNT_DIVISOR = 8.0
 
 
 def register_fitness(name: str):
@@ -35,6 +47,33 @@ def list_fitness() -> list[str]:
     return sorted(FITNESS_REGISTRY.keys())
 
 
+def _sample_rgb_at_coords(individual: Any, substrate: Any) -> list[list[float]]:
+    """Return list of [r,g,b] samples at SAMPLE_COORDS for CPPN substrates."""
+    from ..genome import DualGenome
+    from ..signals.signals import get_default_signal_values
+
+    samples = []
+    if hasattr(substrate, "time_config") and isinstance(individual, DualGenome):
+        from ..evaluation.query import query_dual_cppn
+
+        for x, y in SAMPLE_COORDS:
+            inputs = {"x": x, "y": y, **get_default_signal_values(0.0)}
+            r, g, b = query_dual_cppn(
+                individual, substrate.config, substrate.time_config, inputs
+            )
+            samples.append([r, g, b])
+        return samples
+    if hasattr(substrate, "config"):
+        from ..evaluation.query import query_visual_cppn
+
+        sigs = get_default_signal_values(0.0)
+        for x, y in SAMPLE_COORDS:
+            inputs = {"x": x, "y": y, "time": 0.0, **sigs}
+            r, g, b = query_visual_cppn(individual, substrate.config, inputs)
+            samples.append([r, g, b])
+    return samples
+
+
 # ---------------------------------------------------------------------------
 # Built-in fitness functions
 # ---------------------------------------------------------------------------
@@ -44,33 +83,13 @@ def list_fitness() -> list[str]:
 def fitness_color_variance(individual: Any, substrate: Any) -> float:
     """
     Color variety across spatial samples. Works for CPPN substrates with
-    engine.query_dual_cppn or query_visual_cppn.
+    query_dual_cppn or query_visual_cppn (via substrate.config/time_config).
     """
-    from ..genome import DualGenome
-    from ..signals.signals import get_default_signal_values
-
-    engine = getattr(substrate, "engine", None)
-    if engine is not None and isinstance(individual, DualGenome):
-        coords = [(-0.5, -0.5), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0, 0)]
-        samples = []
-        for x, y in coords:
-            inputs = {"x": x, "y": y, **get_default_signal_values(0.0)}
-            r, g, b = engine.query_dual_cppn(individual, inputs)
-            samples.append([r, g, b])
-        return float(np.var(samples)) * 10
-    if hasattr(substrate, "config"):
-        from ..evaluation.query import query_visual_cppn
-
-        coords = [(-0.5, -0.5), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0, 0)]
-        samples = []
-        sigs = get_default_signal_values(0.0)
-        for x, y in coords:
-            inputs = {"x": x, "y": y, "time": 0.0, **sigs}
-            r, g, b = query_visual_cppn(individual, substrate.config, inputs)
-            samples.append([r, g, b])
-        return float(np.var(samples)) * 10
+    samples = _sample_rgb_at_coords(individual, substrate)
+    if samples:
+        return float(np.var(samples)) * COLOR_VARIANCE_MULTIPLIER
     if hasattr(individual, "rule"):
-        return float(bin(individual.rule).count("1")) / 8.0
+        return float(bin(individual.rule).count("1")) / BIT_COUNT_DIVISOR
     return 0.0
 
 
@@ -79,17 +98,15 @@ def fitness_temporal_variance(individual: Any, substrate: Any) -> float:
     """
     Variation over time at center. Dual-CPPN only (uses time signal).
     """
-    engine = getattr(substrate, "engine", None)
-    if engine is None:
-        return 0.0
     from ..genome import DualGenome
 
-    if not isinstance(individual, DualGenome):
+    if not hasattr(substrate, "time_config") or not isinstance(individual, DualGenome):
         return 0.0
-    times = [0.2, 0.5, 0.8]
+    from ..evaluation.query import query_dual_cppn
+
     samples = []
-    for t in times:
-        raw_t = -1.0 + t * 2.0
+    for t in TEMPORAL_SAMPLES:
+        raw_t = normalize_to_bipolar(t)
         inputs = {
             "x": 0.0,
             "y": 0.0,
@@ -98,9 +115,11 @@ def fitness_temporal_variance(individual: Any, substrate: Any) -> float:
             "mouse_dist": 0.0,
             "activity": 0.0,
         }
-        r, g, b = engine.query_dual_cppn(individual, inputs)
+        r, g, b = query_dual_cppn(
+            individual, substrate.config, substrate.time_config, inputs
+        )
         samples.append([r, g, b])
-    return float(np.var(samples)) * 5
+    return float(np.var(samples)) * TEMPORAL_VARIANCE_MULTIPLIER
 
 
 @register_fitness("combined")
@@ -108,25 +127,17 @@ def fitness_combined(individual: Any, substrate: Any) -> float:
     """
     Color variance + temporal variance. Dual-CPPN default.
     """
+    from ..genome import DualGenome
+
     color = fitness_color_variance(individual, substrate)
     temporal = fitness_temporal_variance(individual, substrate)
     fitness = color + temporal
-    engine = getattr(substrate, "engine", None)
-    if engine is not None:
-        from ..genome import DualGenome
-
-        if isinstance(individual, DualGenome):
-            from ..signals.signals import get_default_signal_values
-
-            coords = [(-0.5, -0.5), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0, 0)]
-            samples = []
-            for x, y in coords:
-                inputs = {"x": x, "y": y, **get_default_signal_values(0.0)}
-                r, g, b = engine.query_dual_cppn(individual, inputs)
-                samples.append([r, g, b])
+    if hasattr(substrate, "time_config") and isinstance(individual, DualGenome):
+        samples = _sample_rgb_at_coords(individual, substrate)
+        if samples:
             mean_color = np.mean(samples)
-            if mean_color < 0.1 or mean_color > 0.9:
-                fitness *= 0.5
+            if mean_color < MEAN_COLOR_LOW or mean_color > MEAN_COLOR_HIGH:
+                fitness *= MEAN_COLOR_PENALTY
     return fitness
 
 

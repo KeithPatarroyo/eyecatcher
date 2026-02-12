@@ -1,25 +1,23 @@
 """Shared pytest fixtures for Eyecatcher.
 
-Provides client (Flask test client), cppn_engine (CPPNEngine with population),
-random_dual_genome, minimal_dual, genealogy_db, community_db. All DB fixtures
-use temp paths; no real data is modified.
+Provides client, cppn_engine (DualCPPNSubstrate), random_dual_genome, minimal_dual,
+genealogy_db, community_db. DB fixtures use temp paths; no real data modified.
 """
 
 from unittest.mock import patch
 
 import eyecatcher.data.genealogy_db as genealogy_db_module
 import pytest
-from eyecatcher.algorithm import CPPNEngine
 from eyecatcher.genome import create_random_dual_genome, dual_genome_from_json
 from eyecatcher.server import app
 from eyecatcher.substrate import DualCPPNSubstrate
 from eyecatcher.web import community_routes
 
 
-def minimal_dual_genome_one_hidden_visual(engine: CPPNEngine):
+def minimal_dual_genome_one_hidden_visual(substrate):
     """Dual genome with exactly one hidden node in the visual CPPN (deterministic)."""
-    vc = engine.config.genome_config
-    tc = engine.time_config.genome_config
+    vc = substrate.config.genome_config
+    tc = substrate.time_config.genome_config
     visual_nodes = {
         str(i): {
             "bias": 0.0,
@@ -60,7 +58,7 @@ def minimal_dual_genome_one_hidden_visual(engine: CPPNEngine):
             "connections": time_conns,
         },
     }
-    return dual_genome_from_json(data, engine.config, engine.time_config)
+    return dual_genome_from_json(data, substrate.config, substrate.time_config)
 
 
 @pytest.fixture
@@ -73,10 +71,8 @@ def client():
 
 @pytest.fixture
 def cppn_engine():
-    """CPPNEngine with population created (for mutation, crossover, query tests)."""
-    engine = CPPNEngine()
-    engine.create_population()
-    return engine
+    """DualCPPNSubstrate for mutation, crossover, query tests."""
+    return DualCPPNSubstrate()
 
 
 @pytest.fixture

@@ -23,18 +23,8 @@ from ..genome.serialization import genome_from_json, genome_to_json
 from ..glsl import ShaderCompiler
 from ..signals.activation import register_custom_activations
 from ..signals.signals import VISUAL_INPUTS, VISUAL_OUTPUTS
+from ..signals.validation import validate_neat_config
 from .protocol import OutputType, SubstrateOutput
-
-
-def _validate_visual_config(config: neat.Config) -> None:
-    """Assert NEAT config num_inputs/num_outputs match visual registry."""
-    gc = config.genome_config
-    assert gc.num_inputs == len(
-        VISUAL_INPUTS
-    ), f"visual num_inputs={gc.num_inputs}, registry has {len(VISUAL_INPUTS)}"
-    assert gc.num_outputs == len(
-        VISUAL_OUTPUTS
-    ), f"visual num_outputs={gc.num_outputs}, registry has {len(VISUAL_OUTPUTS)}"
 
 
 class SingleCPPNSubstrate:
@@ -64,7 +54,7 @@ class SingleCPPNSubstrate:
             neat_config_path,
         )
         register_custom_activations(self.config)
-        _validate_visual_config(self.config)
+        validate_neat_config(self.config, VISUAL_INPUTS, VISUAL_OUTPUTS, "visual")
         # Prime config with innovation tracker (required by NEAT for
         # create_random/mutate/crossover)
         self._population = neat.Population(self.config)
@@ -125,12 +115,4 @@ class SingleCPPNSubstrate:
             names["genome_json"]: json.dumps(genome_to_json(ind), indent=2).encode(
                 "utf-8"
             ),
-        }
-
-    def get_capabilities(self) -> dict[str, bool]:
-        return {
-            "save": True,
-            "network": False,
-            "time_output": False,
-            "adjust_weight": False,
         }

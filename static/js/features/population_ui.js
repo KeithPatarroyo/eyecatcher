@@ -114,7 +114,11 @@
                                     ? window.SubstrateAdapters.resolveForLoad(pop)
                                     : {
                                           outputType: "shader",
-                                          substrateId: "dual_cppn",
+                                          substrateId:
+                                              (window.EvolutionConfig &&
+                                                  window.EvolutionConfig
+                                                      .DEFAULT_SUBSTRATE_ID) ||
+                                              "dual_cppn",
                                       };
                             await _loadFromStatelessGenomes(
                                 pop.genomes || [],
@@ -228,7 +232,14 @@
                             ? window.SubstrateAdapters.resolveForLoad({
                                   genomes: genomes,
                               })
-                            : { outputType: "shader", substrateId: "dual_cppn" };
+                            : {
+                                  outputType: "shader",
+                                  substrateId:
+                                      (window.EvolutionConfig &&
+                                          window.EvolutionConfig
+                                              .DEFAULT_SUBSTRATE_ID) ||
+                                      "dual_cppn",
+                              };
                     var importPayload = Object.assign({}, json, {
                         substrateId: json.substrateId || r.substrateId,
                         outputType: json.outputType || r.outputType,
@@ -243,7 +254,13 @@
             var resolved =
                 window.SubstrateAdapters && window.SubstrateAdapters.resolveForLoad
                     ? window.SubstrateAdapters.resolveForLoad({ genomes: genomes })
-                    : { outputType: "shader", substrateId: "dual_cppn" };
+                    : {
+                          outputType: "shader",
+                          substrateId:
+                              (window.EvolutionConfig &&
+                                  window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
+                              "dual_cppn",
+                      };
             if (_addToGrid) {
                 await _addToGrid(genomes, resolved.outputType);
             }

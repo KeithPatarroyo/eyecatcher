@@ -284,7 +284,11 @@
             return {
                 adapter: null,
                 outputType: outputType || "shader",
-                substrateId: substrateId || "dual_cppn",
+                substrateId:
+                    substrateId ||
+                    (window.EvolutionConfig &&
+                        window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
+                    "dual_cppn",
             };
         }
         return SubstrateAdapters.resolveForLoad({
@@ -602,7 +606,11 @@
                   })
                 : {
                       outputType: "shader",
-                      substrateId: genealogyLoad.substrate_id || "dual_cppn",
+                      substrateId:
+                          genealogyLoad.substrate_id ||
+                          (window.EvolutionConfig &&
+                              window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
+                          "dual_cppn",
                   };
         window.GridRenderer.loadFromStatelessGenomes(
             genealogyLoad.genomes,

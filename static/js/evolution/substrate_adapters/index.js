@@ -41,12 +41,24 @@
      */
     function resolveFromGenomes(genomes) {
         if (!genomes || !genomes.length) {
-            return { outputType: "shader", substrateId: "dual_cppn" };
+            return {
+                outputType: "shader",
+                substrateId:
+                    (window.EvolutionConfig &&
+                        window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
+                    "dual_cppn",
+            };
         }
         var adapter = findAdapterByGenome(genomes[0]);
         return adapter
             ? { outputType: adapter.outputType, substrateId: adapter.id }
-            : { outputType: "shader", substrateId: "dual_cppn" };
+            : {
+                  outputType: "shader",
+                  substrateId:
+                      (window.EvolutionConfig &&
+                          window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
+                      "dual_cppn",
+              };
     }
 
     /**
@@ -65,11 +77,20 @@
             adapter = getAdapter(r.substrateId);
         }
         if (!adapter) {
-            adapter = getAdapter("dual_cppn");
+            adapter = getAdapter(
+                (window.EvolutionConfig &&
+                    window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
+                    "dual_cppn"
+            );
         }
         return {
             outputType: (adapter && adapter.outputType) || pop.outputType || "shader",
-            substrateId: (adapter && adapter.id) || pop.substrateId || "dual_cppn",
+            substrateId:
+                (adapter && adapter.id) ||
+                pop.substrateId ||
+                (window.EvolutionConfig &&
+                    window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
+                "dual_cppn",
             adapter: adapter,
         };
     }

@@ -2,7 +2,7 @@
 Custom activation functions for NEAT CPPNs.
 
 Register new activations here so they are available in NEAT configs.
-register_custom_activations is called from engine init.
+register_custom_activations is called from substrate init (dual_cppn, single_cppn).
 """
 
 import math

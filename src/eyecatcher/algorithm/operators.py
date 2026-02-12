@@ -1,7 +1,7 @@
 """
 Mutation and crossover for single and dual genomes.
 
-Used by reproduction and engine.
+Used by reproduction and substrates.
 """
 
 import neat

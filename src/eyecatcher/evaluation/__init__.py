@@ -16,13 +16,8 @@ from .network_data import (
     extract_network_data,
     parse_network_node_id,
 )
-from .query import query_dual_cppn, query_time_signal, query_visual_cppn
-from .rendering import (
-    render_animation_frames,
-    render_dual_animation_frames,
-    render_dual_image,
-    render_image,
-)
+from .query import query_time_signal, query_visual_cppn
+from .rendering import render_animation_frames, render_image
 
 __all__ = [
     "FITNESS_REGISTRY",
@@ -31,11 +26,8 @@ __all__ = [
     "register_fitness",
     "query_time_signal",
     "query_visual_cppn",
-    "query_dual_cppn",
     "render_image",
     "render_animation_frames",
-    "render_dual_image",
-    "render_dual_animation_frames",
     "render_genome_network_pdf",
     "dual_genome_network_stats",
     "extract_network_data",

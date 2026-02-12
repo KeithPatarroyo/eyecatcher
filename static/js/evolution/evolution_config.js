@@ -15,6 +15,9 @@
         MAX_POPULATION_SIZE: 50,
         MIN_POPULATION_SIZE: 2,
 
+        // Substrate (backend default; overridden by mergeFromServer when /api/config provides substrate_id)
+        DEFAULT_SUBSTRATE_ID: "dual_cppn",
+
         // Fullscreen / canvas (viewer-only; backend uses DEFAULT_RENDER_RESOLUTION for saves)
         FULLSCREEN_CANVAS_DEFAULT: 800,
         FULLSCREEN_CANVAS_MAX: 1024,
@@ -84,6 +87,9 @@
         }
         if (config.max_population_size != null) {
             this.MAX_POPULATION_SIZE = config.max_population_size;
+        }
+        if (config.substrate_id) {
+            this.DEFAULT_SUBSTRATE_ID = config.substrate_id;
         }
     };
 
