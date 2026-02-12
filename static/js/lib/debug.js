@@ -259,6 +259,26 @@ const EyecatcherDebug = (function () {
         getHoveredPatternId: function () {
             return hoveredPatternId;
         },
+
+        /**
+         * Show or hide time-output section based on substrate capabilities.
+         * Call when substrate changes (e.g. after load or addToGrid).
+         * @param {string|null} substrateId - current substrate id
+         */
+        updateForSubstrate: function (substrateId) {
+            const adapter =
+                typeof window !== "undefined" &&
+                window.SubstrateAdapters &&
+                window.SubstrateAdapters.getAdapter
+                    ? window.SubstrateAdapters.getAdapter(substrateId)
+                    : null;
+            const show =
+                adapter &&
+                adapter.capabilities &&
+                adapter.capabilities.timeOutput === true;
+            const section = document.getElementById("debug-time-output-section");
+            if (section) section.style.display = show ? "" : "none";
+        },
     };
 })();
 if (typeof window !== "undefined") {

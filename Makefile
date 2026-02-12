@@ -28,10 +28,10 @@ install:
 	@echo "==> Install pre-commit hooks: pre-commit install"
 
 dev:
-	python -m eyecatcher.server
+	.venv/bin/python -m eyecatcher.server
 
 test:
-	pytest --tb=short -v
+	.venv/bin/python -m pytest --tb=short -v
 
 lint:
 	ruff check .
