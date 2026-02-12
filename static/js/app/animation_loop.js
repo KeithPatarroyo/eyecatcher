@@ -3,6 +3,9 @@
  * Exposes: AnimationLoop.init(), AnimationLoop.start(), AnimationLoop.stop(),
  *   AnimationLoop.getSignalValues(canvas), AnimationLoop.getMouseSpeed(), AnimationLoop.getMouseDistance(canvas),
  *   AnimationLoop.getActivity(), AnimationLoop.getMouseX(), AnimationLoop.getMouseY(), AnimationLoop.getTime()
+ *
+ * Signal values come from a pluggable SignalSource (getValues(context) -> { raw_time, mouse_speed, mouse_dist, activity }).
+ * Set window.SignalSource before init, or pass signalSource in init(); otherwise the built-in viewer source is used.
  */
 (function () {
     "use strict";
@@ -28,6 +31,10 @@
     let _getPatterns = null;
     let _patternRenderer = null;
     let _viewerControls = null;
+    /** @type {{ getValues: function({ canvas?: HTMLCanvasElement }): Object } | null } */
+    let _signalSource = null;
+    /** Default source: viewer mouse + time; created in init(). */
+    let _defaultSource = null;
 
     function getMouseDistanceToCanvas(canvas) {
         const rect = canvas.getBoundingClientRect();
@@ -39,7 +46,9 @@
         return Math.min(1.0, dist / MOUSE_DIST_SCALE);
     }
 
-    function getSignalValues(canvas) {
+    /** Build default signal values from viewer state (mouse + time). Used by _defaultSource. */
+    function buildDefaultSignalValues(context) {
+        const canvas = context && context.canvas;
         const mouse_dist = canvas ? getMouseDistanceToCanvas(canvas) : 0;
         return {
             raw_time: animationTime,
@@ -47,6 +56,19 @@
             mouse_dist: mouse_dist,
             activity: activity,
         };
+    }
+
+    /** Returns the active signal source (custom or default). Used by getSignalValues and by community/genealogy. */
+    function getActiveSignalSource() {
+        return _signalSource || _defaultSource;
+    }
+
+    function getSignalValues(canvas) {
+        const source = getActiveSignalSource();
+        if (source && typeof source.getValues === "function") {
+            return source.getValues({ canvas: canvas || undefined });
+        }
+        return { raw_time: 0.5 };
     }
 
     function animate() {
@@ -116,6 +138,18 @@
         _getPatterns = options.getPatterns || null;
         _patternRenderer = options.patternRenderer || null;
         _viewerControls = options.viewerControls || null;
+        _defaultSource = {
+            getValues: function (context) {
+                return buildDefaultSignalValues(context || {});
+            },
+        };
+        _signalSource =
+            (options && options.signalSource) ||
+            (typeof window !== "undefined" && window.SignalSource) ||
+            _defaultSource;
+        if (typeof window !== "undefined") {
+            window.getSignalSource = getActiveSignalSource;
+        }
         lastMouseTime = performance.now();
 
         document.addEventListener("mousemove", function (e) {

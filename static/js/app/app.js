@@ -290,8 +290,34 @@
         }
     }
 
-    function inferSubstrateId(outputType) {
-        return outputType === "grid" ? "ca" : "dual_cppn";
+    function resolveAdapterAndOutput(outputType, substrateId, genomes) {
+        var SubstrateAdapters =
+            typeof window !== "undefined" && window.SubstrateAdapters;
+        var adapter = null;
+        if (substrateId && SubstrateAdapters && SubstrateAdapters.getAdapter) {
+            adapter = SubstrateAdapters.getAdapter(substrateId);
+        }
+        if (
+            !adapter &&
+            genomes &&
+            genomes.length &&
+            SubstrateAdapters &&
+            SubstrateAdapters.resolveFromGenomes
+        ) {
+            var resolved = SubstrateAdapters.resolveFromGenomes(genomes);
+            adapter = SubstrateAdapters.getAdapter(resolved.substrateId);
+        }
+        if (!adapter && SubstrateAdapters && SubstrateAdapters.getAdapter) {
+            adapter = SubstrateAdapters.getAdapter("dual_cppn");
+        }
+        var resolvedOutputType =
+            (adapter && adapter.outputType) || outputType || "shader";
+        var resolvedSubstrateId = (adapter && adapter.id) || substrateId || "dual_cppn";
+        return {
+            adapter: adapter,
+            outputType: resolvedOutputType,
+            substrateId: resolvedSubstrateId,
+        };
     }
 
     async function loadFromStatelessGenomes(
@@ -302,34 +328,23 @@
         substrateId
     ) {
         if (!genomes || !genomes.length) return;
-        var resolvedOutputType = outputType || "shader";
-        var resolvedSubstrateId = substrateId || inferSubstrateId(resolvedOutputType);
+        var resolved = resolveAdapterAndOutput(outputType, substrateId, genomes);
+        var resolvedOutputType = resolved.outputType;
+        var resolvedSubstrateId = resolved.substrateId;
+        var adapter = resolved.adapter;
         if (typeof showLoading !== "undefined") showLoading(true);
         window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
         window.GridRenderer.clearGrid(IDS);
         try {
-            var population;
-            if (resolvedOutputType === "grid") {
-                var evalData = await window.ApiClient.evaluate(genomes);
-                var results = evalData.results || [];
-                population = results.map(function (r) {
-                    return {
-                        id: r.id,
-                        image: r.image,
-                        shader: r.shader,
-                        rule: r.rule,
-                        nodes: 0,
-                        connections: 0,
-                        clicks: 0,
-                    };
-                });
-                if (typeof performance !== "undefined") {
-                    window.CA_ANIMATION_START_TIME = performance.now();
-                }
-            } else {
-                var compData = await window.ApiClient.compile(genomes, getColorMode());
-                population = compData.shaders || [];
-            }
+            var displayResult = await (window.SubstrateAdapters &&
+            window.SubstrateAdapters.getDisplayData
+                ? window.SubstrateAdapters.getDisplayData(adapter, genomes, {
+                      colorMode: getColorMode(),
+                  })
+                : Promise.reject(
+                      new Error("SubstrateAdapters.getDisplayData not available")
+                  ));
+            var population = displayResult.population || [];
             var patternsMap = new Map();
             window.GridRenderer.renderGridFromPopulation(
                 population,
@@ -395,6 +410,9 @@
             if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
                 window.ViewerControls.updateForSubstrate(resolvedSubstrateId);
             }
+            if (window.EyecatcherDebug && window.EyecatcherDebug.updateForSubstrate) {
+                window.EyecatcherDebug.updateForSubstrate(resolvedSubstrateId);
+            }
             var genEl = document.getElementById(IDS.genNum);
             if (genEl) genEl.textContent = generationNum;
             updateStats();
@@ -414,6 +432,8 @@
             outputTypeOverride != null
                 ? outputTypeOverride
                 : state.outputType || "shader";
+        var resolved = resolveAdapterAndOutput(outputType, state.substrateId, genomes);
+        var adapter = resolved.adapter;
         var nextKey = 0;
         state.patterns.forEach(function (_, id) {
             nextKey = Math.max(nextKey, id + 1);
@@ -427,25 +447,15 @@
         if (typeof showLoading !== "undefined") showLoading(true);
         window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
         try {
-            var population;
-            if (outputType === "grid") {
-                var evalData = await window.ApiClient.evaluate(payload);
-                var results = evalData.results || [];
-                population = results.map(function (r) {
-                    return {
-                        id: r.id,
-                        image: r.image,
-                        shader: r.shader,
-                        rule: r.rule,
-                        nodes: 0,
-                        connections: 0,
-                        clicks: 0,
-                    };
-                });
-            } else {
-                var compData = await window.ApiClient.compile(payload, getColorMode());
-                population = compData.shaders || [];
-            }
+            var displayResult = await (window.SubstrateAdapters &&
+            window.SubstrateAdapters.getDisplayData
+                ? window.SubstrateAdapters.getDisplayData(adapter, payload, {
+                      colorMode: getColorMode(),
+                  })
+                : Promise.reject(
+                      new Error("SubstrateAdapters.getDisplayData not available")
+                  ));
+            var population = displayResult.population || [];
             window.GridRenderer.appendCardsToGrid(
                 population,
                 IDS,
@@ -463,6 +473,9 @@
             });
             if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
                 window.ViewerControls.updateForSubstrate(state.substrateId);
+            }
+            if (window.EyecatcherDebug && window.EyecatcherDebug.updateForSubstrate) {
+                window.EyecatcherDebug.updateForSubstrate(state.substrateId);
             }
             updateStats();
         } catch (e) {
@@ -637,6 +650,7 @@
         getPatterns: getPatterns,
         patternRenderer: window.PatternRenderer || null,
         viewerControls: window.ViewerControls || null,
+        signalSource: typeof window !== "undefined" ? window.SignalSource : undefined,
     });
 
     window.PopulationUI.init({

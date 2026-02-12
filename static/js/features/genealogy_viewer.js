@@ -588,12 +588,10 @@ async function renderThumbnail(populationId) {
                 },
             };
         }
-        var signalValues = {
-            raw_time: 0.5,
-            mouse_speed: 0,
-            mouse_dist: 0,
-            activity: 0,
-        };
+        var getSource = typeof window !== "undefined" && window.getSignalSource;
+        var signalValues = (getSource &&
+            getSource().getValues &&
+            getSource().getValues({})) || { raw_time: 0.5 };
         var uniformValues =
             PatternRenderer.buildUniformValues &&
             PatternRenderer.buildUniformValues(signalValues);
