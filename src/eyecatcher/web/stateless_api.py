@@ -3,16 +3,19 @@ Stateless API Blueprint for Eyecatcher.
 
 Provides endpoints that don't depend on server-side population state.
 Blueprint is registered in server; engine and compiler are injected via
-init_stateless_api. Endpoints: /api/compile, /api/random, /api/time-output,
-/api/network, /api/adjust-weight.
+init_stateless_api. Endpoints: /api/compile, /api/random, /api/evaluate,
+/api/time-output, /api/network, /api/adjust-weight.
 """
 
+import base64
+import io
+
+import numpy as np
 from flask import Blueprint, jsonify, request
 
-from ..algorithm import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE, CPPNEngine
+from ..algorithm import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
 from ..genome import (
     DualGenome,
-    create_random_dual_genome,
     dual_genome_from_json,
     dual_genome_to_json,
     extract_network_data,
@@ -27,18 +30,34 @@ from .response_builder import build_shader_response
 stateless_bp = Blueprint("stateless", __name__)
 
 # Module-level references (set by init_stateless_api)
-_engine: CPPNEngine = None
-_compiler: ShaderCompiler = None
+_substrate = None
+_engine = None
+_compiler = None
 
 
-def init_stateless_api(engine: CPPNEngine, compiler: ShaderCompiler):
+def init_stateless_api(substrate, engine=None, compiler=None):
     """
-    Initialize the stateless API with engine and compiler references.
-    Call this before registering the blueprint with the app.
+    Initialize the stateless API with substrate and optional engine/compiler.
+
+    Substrate is the active evolvable (dual_cppn, etc.). Engine and compiler
+    are set for dual_cppn for shader response building; other substrates may
+    leave them None.
     """
-    global _engine, _compiler
+    global _substrate, _engine, _compiler
+    _substrate = substrate
     _engine = engine
     _compiler = compiler
+
+
+def _require_engine():
+    """Error if substrate has no engine (dual_cppn only)."""
+    if _engine is None:
+        return api_error(
+            "This endpoint requires the dual_cppn substrate. "
+            "Use a different EXPERIMENT_CONFIG or substrate in experiments.json.",
+            501,
+        )
+    return None
 
 
 def _shader_response_for_dual(
@@ -66,6 +85,9 @@ def api_compile():
     Body: { "genomes": [ ... ], "color_mode": "hsv"|"rgb" (optional) }
     Returns: { "shaders": [ { "id", "shader", "clicks", "nodes", ... }, ... ] }
     """
+    err = _require_engine()
+    if err is not None:
+        return err
     try:
         data = request.json or {}
         genomes_data = data.get("genomes", [])
@@ -100,8 +122,10 @@ def api_compile():
 def api_random():
     """
     Stateless: create a new random population.
+
     Body: { "size": N } (default from config)
-    Returns: { "genomes": [ { "key", "visual", "time_signal" }, ... ] }
+    Returns: { "genomes": [ ... ], "output_type": "shader"|"grid"|... }
+    Genome shape depends on substrate (dual_cppn: visual/time_signal; ca: rule, key).
     """
     try:
         data = request.json or {}
@@ -109,11 +133,65 @@ def api_random():
         size = max(1, min(int(size), MAX_POPULATION_SIZE))
         genomes = []
         for i in range(size):
-            dual = create_random_dual_genome(
-                _engine.config, _engine.time_config, genome_id=i
-            )
-            genomes.append(dual_genome_to_json(dual))
-        return jsonify({"genomes": genomes})
+            ind = _substrate.create_random(key=i)
+            genomes.append(_substrate.to_json(ind))
+        return jsonify(
+            {
+                "genomes": genomes,
+                "output_type": _substrate.output_type,
+            }
+        )
+    except Exception as e:
+        return api_error(str(e), 500)
+
+
+@stateless_bp.route("/api/evaluate", methods=["POST"])
+def api_evaluate():
+    """
+    Evaluate genomes with the current substrate and return displayable output.
+
+    Body: { "genomes": [ ... ] } (each item is substrate-specific genome JSON).
+    Returns: { "results": [ { "id", "output_type", "image"?, "shader"? } ],
+        "output_type" }. Grid has "image"; shader has "shader".
+    """
+    try:
+        data = request.json or {}
+        genomes_data = data.get("genomes", [])
+        if not genomes_data:
+            return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
+        results = []
+        for i, g_data in enumerate(genomes_data):
+            ind = _substrate.from_json(g_data)
+            individual_id = g_data.get("key", getattr(ind, "key", i))
+            out = _substrate.evaluate(ind, {})
+            item = {"id": individual_id, "output_type": out.output_type}
+            if out.output_type == "grid" and hasattr(out.data, "shape"):
+                from PIL import Image
+
+                arr = np.asarray(out.data)
+                if arr.dtype != np.uint8:
+                    arr = (np.clip(arr, 0, 1) * 255).astype(np.uint8)
+                if arr.ndim == 2:
+                    arr = np.stack([arr, arr, arr], axis=-1)
+                pil = Image.fromarray(arr)
+                buf = io.BytesIO()
+                pil.save(buf, format="PNG")
+                b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+                item["image"] = "data:image/png;base64," + b64
+            elif out.output_type == "shader" and isinstance(out.data, str):
+                item["shader"] = out.data
+            glsl = _substrate.compile_to_shader(ind)
+            if glsl:
+                item["shader"] = glsl
+                if hasattr(ind, "rule"):
+                    item["rule"] = int(ind.rule)
+            results.append(item)
+        return jsonify(
+            {
+                "results": results,
+                "output_type": _substrate.output_type,
+            }
+        )
     except Exception as e:
         return api_error(str(e), 500)
 
@@ -126,6 +204,9 @@ def api_time_output():
     input; keys from signals TIME_INPUTS (e.g. raw_time, mouse_speed).
     Returns: { "timeOutput": float, "inputs": { <id>: value ... } }.
     """
+    err = _require_engine()
+    if err is not None:
+        return err
     try:
         data = request.json or {}
         genome_data = data.get("genome")
@@ -161,6 +242,9 @@ def api_network():
     Body: { "genome": { "key", "visual", "time_signal" } }
     Returns: { "id": key, "nodes": [...], "connections": [...] }
     """
+    err = _require_engine()
+    if err is not None:
+        return err
     try:
         data = request.json or {}
         genome_data = data.get("genome")
@@ -216,6 +300,9 @@ def api_adjust_weight():
     }
     Returns: { "status": "success", "shader": "...", "genome": {...} }
     """
+    err = _require_engine()
+    if err is not None:
+        return err
     try:
         data = request.json or {}
         genome_data = data.get("genome")

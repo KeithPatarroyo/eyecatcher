@@ -29,11 +29,12 @@ from ..algorithm import (
     CROSSOVER_PROBABILITY,
     DEFAULT_POPULATION_SIZE,
     DEFAULT_RENDER_RESOLUTION,
-    CPPNEngine,
+)
+from ..algorithm import (
+    config as evolution_config,
 )
 from ..algorithm.reproduction import produce_next_generation
 from ..genome import DualGenome, dual_genome_from_json, dual_genome_to_json
-from ..glsl import ShaderCompiler
 from .api_helpers import (
     ERR_GENOME_REQUIRED_REQUEST_BODY,
     ERR_PARENTS_ARRAY_REQUIRED,
@@ -65,16 +66,14 @@ if _cors_origins == "*":
 else:
     CORS(app, origins=[o.strip() for o in _cors_origins.split(",")])
 
-# Engine and compiler (no server-side population state)
-engine = CPPNEngine()
-engine.create_population()  # Initialize NEAT populations for mutation/crossover
-compiler = ShaderCompiler(
-    color_mode="hsv"
-)  # Use HSV output for more vibrant colors (client converts to RGB for display)
-# compiler = ShaderCompiler(color_mode="rgb")  # Use RGB output
+# Substrate from experiment preset (config/experiments.json, EXPERIMENT_CONFIG)
+substrate = evolution_config.get_configured_substrate()
+# Backward compatibility: dual_cppn exposes engine and compiler for save/compile
+engine = getattr(substrate, "engine", None)
+compiler = getattr(substrate, "compiler", None)
 
 # Initialize and register API blueprints
-init_stateless_api(engine, compiler)
+init_stateless_api(substrate, engine, compiler)
 app.register_blueprint(stateless_bp)
 app.register_blueprint(community_bp)
 app.register_blueprint(genealogy_bp)
@@ -129,7 +128,7 @@ def _evolve_stateless(data):
             return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
 
         children = produce_next_generation(
-            engine,
+            substrate,
             parents_data,
             population_size=population_size,
             elitism=elitism,
@@ -144,10 +143,21 @@ def _evolve_stateless(data):
                     parent_population_id, generation_num, branch_name, children
                 )
                 if new_pop_id is not None:
-                    return jsonify({"children": children, "population_id": new_pop_id})
+                    return jsonify(
+                        {
+                            "children": children,
+                            "population_id": new_pop_id,
+                            "output_type": substrate.output_type,
+                        }
+                    )
             except Exception as e:
                 logger.exception("Failed to save to genealogy: %s", e)
-        return jsonify({"children": children})
+        return jsonify(
+            {
+                "children": children,
+                "output_type": substrate.output_type,
+            }
+        )
     except ValueError as e:
         logger.exception("Breed ValueError: %s", e)
         return api_error(f"Validation error: {str(e)}", 400)
@@ -159,13 +169,19 @@ def _evolve_stateless(data):
 @app.route("/api/save", methods=["POST"])
 def save_individual():
     """
-    Save a dual genome (stateless).
+    Save a dual genome (stateless). Only supported for dual_cppn substrate.
     Body: {
         "genome": { ... },       (required)
         "id": 123,               (optional, defaults to genome.key)
         "visualize": true        (optional, default true; generate network PDF)
     }
     """
+    if engine is None:
+        return api_error(
+            "Save is only available for the dual_cppn substrate. "
+            "Use a different EXPERIMENT_CONFIG or substrate in experiments.json.",
+            501,
+        )
     data = request.json or {}
     genome_json = data.get("genome")
     individual_id = data.get("id")
