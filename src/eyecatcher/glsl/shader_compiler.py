@@ -74,51 +74,46 @@ class ShaderCompiler:
 
     fragColor = vec4(rgb, 1.0);"""
 
-    def _glsl_cap(self, key: str) -> str:
-        """Capitalize first letter for GLSL uniform name."""
-        return key[0].upper() + key[1:] if key else ""
-
     def _glsl_uniform_declarations(self) -> str:
-        """Generate uniform float declarations for shared signal uniforms."""
+        """Generate uniform float declarations for shared signal uniforms (u_{id})."""
         seen = set()
         lines = []
         for sig_list in (TIME_INPUTS, VISUAL_INPUTS):
             for s in sig_list:
-                if s.uniform and s.uniform not in seen:
-                    seen.add(s.uniform)
-                    lines.append(f"uniform float {s.uniform};")
+                u = s._uniform()
+                if u and u not in seen:
+                    seen.add(u)
+                    lines.append(f"uniform float {u};")
         return "\n".join(lines)
 
     def _glsl_enable_declarations(self) -> str:
-        """Generate uniform float declarations for enable toggles (time + visual)."""
+        """Generate enable toggle uniforms (uTimeEnable_{id}, uVisualEnable_{id})."""
         lines = []
         for cppn_type, sig_list in (("Time", TIME_INPUTS), ("Visual", VISUAL_INPUTS)):
             for s in sig_list:
-                if s.enable_key:
-                    cap = self._glsl_cap(s.enable_key)
-                    lines.append(f"uniform float u{cppn_type}Enable{cap};")
+                if not s.is_spatial and s.id != "bias":
+                    lines.append(f"uniform float u{cppn_type}Enable_{s.id};")
         return "\n".join(lines)
 
     def _glsl_base_scaling(self) -> str:
-        """Generate base scaled vars (rawTime_base = uTime*2-1 etc) for time."""
+        """Generate base scaled vars (raw_time_base = u_raw_time*2-1 etc) for time."""
         lines = []
         for s in TIME_INPUTS:
-            if s.uniform:
-                line = f"    float {s.enable_key}_base = {s.uniform} * 2.0 - 1.0;"
-                lines.append(line)
+            u = s._uniform()
+            if u:
+                lines.append(f"    float {s.id}_base = {u} * 2.0 - 1.0;")
         return "\n".join(lines)
 
     def _glsl_time_enable_gating(self) -> str:
         """Generate time CPPN gated input assignments."""
         lines = []
         for s in TIME_INPUTS:
-            if s.enable_key:
-                cap = self._glsl_cap(s.enable_key)
+            if not s.is_spatial and s.id != "bias":
                 lines.append(
-                    f"    float {s.glsl_var} = {s.enable_key}_base * uTimeEnable{cap};"
+                    f"    float {s._glsl_var()} = {s.id}_base * uTimeEnable_{s.id};"
                 )
-            elif s.name == "bias":
-                lines.append("    float vBias = 1.0;")
+            elif s.id == "bias":
+                lines.append("    float v_bias = 1.0;")
         return "\n".join(lines)
 
     def _glsl_visual_enable_gating(self, use_time_from_network: bool) -> str:
@@ -130,30 +125,27 @@ class ShaderCompiler:
         """
         lines = []
         for s in VISUAL_INPUTS:
-            if s.is_spatial or s.name == "bias":
-                if s.name == "bias":
-                    # Dual shader: vBias already in time section; reassign only
+            if s.is_spatial or s.id == "bias":
+                if s.id == "bias":
                     if use_time_from_network:
-                        lines.append("    vBias = 1.0;")
+                        lines.append("    v_bias = 1.0;")
                     else:
-                        lines.append("    float vBias = 1.0;")
+                        lines.append("    float v_bias = 1.0;")
                 continue
-            cap = self._glsl_cap(s.enable_key)
             if use_time_from_network:
-                if s.name == "time":
+                if s.id == "time":
                     src = "timeFromNetwork"
                     lines.append(
-                        f"    float {s.glsl_var} = {src} * uVisualEnable{cap};"
+                        f"    float {s._glsl_var()} = {src} * uVisualEnable_{s.id};"
                     )
                 else:
-                    src = f"{s.enable_key}_base"
-                    line = f"    {s.glsl_var} = {src} * uVisualEnable{cap};"
-                    lines.append(line)
+                    src = f"{s.id}_base"
+                    lines.append(f"    {s._glsl_var()} = {src} * uVisualEnable_{s.id};")
             else:
-                u = "uTime" if s.name == "time" else s.uniform
-                lines.append(
-                    f"    float {s.glsl_var} = ({u} * 2.0 - 1.0) * uVisualEnable{cap};"
-                )
+                u = s._uniform()
+                gvar = s._glsl_var()
+                enab = f"uVisualEnable_{s.id}"
+                lines.append(f"    float {gvar} = ({u} * 2.0 - 1.0) * {enab};")
         return "\n".join(lines)
 
     def _build_shader_template(self, node_code: str, visual_config: neat.Config) -> str:
@@ -178,9 +170,9 @@ out vec4 fragColor;
 
 void main() {{
     // Convert UV to CPPN coordinate space (-1 to 1)
-    float vX = vUV.x * 2.0 - 1.0;
-    float vY = vUV.y * 2.0 - 1.0;
-    float vDist = sqrt(vX * vX + vY * vY);
+    float v_x = vUV.x * 2.0 - 1.0;
+    float v_y = vUV.y * 2.0 - 1.0;
+    float v_distance = sqrt(v_x * v_x + v_y * v_y);
 
     // Apply enable gates (disabled = 0.0 neutral)
 {visual_gating}
@@ -261,9 +253,9 @@ void main() {{
 
     // === VISUAL NETWORK ===
     // Convert UV to CPPN coordinate space (-1 to 1)
-    float vX = vUV.x * 2.0 - 1.0;
-    float vY = vUV.y * 2.0 - 1.0;
-    float vDist = sqrt(vX * vX + vY * vY);
+    float v_x = vUV.x * 2.0 - 1.0;
+    float v_y = vUV.y * 2.0 - 1.0;
+    float v_distance = sqrt(v_x * v_x + v_y * v_y);
 
     // Apply enable gates for visual CPPN inputs (disabled = 0.0 neutral)
 {visual_gating}
