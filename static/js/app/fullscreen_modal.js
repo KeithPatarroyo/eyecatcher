@@ -63,7 +63,8 @@
 
             var PatternRenderer = window.PatternRenderer;
             var patternData =
-                PatternRenderer && PatternRenderer.setupPattern(canvas, patternRef.shader);
+                PatternRenderer &&
+                PatternRenderer.setupPattern(canvas, patternRef.shader);
             if (!patternData || patternData.error) {
                 wrap.innerHTML = "";
                 modal.hidden = true;
