@@ -68,23 +68,7 @@
 
     const ViewerControls = {
         patternZoom: 1.0,
-        signalState: (function () {
-            const state = { time: {}, visual: {} };
-            if (
-                typeof window !== "undefined" &&
-                window.EvolutionConfig &&
-                window.EvolutionConfig.SIGNAL_TOGGLES
-            ) {
-                ["time", "visual"].forEach(function (cppnType) {
-                    window.EvolutionConfig.SIGNAL_TOGGLES[
-                        cppnType
-                    ].toggleableInputs.forEach(function (s) {
-                        state[cppnType][s.id] = true;
-                    });
-                });
-            }
-            return state;
-        })(),
+        signalState: { time: {}, visual: {} },
         applyZoom: function () {
             document.documentElement.style.setProperty(
                 "--pattern-zoom",
@@ -101,27 +85,18 @@
         updateForSubstrate: function (substrateId) {
             const container = document.getElementById("signal-controls");
             if (!container) return;
-            const adapter =
-                typeof window !== "undefined" &&
-                window.SubstrateAdapters &&
-                window.SubstrateAdapters.getAdapter
-                    ? window.SubstrateAdapters.getAdapter(substrateId)
-                    : null;
+            const adapter = window.SubstrateAdapters.getAdapter(substrateId);
             const show = adapter === null ? true : adapter.hasSignalControls !== false;
             container.style.display = show ? "" : "none";
         },
         init: function () {
             const self = this;
-            const config =
-                typeof window !== "undefined" &&
-                window.EvolutionConfig &&
-                window.EvolutionConfig.SIGNAL_TOGGLES
-                    ? window.EvolutionConfig.SIGNAL_TOGGLES
-                    : null;
+            const config = window.EvolutionConfig.SIGNAL_TOGGLES;
             if (config) {
                 populateSignalControls(config);
                 ["time", "visual"].forEach(function (cppnType) {
                     config[cppnType].toggleableInputs.forEach(function (s) {
+                        self.signalState[cppnType][s.id] = true;
                         const checkbox = document.getElementById(cppnType + "-" + s.id);
                         if (checkbox) {
                             checkbox.addEventListener("change", function (e) {
@@ -158,12 +133,7 @@
                 });
             }
             this.applyZoom();
-            const substrateId =
-                typeof window !== "undefined" &&
-                window.PopulationState &&
-                window.PopulationState.getState
-                    ? window.PopulationState.getState().substrateId
-                    : null;
+            const substrateId = window.PopulationState.getState().substrateId;
             this.updateForSubstrate(substrateId);
         },
     };
