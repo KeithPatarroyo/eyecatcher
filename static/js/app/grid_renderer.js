@@ -15,6 +15,21 @@
         if (grid) grid.innerHTML = "";
     }
 
+    function _notifySubstrateChange(substrateId) {
+        window.ViewerControls.updateForSubstrate(substrateId);
+        if (window.EyecatcherDebug && window.EyecatcherDebug.updateForSubstrate) {
+            window.EyecatcherDebug.updateForSubstrate(substrateId);
+        }
+    }
+
+    function _clearLoading() {
+        if (_deps.showLoading) _deps.showLoading(false);
+        window.PopulationState.dispatch({
+            type: "SET_LOADING",
+            payload: false,
+        });
+    }
+
     /**
      * Build card callbacks for one pattern (for PatternRenderer.createPatternCard).
      * @param {Object} pattern - { id, shader, nodes, connections, clicks }
@@ -135,15 +150,9 @@
             payload: true,
         });
         clearGrid(_deps.IDS);
-        return (
-            window.SubstrateAdapters && window.SubstrateAdapters.getDisplayData
-                ? window.SubstrateAdapters.getDisplayData(adapter, genomes, {
-                      colorMode: _deps.getColorMode(),
-                  })
-                : Promise.reject(
-                      new Error("SubstrateAdapters.getDisplayData not available")
-                  )
-        )
+        return window.SubstrateAdapters.getDisplayData(adapter, genomes, {
+            colorMode: _deps.getColorMode(),
+        })
             .then(function (displayResult) {
                 var population = displayResult.population || [];
                 var patternsMap = new Map();
@@ -221,15 +230,7 @@
                         outputType: resolvedOutputType,
                     },
                 });
-                if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
-                    window.ViewerControls.updateForSubstrate(resolvedSubstrateId);
-                }
-                if (
-                    window.EyecatcherDebug &&
-                    window.EyecatcherDebug.updateForSubstrate
-                ) {
-                    window.EyecatcherDebug.updateForSubstrate(resolvedSubstrateId);
-                }
+                _notifySubstrateChange(resolvedSubstrateId);
                 var genEl = document.getElementById(_deps.IDS.genNum);
                 if (genEl) genEl.textContent = generationNum;
                 if (_deps.updateStats) _deps.updateStats();
@@ -240,13 +241,7 @@
                     _deps.showGridError(e.message || "Failed to compile", true);
                 }
             })
-            .finally(function () {
-                if (_deps.showLoading) _deps.showLoading(false);
-                window.PopulationState.dispatch({
-                    type: "SET_LOADING",
-                    payload: false,
-                });
-            });
+            .finally(_clearLoading);
     }
 
     function addToGrid(genomes, outputTypeOverride) {
@@ -277,15 +272,9 @@
             type: "SET_LOADING",
             payload: true,
         });
-        return (
-            window.SubstrateAdapters && window.SubstrateAdapters.getDisplayData
-                ? window.SubstrateAdapters.getDisplayData(adapter, payload, {
-                      colorMode: _deps.getColorMode(),
-                  })
-                : Promise.reject(
-                      new Error("SubstrateAdapters.getDisplayData not available")
-                  )
-        )
+        return window.SubstrateAdapters.getDisplayData(adapter, payload, {
+            colorMode: _deps.getColorMode(),
+        })
             .then(function (displayResult) {
                 var population = displayResult.population || [];
                 appendCardsToGrid(
@@ -303,34 +292,18 @@
                         patternsMap: undefined,
                     },
                 });
-                if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
-                    window.ViewerControls.updateForSubstrate(state.substrateId);
-                }
-                if (
-                    window.EyecatcherDebug &&
-                    window.EyecatcherDebug.updateForSubstrate
-                ) {
-                    window.EyecatcherDebug.updateForSubstrate(state.substrateId);
-                }
+                _notifySubstrateChange(state.substrateId);
                 if (_deps.updateStats) _deps.updateStats();
             })
             .catch(function (e) {
                 console.error(e);
-                if (window.Toast) {
-                    window.Toast.show(
-                        "Add failed",
-                        e.message || "Failed to compile",
-                        "error"
-                    );
-                }
+                window.Toast.show(
+                    "Add failed",
+                    e.message || "Failed to compile",
+                    "error"
+                );
             })
-            .finally(function () {
-                if (_deps.showLoading) _deps.showLoading(false);
-                window.PopulationState.dispatch({
-                    type: "SET_LOADING",
-                    payload: false,
-                });
-            });
+            .finally(_clearLoading);
     }
 
     function init(deps) {
