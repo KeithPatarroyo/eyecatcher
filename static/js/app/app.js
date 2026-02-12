@@ -104,7 +104,7 @@
                 wrap.appendChild(msg);
                 grid.appendChild(wrap);
             }
-            if (typeof showLoading !== "undefined") showLoading(false);
+            showLoading(false);
             return;
         }
         var devPort = window.DEFAULT_DEV_PORT || 5001;
@@ -128,7 +128,7 @@
         window.GridRenderer.clearGrid(IDS);
         grid = document.getElementById(IDS.grid);
         if (grid) grid.appendChild(fragment);
-        if (typeof showLoading !== "undefined") showLoading(false);
+        showLoading(false);
         if (showRetry) {
             var retryEl = document.getElementById(IDS.gridRetryBtn);
             if (retryEl) {
@@ -170,13 +170,11 @@
     function savePattern(id, buttonEl) {
         var state = window.PopulationState.getState();
         if (!state.currentGenomes || !state.currentGenomes.length) {
-            if (window.Toast) {
-                window.Toast.show(
-                    "Cannot save",
-                    "No pattern data. Start with New random population or Load population.",
-                    "error"
-                );
-            }
+            window.Toast.show(
+                "Cannot save",
+                "No pattern data. Start with New random population or Load population.",
+                "error"
+            );
             return;
         }
         var idx = state.currentPopulation.findIndex(function (p) {
@@ -185,13 +183,7 @@
         var genome =
             idx >= 0 && state.currentGenomes[idx] ? state.currentGenomes[idx] : null;
         if (!genome) {
-            if (window.Toast) {
-                window.Toast.show(
-                    "Cannot save",
-                    "Could not get pattern data.",
-                    "error"
-                );
-            }
+            window.Toast.show("Cannot save", "Could not get pattern data.", "error");
             return;
         }
         var originalText = buttonEl ? buttonEl.textContent : null;
@@ -207,15 +199,13 @@
                         ? window.Toast.base64ToBlob(file.content_base64, file.mime)
                         : new Blob([file.content], { type: file.mime });
                     window.Toast.triggerDownload(blob, file.filename);
-                    if (window.Toast) {
-                        window.Toast.show(
-                            "Pattern saved!",
-                            "Zip downloaded to your computer.",
-                            "success",
-                            { duration: 5000 }
-                        );
-                    }
-                } else if (window.Toast) {
+                    window.Toast.show(
+                        "Pattern saved!",
+                        "Zip downloaded to your computer.",
+                        "success",
+                        { duration: 5000 }
+                    );
+                } else {
                     window.Toast.show(
                         "Pattern saved!",
                         "No download in response.",
@@ -225,13 +215,11 @@
             })
             .catch(function (error) {
                 console.error("Error saving:", error);
-                if (window.Toast) {
-                    window.Toast.show(
-                        "Save failed",
-                        error.message || "Network error",
-                        "error"
-                    );
-                }
+                window.Toast.show(
+                    "Save failed",
+                    error.message || "Network error",
+                    "error"
+                );
             })
             .then(function () {
                 if (buttonEl) {
@@ -323,7 +311,7 @@
         var evolveEl = document.getElementById(IDS.evolveBtn);
         if (evolveEl && evolveEl.classList.contains("disabled")) return;
         setEvolveButtonDisabled(true);
-        if (typeof showLoading !== "undefined") showLoading(true);
+        showLoading(true);
         window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
 
         function getPopulationSize() {
@@ -359,12 +347,8 @@
             },
             function (err) {
                 console.error("Error evolving:", err);
-                if (window.Toast) {
-                    window.Toast.error(
-                        "Evolve failed: " + (err.message || String(err))
-                    );
-                }
-                if (typeof showLoading !== "undefined") showLoading(false);
+                window.Toast.error("Evolve failed: " + (err.message || String(err)));
+                showLoading(false);
                 window.PopulationState.dispatch({
                     type: "SET_LOADING",
                     payload: false,
@@ -462,26 +446,20 @@
     window.PopulationState.init();
     window.ApiClient.init(API_URL);
 
-    if (window.GridRenderer && window.GridRenderer.init) {
-        window.GridRenderer.init({
-            IDS: IDS,
-            API_URL: API_URL,
-            getGridCallbacks: getGridCallbacks,
-            resolveAdapterAndOutput: resolveAdapterAndOutput,
-            getColorMode: getColorMode,
-            showLoading: function (show) {
-                if (typeof showLoading !== "undefined") showLoading(show);
-            },
-            showGridError: showGridError,
-            updateStats: updateStats,
-        });
-    }
+    window.GridRenderer.init({
+        IDS: IDS,
+        API_URL: API_URL,
+        getGridCallbacks: getGridCallbacks,
+        resolveAdapterAndOutput: resolveAdapterAndOutput,
+        getColorMode: getColorMode,
+        showLoading: showLoading,
+        showGridError: showGridError,
+        updateStats: updateStats,
+    });
 
     window.ApiClient.fetchConfig()
         .then(function (c) {
-            if (window.EvolutionConfig && window.EvolutionConfig.mergeFromServer) {
-                window.EvolutionConfig.mergeFromServer(c);
-            }
+            window.EvolutionConfig.mergeFromServer(c);
         })
         .catch(function () {
             /* fallback to hardcoded EvolutionConfig */
@@ -518,7 +496,7 @@
         onGenomeUpdated: onGenomeUpdated,
     });
 
-    if (window.initToolbarUI) window.initToolbarUI();
+    window.initToolbarUI();
 
     document.querySelectorAll('input[name="colorMode"]').forEach(function (radio) {
         radio.addEventListener("change", function () {
@@ -535,84 +513,60 @@
         });
     });
 
-    onId(IDS.fullscreenClose, function (el) {
-        el.addEventListener("click", closeFullscreen);
-    });
-    onId(IDS.fullscreenBackdrop, function (el) {
-        el.addEventListener("click", closeFullscreen);
-    });
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") closeFullscreen();
     });
 
-    onId(IDS.evolveBtn, function (el) {
-        el.addEventListener("click", evolveGeneration);
-        el.addEventListener("keydown", function (e) {
-            onRoleButtonKeydown(e, evolveGeneration);
+    var closeLoadModal = function () {
+        var m = document.getElementById(IDS.loadListModal);
+        if (m) m.classList.remove("show");
+    };
+    var closeCommunityListModal = function () {
+        var m = document.getElementById(IDS.communityListModal);
+        if (m) m.classList.remove("show");
+    };
+    var eventBindings = [
+        [IDS.fullscreenClose, closeFullscreen],
+        [IDS.fullscreenBackdrop, closeFullscreen],
+        [IDS.evolveBtn, evolveGeneration, true],
+        [IDS.loadModalClose, closeLoadModal],
+        [IDS.communitySubmitDo, window.CommunityUI.submitCommunityForm],
+        [IDS.communitySubmitCancel, window.CommunityUI.closeSubmitCommunityModal],
+        [IDS.communityListClose, closeCommunityListModal],
+        [IDS.communityLoadSelectedBtn, window.CommunityUI.onCommunityLoadSelected],
+        [IDS.communityLoad12Btn, window.CommunityUI.onCommunityLoad12],
+        [IDS.communitySelectAllBtn, window.CommunityUI.onCommunitySelectAll],
+        [IDS.communityDeselectAllBtn, window.CommunityUI.onCommunityDeselectAll],
+        [IDS.newFromCommunityBtn, window.CommunityUI.onNewFromCommunityClick, true],
+        [IDS.adminKeySubmit, window.CommunityUI.submitAdminKey],
+        [IDS.adminModalCancel, window.CommunityUI.closeAdminModal],
+        [IDS.adminListClose, window.CommunityUI.closeAdminModal],
+        [IDS.saveCurrentBtn, window.PopulationUI.onSaveCurrentClick],
+        [IDS.importBtn, window.PopulationUI.onImportClick],
+    ];
+    eventBindings.forEach(function (b) {
+        var id = b[0];
+        var handler = b[1];
+        var withRoleKeydown = b[2];
+        onId(id, function (el) {
+            el.addEventListener("click", handler);
+            if (withRoleKeydown) {
+                el.addEventListener("keydown", function (e) {
+                    onRoleButtonKeydown(e, handler);
+                });
+            }
         });
-    });
-
-    onId(IDS.loadModalClose, function (el) {
-        el.addEventListener("click", function () {
-            var modal = document.getElementById(IDS.loadListModal);
-            if (modal) modal.classList.remove("show");
-        });
-    });
-    onId(IDS.communitySubmitDo, function (el) {
-        el.addEventListener("click", window.CommunityUI.submitCommunityForm);
-    });
-    onId(IDS.communitySubmitCancel, function (el) {
-        el.addEventListener("click", window.CommunityUI.closeSubmitCommunityModal);
-    });
-    onId(IDS.communityListClose, function (el) {
-        el.addEventListener("click", function () {
-            var modal = document.getElementById(IDS.communityListModal);
-            if (modal) modal.classList.remove("show");
-        });
-    });
-    onId(IDS.communityLoadSelectedBtn, function (el) {
-        el.addEventListener("click", window.CommunityUI.onCommunityLoadSelected);
-    });
-    onId(IDS.communityLoad12Btn, function (el) {
-        el.addEventListener("click", window.CommunityUI.onCommunityLoad12);
-    });
-    onId(IDS.communitySelectAllBtn, function (el) {
-        el.addEventListener("click", window.CommunityUI.onCommunitySelectAll);
-    });
-    onId(IDS.communityDeselectAllBtn, function (el) {
-        el.addEventListener("click", window.CommunityUI.onCommunityDeselectAll);
-    });
-    onId(IDS.newFromCommunityBtn, function (el) {
-        el.addEventListener("click", window.CommunityUI.onNewFromCommunityClick);
-        el.addEventListener("keydown", function (e) {
-            onRoleButtonKeydown(e, window.CommunityUI.onNewFromCommunityClick);
-        });
-    });
-    onId(IDS.adminKeySubmit, function (el) {
-        el.addEventListener("click", window.CommunityUI.submitAdminKey);
-    });
-    onId(IDS.adminModalCancel, function (el) {
-        el.addEventListener("click", window.CommunityUI.closeAdminModal);
-    });
-    onId(IDS.adminListClose, function (el) {
-        el.addEventListener("click", window.CommunityUI.closeAdminModal);
     });
     onId(IDS.adminKeyInput, function (el) {
         el.addEventListener("keydown", function (e) {
             if (e.key === "Enter") window.CommunityUI.submitAdminKey();
         });
     });
-    onId(IDS.saveCurrentBtn, function (el) {
-        el.addEventListener("click", window.PopulationUI.onSaveCurrentClick);
-    });
-    onId(IDS.importBtn, function (el) {
-        el.addEventListener("click", window.PopulationUI.onImportClick);
-    });
     onId(IDS.importFile, function (el) {
         el.addEventListener("change", function (e) {
             var file = e.target.files && e.target.files[0];
             e.target.value = "";
-            if (file && typeof window.PopulationUI.handleImportFile === "function") {
+            if (file && window.PopulationUI.handleImportFile) {
                 window.PopulationUI.handleImportFile(file);
             }
         });
@@ -633,11 +587,7 @@
     }
 
     var genealogyLoad = null;
-    var raw = Utils.safeGetItem(
-        typeof localStorage !== "undefined" ? localStorage : null,
-        "genealogy_load",
-        null
-    );
+    var raw = Utils.safeGetItem(localStorage, "genealogy_load", null);
     if (raw) {
         try {
             genealogyLoad = JSON.parse(raw);
@@ -661,10 +611,7 @@
         var outType;
         if (subId != null) {
             outType = subId === "ca" ? "grid" : "shader";
-        } else if (
-            window.SubstrateAdapters &&
-            window.SubstrateAdapters.resolveFromGenomes
-        ) {
+        } else if (window.SubstrateAdapters.resolveFromGenomes) {
             var r = window.SubstrateAdapters.resolveFromGenomes(genealogyLoad.genomes);
             outType = r.outputType;
             subId = r.substrateId;
