@@ -290,19 +290,26 @@
         }
     }
 
+    function inferSubstrateId(outputType) {
+        return outputType === "grid" ? "ca" : "dual_cppn";
+    }
+
     async function loadFromStatelessGenomes(
         genomes,
         generationNum,
         saveToGenealogy,
-        outputType
+        outputType,
+        substrateId
     ) {
         if (!genomes || !genomes.length) return;
+        var resolvedOutputType = outputType || "shader";
+        var resolvedSubstrateId = substrateId || inferSubstrateId(resolvedOutputType);
         if (typeof showLoading !== "undefined") showLoading(true);
         window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
         window.GridRenderer.clearGrid(IDS);
         try {
             var population;
-            if (outputType === "grid") {
+            if (resolvedOutputType === "grid") {
                 var evalData = await window.ApiClient.evaluate(genomes);
                 var results = evalData.results || [];
                 population = results.map(function (r) {
@@ -328,7 +335,8 @@
                 population,
                 IDS,
                 getGridCallbacks(),
-                patternsMap
+                patternsMap,
+                resolvedSubstrateId
             );
             var branchName = window.PopulationState.getState().branchName || "main";
             var parentId = window.PopulationState.getState().populationId;
@@ -357,7 +365,8 @@
                             branchName,
                             parentId,
                             fitnessData,
-                            window.ApiClient.apiFetch
+                            window.ApiClient.apiFetch,
+                            resolvedSubstrateId
                         );
                     if (data && data.population_id != null) {
                         window.PopulationState.dispatch({
@@ -379,8 +388,13 @@
                     genomes: genomes,
                     generationNum: generationNum,
                     patternsMap: patternsMap,
+                    substrateId: resolvedSubstrateId,
+                    outputType: resolvedOutputType,
                 },
             });
+            if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
+                window.ViewerControls.updateForSubstrate(resolvedSubstrateId);
+            }
             var genEl = document.getElementById(IDS.genNum);
             if (genEl) genEl.textContent = generationNum;
             updateStats();
@@ -393,9 +407,13 @@
         }
     }
 
-    async function addToGrid(genomes) {
+    async function addToGrid(genomes, outputTypeOverride) {
         if (!genomes || !genomes.length) return;
         var state = window.PopulationState.getState();
+        var outputType =
+            outputTypeOverride != null
+                ? outputTypeOverride
+                : state.outputType || "shader";
         var nextKey = 0;
         state.patterns.forEach(function (_, id) {
             nextKey = Math.max(nextKey, id + 1);
@@ -409,22 +427,43 @@
         if (typeof showLoading !== "undefined") showLoading(true);
         window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
         try {
-            var compData = await window.ApiClient.compile(payload, getColorMode());
-            var newShaders = compData.shaders || [];
+            var population;
+            if (outputType === "grid") {
+                var evalData = await window.ApiClient.evaluate(payload);
+                var results = evalData.results || [];
+                population = results.map(function (r) {
+                    return {
+                        id: r.id,
+                        image: r.image,
+                        shader: r.shader,
+                        rule: r.rule,
+                        nodes: 0,
+                        connections: 0,
+                        clicks: 0,
+                    };
+                });
+            } else {
+                var compData = await window.ApiClient.compile(payload, getColorMode());
+                population = compData.shaders || [];
+            }
             window.GridRenderer.appendCardsToGrid(
-                newShaders,
+                population,
                 IDS,
                 getGridCallbacks(),
-                state.patterns
+                state.patterns,
+                state.substrateId
             );
             window.PopulationState.dispatch({
                 type: "ADD_TO_GRID",
                 payload: {
-                    genomes: genomes,
-                    population: newShaders,
+                    genomes: payload,
+                    population: population,
                     patternsMap: undefined,
                 },
             });
+            if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
+                window.ViewerControls.updateForSubstrate(state.substrateId);
+            }
             updateStats();
         } catch (e) {
             console.error(e);
@@ -457,7 +496,13 @@
             window.PopulationState.getState,
             getPopulationSize,
             window.ApiClient.evolve.bind(window.ApiClient),
-            function (children, newGenerationNum, populationId, outputType) {
+            function (
+                children,
+                newGenerationNum,
+                populationId,
+                outputType,
+                substrateId
+            ) {
                 if (populationId != null) {
                     window.PopulationState.dispatch({
                         type: "SET_EVOLVE_RESULT",
@@ -465,7 +510,13 @@
                     });
                     window.GenealogySync.syncCurrentPopulationIdToStorage(populationId);
                 }
-                loadFromStatelessGenomes(children, newGenerationNum, false, outputType);
+                loadFromStatelessGenomes(
+                    children,
+                    newGenerationNum,
+                    false,
+                    outputType,
+                    substrateId
+                );
             },
             function (err) {
                 console.error("Error evolving:", err);
@@ -491,6 +542,8 @@
             return {
                 genomes: state.currentGenomes,
                 generation: state.generationNum,
+                substrateId: state.substrateId,
+                outputType: state.outputType,
             };
         }
         return null;
@@ -570,6 +623,16 @@
     window.PopulationState.init();
     window.ApiClient.init(API_URL);
 
+    window.ApiClient.fetchConfig()
+        .then(function (c) {
+            if (window.EvolutionConfig && window.EvolutionConfig.mergeFromServer) {
+                window.EvolutionConfig.mergeFromServer(c);
+            }
+        })
+        .catch(function () {
+            /* fallback to hardcoded EvolutionConfig */
+        });
+
     window.AnimationLoop.init({
         getPatterns: getPatterns,
         patternRenderer: window.PatternRenderer || null,
@@ -605,8 +668,14 @@
     document.querySelectorAll('input[name="colorMode"]').forEach(function (radio) {
         radio.addEventListener("change", function () {
             var data = getCurrentGenomesForSave();
-            if (data) {
-                loadFromStatelessGenomes(data.genomes, data.generation, false);
+            if (data && data.outputType === "shader") {
+                loadFromStatelessGenomes(
+                    data.genomes,
+                    data.generation,
+                    false,
+                    data.outputType,
+                    data.substrateId
+                );
             }
         });
     });
@@ -733,7 +802,21 @@
         );
         var genNum =
             genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
-        loadFromStatelessGenomes(genealogyLoad.genomes, genNum, false);
+        var subId = genealogyLoad.substrate_id;
+        var outType;
+        if (subId != null) {
+            outType = subId === "ca" ? "grid" : "shader";
+        } else if (
+            window.SubstrateAdapters &&
+            window.SubstrateAdapters.resolveFromGenomes
+        ) {
+            var r = window.SubstrateAdapters.resolveFromGenomes(genealogyLoad.genomes);
+            outType = r.outputType;
+            subId = r.substrateId;
+        } else {
+            outType = "shader";
+        }
+        loadFromStatelessGenomes(genealogyLoad.genomes, genNum, false, outType, subId);
     } else {
         window.PopulationUI.startNewRandomPopulation();
     }

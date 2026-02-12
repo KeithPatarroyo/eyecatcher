@@ -41,6 +41,21 @@
               },
     };
 
+    /**
+     * Merge server config (from GET /api/config) into EvolutionConfig.
+     * Call after fetchConfig() so population limits match the active preset.
+     * @param {Object} config - { population_size, max_population_size }
+     */
+    EvolutionConfig.mergeFromServer = function (config) {
+        if (!config) return;
+        if (config.population_size != null) {
+            this.DEFAULT_POPULATION_SIZE = config.population_size;
+        }
+        if (config.max_population_size != null) {
+            this.MAX_POPULATION_SIZE = config.max_population_size;
+        }
+    };
+
     if (typeof window !== "undefined") {
         window.EvolutionConfig = EvolutionConfig;
     }

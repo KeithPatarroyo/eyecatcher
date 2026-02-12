@@ -132,6 +132,20 @@
     }
 
     /**
+     * Fetch server config (substrate_id, output_type, population_size, max_population_size).
+     * Caches result on window.ServerConfig. Use for bootstrapping EvolutionConfig.
+     * @returns {Promise<Object>} Config object or rejects on failure
+     */
+    async function fetchConfig() {
+        var base = _apiUrl || getApiBaseUrl();
+        var data = await apiFetch(base + "/config", { method: "GET" }, "Config failed");
+        if (typeof window !== "undefined") {
+            window.ServerConfig = data;
+        }
+        return data;
+    }
+
+    /**
      * Get a new random population. Returns { genomes, output_type } or throws.
      * @param {number} size - Population size
      */
@@ -172,6 +186,7 @@
         save: save,
         randomPopulation: randomPopulation,
         evaluate: evaluate,
+        fetchConfig: fetchConfig,
         apiFetch: apiFetch,
     };
 })();
