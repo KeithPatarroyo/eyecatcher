@@ -34,20 +34,44 @@ Exact file tree and file-by-file roles: **[src/eyecatcher/README.md](src/eyecatc
 
 Signals are defined in Python only; the frontend config is generated from the registry.
 
+**Checklist (order matters):** 1) Edit signals.py → 2) Run make generate-signals → 3) Update NEAT num_inputs/num_outputs if counts changed → 4) Restart server and reload app.
+
 1. **Edit the registry:** [src/eyecatcher/signals/signals.py](src/eyecatcher/signals/signals.py) – add or change entries in VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS. Use `Signal("id", "Label")` for inputs; use `Signal("id", "Label", is_spatial=True)` for per-pixel inputs (x, y, distance); use `Output("id", "Label")` for outputs.
 2. **Generate frontend config:** Run `make generate-signals` (or `python scripts/generate_signal_config.py` from repo root). This writes [static/js/evolution/evolution_config_signals.generated.js](static/js/evolution/evolution_config_signals.generated.js) and validates NEAT config.
 3. **NEAT counts:** If you added or removed inputs/outputs, update num_inputs/num_outputs in [config/neat/](config/neat/) (neat_config_experimental.txt, neat_config_time_experimental.txt). The generate script will fail with a clear message if they don’t match the registry.
 4. Restart the server and reload the app.
 
+If you forget step 2, the frontend will still use the old signal list until you run `make generate-signals`. The test `test_frontend_signals_match_backend` in [tests/test_signal_registry.py](tests/test_signal_registry.py) fails if the generated file does not match the Python registry; run `make test` to catch drift.
+
+## Pluggable signal sources
+
+The viewer (and community/genealogy previews) get CPPN input values—`raw_time`, `mouse_speed`, `mouse_dist`, `activity`—from a **signal source**. By default this is the built-in source (mouse + time from the animation loop). You can replace it with a custom source (e.g. fixed values for static previews, or future audio/gamepad).
+
+**Interface:** A signal source is an object with `getValues(context)`. `context` is `{ canvas?: HTMLCanvasElement }` (optional; used for per-pattern `mouse_dist`). The function returns an object with keys matching the canonical signal ids (see `SIGNAL_IDS` in [evolution_config_signals.generated.js](static/js/evolution/evolution_config_signals.generated.js)); values should be in the **0–1** range.
+
+**How to plug in:** Set `window.SignalSource` to your object **before** the app loads (e.g. in a script loaded before `app.js`), or pass `signalSource` into `AnimationLoop.init()` in [app.js](static/js/app/app.js). Example for fixed values (all patterns and previews use these):
+
+```js
+window.SignalSource = {
+    getValues: function () {
+        return { raw_time: 0.5, mouse_speed: 0, mouse_dist: 0, activity: 0 };
+    },
+};
+```
+
+**Where it’s used:** Main grid (animation loop), community preview, and genealogy thumbnails all use the same active source. The active source is whatever was set at `AnimationLoop.init()` (or `window.SignalSource` at load). Code that needs the current source can call `window.getSignalSource()` (set by the animation loop after init).
+
 ## Switch experiment (preset)
 
-To run a different experiment without editing code, use **presets** in [config/experiments.json](config/experiments.json). Each preset sets NEAT config paths, population size, and crossover probability. Start the server with:
+To run a different experiment without editing code, use **presets** in [config/experiments.json](config/experiments.json). Each preset sets NEAT config paths, population size, crossover probability, and substrate. Start the server with:
 
 ```bash
 EXPERIMENT_CONFIG=experiment_b python -m eyecatcher.server
 ```
 
 If `EXPERIMENT_CONFIG` is unset, the `"default"` preset is used (when the file exists). Add or edit presets in `config/experiments.json`; one restart per experiment.
+
+**Important:** Changing `EXPERIMENT_CONFIG` (e.g. switching from dual_cppn to ca) requires a **full page reload** (or "New random population") so the client picks up the new substrate and config from `GET /api/config`. The bootstrap runs once at load; there is no in-page "reload config" action.
 
 ## Change NEAT config paths or population size
 
@@ -69,9 +93,28 @@ If `EXPERIMENT_CONFIG` is unset, the `"default"` preset is used (when the file e
 Shaders are how we *display* evolved genomes, not part of the evolution algorithm. The pipeline lives in **glsl/**:
 
 - **Phases:** Topology → node code → template. Implemented in [glsl/compiler_topology.py](src/eyecatcher/glsl/compiler_topology.py) (enabled connections, evaluation order), [glsl/node_code_generator.py](src/eyecatcher/glsl/node_code_generator.py) (genome → GLSL node computations), [glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) (activation GLSL strings), [glsl/shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py) (orchestrates and builds the full shader).
-- **Add an activation:** Register it in [signals/activation.py](src/eyecatcher/signals/activation.py) for CPU query; add the GLSL in [glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) and the name mapping in [glsl/node_code_generator.py](src/eyecatcher/glsl/node_code_generator.py) (`ACTIVATION_FUNCTIONS`); update NEAT config if needed.
-- **Change output (color mode):** Edit `_get_color_output_code()` and `color_mode` in [glsl/shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py).
+- **Add an activation:** See checklist below.
+- **Change output (color mode):** See "Add or change an output mode" below.
 - **Change inputs/signals:** Edit [signals/signals.py](src/eyecatcher/signals/signals.py) (VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map); the compiler uses them automatically.
+
+### Checklist: Add an activation
+
+1. **CPU (query):** [src/eyecatcher/signals/activation.py](src/eyecatcher/signals/activation.py) – define the Python function and add it in `register_custom_activations()` (e.g. `activation_defs.add("myname", my_fn)`).
+2. **GLSL string:** [src/eyecatcher/glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) – add the GLSL snippet for the activation (e.g. in `ACTIVATION_GLSL_BLOCK` or the dict that maps names to code).
+3. **Name mapping:** [src/eyecatcher/glsl/node_code_generator.py](src/eyecatcher/glsl/node_code_generator.py) – add the name to `ACTIVATION_FUNCTIONS` so the compiler emits the correct GLSL function name.
+4. **NEAT config:** In [config/neat/](config/neat/) (e.g. neat_config_experimental.txt), add the new name to `activation_options` (and optionally `activation_default`) so genomes can use it.
+5. Restart the server and run `make generate-signals` if you changed anything that affects the signal/activation export.
+
+### Add or change an output mode (color mode)
+
+Output mode is how CPPN outputs (e.g. three floats) are turned into final RGB in the shader. Currently only **hsv** and **rgb** exist.
+
+**Exact locations:**
+
+- **Backend:** [src/eyecatcher/glsl/shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py) – method `_get_color_output_code()`. Add a branch (e.g. `elif self.color_mode == "grayscale":`) and return the GLSL string that computes `fragColor` from `output_0`, `output_1`, `output_2`. The `ShaderCompiler` constructor accepts `color_mode`; pass it when creating the compiler (e.g. in substrates or API).
+- **Frontend:** The toolbar or viewer controls that let users pick color mode (e.g. RGB vs HSV) are in the main viewer HTML/JS; if you add a new mode, add a radio option and pass the chosen value as `color_mode` in compile/save requests (see [static/js/lib/api_client.js](static/js/lib/api_client.js) `compile(genomes, colorMode)`).
+
+To introduce a **registry** of output modes (name → GLSL function), you would refactor `_get_color_output_code()` to look up a dict of mode names to GLSL code strings; the frontend could then read available modes from config.
 
 ## Shader response (compile / save / export)
 
@@ -116,14 +159,32 @@ Some constants exist in both Python and JavaScript; when you change them, update
 Substrates (dual_cppn, ca, future NCA/single_cppn) share a common protocol. To add a new one:
 
 1. **Python – substrate class:** Add a new module under `src/eyecatcher/substrate/` (e.g. `ca.py`, `dual_cppn.py`) implementing the `Substrate` protocol: `id`, `output_type`, `create_random`, `mutate`, `crossover`, `evaluate`, `compile_to_shader`, `to_json`, `from_json`. See [substrate/protocol.py](src/eyecatcher/substrate/protocol.py) and [substrate/ca.py](src/eyecatcher/substrate/ca.py) or [substrate/dual_cppn.py](src/eyecatcher/substrate/dual_cppn.py) for examples.
-2. **Python – exports:** In [substrate/__init__.py](src/eyecatcher/substrate/__init__.py), export the new class. In [substrate/registry.py](src/eyecatcher/substrate/registry.py), add it to the `SUBSTRATES` dict. In [substrate/export.py](src/eyecatcher/substrate/export.py), add an entry to `export_substrates_for_frontend()` (id, outputType, hasSignalControls, genomeKeys, optional excludeKeys); then run `make generate-substrates`.
+2. **Python – exports:** In [substrate/__init__.py](src/eyecatcher/substrate/__init__.py), export the new class. In [substrate/registry.py](src/eyecatcher/substrate/registry.py), add it to the `SUBSTRATES` dict. In [substrate/export.py](src/eyecatcher/substrate/export.py), add an entry to `export_substrates_for_frontend()` (id, outputType, hasSignalControls, genomeKeys, capabilities, optional excludeKeys); then run `make generate-substrates`.
 3. **Config – preset:** In [config/experiments.json](config/experiments.json), add a preset with `"substrate": "<id>"` and any substrate-specific kwargs (e.g. `width`, `generations` for CA).
 4. **Frontend – display:** If the substrate needs custom rendering (e.g. special uniforms like CA’s `uRule`, `uGeneration`), update [static/js/evolution/pattern_renderer.js](static/js/evolution/pattern_renderer.js) to branch on the pattern shape or `output_type` (e.g. `pattern.rule`, `patternData.caRule`). For CPPN variants, rendering is driven by SIGNAL_TOGGLES; no new branch needed.
 5. **Frontend – load/add:** [app.js](static/js/app/app.js) `loadFromStatelessGenomes` branches on `outputType` (grid → evaluate, shader → compile). Ensure `addToGrid` and load-from-saved flows receive `output_type`/`substrate_id` so they use evaluate for grid substrates and compile for shader substrates.
 6. **Frontend – import:** [population_ui.js](static/js/features/population_ui.js) `handleImportFile` must recognise the new genome format (e.g. `genome.visual && genome.time_signal` for dual_cppn, `genome.rule` for CA). Add a branch or use a substrate adapter so imported genomes are accepted and the correct `output_type` is used.
-7. **API:** See [substrate/API_REQUIREMENTS.md](src/eyecatcher/substrate/API_REQUIREMENTS.md) for which endpoints require which substrate capabilities. Compile works for any substrate that implements `compile_to_shader`; save, network, and time-output are dual_cppn-only (501 for others).
+7. **API:** See [substrate/API_REQUIREMENTS.md](src/eyecatcher/substrate/API_REQUIREMENTS.md) for which endpoints require which substrate capabilities. Compile and save work for dual_cppn, single_cppn, and ca; network and time-output are dual_cppn-only. Implement `get_capabilities()` on your substrate to declare which features are supported.
+
+**Adapter split (config-driven vs custom):**
+
+- **Config-driven substrates** (dual_cppn, single_cppn): No custom JS render code. They are registered from `SubstrateAdapterConfig` (generated from [substrate/export.py](src/eyecatcher/substrate/export.py)) via the shared [cppn_adapter.js](static/js/evolution/substrate_adapters/cppn_adapter.js). Adding a new CPPN variant = add an entry in export.py with id, outputType, genomeKeys, capabilities; run `make generate-substrates`; no new adapter file.
+- **Custom substrates** (ca, future NCA): Need a JS adapter file under [static/js/evolution/substrate_adapters/](static/js/evolution/substrate_adapters/) (e.g. [ca.js](static/js/evolution/substrate_adapters/ca.js)) that implements at least `id`, `outputType`, `isGenomeFormat`, `preparePatternData` (if the pattern needs extra fields for WebGL), and `render`. Put tunables (e.g. animation speed, grid size) at the top of the file. Register the adapter in that file with `SubstrateAdapters.register(adapter)`. The adapter is loaded after [index.js](static/js/evolution/substrate_adapters/index.js); config-driven adapters are registered from generated config, then ca.js registers the CA adapter (overwriting the config-driven CA entry if both exist). For a new custom substrate, add a new file (e.g. `nca.js`) and load it in [interactive_viewer.html](static/interactive_viewer.html) after the other adapter scripts.
 
 Once substrate frontend adapters are in place, adding a new substrate will mostly be: Python substrate + registry + preset + one frontend adapter file (or config for CPPN variants).
+
+## Batch evolution (substrate-agnostic)
+
+The batch example uses the configured substrate from `EXPERIMENT_CONFIG` and supports pluggable fitness:
+
+```bash
+python examples/evolution_batch.py --fitness combined
+EXPERIMENT_CONFIG=ca python examples/evolution_batch.py --fitness ca_symmetry
+EXPERIMENT_CONFIG=single python examples/evolution_batch.py --fitness color_variance
+```
+
+- **Fitness registry:** [evaluation/fitness.py](src/eyecatcher/evaluation/fitness.py) – `register_fitness`, `get_fitness`, `list_fitness`. Built-in: `color_variance`, `temporal_variance`, `combined`, `ca_symmetry`.
+- **Add a fitness:** Use `@register_fitness("name")` decorator; function receives `(individual, substrate)` and returns float.
 
 ## Quick reference
 
@@ -140,5 +201,7 @@ Once substrate frontend adapters are in place, adding a new substrate will mostl
 | Change wire serialization | genome/serialization.py |
 | Change network graph/stats for API or viz | evaluation/network_data.py |
 | Change genome file save/load | data/genome_persistence.py |
+| Add/extend batch fitness | evaluation/fitness.py |
+| Run batch evolution with substrate | examples/evolution_batch.py (uses EXPERIMENT_CONFIG) |
 
 For full project layout and running the app, see [README.md](README.md). For contributing (tests, style), see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
