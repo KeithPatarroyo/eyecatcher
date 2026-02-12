@@ -2,9 +2,8 @@
 
 Defines VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS so that
 query, glsl (shader compiler), serialization, and genome_visualizer consume one
-source of truth. To add/rename a signal, edit this file and
-static/js/modules/evolution_config.js; update NEAT num_inputs/num_outputs
-(and frontend SIGNAL_TOGGLES for toggleable inputs).
+source of truth. Run scripts/generate_signal_config.py to emit JS config and
+validate NEAT; update NEAT num_inputs/num_outputs when counts change.
 
 Derived inputs: some signals are computed from other inputs when not provided
 (e.g. distance = sqrt(x² + y²)). Register them in VISUAL_DERIVED_INPUTS so
@@ -18,96 +17,62 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Callable
 
+# Ids that get their value from another CPPN (e.g. visual "time" from Time CPPN).
+# Used only for export/UI; not a Signal field.
+_DERIVED_IDS: frozenset[str] = frozenset({"time"})
+
+
+def _is_toggleable(s: Signal) -> bool:
+    """True if this signal has a value uniform (not spatial, not bias)."""
+    return not s.is_spatial and s.id != "bias"
+
 
 @dataclass(frozen=True)
 class Signal:
-    """Single CPPN input signal."""
+    """CPPN input signal. id used everywhere; GLSL gets u_/v_ prefix in compiler."""
 
-    name: str  # internal id, e.g. "mouse_speed"
-    glsl_var: str  # GLSL variable name, e.g. "vMouseSpeed"
-    uniform: str  # JS uniform name, e.g. "uMouseSpeed" (empty for spatial/bias)
-    enable_key: str  # JS camelCase key, e.g. "mouseSpeed" (empty for spatial/bias)
-    label: str  # human-readable, e.g. "Mouse Speed"
-    default: float  # neutral value (0.0 usually; 1.0 for bias)
-    is_spatial: bool  # True for x, y, distance (per-pixel, no uniform)
+    id: str
+    label: str
+    default: float = 0.0
+    is_spatial: bool = False
+
+    def _uniform(self) -> str:
+        return f"u_{self.id}" if _is_toggleable(self) else ""
+
+    def _glsl_var(self) -> str:
+        return f"v_{self.id}"
+
+    def _is_derived(self) -> bool:
+        return self.id in _DERIVED_IDS
 
 
 @dataclass(frozen=True)
 class Output:
     """Single CPPN output."""
 
-    name: str  # e.g. "red"
-    label: str  # e.g. "Red"
+    id: str
+    label: str
 
 
-# Visual CPPN: 8 inputs (x, y, distance, time, mouse_speed, mouse_distance,
-# inactivity, bias)
+# Visual CPPN: 8 inputs (x, y, distance, time, mouse_speed, mouse_dist, activity, bias)
 VISUAL_INPUTS: list[Signal] = [
-    Signal("x", "vX", "", "", "x", 0.0, True),
-    Signal("y", "vY", "", "", "y", 0.0, True),
-    Signal("distance", "vDist", "", "", "distance", 0.0, True),
-    Signal("time", "vTime", "", "time", "Time", 0.0, False),
-    Signal(
-        "mouse_speed",
-        "vMouseSpeed",
-        "uMouseSpeed",
-        "mouseSpeed",
-        "Mouse Speed",
-        0.0,
-        False,
-    ),
-    Signal(
-        "mouse_distance",
-        "vMouseDist",
-        "uMouseDist",
-        "mouseDist",
-        "Mouse Dist",
-        0.0,
-        False,
-    ),
-    Signal(
-        "inactivity",
-        "vInactivity",
-        "uInactivity",
-        "inactivity",
-        "Activity",
-        0.0,
-        False,
-    ),
-    Signal("bias", "vBias", "", "", "bias", 1.0, False),
+    Signal("x", "x", 0.0, True),
+    Signal("y", "y", 0.0, True),
+    Signal("distance", "distance", 0.0, True),
+    Signal("time", "Time", 0.0, False),  # derived from Time CPPN
+    Signal("mouse_speed", "Mouse Speed"),
+    Signal("mouse_dist", "Mouse Dist"),
+    Signal("activity", "Activity"),
+    Signal("bias", "Bias", 1.0),
 ]
 
-# Time signal CPPN: 5 inputs (raw_time, mouse_speed, mouse_distance, inactivity, bias)
+# Time CPPN: 5 inputs (raw_time, mouse_speed, mouse_dist, activity, bias)
 TIME_INPUTS: list[Signal] = [
-    Signal("raw_time", "vRawTime", "uTime", "rawTime", "Raw Time", 0.0, False),
-    Signal(
-        "mouse_speed",
-        "vMouseSpeed",
-        "uMouseSpeed",
-        "mouseSpeed",
-        "Mouse Speed",
-        0.0,
-        False,
-    ),
-    Signal(
-        "mouse_distance",
-        "vMouseDist",
-        "uMouseDist",
-        "mouseDist",
-        "Mouse Dist",
-        0.0,
-        False,
-    ),
-    Signal(
-        "inactivity",
-        "vInactivity",
-        "uInactivity",
-        "inactivity",
-        "Activity",
-        0.0,
-        False,
-    ),
-    Signal("bias", "vBias", "", "", "bias", 1.0, False),
+    Signal("raw_time", "Raw Time"),
+    Signal("mouse_speed", "Mouse Speed"),
+    Signal("mouse_dist", "Mouse Dist"),
+    Signal("activity", "Activity"),
+    Signal("bias", "Bias", 1.0),
 ]
 
 VISUAL_OUTPUTS: list[Output] = [
@@ -126,16 +91,11 @@ NETWORK_SIGNALS: dict[str, tuple[list[Signal], list[Output]]] = {
     "time": (TIME_INPUTS, TIME_OUTPUTS),
 }
 
-# Names for the time-related input in each CPPN (avoid repeated lookups).
-VISUAL_TIME_INPUT_NAME: str = next(
-    s.name for s in VISUAL_INPUTS if s.enable_key == "time"
-)
-TIME_CPPN_TIME_INPUT_NAME: str = TIME_INPUTS[0].name
+VISUAL_TIME_INPUT_NAME: str = "time"
+TIME_CPPN_TIME_INPUT_NAME: str = TIME_INPUTS[0].id
 
 # Derived inputs: computed from other inputs when not provided.
-# List of (output_signal_name, (dependency_names, ...), compute_fn).
-# compute_fn(*values) receives dependency values in order.
-# Only fill if the output key is missing and all dependencies are present.
+# List of (output_signal_id, (dependency_ids, ...), compute_fn).
 VISUAL_DERIVED_INPUTS: list[tuple[str, tuple[str, ...], Callable[..., float]]] = [
     ("distance", ("x", "y"), lambda x, y: math.sqrt(x * x + y * y)),
 ]
@@ -161,13 +121,13 @@ def output_labels(outputs: Sequence[Output]) -> list[str]:
 
 
 def output_names(outputs: Sequence[Output]) -> list[str]:
-    """Return name strings for outputs (serialization)."""
-    return [o.name for o in outputs]
+    """Return id strings for outputs (serialization)."""
+    return [o.id for o in outputs]
 
 
 def input_names(signals: Sequence[Signal]) -> list[str]:
-    """Return name strings for inputs (serialization, genome_visualizer)."""
-    return [s.name for s in signals]
+    """Return id strings for inputs (serialization, genome_visualizer)."""
+    return [s.id for s in signals]
 
 
 def build_glsl_input_map(signals: Sequence[Signal]) -> dict:
@@ -177,19 +137,63 @@ def build_glsl_input_map(signals: Sequence[Signal]) -> dict:
     First signal gets most-negative ID (e.g. 8 inputs -> -8..-1).
     """
     n = len(signals)
-    return {-n + i: signals[i].glsl_var for i in range(n)}
+    return {-n + i: signals[i]._glsl_var() for i in range(n)}
 
 
 def inputs_array(signals: Sequence[Signal], values: dict) -> list[float]:
     """
-    Build the input array for a CPPN from a dict of signal name -> value.
+    Build the input array for a CPPN from a dict of signal id -> value.
 
-    Missing keys use Signal.default. Use this so adding a new signal only
-    requires extending the registry; callers pass optional keys when available.
+    Missing keys use Signal.default. Viewer sends keys matching signal ids.
     """
-    return [values.get(s.name, s.default) for s in signals]
+    return [values.get(s.id, s.default) for s in signals]
 
 
 def default_inputs(signals: Sequence[Signal]) -> dict[str, float]:
-    """Return a dict of signal name -> default value for all signals."""
-    return {s.name: s.default for s in signals}
+    """Return a dict of signal id -> default value for all signals."""
+    return {s.id: s.default for s in signals}
+
+
+def export_for_frontend() -> dict:
+    """Export signal config for JS. Used by generate_signal_config.py.
+
+    Returns a dict with SIGNAL_TOGGLES (time + visual toggleableInputs),
+    OUTPUTS (visual + time), and SIGNAL_IDS (ids that need values from viewer).
+    """
+
+    def toggleable_inputs(signals: list[Signal]) -> list[dict]:
+        out = []
+        for s in signals:
+            if not _is_toggleable(s):
+                continue
+            entry = {
+                "id": s.id,
+                "label": s.label,
+                "uniform": s._uniform() or None,
+            }
+            if s._is_derived():
+                entry["derived"] = True
+            out.append(entry)
+        return out
+
+    # SIGNAL_IDS = ids that viewer provides (all toggleable, excluding derived)
+    signal_ids_seen: set[str] = set()
+    for s in TIME_INPUTS:
+        if _is_toggleable(s):
+            signal_ids_seen.add(s.id)
+    for s in VISUAL_INPUTS:
+        if _is_toggleable(s) and not s._is_derived():
+            signal_ids_seen.add(s.id)
+    signal_ids = sorted(signal_ids_seen)
+
+    return {
+        "SIGNAL_TOGGLES": {
+            "time": {"toggleableInputs": toggleable_inputs(TIME_INPUTS)},
+            "visual": {"toggleableInputs": toggleable_inputs(VISUAL_INPUTS)},
+        },
+        "OUTPUTS": {
+            "visual": [{"id": o.id, "label": o.label} for o in VISUAL_OUTPUTS],
+            "time": [{"id": o.id, "label": o.label} for o in TIME_OUTPUTS],
+        },
+        "SIGNAL_IDS": signal_ids,
+    }
