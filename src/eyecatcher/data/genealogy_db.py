@@ -226,6 +226,14 @@ def get_population(population_id: int) -> dict[str, Any] | None:
                 genomes.append(genome)
             except (json.JSONDecodeError, TypeError):
                 continue
+        metadata = {}
+        row_dict = dict(pop_row)
+        meta_raw = row_dict.get("metadata_json")
+        if meta_raw:
+            try:
+                metadata = json.loads(meta_raw) or {}
+            except (json.JSONDecodeError, TypeError):
+                pass
         return {
             "population_id": pop_row["id"],
             "parent_id": pop_row["parent_id"],
@@ -235,6 +243,7 @@ def get_population(population_id: int) -> dict[str, Any] | None:
             "description": pop_row["description"],
             "user_id": pop_row["user_id"],
             "genomes": genomes,
+            "metadata": metadata,
         }
 
 

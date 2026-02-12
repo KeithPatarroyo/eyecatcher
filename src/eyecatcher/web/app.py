@@ -148,6 +148,7 @@ def _evolve_stateless(data):
                             "children": children,
                             "population_id": new_pop_id,
                             "output_type": substrate.output_type,
+                            "substrate_id": substrate.id,
                         }
                     )
             except Exception as e:
@@ -156,6 +157,7 @@ def _evolve_stateless(data):
             {
                 "children": children,
                 "output_type": substrate.output_type,
+                "substrate_id": substrate.id,
             }
         )
     except ValueError as e:

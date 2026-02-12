@@ -12,10 +12,12 @@ from typing import Any
 from .ca import ElementaryCASubstrate
 from .dual_cppn import DualCPPNSubstrate
 from .protocol import Substrate
+from .single_cppn import SingleCPPNSubstrate
 
 # Concrete substrate classes keyed by id; all implement Substrate protocol.
 SUBSTRATES: dict[str, type] = {
     "dual_cppn": DualCPPNSubstrate,
+    "single_cppn": SingleCPPNSubstrate,
     "ca": ElementaryCASubstrate,
 }
 

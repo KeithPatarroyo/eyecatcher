@@ -46,6 +46,9 @@ def save_population_route():
         description = data.get("description", "")
         user_id = data.get("user_id", "anonymous")
         fitness_data = data.get("fitness_data", [])
+        metadata = data.get("metadata") or {}
+        if data.get("substrate_id") is not None:
+            metadata = dict(metadata, substrate_id=data.get("substrate_id"))
 
         if not genomes:
             return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
@@ -58,6 +61,7 @@ def save_population_route():
             description=description,
             user_id=user_id,
             fitness_data=fitness_data,
+            metadata=metadata if metadata else None,
         )
         if "error" in result:
             if result["error"] == "parent_not_found":

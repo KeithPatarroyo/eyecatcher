@@ -49,6 +49,25 @@ def init_stateless_api(substrate, engine=None, compiler=None):
     _compiler = compiler
 
 
+@stateless_bp.route("/api/config", methods=["GET"])
+def api_config():
+    """
+    Return current experiment config for bootstrap (substrate, output type,
+    population limits). GET /api/config → substrate_id, output_type,
+    population_size, max_population_size.
+    """
+    if _substrate is None:
+        return api_error("No substrate configured.", 503)
+    return jsonify(
+        {
+            "substrate_id": _substrate.id,
+            "output_type": _substrate.output_type,
+            "population_size": DEFAULT_POPULATION_SIZE,
+            "max_population_size": MAX_POPULATION_SIZE,
+        }
+    )
+
+
 def _require_engine():
     """Error if substrate has no engine (dual_cppn only)."""
     if _engine is None:
@@ -78,14 +97,30 @@ def _shader_response_for_dual(
     )
 
 
+def _require_can_compile():
+    """Error if substrate cannot compile genomes to shaders (no compile_to_shader)."""
+    if _engine is not None:
+        return None
+    compile_to_shader = getattr(_substrate, "compile_to_shader", None)
+    if not callable(compile_to_shader):
+        return api_error(
+            "This endpoint requires a substrate that implements compile_to_shader. "
+            "Use dual_cppn, single_cppn, or ca (or add compile_to_shader to your "
+            "substrate).",
+            501,
+        )
+    return None
+
+
 @stateless_bp.route("/api/compile", methods=["POST"])
 def api_compile():
     """
-    Stateless: compile a list of dual genomes to shaders.
+    Stateless: compile genomes to shaders.
     Body: { "genomes": [ ... ], "color_mode": "hsv"|"rgb" (optional) }
     Returns: { "shaders": [ { "id", "shader", "clicks", "nodes", ... }, ... ] }
+    Works for any substrate with compile_to_shader (dual_cppn, single_cppn, ca).
     """
-    err = _require_engine()
+    err = _require_can_compile()
     if err is not None:
         return err
     try:
@@ -96,21 +131,62 @@ def api_compile():
         color_mode = (data.get("color_mode") or "").strip().lower()
         if color_mode and color_mode not in ("hsv", "rgb"):
             color_mode = "hsv"
+        use_engine_compiler = _compiler and (
+            not color_mode or color_mode == _compiler.color_mode
+        )
         compiler = (
             _compiler
-            if (not color_mode or color_mode == _compiler.color_mode)
-            else ShaderCompiler(color_mode=color_mode)
+            if use_engine_compiler
+            else (ShaderCompiler(color_mode=color_mode) if color_mode else None)
         )
         shaders = []
-        for i, g_data in enumerate(genomes_data):
-            dual = dual_genome_from_json(g_data, _engine.config, _engine.time_config)
-            individual_id = g_data.get("key", dual.key if dual else i)
-            clicks = g_data.get("clicks", 0)
-            shaders.append(
-                _shader_response_for_dual(
-                    dual, individual_id, clicks, compiler=compiler
+        if _engine is not None:
+            comp = compiler or _compiler
+            for i, g_data in enumerate(genomes_data):
+                dual = dual_genome_from_json(
+                    g_data, _engine.config, _engine.time_config
                 )
-            )
+                individual_id = g_data.get("key", dual.key if dual else i)
+                clicks = g_data.get("clicks", 0)
+                shaders.append(
+                    _shader_response_for_dual(
+                        dual, individual_id, clicks, compiler=comp
+                    )
+                )
+        else:
+            for i, g_data in enumerate(genomes_data):
+                ind = _substrate.from_json(g_data)
+                individual_id = g_data.get("key", getattr(ind, "key", i))
+                clicks = g_data.get("clicks", 0)
+                need_new_compiler = (
+                    color_mode
+                    and hasattr(_substrate, "config")
+                    and _compiler
+                    and color_mode != _compiler.color_mode
+                )
+                if need_new_compiler:
+                    glsl = ShaderCompiler(color_mode=color_mode).compile_to_glsl(
+                        ind, _substrate.config
+                    )
+                else:
+                    glsl = _substrate.compile_to_shader(ind)
+                num_nodes = (
+                    len(getattr(ind, "nodes", {})) if hasattr(ind, "nodes") else 0
+                )
+                num_conn = (
+                    len(getattr(ind, "connections", {}))
+                    if hasattr(ind, "connections")
+                    else 0
+                )
+                shaders.append(
+                    {
+                        "id": individual_id,
+                        "shader": glsl or "",
+                        "clicks": clicks,
+                        "nodes": num_nodes,
+                        "connections": num_conn,
+                    }
+                )
         return jsonify({"shaders": shaders})
     except ValueError as e:
         return api_error(str(e), 400)
@@ -139,6 +215,7 @@ def api_random():
             {
                 "genomes": genomes,
                 "output_type": _substrate.output_type,
+                "substrate_id": _substrate.id,
             }
         )
     except Exception as e:
@@ -190,6 +267,7 @@ def api_evaluate():
             {
                 "results": results,
                 "output_type": _substrate.output_type,
+                "substrate_id": _substrate.id,
             }
         )
     except Exception as e:
