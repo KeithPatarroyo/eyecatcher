@@ -34,17 +34,17 @@
 }
 
 #debug-overlay #dbg-pattern-id {
-    color: #0a0;
+    color: var(--color-debug-ok);
 }
 
 #debug-overlay h4.debug-section--small {
     margin-top: 8px;
     font-size: 9px;
-    color: #666;
+    color: var(--color-text-tertiary);
 }
 
 .debug-time-output {
-    color: #6ca0dc;
+    color: var(--color-primary-focus);
 }
 
 .debug-warning.hidden {
@@ -62,7 +62,7 @@
 }
 
 .debug-value {
-    color: #0a0;
+    color: var(--color-debug-ok);
     font-weight: bold;
 }
 
@@ -83,7 +83,7 @@
     width: 12px;
     height: 12px;
     cursor: pointer;
-    accent-color: #f90;
+    accent-color: var(--color-debug-accent);
 }
 
 .debug-checkbox label {
@@ -93,13 +93,13 @@
 
 .debug-warning {
     font-size: 8px;
-    color: #a50;
+    color: var(--color-debug-warn);
     font-style: italic;
     margin-top: 2px;
 }
 
 .debug-value.sampled {
-    color: #f90;
+    color: var(--color-debug-accent);
 }
 
 #debug-toggle {

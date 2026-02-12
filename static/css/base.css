@@ -41,9 +41,22 @@
     /* Accent (time network) */
     --color-accent: #0096c8;
 
-    /* Overlay (modals, debug) */
+    /* Overlay (modals, debug, fullscreen) */
     --color-overlay-bg: rgba(0, 0, 0, 0.7);
-    --color-overlay-bg-solid: rgba(0, 0, 0, 0.85);
+    --color-overlay-bg-solid: rgba(0, 0, 0, 0.88);
+    --color-overlay-bg-light: rgba(0, 0, 0, 0.4);
+
+    /* Canvas / fullscreen black */
+    --color-black: #000;
+
+    /* Success button overlays (e.g. submit-community on cards) */
+    --color-success-soft: rgba(40, 167, 69, 0.9);
+    --color-success-soft-hover: rgba(34, 136, 56, 0.95);
+
+    /* Debug overlay semantics (keep distinct from main UI) */
+    --color-debug-ok: #0a0;
+    --color-debug-warn: #a50;
+    --color-debug-accent: #f90;
 
     /* Spacing */
     --space-xs: 4px;
@@ -56,6 +69,19 @@
     --radius-sm: 4px;
     --radius-md: 6px;
     --radius-lg: 8px;
+
+    /* Card/pattern action (glass on dark) */
+    --color-card-action-border: rgba(255, 255, 255, 0.3);
+    --color-card-action-bg: rgba(255, 255, 255, 0.2);
+    --color-card-action-bg-hover: rgba(255, 255, 255, 0.3);
+    --color-border-subtle: rgba(255, 255, 255, 0.06);
+
+    /* Shadows (primary/accent glows, modal) */
+    --shadow-primary: 0 4px 20px rgba(0, 102, 204, 0.3);
+    --shadow-glow-sm: 0 2px 8px rgba(0, 102, 204, 0.3);
+    --shadow-glow-accent: 0 2px 8px rgba(0, 150, 200, 0.3);
+    --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.6);
+    --shadow-panel: -2px 0 10px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -162,6 +188,143 @@ button:disabled {
 /* Utility: hide element (use with classList.add/remove for display toggles) */
 .hidden {
     display: none !important;
+}
+
+/* Native [hidden] attribute (remove 7+ scattered copies across viewer/genealogy) */
+[hidden] {
+    display: none !important;
+}
+
+/* Shared loading overlay (viewer and genealogy) */
+#loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    color: var(--color-primary);
+}
+
+#loading > div {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.spinner {
+    border: 3px solid var(--color-border);
+    border-top: 3px solid var(--color-primary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Shared toast notifications (viewer and genealogy) */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    position: relative;
+    background: var(--color-border);
+    color: var(--color-text);
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    max-width: 320px;
+    pointer-events: auto;
+    animation: toast-in 0.3s ease-out;
+}
+
+.toast.dismissing {
+    animation: toast-out 0.3s ease-in forwards;
+}
+
+.toast.success {
+    background: var(--color-success);
+    border-left: 4px solid var(--color-success-muted);
+}
+
+.toast.error {
+    background: var(--color-danger-bg);
+    border-left: 4px solid var(--color-danger);
+}
+
+.toast-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.toast-body {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.toast-link {
+    display: inline-block;
+    margin-top: 8px;
+    color: var(--color-primary-focus);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.toast-link:hover {
+    color: var(--color-primary);
+}
+
+.toast-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.toast-close:hover {
+    color: var(--color-text);
+}
+
+@keyframes toast-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes toast-out {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
 }
 
 /* Shared empty list / empty state message */

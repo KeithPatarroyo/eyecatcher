@@ -4,7 +4,7 @@
  */
 
 .submit-community-btn:hover {
-    background: rgba(34, 136, 56, 0.95);
+    background: var(--color-success-soft-hover);
 }
 
 /* Modal base styles */
