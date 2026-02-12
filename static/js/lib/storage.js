@@ -4,7 +4,7 @@
  *
  * Database: "eyecatcher"
  * Object stores:
- *   - populations: { id, name, genomes, generation, created, modified }
+ *   - populations: { id, name, genomes, generation, substrateId, created, modified }
  *   - settings: { key, value }
  */
 const EyecatcherStorage = (function () {
@@ -49,7 +49,7 @@ const EyecatcherStorage = (function () {
             return db;
         },
 
-        async savePopulation(name, genomes, generation) {
+        async savePopulation(name, genomes, generation, substrateId) {
             const database = await open();
             const now = new Date().toISOString();
             const record = {
@@ -59,6 +59,7 @@ const EyecatcherStorage = (function () {
                 created: now,
                 modified: now,
             };
+            if (substrateId != null) record.substrateId = substrateId;
             return new Promise((resolve, reject) => {
                 const tx = database.transaction(POPULATIONS_STORE, "readwrite");
                 const store = tx.objectStore(POPULATIONS_STORE);
@@ -68,7 +69,7 @@ const EyecatcherStorage = (function () {
             });
         },
 
-        async updatePopulation(id, name, genomes, generation) {
+        async updatePopulation(id, name, genomes, generation, substrateId) {
             const database = await open();
             const existing = await this.loadPopulation(id);
             if (!existing) return null;
@@ -80,6 +81,9 @@ const EyecatcherStorage = (function () {
                 created: existing.created,
                 modified: new Date().toISOString(),
             };
+            if (substrateId !== undefined) record.substrateId = substrateId;
+            else if (existing.substrateId !== undefined)
+                record.substrateId = existing.substrateId;
             return new Promise((resolve, reject) => {
                 const tx = database.transaction(POPULATIONS_STORE, "readwrite");
                 const store = tx.objectStore(POPULATIONS_STORE);
@@ -139,8 +143,14 @@ const EyecatcherStorage = (function () {
             const name = json.name || "Imported";
             const genomes = json.genomes || [];
             const generation = json.generation != null ? json.generation : 0;
+            const substrateId = json.substrateId != null ? json.substrateId : null;
             if (!genomes.length) return null;
-            const id = await this.savePopulation(name, genomes, generation);
+            const id = await this.savePopulation(
+                name,
+                genomes,
+                generation,
+                substrateId
+            );
             return { id, name, generation, count: genomes.length };
         },
 

@@ -76,8 +76,14 @@
                 program: patternData.program,
                 positionBuffer: patternData.positionBuffer,
             };
-            if (patternRef.rule !== undefined && patternRef.rule !== null) {
-                fullscreenPatternData.caRule = patternRef.rule;
+            if (
+                window.SubstrateAdapters &&
+                window.SubstrateAdapters.findAdapterByGenome
+            ) {
+                var adapter = window.SubstrateAdapters.findAdapterByGenome(patternRef);
+                if (adapter && typeof adapter.preparePatternData === "function") {
+                    adapter.preparePatternData(fullscreenPatternData, patternRef);
+                }
             }
         });
     }

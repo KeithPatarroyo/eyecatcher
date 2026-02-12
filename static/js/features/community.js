@@ -81,11 +81,20 @@
             _viewerControls.signalState != null
         ) {
             const signalState = _viewerControls.signalState;
+            var signalValues = {
+                raw_time: 0.5,
+                mouse_speed: 0,
+                mouse_dist: 0,
+                activity: 0,
+            };
+            var uniformValues =
+                _patternRenderer.buildUniformValues &&
+                _patternRenderer.buildUniformValues(signalValues);
             requestAnimationFrame(() => {
                 previewPatternData.forEach((pd) =>
                     _patternRenderer.renderPattern(
                         pd,
-                        { raw_time: 0.5, mouse_speed: 0, mouse_dist: 0, activity: 0 },
+                        uniformValues || signalValues,
                         signalState
                     )
                 );

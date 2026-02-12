@@ -85,9 +85,12 @@
                 patterns.forEach(function (patternData) {
                     if (!patternData.gl) return;
                     const signalValues = getSignalValues(patternData.canvas);
+                    const uniformValues =
+                        _patternRenderer.buildUniformValues &&
+                        _patternRenderer.buildUniformValues(signalValues);
                     _patternRenderer.renderPattern(
                         patternData,
-                        signalValues,
+                        uniformValues || {},
                         signalState
                     );
                 });

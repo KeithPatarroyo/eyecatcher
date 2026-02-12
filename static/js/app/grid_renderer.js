@@ -17,10 +17,11 @@
      * Build card callbacks for one pattern (for PatternRenderer.createPatternCard).
      * @param {Object} pattern - { id, shader, nodes, connections, clicks }
      * @param {Object} callbacks - onShare, onNetwork, onSave, onFullscreen, onClick, onUnclick, onMouseEnter, onMouseLeave
+     * @param {string} [substrateId] - current substrate id for adapter.preparePatternData
      */
-    function patternCardCallbacks(pattern, callbacks) {
+    function patternCardCallbacks(pattern, callbacks, substrateId) {
         var c = callbacks || {};
-        return {
+        var opts = {
             pattern: pattern,
             onShare: c.onShare,
             onNetwork: c.onNetwork,
@@ -31,6 +32,8 @@
             onMouseEnter: c.onMouseEnter,
             onMouseLeave: c.onMouseLeave,
         };
+        if (substrateId != null) opts.substrateId = substrateId;
+        return opts;
     }
 
     /**
@@ -39,9 +42,16 @@
      * @param {Object} ids - { grid }
      * @param {Object} callbacks - same as for patternCardCallbacks
      * @param {Map} [patternsMap] - optional Map to fill; if not provided a new Map is created and returned
+     * @param {string} [substrateId] - current substrate id for adapter.preparePatternData
      * @returns {Map} the patterns Map (same as patternsMap if provided)
      */
-    function renderGridFromPopulation(population, ids, callbacks, patternsMap) {
+    function renderGridFromPopulation(
+        population,
+        ids,
+        callbacks,
+        patternsMap,
+        substrateId
+    ) {
         var map = patternsMap || new Map();
         map.clear();
         clearGrid(ids);
@@ -53,7 +63,7 @@
 
         population.forEach(function (pattern) {
             var result = PatternRenderer.createPatternCard(
-                patternCardCallbacks(pattern, callbacks)
+                patternCardCallbacks(pattern, callbacks, substrateId)
             );
             grid.appendChild(result.card);
             if (pattern.id !== undefined) {
@@ -78,15 +88,16 @@
      * @param {Object} ids - { grid }
      * @param {Object} callbacks - same as for patternCardCallbacks
      * @param {Map} patternsMap - existing Map to add to (mutated)
+     * @param {string} [substrateId] - current substrate id for adapter.preparePatternData
      */
-    function appendCardsToGrid(population, ids, callbacks, patternsMap) {
+    function appendCardsToGrid(population, ids, callbacks, patternsMap, substrateId) {
         var grid = ids && ids.grid ? document.getElementById(ids.grid) : null;
         if (!grid || !population || !population.length || !patternsMap) return;
         var PatternRenderer = window.PatternRenderer;
         if (!PatternRenderer || !PatternRenderer.createPatternCard) return;
         population.forEach(function (pattern) {
             var result = PatternRenderer.createPatternCard(
-                patternCardCallbacks(pattern, callbacks)
+                patternCardCallbacks(pattern, callbacks, substrateId)
             );
             grid.appendChild(result.card);
             if (pattern.id !== undefined) {

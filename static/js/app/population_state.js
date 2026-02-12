@@ -15,6 +15,8 @@
         generationNum: 0,
         populationId: null,
         branchName: "main",
+        substrateId: null,
+        outputType: "shader",
         patterns: new Map(),
         loading: false,
         error: null,
@@ -29,6 +31,8 @@
             generationNum: state.generationNum,
             populationId: state.populationId,
             branchName: state.branchName,
+            substrateId: state.substrateId,
+            outputType: state.outputType,
             patterns: state.patterns,
             loading: state.loading,
             error: state.error,
@@ -48,6 +52,12 @@
                 if (action.payload.branchName !== undefined) {
                     state.branchName = action.payload.branchName;
                 }
+                if (action.payload.substrateId !== undefined) {
+                    state.substrateId = action.payload.substrateId;
+                }
+                if (action.payload.outputType !== undefined) {
+                    state.outputType = action.payload.outputType;
+                }
                 state.patterns.clear();
                 if (action.payload.patternsMap) {
                     action.payload.patternsMap.forEach(function (v, k) {
@@ -64,6 +74,12 @@
                 state.currentPopulation = (state.currentPopulation || []).concat(
                     action.payload.population || []
                 );
+                if (action.payload.substrateId !== undefined) {
+                    state.substrateId = action.payload.substrateId;
+                }
+                if (action.payload.outputType !== undefined) {
+                    state.outputType = action.payload.outputType;
+                }
                 if (action.payload.patternsMap) {
                     action.payload.patternsMap.forEach(function (v, k) {
                         state.patterns.set(k, v);
@@ -113,6 +129,8 @@
                 state.generationNum = 0;
                 state.populationId = null;
                 state.branchName = "main";
+                state.substrateId = null;
+                state.outputType = "shader";
                 state.patterns.clear();
                 state.loading = false;
                 state.error = null;
@@ -135,6 +153,8 @@
         state.generationNum = 0;
         state.populationId = null;
         state.branchName = "main";
+        state.substrateId = null;
+        state.outputType = "shader";
         state.patterns = new Map();
         state.loading = false;
         state.error = null;

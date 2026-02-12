@@ -93,6 +93,23 @@
             const label = document.getElementById("zoom-label");
             if (label) label.textContent = Math.round(this.patternZoom * 100) + "%";
         },
+        /**
+         * Show or hide signal controls based on substrate adapter (e.g. hide for CA, single_cppn).
+         * Call after load or addToGrid when substrateId changes.
+         * @param {string|null} substrateId - current substrate id
+         */
+        updateForSubstrate: function (substrateId) {
+            const container = document.getElementById("signal-controls");
+            if (!container) return;
+            const adapter =
+                typeof window !== "undefined" &&
+                window.SubstrateAdapters &&
+                window.SubstrateAdapters.getAdapter
+                    ? window.SubstrateAdapters.getAdapter(substrateId)
+                    : null;
+            const show = adapter === null ? true : adapter.hasSignalControls !== false;
+            container.style.display = show ? "" : "none";
+        },
         init: function () {
             const self = this;
             const config =
@@ -141,6 +158,13 @@
                 });
             }
             this.applyZoom();
+            const substrateId =
+                typeof window !== "undefined" &&
+                window.PopulationState &&
+                window.PopulationState.getState
+                    ? window.PopulationState.getState().substrateId
+                    : null;
+            this.updateForSubstrate(substrateId);
         },
     };
 

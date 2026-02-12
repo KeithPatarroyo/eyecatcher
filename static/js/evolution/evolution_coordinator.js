@@ -89,7 +89,8 @@
                         data.children,
                         newGenerationNum,
                         data.population_id,
-                        data.output_type
+                        data.output_type,
+                        data.substrate_id
                     );
                 } else {
                     onError(new Error("No children in evolve response"));

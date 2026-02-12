@@ -93,110 +93,56 @@
     }
 
     /**
-     * Draw one frame of a pattern with given uniforms.
-     * @param {Object} patternData - From setupPattern
-     * @param {Object} signalValues - Keys match signal ids (raw_time, mouse_speed, mouse_dist, activity)
-     * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
+     * Build uniform-name-keyed values from signal-id-keyed values using EvolutionConfig.SIGNAL_TOGGLES.
+     * Call this in the animation loop or before renderPattern so adding signals only requires config change.
+     * @param {Object} signalValues - Keys: signal ids (raw_time, mouse_speed, mouse_dist, activity)
+     * @returns {Object} Keys: uniform names (u_raw_time, u_mouse_speed, ...)
      */
-    function renderPattern(patternData, signalValues, signalState) {
-        const { gl, program, positionBuffer } = patternData;
-        gl.useProgram(program);
-
-        if (patternData.caRule != null) {
-            const start =
-                (typeof window !== "undefined" && window.CA_ANIMATION_START_TIME) || 0;
-            const timeMs =
-                typeof performance !== "undefined" ? performance.now() - start : 0;
-            const step = Math.floor(timeMs / 500);
-            const CA_GRID_SIZE = 36;
-            const uGeneration = Math.min(1.0, step / CA_GRID_SIZE);
-            const locRule = gl.getUniformLocation(program, "uRule");
-            const locGen = gl.getUniformLocation(program, "uGeneration");
-            const locRes = gl.getUniformLocation(program, "uResolution");
-            const locGrid = gl.getUniformLocation(program, "uGridSize");
-            if (locRule !== null) gl.uniform1i(locRule, patternData.caRule);
-            if (locGen !== null) gl.uniform1f(locGen, uGeneration);
-            if (locRes !== null && patternData.canvas) {
-                gl.uniform2f(
-                    locRes,
-                    patternData.canvas.width,
-                    patternData.canvas.height
-                );
-            }
-            if (locGrid !== null) gl.uniform1i(locGrid, CA_GRID_SIZE);
-            const positionLocation = gl.getAttribLocation(program, "position");
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.enableVertexAttribArray(positionLocation);
-            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-            gl.clearColor(0, 0, 0, 1);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            return;
-        }
-
-        const sig = signalState || { time: {}, visual: {} };
-        const uniformValues = {};
+    function buildUniformValues(signalValues) {
+        const out = {};
         const config = window.EvolutionConfig;
         const toggles = config && config.SIGNAL_TOGGLES;
-        if (toggles && signalValues) {
-            ["time", "visual"].forEach(function (cppnType) {
-                const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
-                if (!inputs) return;
-                inputs.forEach(function (s) {
-                    if (s.uniform && !s.derived && !uniformValues[s.uniform]) {
-                        uniformValues[s.uniform] =
-                            signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
-                    }
-                });
-            });
-        }
-
-        const baseUniforms = new Set();
-        if (toggles) {
-            ["time", "visual"].forEach(function (cppnType) {
-                const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
-                if (!inputs) return;
-                inputs.forEach(function (s) {
-                    if (s.uniform && !baseUniforms.has(s.uniform)) {
-                        const loc = gl.getUniformLocation(program, s.uniform);
-                        if (loc !== null) {
-                            const val =
-                                uniformValues[s.uniform] !== undefined
-                                    ? uniformValues[s.uniform]
-                                    : 0;
-                            gl.uniform1f(loc, val);
-                        }
-                        baseUniforms.add(s.uniform);
-                    }
-                });
-            });
-        }
-
+        if (!toggles || !signalValues) return out;
         ["time", "visual"].forEach(function (cppnType) {
-            const inputs =
-                window.EvolutionConfig &&
-                window.EvolutionConfig.SIGNAL_TOGGLES &&
-                window.EvolutionConfig.SIGNAL_TOGGLES[cppnType].toggleableInputs;
+            const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
             if (!inputs) return;
-            const prefix =
-                "u" + cppnType.charAt(0).toUpperCase() + cppnType.slice(1) + "Enable_";
             inputs.forEach(function (s) {
-                const uniformName = prefix + s.id;
-                const loc = gl.getUniformLocation(program, uniformName);
-                if (loc !== null) {
-                    gl.uniform1f(loc, sig[cppnType] && sig[cppnType][s.id] ? 1.0 : 0.0);
+                if (s.uniform && !s.derived) {
+                    out[s.uniform] =
+                        signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
                 }
             });
         });
+        return out;
+    }
 
-        const positionLocation = gl.getAttribLocation(program, "position");
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.enableVertexAttribArray(positionLocation);
-        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-        gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    /**
+     * Draw one frame of a pattern with given uniforms.
+     * Uses SubstrateAdapters.getAdapter(substrateId).render when available; else infers adapter from patternData (caRule -> ca, else dual_cppn).
+     * @param {Object} patternData - From setupPattern
+     * @param {Object} uniformValues - Keys match uniform names (u_raw_time, u_mouse_speed, ...); use buildUniformValues(signalValues) to build from signal ids
+     * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
+     */
+    function renderPattern(patternData, uniformValues, signalState) {
+        var substrateId =
+            typeof window !== "undefined" &&
+            window.PopulationState &&
+            window.PopulationState.getState
+                ? window.PopulationState.getState().substrateId
+                : null;
+        var SubstrateAdapters =
+            typeof window !== "undefined" && window.SubstrateAdapters;
+        var adapter =
+            SubstrateAdapters && SubstrateAdapters.getAdapter
+                ? SubstrateAdapters.getAdapter(substrateId)
+                : null;
+        if (!adapter && SubstrateAdapters && SubstrateAdapters.getAdapter) {
+            var inferredId = patternData.caRule != null ? "ca" : "dual_cppn";
+            adapter = SubstrateAdapters.getAdapter(inferredId);
+        }
+        if (adapter && typeof adapter.render === "function") {
+            adapter.render(patternData, uniformValues, signalState);
+        }
     }
 
     /**
@@ -211,10 +157,21 @@
      * @param {function(number)} [options.onMouseEnter] - (id) => {}
      * @param {function(number)} [options.onMouseLeave] - (id) => {}
      * @param {function(number)} [options.onFullscreen] - (id) => {} open pattern in fullscreen modal
+     * @param {string} [options.substrateId] - current substrate id for adapter.preparePatternData
      * @returns {{ card: HTMLElement, canvas: HTMLCanvasElement|null, patternData: Object|null }}
      */
     function createPatternCard(options) {
         const pattern = options.pattern;
+        const substrateId = options.substrateId || null;
+        const SubstrateAdapters =
+            typeof window !== "undefined" && window.SubstrateAdapters;
+        var adapter =
+            SubstrateAdapters && SubstrateAdapters.getAdapter
+                ? SubstrateAdapters.getAdapter(substrateId)
+                : null;
+        if (!adapter && SubstrateAdapters && SubstrateAdapters.findAdapterByGenome) {
+            adapter = SubstrateAdapters.findAdapterByGenome(pattern);
+        }
         const id = pattern.id;
         const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;
         const card = document.createElement("div");
@@ -314,8 +271,8 @@
                 card.replaceChild(fallback, canvas);
                 return { card: card, canvas: null, patternData: null };
             }
-            if (pattern.rule !== undefined && pattern.rule !== null) {
-                patternData.caRule = pattern.rule;
+            if (adapter && typeof adapter.preparePatternData === "function") {
+                adapter.preparePatternData(patternData, pattern);
             }
             if (options.onClick) {
                 card.addEventListener("click", function () {
@@ -426,6 +383,7 @@
 
     window.PatternRenderer = {
         setupPattern,
+        buildUniformValues,
         renderPattern,
         createPatternCard,
     };
