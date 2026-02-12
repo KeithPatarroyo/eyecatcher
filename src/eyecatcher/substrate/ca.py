@@ -81,6 +81,19 @@ class ElementaryCASubstrate:
     id = "ca"
     output_type: OutputType = "grid"
 
+    @classmethod
+    def get_frontend_metadata(cls) -> dict:
+        return {
+            "hasSignalControls": False,
+            "genomeKeys": ["rule"],
+            "capabilities": {
+                "save": True,
+                "network": False,
+                "timeOutput": False,
+                "adjustWeight": False,
+            },
+        }
+
     def __init__(
         self,
         width: int = 256,
@@ -115,7 +128,9 @@ class ElementaryCASubstrate:
         rgb = _grid_to_rgb(grid)
         return SubstrateOutput("grid", rgb)
 
-    def compile_to_shader(self, ind: CARule) -> str | None:
+    def compile_to_shader(
+        self, ind: CARule, color_mode: str | None = None
+    ) -> str | None:
         """GLSL shader for 1D CA; uRule, uGeneration. One row per 0.5s."""
         return _CA_FRAGMENT_SHADER
 

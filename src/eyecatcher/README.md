@@ -32,7 +32,7 @@ src/eyecatcher/
 ├── evaluation/          # CPU rendering, query, genome viz, network graph/stats for UI/API
 │   ├── __init__.py
 │   ├── genome_visualizer.py
-│   ├── network_data.py  # extract_network_data, dual_genome_network_stats, parse_network_node_id
+│   ├── network_data.py  # extract_network_data, parse_network_node_id
 │   ├── query.py
 │   └── rendering.py
 │
@@ -56,10 +56,9 @@ src/eyecatcher/
 │   ├── __init__.py
 │   └── db_util.py
 │
-└── data/                # Data layers (genealogy, genome file persistence)
+└── data/                # Data layers (genealogy DB)
     ├── __init__.py
     ├── genealogy_db.py
-    └── genome_persistence.py  # save_dual_genome_to_path, load_dual_genome_from_path
 ```
 
 ---
@@ -68,10 +67,10 @@ src/eyecatcher/
 
 | Package | Role | When you look here |
 |---------|------|--------------------|
-| **algorithm/** | NEAT config, CPPNEngine, reproduction, mutation, crossover. Engine uses data.genome_persistence for save/load. | Changing the evolution algorithm or NEAT config. |
+| **algorithm/** | NEAT config, reproduction, mutation, crossover, get_configured_substrate. | Changing the evolution algorithm or NEAT config. |
 | **genome/** | DualGenome, create_random_dual_genome, wire serialization (genome_to_json, dual_genome_to_json, copy_*). Network graph/stats re-exported from evaluation. | Changing genome representation or JSON serialization. |
 | **signals/** | VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map, activation helpers. | Adding/changing input signals or activation functions. |
-| **evaluation/** | render_dual_image, query, genome_visualizer, network_data (extract_network_data, dual_genome_network_stats for UI/API). | Changing CPU rendering, CPPN query, network visualization, or API graph/stats. |
+| **evaluation/** | render_image, query, genome_visualizer, network_data (extract_network_data for UI/API). Substrates implement render_to_image. | Changing CPU rendering, CPPN query, network visualization, or API graph/stats. |
 | **glsl/** | ShaderCompiler; topology, node code, GLSL fragments. Genome → fragment shader. | Changing how genomes become shader code (display pipeline). |
 | **web/** | Flask app, /api/compile, /api/evolve, /api/save, genealogy routes, community routes, response_builder. | Adding endpoints or changing API response shape. |
 | **lib/** | with_db_connection, default_db_path. | Fixing DB or path helpers. |

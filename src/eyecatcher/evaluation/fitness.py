@@ -12,8 +12,6 @@ from typing import Any, Callable
 
 import numpy as np
 
-from ..lib.math_utils import normalize_to_bipolar
-
 FITNESS_REGISTRY: dict[str, Callable[..., float]] = {}
 
 # Shared constants for built-in fitness
@@ -47,31 +45,11 @@ def list_fitness() -> list[str]:
     return sorted(FITNESS_REGISTRY.keys())
 
 
-def _sample_rgb_at_coords(individual: Any, substrate: Any) -> list[list[float]]:
-    """Return list of [r,g,b] samples at SAMPLE_COORDS for CPPN substrates."""
-    from ..genome import DualGenome
-    from ..signals.signals import get_default_signal_values
-
-    samples = []
-    if hasattr(substrate, "time_config") and isinstance(individual, DualGenome):
-        from ..evaluation.query import query_dual_cppn
-
-        for x, y in SAMPLE_COORDS:
-            inputs = {"x": x, "y": y, **get_default_signal_values(0.0)}
-            r, g, b = query_dual_cppn(
-                individual, substrate.config, substrate.time_config, inputs
-            )
-            samples.append([r, g, b])
-        return samples
-    if hasattr(substrate, "config"):
-        from ..evaluation.query import query_visual_cppn
-
-        sigs = get_default_signal_values(0.0)
-        for x, y in SAMPLE_COORDS:
-            inputs = {"x": x, "y": y, "time": 0.0, **sigs}
-            r, g, b = query_visual_cppn(individual, substrate.config, inputs)
-            samples.append([r, g, b])
-    return samples
+def _sample_rgb_at_coords(
+    individual: Any, substrate: Any, time: float = 0.0
+) -> list[list[float]]:
+    """Return list of [r,g,b] samples at SAMPLE_COORDS via substrate.sample_rgb."""
+    return substrate.sample_rgb(individual, SAMPLE_COORDS, time=time)
 
 
 # ---------------------------------------------------------------------------
@@ -82,8 +60,7 @@ def _sample_rgb_at_coords(individual: Any, substrate: Any) -> list[list[float]]:
 @register_fitness("color_variance")
 def fitness_color_variance(individual: Any, substrate: Any) -> float:
     """
-    Color variety across spatial samples. Works for CPPN substrates with
-    query_dual_cppn or query_visual_cppn (via substrate.config/time_config).
+    Color variety across spatial samples. Uses substrate.sample_rgb when available.
     """
     samples = _sample_rgb_at_coords(individual, substrate)
     if samples:
@@ -96,48 +73,31 @@ def fitness_color_variance(individual: Any, substrate: Any) -> float:
 @register_fitness("temporal_variance")
 def fitness_temporal_variance(individual: Any, substrate: Any) -> float:
     """
-    Variation over time at center. Dual-CPPN only (uses time signal).
+    Variation over time at center. Non-zero for substrates that vary output with time.
     """
-    from ..genome import DualGenome
-
-    if not hasattr(substrate, "time_config") or not isinstance(individual, DualGenome):
-        return 0.0
-    from ..evaluation.query import query_dual_cppn
-
     samples = []
     for t in TEMPORAL_SAMPLES:
-        raw_t = normalize_to_bipolar(t)
-        inputs = {
-            "x": 0.0,
-            "y": 0.0,
-            "raw_time": raw_t,
-            "mouse_speed": 0.0,
-            "mouse_dist": 0.0,
-            "activity": 0.0,
-        }
-        r, g, b = query_dual_cppn(
-            individual, substrate.config, substrate.time_config, inputs
-        )
-        samples.append([r, g, b])
+        rgb_list = substrate.sample_rgb(individual, [(0.0, 0.0)], time=t)
+        if rgb_list:
+            samples.append(rgb_list[0])
+    if not samples:
+        return 0.0
     return float(np.var(samples)) * TEMPORAL_VARIANCE_MULTIPLIER
 
 
 @register_fitness("combined")
 def fitness_combined(individual: Any, substrate: Any) -> float:
     """
-    Color variance + temporal variance. Dual-CPPN default.
+    Color + temporal variance; penalize mean color outside [0.1, 0.9] when sampling RGB.
     """
-    from ..genome import DualGenome
-
     color = fitness_color_variance(individual, substrate)
     temporal = fitness_temporal_variance(individual, substrate)
     fitness = color + temporal
-    if hasattr(substrate, "time_config") and isinstance(individual, DualGenome):
-        samples = _sample_rgb_at_coords(individual, substrate)
-        if samples:
-            mean_color = np.mean(samples)
-            if mean_color < MEAN_COLOR_LOW or mean_color > MEAN_COLOR_HIGH:
-                fitness *= MEAN_COLOR_PENALTY
+    samples = _sample_rgb_at_coords(individual, substrate)
+    if samples:
+        mean_color = np.mean(samples)
+        if mean_color < MEAN_COLOR_LOW or mean_color > MEAN_COLOR_HIGH:
+            fitness *= MEAN_COLOR_PENALTY
     return fitness
 
 

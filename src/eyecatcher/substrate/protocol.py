@@ -61,12 +61,31 @@ class Substrate(Protocol[IndividualT]):
         """Produce displayable output (image, grid, etc.)."""
         ...
 
-    def compile_to_shader(self, ind: IndividualT) -> str | None:
+    def compile_to_shader(
+        self, ind: IndividualT, color_mode: str | None = None
+    ) -> str | None:
         """
         Return GLSL fragment shader for real-time display, or None to use
-        CPU evaluate + texture upload.
+        CPU evaluate + texture upload. color_mode (e.g. 'hsv', 'rgb') is optional.
         """
         ...
+
+    def sample_rgb(
+        self, ind: IndividualT, coords: list[tuple[float, float]], time: float = 0.0
+    ) -> list[list[float]]:
+        """
+        Optional: return [r,g,b] per coordinate for fitness/sampling.
+        Default returns [] (e.g. CA uses evaluate instead).
+        """
+        return []
+
+    def render_to_image(
+        self, ind: IndividualT, resolution: int | None = None, **kwargs: Any
+    ) -> np.ndarray | None:
+        """
+        Optional: return RGB image array for save/export, or None if unsupported.
+        """
+        return None
 
     def to_json(self, ind: IndividualT) -> dict[str, Any]:
         """Serialize individual for API/client."""

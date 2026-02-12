@@ -21,6 +21,7 @@ from .signals import (
     input_names,
     output_labels,
     output_names,
+    parse_time_inputs,
 )
 
 __all__ = [
@@ -40,4 +41,5 @@ __all__ = [
     "input_names",
     "build_glsl_input_map",
     "default_inputs",
+    "parse_time_inputs",
 ]

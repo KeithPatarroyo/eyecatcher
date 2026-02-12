@@ -2,9 +2,8 @@
 Genome representation and serialization.
 
 DualGenome, genome creation, JSON serialization.
-Network graph/stats (extract_network_data, parse_network_node_id,
-dual_genome_network_stats) live in evaluation.network_data; import from
-eyecatcher.evaluation or evaluation.network_data.
+Network graph (extract_network_data, parse_network_node_id) live in
+evaluation.network_data; import from eyecatcher.evaluation or evaluation.network_data.
 """
 
 from .genome import DualGenome, create_random_dual_genome, create_random_genome

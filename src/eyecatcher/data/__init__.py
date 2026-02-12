@@ -1,4 +1,4 @@
-"""Data & feature layers: genealogy DB, genome persistence, etc."""
+"""Data & feature layers: genealogy DB, etc."""
 
 from .genealogy_db import (
     export_genealogy_data,
@@ -13,7 +13,6 @@ from .genealogy_db import (
     save_generation_result,
     save_population,
 )
-from .genome_persistence import load_dual_genome_from_path, save_dual_genome_to_path
 
 __all__ = [
     "export_genealogy_data",
@@ -27,6 +26,4 @@ __all__ = [
     "reset_genealogy",
     "save_generation_result",
     "save_population",
-    "save_dual_genome_to_path",
-    "load_dual_genome_from_path",
 ]

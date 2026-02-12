@@ -32,11 +32,9 @@ from PIL import Image
 
 def _render_for_save(substrate, ind):
     """Render individual to image array for saving."""
-    from eyecatcher.genome import DualGenome
-
-    engine = getattr(substrate, "engine", None)
-    if engine is not None and isinstance(ind, DualGenome):
-        return engine.render_dual_image(ind, resolution=PREVIEW_RENDER_RESOLUTION)
+    img = substrate.render_to_image(ind, resolution=PREVIEW_RENDER_RESOLUTION)
+    if img is not None:
+        return img
     if hasattr(substrate, "config"):
         return render_image(ind, substrate.config, resolution=PREVIEW_RENDER_RESOLUTION)
     out = substrate.evaluate(ind, {})

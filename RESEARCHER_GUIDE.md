@@ -85,8 +85,8 @@ If `EXPERIMENT_CONFIG` is unset, the `"default"` preset is used (when the file e
 
 ## Rendering (CPU) and serialization
 
-- **Rendering:** [src/eyecatcher/evaluation/rendering.py](src/eyecatcher/evaluation/rendering.py) – render_dual_image, render_dual_animation_frames (used for save PNG and batch export). Single-CPPN path: render_image, render_animation_frames (tests and legacy).
-- **Serialization (wire format):** [src/eyecatcher/genome/serialization.py](src/eyecatcher/genome/serialization.py) – genome_to_json, dual_genome_to_json, dual_genome_from_json, copy_*. **Network graph/stats for UI/API:** [src/eyecatcher/evaluation/network_data.py](src/eyecatcher/evaluation/network_data.py) – extract_network_data, dual_genome_network_stats, parse_network_node_id.
+- **Rendering:** [src/eyecatcher/evaluation/rendering.py](src/eyecatcher/evaluation/rendering.py) – render_image, render_animation_frames, _render_pixel_grid. Dual-CPPN: substrate.render_to_image (used for save PNG and batch export).
+- **Serialization (wire format):** [src/eyecatcher/genome/serialization.py](src/eyecatcher/genome/serialization.py) – genome_to_json, dual_genome_to_json, dual_genome_from_json, copy_*. **Network graph/stats for UI/API:** [src/eyecatcher/evaluation/network_data.py](src/eyecatcher/evaluation/network_data.py) – extract_network_data, parse_network_node_id.
 
 ## GLSL / shader compilation (display pipeline)
 
@@ -128,7 +128,7 @@ The same “shader + network stats” shape is built in one place and used by th
 
 Genealogy stores evolutionary history (populations, individuals, branches) in SQLite:
 
-- **Data layer:** [src/eyecatcher/data/genealogy_db.py](src/eyecatcher/data/genealogy_db.py) – DB init, `save_generation_result`, `save_population`, and pure query functions. [src/eyecatcher/data/genome_persistence.py](src/eyecatcher/data/genome_persistence.py) – `save_dual_genome_to_path`, `load_dual_genome_from_path` (pickle). No Flask; returns Python dicts/lists or genome objects.
+- **Data layer:** [src/eyecatcher/data/genealogy_db.py](src/eyecatcher/data/genealogy_db.py) – DB init, `save_generation_result`, `save_population`, and pure query functions. No Flask; returns Python dicts/lists or genome objects.
 - **Routes:** [web/genealogy_routes.py](src/eyecatcher/web/genealogy_routes.py) – thin HTTP wrappers: parse request, call genealogy_db, jsonify.
 - **Extending metadata:** The `populations.metadata_json` column stores arbitrary JSON. Pass `metadata={...}` to `save_population` or `save_generation_result` (e.g. experiment_id, config_hash, selection method) for reproducibility; export includes it.
 - **Custom export:** Export format is the dict returned by `export_genealogy_data`. To add another format (e.g. CSV of fitness over time), add a function in genealogy_db and a route that calls it.
@@ -159,7 +159,7 @@ Some constants exist in both Python and JavaScript; when you change them, update
 Substrates (dual_cppn, ca, future NCA/single_cppn) share a common protocol. To add a new one:
 
 1. **Python – substrate class:** Add a new module under `src/eyecatcher/substrate/` (e.g. `ca.py`, `dual_cppn.py`) implementing the `Substrate` protocol: `id`, `output_type`, `create_random`, `mutate`, `crossover`, `evaluate`, `compile_to_shader`, `to_json`, `from_json`. See [substrate/protocol.py](src/eyecatcher/substrate/protocol.py) and [substrate/ca.py](src/eyecatcher/substrate/ca.py) or [substrate/dual_cppn.py](src/eyecatcher/substrate/dual_cppn.py) for examples.
-2. **Python – exports:** In [substrate/__init__.py](src/eyecatcher/substrate/__init__.py), export the new class. In [substrate/registry.py](src/eyecatcher/substrate/registry.py), add it to the `SUBSTRATES` dict. In [substrate/export.py](src/eyecatcher/substrate/export.py), add an entry to `export_substrates_for_frontend()` (id, outputType, hasSignalControls, genomeKeys, capabilities, optional excludeKeys); then run `make generate-substrates`.
+2. **Python – exports:** In [substrate/__init__.py](src/eyecatcher/substrate/__init__.py), export the new class. In [substrate/registry.py](src/eyecatcher/substrate/registry.py), add it to the `SUBSTRATES` dict. Implement `get_frontend_metadata()` on your substrate class (id, outputType, hasSignalControls, genomeKeys, capabilities, optional excludeKeys); `export_substrates_for_frontend()` builds the list from the registry. Then run `make generate-substrates`.
 3. **Config – preset:** In [config/experiments.json](config/experiments.json), add a preset with `"substrate": "<id>"` and any substrate-specific kwargs (e.g. `width`, `generations` for CA).
 4. **Frontend – display:** If the substrate needs custom rendering (e.g. special uniforms like CA’s `uRule`, `uGeneration`), update [static/js/evolution/pattern_renderer.js](static/js/evolution/pattern_renderer.js) to branch on the pattern shape or `output_type` (e.g. `pattern.rule`, `patternData.caRule`). For CPPN variants, rendering is driven by SIGNAL_TOGGLES; no new branch needed.
 5. **Frontend – load/add:** [app.js](static/js/app/app.js) `loadFromStatelessGenomes` branches on `outputType` (grid → evaluate, shader → compile). Ensure `addToGrid` and load-from-saved flows receive `output_type`/`substrate_id` so they use evaluate for grid substrates and compile for shader substrates.

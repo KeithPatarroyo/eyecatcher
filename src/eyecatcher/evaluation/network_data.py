@@ -1,34 +1,19 @@
 """
-Network graph/stats extraction for UI and API.
+Network graph extraction for UI and API.
 
-Produces node/connection lists and stats from genomes for visualization
-and API response shape. Used by stateless_api, substrate, genome_visualizer.
+Produces node/connection lists from genomes for visualization.
+Used by substrate get_network_data, genome_visualizer.
 """
 
 from typing import Any, Optional
 
 import neat
 
-from ..genome.genome import DualGenome
 from ..signals.signals import (
     NETWORK_SIGNALS,
     input_labels,
     output_labels,
 )
-
-
-def dual_genome_network_stats(dual: DualGenome) -> dict[str, int]:
-    """Return node and enabled-connection counts for both genomes."""
-    v_nodes = len(dual.visual.nodes)
-    v_conns = len([c for c in dual.visual.connections.values() if c.enabled])
-    t_nodes = len(dual.time_signal.nodes)
-    t_conns = len([c for c in dual.time_signal.connections.values() if c.enabled])
-    return {
-        "visual_nodes": v_nodes,
-        "visual_connections": v_conns,
-        "time_nodes": t_nodes,
-        "time_connections": t_conns,
-    }
 
 
 def _append_nodes_for_layer(

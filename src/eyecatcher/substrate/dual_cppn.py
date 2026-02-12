@@ -17,12 +17,9 @@ from .. import get_root_dir
 from ..algorithm import DEFAULT_RENDER_RESOLUTION
 from ..algorithm import config as evolution_config
 from ..algorithm.operators import crossover_dual_genomes, mutate_dual_genome
-from ..evaluation import (
-    dual_genome_network_stats,
-    extract_network_data,
-    parse_network_node_id,
-)
-from ..evaluation.rendering import render_dual_image
+from ..evaluation import extract_network_data, parse_network_node_id
+from ..evaluation.query import query_dual_cppn
+from ..evaluation.rendering import _render_pixel_grid
 from ..genome import (
     DualGenome,
     create_random_dual_genome,
@@ -31,7 +28,14 @@ from ..genome import (
 )
 from ..glsl import ShaderCompiler
 from ..signals.activation import register_custom_activations
-from ..signals.signals import TIME_INPUTS, TIME_OUTPUTS, VISUAL_INPUTS, VISUAL_OUTPUTS
+from ..signals.signals import (
+    TIME_INPUTS,
+    TIME_OUTPUTS,
+    VISUAL_INPUTS,
+    VISUAL_OUTPUTS,
+    default_inputs,
+    parse_time_inputs,
+)
 from ..signals.validation import validate_neat_config
 from .protocol import OutputType, SubstrateOutput
 
@@ -44,6 +48,19 @@ class DualCPPNSubstrate:
 
     id = "dual_cppn"
     output_type: OutputType = "shader"
+
+    @classmethod
+    def get_frontend_metadata(cls) -> dict:
+        return {
+            "hasSignalControls": True,
+            "genomeKeys": ["visual", "time_signal"],
+            "capabilities": {
+                "save": True,
+                "network": True,
+                "timeOutput": True,
+                "adjustWeight": True,
+            },
+        }
 
     def __init__(
         self,
@@ -102,8 +119,49 @@ class DualCPPNSubstrate:
         out = SubstrateOutput("shader", glsl) if glsl else SubstrateOutput("shader", "")
         return out
 
-    def compile_to_shader(self, ind: DualGenome) -> str | None:
+    def compile_to_shader(
+        self, ind: DualGenome, color_mode: str | None = None
+    ) -> str | None:
+        if color_mode and color_mode != self.compiler.color_mode:
+            alt = ShaderCompiler(color_mode=color_mode)
+            return alt.compile_dual_to_glsl(ind, self.config, self.time_config)
         return self.compiler.compile_dual_to_glsl(ind, self.config, self.time_config)
+
+    def sample_rgb(
+        self,
+        ind: DualGenome,
+        coords: list[tuple[float, float]],
+        time: float = 0.0,
+    ) -> list[list[float]]:
+        from ..evaluation.query import query_dual_cppn
+        from ..signals.signals import get_default_signal_values
+
+        samples = []
+        base = get_default_signal_values(time)
+        for x, y in coords:
+            inputs = {"x": x, "y": y, **base}
+            r, g, b = query_dual_cppn(ind, self.config, self.time_config, inputs)
+            samples.append([r, g, b])
+        return samples
+
+    def render_to_image(
+        self,
+        ind: DualGenome,
+        resolution: int | None = None,
+        extra_inputs: dict[str, float] | None = None,
+        **kwargs: Any,
+    ) -> np.ndarray:
+        """Render dual CPPN to RGB image array."""
+        if resolution is None:
+            resolution = DEFAULT_RENDER_RESOLUTION
+        base = default_inputs(TIME_INPUTS)
+        if extra_inputs:
+            base.update(extra_inputs)
+        return _render_pixel_grid(
+            resolution,
+            base,
+            lambda inputs: query_dual_cppn(ind, self.config, self.time_config, inputs),
+        )
 
     def to_json(self, ind: DualGenome) -> dict[str, Any]:
         return dual_genome_to_json(ind)
@@ -113,7 +171,16 @@ class DualCPPNSubstrate:
 
     def get_compile_stats(self, ind: DualGenome) -> dict[str, Any] | None:
         """Return per-network node/connection counts for compile response."""
-        return dual_genome_network_stats(ind)
+        v_nodes = len(ind.visual.nodes)
+        v_conns = len([c for c in ind.visual.connections.values() if c.enabled])
+        t_nodes = len(ind.time_signal.nodes)
+        t_conns = len([c for c in ind.time_signal.connections.values() if c.enabled])
+        return {
+            "visual_nodes": v_nodes,
+            "visual_connections": v_conns,
+            "time_nodes": t_nodes,
+            "time_connections": t_conns,
+        }
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         return {
@@ -151,9 +218,7 @@ class DualCPPNSubstrate:
             },
         }
         names = self.get_save_filenames(individual_id)
-        img = render_dual_image(
-            ind, self.config, self.time_config, resolution=DEFAULT_RENDER_RESOLUTION
-        )
+        img = self.render_to_image(ind, resolution=DEFAULT_RENDER_RESOLUTION)
         pkl_buffer = io.BytesIO()
         pickle.dump(
             {"visual": ind.visual, "time_signal": ind.time_signal, "key": ind.key},
@@ -189,15 +254,8 @@ class DualCPPNSubstrate:
     ) -> dict[str, Any] | None:
         from ..evaluation.query import query_time_signal
 
-        response_inputs = {}
-        time_inputs = {}
-        for s in TIME_INPUTS:
-            raw_val = inputs.get(s.id)
-            if raw_val is None and s.id == "raw_time":
-                raw_val = inputs.get("time")
-            val = float(raw_val if raw_val is not None else s.default)
-            time_inputs[s.id] = val * 2.0 - 1.0
-            response_inputs[s.id] = val
+        response_inputs = parse_time_inputs(inputs, bipolar=False)
+        time_inputs = parse_time_inputs(inputs, bipolar=True)
         out = query_time_signal(ind.time_signal, self.time_config, time_inputs)
         return {"timeOutput": out, "inputs": response_inputs}
 

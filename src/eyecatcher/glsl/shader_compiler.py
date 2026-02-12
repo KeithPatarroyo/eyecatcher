@@ -1,12 +1,10 @@
 """
-Compiles dual CPPN (visual + time) to a single GLSL fragment shader.
+Compiles CPPN networks (single or dual visual + time) to GLSL fragment shaders.
 
 Orchestrates compiler_topology, node_code_generator, and glsl_fragments.
 Researchers extend: activation in glsl_fragments + node_code_generator;
 output (HSV/RGB) in _get_color_output_code; signals in signals.py.
 """
-
-import json
 
 import neat
 
@@ -116,6 +114,41 @@ class ShaderCompiler:
                 lines.append("    float v_bias = 1.0;")
         return "\n".join(lines)
 
+    def _glsl_header(self) -> str:
+        """Shared GLSL header: version, precision, in/out, uniforms, enable decls."""
+        uniform_decls = self._glsl_uniform_declarations()
+        enable_decls = self._glsl_enable_declarations()
+        return f"""#version 300 es
+precision highp float;
+
+// Inputs from vertex shader
+in vec2 vUV;  // UV coordinates (0-1)
+{uniform_decls}
+
+// Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
+{enable_decls}
+
+// Output color
+out vec4 fragColor;
+{ACTIVATION_GLSL_BLOCK}"""
+
+    def _glsl_uv_to_cppn(self) -> str:
+        """Convert UV to CPPN coordinate space (-1 to 1)."""
+        return """    float v_x = vUV.x * 2.0 - 1.0;
+    float v_y = vUV.y * 2.0 - 1.0;
+    float v_distance = sqrt(v_x * v_x + v_y * v_y);"""
+
+    def _build_shader(self, main_body: str) -> str:
+        """Build complete GLSL shader from header, main body, and color output."""
+        return f"""{self._glsl_header()}
+
+void main() {{
+{main_body}
+
+{self._get_color_output_code()}
+}}
+"""
+
     def _glsl_visual_enable_gating(self, use_time_from_network: bool) -> str:
         """Generate visual CPPN gated input assignments.
 
@@ -150,40 +183,16 @@ class ShaderCompiler:
 
     def _build_shader_template(self, node_code: str, visual_config: neat.Config) -> str:
         """Build the complete GLSL shader with node computations (single CPPN)."""
-        color_output = self._get_color_output_code()
-        uniform_decls = self._glsl_uniform_declarations()
-        enable_decls = self._glsl_enable_declarations()
         visual_gating = self._glsl_visual_enable_gating(use_time_from_network=False)
-        shader = f"""#version 300 es
-precision highp float;
-
-// Inputs from vertex shader
-in vec2 vUV;  // UV coordinates (0-1)
-{uniform_decls}
-
-// Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
-{enable_decls}
-
-// Output color
-out vec4 fragColor;
-{ACTIVATION_GLSL_BLOCK}
-
-void main() {{
-    // Convert UV to CPPN coordinate space (-1 to 1)
-    float v_x = vUV.x * 2.0 - 1.0;
-    float v_y = vUV.y * 2.0 - 1.0;
-    float v_distance = sqrt(v_x * v_x + v_y * v_y);
+        main_body = f"""    // Convert UV to CPPN coordinate space (-1 to 1)
+{self._glsl_uv_to_cppn()}
 
     // Apply enable gates (disabled = 0.0 neutral)
 {visual_gating}
 
     // Network computations
-{node_code}
-
-{color_output}
-}}
-"""
-        return shader
+{node_code}"""
+        return self._build_shader(main_body)
 
     def compile_dual_to_glsl(
         self,
@@ -217,28 +226,10 @@ void main() {{
 
     def _build_dual_shader_template(self, time_code: str, visual_code: str) -> str:
         """Build the complete GLSL shader for dual CPPN (time signal + visual)."""
-        color_output = self._get_color_output_code()
-        uniform_decls = self._glsl_uniform_declarations()
-        enable_decls = self._glsl_enable_declarations()
         base_scaling = self._glsl_base_scaling()
         time_gating = self._glsl_time_enable_gating()
         visual_gating = self._glsl_visual_enable_gating(use_time_from_network=True)
-        shader = f"""#version 300 es
-precision highp float;
-
-// Inputs from vertex shader
-in vec2 vUV;  // UV coordinates (0-1)
-{uniform_decls}
-
-// Signal enable toggles (0.0 = disabled/neutral, 1.0 = enabled)
-{enable_decls}
-
-// Output color
-out vec4 fragColor;
-{ACTIVATION_GLSL_BLOCK}
-
-void main() {{
-    // Raw inputs (before enable gating)
+        main_body = f"""    // Raw inputs (before enable gating)
 {base_scaling}
 
     // === TIME SIGNAL NETWORK ===
@@ -253,83 +244,11 @@ void main() {{
 
     // === VISUAL NETWORK ===
     // Convert UV to CPPN coordinate space (-1 to 1)
-    float v_x = vUV.x * 2.0 - 1.0;
-    float v_y = vUV.y * 2.0 - 1.0;
-    float v_distance = sqrt(v_x * v_x + v_y * v_y);
+{self._glsl_uv_to_cppn()}
 
     // Apply enable gates for visual CPPN inputs (disabled = 0.0 neutral)
 {visual_gating}
 
     // Visual network computations (using modified time)
-{visual_code}
-
-{color_output}
-}}
-"""
-        return shader
-
-    def export_shader_bundle(
-        self, genome: neat.DefaultGenome, config: neat.Config, filepath: str
-    ):
-        """
-        Export shader code and metadata as a JSON bundle.
-
-        Args:
-            genome: NEAT genome
-            config: NEAT configuration
-            filepath: Output file path
-        """
-        shader_code = self.compile_to_glsl(genome, config)
-
-        bundle = {
-            "shader": shader_code,
-            "metadata": {
-                "num_nodes": len(genome.nodes),
-                "num_connections": len(
-                    [c for c in genome.connections.values() if c.enabled]
-                ),
-                "fitness": getattr(genome, "fitness", None),
-            },
-        }
-
-        with open(filepath, "w") as f:
-            json.dump(bundle, f, indent=2)
-
-    def export_dual_shader_bundle(
-        self,
-        dual_genome: DualGenome,
-        visual_config: neat.Config,
-        time_config: neat.Config,
-        filepath: str,
-    ):
-        """
-        Export dual CPPN shader code and metadata as a JSON bundle.
-
-        Args:
-            dual_genome: DualGenome containing visual and time_signal genomes
-            visual_config: NEAT configuration for visual CPPN
-            time_config: NEAT configuration for time signal CPPN
-            filepath: Output file path
-        """
-        from eyecatcher.evaluation import dual_genome_network_stats
-
-        shader_code = self.compile_dual_to_glsl(dual_genome, visual_config, time_config)
-        stats = dual_genome_network_stats(dual_genome)
-        bundle = {
-            "shader": shader_code,
-            "metadata": {
-                "type": "dual_cppn",
-                "visual": {
-                    "num_nodes": stats["visual_nodes"],
-                    "num_connections": stats["visual_connections"],
-                },
-                "time_signal": {
-                    "num_nodes": stats["time_nodes"],
-                    "num_connections": stats["time_connections"],
-                },
-                "fitness": dual_genome.fitness,
-            },
-        }
-
-        with open(filepath, "w") as f:
-            json.dump(bundle, f, indent=2)
+{visual_code}"""
+        return self._build_shader(main_body)

@@ -1,14 +1,12 @@
 """
 Time-signal CPPN showcase: plot modified time vs raw time for a few dual genomes.
-Shows how each individual's time CPPN transforms the raw clock (the "heartbeat").
 Run from repo root: python examples/time_signal_showcase.py
 Requires matplotlib: pip install matplotlib
 """
 
 import os
 
-from eyecatcher.algorithm import CPPNEngine
-from eyecatcher.genome import create_random_dual_genome
+from eyecatcher.substrate import get_substrate
 
 
 def main():
@@ -18,28 +16,27 @@ def main():
         print("Install matplotlib to run this demo: pip install matplotlib")
         return
 
-    engine = CPPNEngine()
-    engine.create_population()
+    substrate = get_substrate("dual_cppn")
     n_curves = 3
-    duals = [
-        create_random_dual_genome(engine.config, engine.time_config, genome_id=i)
-        for i in range(n_curves)
-    ]
+    individuals = [substrate.create_random(key=i) for i in range(n_curves)]
     raw_times = [(-1.0 + i / 50.0) for i in range(101)]
     plt.figure(figsize=(8, 5))
-    for idx, dual in enumerate(duals):
-        modified = [
-            engine.query_time_signal(
-                dual.time_signal,
+    for idx, ind in enumerate(individuals):
+        modified = []
+        for rt in raw_times:
+            result = substrate.query_time_output(
+                ind,
                 {
                     "raw_time": rt,
                     "mouse_speed": 0.0,
-                    "mouse_distance": 0.0,
-                    "inactivity": 0.0,
+                    "mouse_dist": 0.0,
+                    "activity": 0.0,
                 },
             )
-            for rt in raw_times
-        ]
+            if result is not None:
+                modified.append(result["timeOutput"])
+            else:
+                modified.append(0.0)
         plt.plot(raw_times, modified, label=f"Genome {idx}")
     plt.xlabel("Raw time")
     plt.ylabel("Modified time (time CPPN output)")

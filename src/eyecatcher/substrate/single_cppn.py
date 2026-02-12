@@ -36,6 +36,20 @@ class SingleCPPNSubstrate:
     id = "single_cppn"
     output_type: OutputType = "shader"
 
+    @classmethod
+    def get_frontend_metadata(cls) -> dict:
+        return {
+            "hasSignalControls": False,
+            "genomeKeys": ["visual"],
+            "excludeKeys": ["time_signal"],
+            "capabilities": {
+                "save": True,
+                "network": False,
+                "timeOutput": False,
+                "adjustWeight": False,
+            },
+        }
+
     def __init__(
         self,
         neat_config_path: str | None = None,
@@ -83,8 +97,41 @@ class SingleCPPNSubstrate:
             return SubstrateOutput("shader", glsl)
         return SubstrateOutput("shader", "")
 
-    def compile_to_shader(self, ind: neat.DefaultGenome) -> str | None:
+    def compile_to_shader(
+        self, ind: neat.DefaultGenome, color_mode: str | None = None
+    ) -> str | None:
+        if color_mode and color_mode != self.compiler.color_mode:
+            alt = ShaderCompiler(color_mode=color_mode)
+            return alt.compile_to_glsl(ind, self.config)
         return self.compiler.compile_to_glsl(ind, self.config)
+
+    def sample_rgb(
+        self,
+        ind: neat.DefaultGenome,
+        coords: list[tuple[float, float]],
+        time: float = 0.0,
+    ) -> list[list[float]]:
+        from ..evaluation.query import query_visual_cppn
+        from ..signals.signals import VISUAL_TIME_INPUT_NAME, get_default_signal_values
+
+        samples = []
+        sigs = get_default_signal_values(time)
+        for x, y in coords:
+            inputs = {"x": x, "y": y, VISUAL_TIME_INPUT_NAME: time * 2.0 - 1.0, **sigs}
+            r, g, b = query_visual_cppn(ind, self.config, inputs)
+            samples.append([r, g, b])
+        return samples
+
+    def render_to_image(
+        self,
+        ind: neat.DefaultGenome,
+        resolution: int | None = None,
+        **kwargs: Any,
+    ) -> np.ndarray:
+        """Render single CPPN to RGB image array."""
+        return render_image(
+            ind, self.config, resolution=resolution or DEFAULT_RENDER_RESOLUTION
+        )
 
     def to_json(self, ind: neat.DefaultGenome) -> dict[str, Any]:
         return genome_to_json(ind)

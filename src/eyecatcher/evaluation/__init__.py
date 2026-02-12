@@ -11,11 +11,7 @@ from .fitness import (
     register_fitness,
 )
 from .genome_visualizer import render_genome_network_pdf
-from .network_data import (
-    dual_genome_network_stats,
-    extract_network_data,
-    parse_network_node_id,
-)
+from .network_data import extract_network_data, parse_network_node_id
 from .query import query_time_signal, query_visual_cppn
 from .rendering import render_animation_frames, render_image
 
@@ -29,7 +25,6 @@ __all__ = [
     "render_image",
     "render_animation_frames",
     "render_genome_network_pdf",
-    "dual_genome_network_stats",
     "extract_network_data",
     "parse_network_node_id",
 ]

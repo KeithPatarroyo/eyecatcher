@@ -1,7 +1,8 @@
 """
 Rendering: full-image and animation frame generation from CPPNs.
 
-Used for save PNG, batch export, and tests.
+Shared helpers _render_pixel_grid, _render_frames. Single-CPPN: render_image,
+render_animation_frames. Dual-CPPN rendering lives on DualCPPNSubstrate.render_to_image.
 """
 
 from typing import Callable, Optional
@@ -10,16 +11,13 @@ import neat
 import numpy as np
 
 from ..algorithm import config as evolution_config
-from ..genome.genome import DualGenome
 from ..lib.math_utils import normalize_to_bipolar
 from ..signals.signals import (
-    TIME_CPPN_TIME_INPUT_NAME,
-    TIME_INPUTS,
     VISUAL_INPUTS,
     VISUAL_TIME_INPUT_NAME,
     default_inputs,
 )
-from .query import query_dual_cppn, query_visual_cppn
+from .query import query_visual_cppn
 
 
 def _rgb_uint8(r: float, g: float, b: float) -> list[int]:
@@ -99,53 +97,3 @@ def render_animation_frames(
         num_frames,
         include_end_frame=False,
     )
-
-
-def render_dual_image(
-    dual_genome: DualGenome,
-    visual_config: neat.Config,
-    time_config: neat.Config,
-    resolution: Optional[int] = None,
-    extra_inputs: Optional[dict] = None,
-) -> np.ndarray:
-    """Render a complete image from a dual CPPN."""
-    if resolution is None:
-        resolution = evolution_config.PREVIEW_RENDER_RESOLUTION
-    base = default_inputs(TIME_INPUTS)
-    if extra_inputs:
-        base.update(extra_inputs)
-    return _render_pixel_grid(
-        resolution,
-        base,
-        lambda inputs: query_dual_cppn(dual_genome, visual_config, time_config, inputs),
-    )
-
-
-def render_dual_animation_frames(
-    dual_genome: DualGenome,
-    visual_config: neat.Config,
-    time_config: neat.Config,
-    resolution: Optional[int] = None,
-    num_frames: Optional[int] = None,
-    time_range: tuple[float, float] = (0.0, 1.0),
-    extra_inputs: Optional[dict] = None,
-) -> list:
-    """Render frames for dual CPPN animation (raw_time over time_range)."""
-    if resolution is None:
-        resolution = evolution_config.PREVIEW_RENDER_RESOLUTION
-    if num_frames is None:
-        num_frames = evolution_config.DEFAULT_NUM_FRAMES
-    time_key = TIME_CPPN_TIME_INPUT_NAME
-
-    def render_at(t: float) -> np.ndarray:
-        frame_inputs = dict(extra_inputs) if extra_inputs else {}
-        frame_inputs[time_key] = normalize_to_bipolar(t)
-        return render_dual_image(
-            dual_genome,
-            visual_config,
-            time_config,
-            resolution,
-            extra_inputs=frame_inputs,
-        )
-
-    return _render_frames(render_at, time_range, num_frames, include_end_frame=True)

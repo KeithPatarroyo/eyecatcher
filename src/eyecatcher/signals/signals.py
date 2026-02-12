@@ -154,6 +154,21 @@ def default_inputs(signals: Sequence[Signal]) -> dict[str, float]:
     return {s.id: s.default for s in signals}
 
 
+def parse_time_inputs(data: dict, bipolar: bool = False) -> dict[str, float]:
+    """
+    Build TIME_INPUTS dict from request-like data. Handles raw_time/time alias.
+    When bipolar=True, values are scaled to [-1, 1] (e.g. for NEAT input).
+    """
+    out = {}
+    for s in TIME_INPUTS:
+        raw_val = data.get(s.id)
+        if raw_val is None and s.id == "raw_time":
+            raw_val = data.get("time")
+        val = float(raw_val if raw_val is not None else s.default)
+        out[s.id] = (val * 2.0 - 1.0) if bipolar else val
+    return out
+
+
 def get_viewer_signal_ids() -> list[str]:
     """Viewer (or pluggable source) ids. Same set as export_for_frontend SIGNAL_IDS."""
     seen: set[str] = set()

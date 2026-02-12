@@ -11,7 +11,7 @@ import numpy as np
 from flask import Blueprint, jsonify, request
 
 from ..algorithm import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
-from ..signals import TIME_INPUTS
+from ..signals import parse_time_inputs
 from .api_helpers import (
     ERR_GENOME_REQUIRED,
     ERR_GENOMES_ARRAY_REQUIRED,
@@ -102,31 +102,14 @@ def _extract_genome_id_clicks(g_data, default_key):
 
 def _compile_genomes(genomes_data, color_mode):
     """Compile genome JSONs to shader response dicts via the substrate protocol."""
-    compile_fn = _substrate.compile_to_shader
-    if color_mode and hasattr(_substrate, "compiler"):
-        compiler = _substrate.compiler
-        if getattr(compiler, "color_mode", None) != color_mode:
-            from ..glsl import ShaderCompiler
-
-            alt = ShaderCompiler(color_mode=color_mode)
-            if hasattr(_substrate, "time_config"):
-
-                def compile_fn(ind):
-                    return alt.compile_dual_to_glsl(
-                        ind, _substrate.config, _substrate.time_config
-                    )
-            elif hasattr(_substrate, "config"):
-
-                def compile_fn(ind):
-                    return alt.compile_to_glsl(ind, _substrate.config)
-
+    mode = (color_mode or "").strip().lower() or None
     shaders = []
     for i, g_data in enumerate(genomes_data):
         ind = _substrate.from_json(g_data)
         individual_id, clicks = _extract_genome_id_clicks(
             g_data, getattr(ind, "key", i)
         )
-        glsl = compile_fn(ind)
+        glsl = _substrate.compile_to_shader(ind, color_mode=mode)
         resp = {
             "id": individual_id,
             "shader": glsl or "",
@@ -134,12 +117,11 @@ def _compile_genomes(genomes_data, color_mode):
         }
         stats = _substrate.get_compile_stats(ind)
         if stats:
-            resp["visual_nodes"] = stats.get("visual_nodes", 0)
-            resp["visual_connections"] = stats.get("visual_connections", 0)
-            resp["time_nodes"] = stats.get("time_nodes", 0)
-            resp["time_connections"] = stats.get("time_connections", 0)
-            resp["nodes"] = resp["visual_nodes"] + resp["time_nodes"]
-            resp["connections"] = resp["visual_connections"] + resp["time_connections"]
+            resp.update(stats)
+            resp["nodes"] = sum(v for k, v in stats.items() if k.endswith("_nodes"))
+            resp["connections"] = sum(
+                v for k, v in stats.items() if k.endswith("_connections")
+            )
         else:
             resp["nodes"] = (
                 len(getattr(ind, "nodes", {})) if hasattr(ind, "nodes") else 0
@@ -257,21 +239,15 @@ def api_evaluate():
 @api_try_except
 def api_time_output():
     """
-    Stateless: query the Time CPPN for a genome with given inputs (for debug panel).
-    Body: { "genome": { ... }, <id>: value ... } for each time CPPN input.
+    Stateless: query time/signal output for a genome with given inputs (debug panel).
+    Body: { "genome": <substrate-specific JSON>, <signal_id>: value ... }.
     Returns: { "timeOutput": float, "inputs": { <id>: value ... } }.
     """
     ind, _, _, err = _require_genome_from_request("time_output")
     if err is not None:
         return err
     data = request.json or {}
-    inputs = {}
-    for s in TIME_INPUTS:
-        raw_val = data.get(s.id)
-        if raw_val is None and s.id == "raw_time":
-            raw_val = data.get("time")
-        val = float(raw_val if raw_val is not None else s.default)
-        inputs[s.id] = val
+    inputs = parse_time_inputs(data, bipolar=False)
     result = _substrate.query_time_output(ind, inputs)
     if result is None:
         return api_error("Time output not supported by this substrate.", 501)
@@ -283,7 +259,7 @@ def api_time_output():
 def api_network():
     """
     Stateless: get network visualization data for a genome.
-    Body: { "genome": { "key", "visual", "time_signal" } }
+    Body: { "genome": <substrate-specific JSON> }
     Returns: { "id": key, "nodes": [...], "connections": [...] }
     """
     ind, individual_id, _, err = _require_genome_from_request("network")
