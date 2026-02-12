@@ -34,8 +34,8 @@ def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:
                 "y": y,
                 "raw_time": raw_t,
                 "mouse_speed": 0.0,
-                "mouse_distance": 0.0,
-                "inactivity": 0.0,
+                "mouse_dist": 0.0,
+                "activity": 0.0,
             }
             r, g, b = engine.query_dual_cppn(dual_genome, inputs)
             samples.append([r, g, b])
@@ -49,8 +49,8 @@ def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:
             "y": 0.0,
             "raw_time": raw_t,
             "mouse_speed": 0.0,
-            "mouse_distance": 0.0,
-            "inactivity": 0.0,
+            "mouse_dist": 0.0,
+            "activity": 0.0,
         }
         r, g, b = engine.query_dual_cppn(dual_genome, inputs)
         temporal_samples.append([r, g, b])

@@ -32,9 +32,12 @@ Exact file tree and file-by-file roles: **[src/eyecatcher/README.md](src/eyecatc
 
 ## Add or change a signal (input/output)
 
-- **Backend:** [src/eyecatcher/signals/signals.py](src/eyecatcher/signals/signals.py) – edit VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS (Signal/Output dataclasses).
-- **NEAT:** Update num_inputs/num_outputs in [config/neat/](config/neat/) (e.g. neat_config_experimental.txt, neat_config_time_experimental.txt). Engine validates at startup that these match the registry.
-- **Frontend:** [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) – keep SIGNAL_TOGGLES in sync so the UI and shader get the same inputs. There is a test (test_signal_registry) that checks Python vs JS alignment.
+Signals are defined in Python only; the frontend config is generated from the registry.
+
+1. **Edit the registry:** [src/eyecatcher/signals/signals.py](src/eyecatcher/signals/signals.py) – add or change entries in VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS. Use `Signal("id", "Label")` for inputs; use `Signal("id", "Label", is_spatial=True)` for per-pixel inputs (x, y, distance); use `Output("id", "Label")` for outputs.
+2. **Generate frontend config:** Run `make generate-signals` (or `python scripts/generate_signal_config.py` from repo root). This writes [static/js/evolution/evolution_config_signals.generated.js](static/js/evolution/evolution_config_signals.generated.js) and validates NEAT config.
+3. **NEAT counts:** If you added or removed inputs/outputs, update num_inputs/num_outputs in [config/neat/](config/neat/) (neat_config_experimental.txt, neat_config_time_experimental.txt). The generate script will fail with a clear message if they don’t match the registry.
+4. Restart the server and reload the app.
 
 ## Change NEAT config paths or population size
 
@@ -95,13 +98,13 @@ The viewer frontend is grouped by role; see **[static/js/README.md](static/js/RE
 
 ## Keeping frontend in sync
 
-Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). Population size and max: [algorithm/config.py](src/eyecatcher/algorithm/config.py) and EvolutionConfig in evolution_config.js. Signal toggles: [signals/signals.py](src/eyecatcher/signals/signals.py) and SIGNAL_TOGGLES in evolution_config.js (test_signal_registry checks alignment).
+Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). Population size and max: [algorithm/config.py](src/eyecatcher/algorithm/config.py) and EvolutionConfig in evolution_config.js. **Signal toggles and outputs** come from the Python registry: run `make generate-signals` after changing [signals/signals.py](src/eyecatcher/signals/signals.py); the generated file is consumed by evolution_config.js. test_signal_registry checks that the generated file matches the registry.
 
 ## Quick reference
 
 | I want to… | File(s) |
 |------------|---------|
-| Add/rename a signal | signals/signals.py, evolution_config.js, NEAT num_inputs/num_outputs |
+| Add/rename a signal | signals/signals.py, then make generate-signals; update NEAT num_inputs/num_outputs if counts changed |
 | Change population size or NEAT paths | algorithm/config.py |
 | Change reproduction/selection | algorithm/reproduction.py, algorithm/operators.py |
 | Change CPU rendering | evaluation/rendering.py |
