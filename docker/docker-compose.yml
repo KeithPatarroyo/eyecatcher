@@ -12,7 +12,7 @@ services:
       # Set ADMIN_KEY for community moderation (use ALICE for local dev; set in production!)
       - ADMIN_KEY=ALICE
       - PYTHONPATH=/app/src
-      - EXPERIMENT_CONFIG=ca
+      - EXPERIMENT_CONFIG=dual
     volumes:
       # Mount repo root for hot-reload (relative to this compose file: .. = repo root)
       - ..:/app
