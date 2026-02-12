@@ -108,40 +108,20 @@
                             .getElementById("load-list-modal")
                             .classList.remove("show");
                         if (_loadFromStatelessGenomes) {
-                            var outputType;
-                            var substrateId;
-                            if (pop.outputType != null && pop.substrateId != null) {
-                                outputType = pop.outputType;
-                                substrateId = pop.substrateId;
-                            } else if (
-                                pop.substrateId != null &&
+                            var r =
                                 window.SubstrateAdapters &&
-                                window.SubstrateAdapters.getAdapter
-                            ) {
-                                var adapter = window.SubstrateAdapters.getAdapter(
-                                    pop.substrateId
-                                );
-                                outputType = adapter ? adapter.outputType : "shader";
-                                substrateId = pop.substrateId;
-                            } else if (
-                                window.SubstrateAdapters &&
-                                window.SubstrateAdapters.resolveFromGenomes
-                            ) {
-                                var r = window.SubstrateAdapters.resolveFromGenomes(
-                                    pop.genomes
-                                );
-                                outputType = r.outputType;
-                                substrateId = r.substrateId;
-                            } else {
-                                outputType = "shader";
-                                substrateId = "dual_cppn";
-                            }
+                                window.SubstrateAdapters.resolveForLoad
+                                    ? window.SubstrateAdapters.resolveForLoad(pop)
+                                    : {
+                                          outputType: "shader",
+                                          substrateId: "dual_cppn",
+                                      };
                             await _loadFromStatelessGenomes(
                                 pop.genomes || [],
                                 pop.generation || 0,
                                 false,
-                                outputType,
-                                substrateId
+                                r.outputType,
+                                r.substrateId
                             );
                         }
                     };
@@ -242,18 +222,16 @@
                 genomes = json.genomes || [];
                 if (genomes.length && typeof EyecatcherStorage !== "undefined") {
                     await EyecatcherStorage.init();
-                    var inferred = "dual_cppn";
-                    if (
+                    var r =
                         window.SubstrateAdapters &&
-                        window.SubstrateAdapters.resolveFromGenomes
-                    ) {
-                        inferred =
-                            window.SubstrateAdapters.resolveFromGenomes(
-                                genomes
-                            ).substrateId;
-                    }
+                        window.SubstrateAdapters.resolveForLoad
+                            ? window.SubstrateAdapters.resolveForLoad({
+                                  genomes: genomes,
+                              })
+                            : { outputType: "shader", substrateId: "dual_cppn" };
                     var importPayload = Object.assign({}, json, {
-                        substrateId: json.substrateId || inferred,
+                        substrateId: json.substrateId || r.substrateId,
+                        outputType: json.outputType || r.outputType,
                     });
                     await EyecatcherStorage.importPopulation(importPayload);
                 }
@@ -262,16 +240,12 @@
                 Toast.error("No genomes in file");
                 return;
             }
-            var outputType = "shader";
-            if (
-                window.SubstrateAdapters &&
-                window.SubstrateAdapters.resolveFromGenomes
-            ) {
-                var resolved = window.SubstrateAdapters.resolveFromGenomes(genomes);
-                outputType = resolved.outputType;
-            }
+            var resolved =
+                window.SubstrateAdapters && window.SubstrateAdapters.resolveForLoad
+                    ? window.SubstrateAdapters.resolveForLoad({ genomes: genomes })
+                    : { outputType: "shader", substrateId: "dual_cppn" };
             if (_addToGrid) {
-                await _addToGrid(genomes, outputType);
+                await _addToGrid(genomes, resolved.outputType);
             }
         } catch (err) {
             Toast.error("Import failed: " + (err.message || err));

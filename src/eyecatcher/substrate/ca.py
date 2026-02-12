@@ -6,8 +6,9 @@ Individual = CARule (8-bit Wolfram rule). Output = grid (generations × width ×
 
 from __future__ import annotations
 
+import json
 import random
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
@@ -125,6 +126,31 @@ class ElementaryCASubstrate:
         rule = int(data.get("rule", 0)) & 0xFF
         key = int(data.get("key", 0))
         return CARule(rule=rule, key=key)
+
+    def get_save_filenames(self, individual_id: int) -> dict[str, str]:
+        return {
+            "png": f"pattern_{individual_id}.png",
+            "genome_json": f"genome_{individual_id}.json",
+            "zip": f"pattern_{individual_id}.zip",
+        }
+
+    def build_save_assets(
+        self, ind: CARule, individual_id: int, **kwargs: Any
+    ) -> dict[str, bytes]:
+        to_png_bytes: Callable[[np.ndarray], bytes] = kwargs.get("to_png_bytes")
+        if not callable(to_png_bytes):
+            return {}
+        out = self.evaluate(ind, {})
+        if out.output_type != "grid" or not hasattr(out.data, "shape"):
+            return {}
+        arr = np.asarray(out.data)
+        names = self.get_save_filenames(individual_id)
+        return {
+            names["png"]: to_png_bytes(arr),
+            names["genome_json"]: json.dumps(self.to_json(ind), indent=2).encode(
+                "utf-8"
+            ),
+        }
 
     def get_capabilities(self) -> dict[str, bool]:
         return {

@@ -12,12 +12,7 @@ from flask import Blueprint, jsonify, request
 
 from ..algorithm import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
 from ..evaluation import extract_network_data, parse_network_node_id
-from ..genome import (
-    DualGenome,
-    dual_genome_from_json,
-    dual_genome_to_json,
-)
-from ..glsl import ShaderCompiler
+from ..genome import dual_genome_from_json, dual_genome_to_json
 from ..signals import TIME_INPUTS
 from .api_helpers import (
     ERR_GENOME_REQUIRED,
@@ -26,7 +21,6 @@ from .api_helpers import (
     api_try_except,
     numpy_to_png_base64,
 )
-from .response_builder import build_shader_response
 
 # Create blueprint
 stateless_bp = Blueprint("stateless", __name__)
@@ -74,15 +68,36 @@ def api_config():
     )
 
 
-def _require_engine():
-    """Error if substrate has no engine (dual_cppn only)."""
-    if _engine is None:
+def _require_capability(cap: str):
+    """Error if substrate does not have the given capability."""
+    from ..substrate.protocol import get_substrate_capabilities
+
+    caps = get_substrate_capabilities(_substrate)
+    if not caps.get(cap, False):
         return api_error(
-            "This endpoint requires the dual_cppn substrate. "
-            "Use a different EXPERIMENT_CONFIG or substrate in experiments.json.",
+            f"This endpoint requires a substrate with '{cap}' capability.",
             501,
         )
     return None
+
+
+def _require_dual_genome_from_request(cap: str):
+    """
+    Require capability, parse JSON, require genome, deserialize to DualGenome.
+    Returns (dual, individual_id, clicks, err). If err is not None, return it.
+    """
+    err = _require_capability(cap)
+    if err is not None:
+        return None, None, None, err
+    data = request.json or {}
+    genome_data = data.get("genome")
+    if not genome_data:
+        return None, None, None, api_error(ERR_GENOME_REQUIRED, 400)
+    dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
+    individual_id, clicks = _extract_genome_id_clicks(
+        genome_data, dual.key if dual else 0
+    )
+    return dual, individual_id, clicks, None
 
 
 def _extract_genome_id_clicks(g_data, default_key):
@@ -90,93 +105,65 @@ def _extract_genome_id_clicks(g_data, default_key):
     return (g_data.get("key", default_key), g_data.get("clicks", 0))
 
 
-def _shader_response_for_dual(
-    dual_genome: DualGenome,
-    individual_id: int,
-    clicks: int = 0,
-    compiler=None,
-):
-    """Build shader response dict for a dual genome; used by the compile endpoint."""
-    comp = compiler if compiler is not None else _compiler
-    return build_shader_response(
-        dual_genome,
-        individual_id=individual_id,
-        clicks=clicks,
-        compiler=comp,
-        visual_config=_engine.config,
-        time_config=_engine.time_config,
-    )
+def _compile_genomes(genomes_data, color_mode):
+    """Compile genome JSONs to shader response dicts via the substrate protocol."""
+    # Use a color-mode-specific compiler if the substrate owns one and mode differs
+    compile_fn = _substrate.compile_to_shader
+    if color_mode and _compiler and color_mode != _compiler.color_mode:
+        from ..glsl import ShaderCompiler
 
+        alt = ShaderCompiler(color_mode=color_mode)
+        if hasattr(_substrate, "config"):
 
-def _compile_dual_genomes(genomes_data, color_mode):
-    """Compile a list of dual-genome JSONs to shader response dicts."""
-    use_engine_compiler = _compiler and (
-        not color_mode or color_mode == _compiler.color_mode
-    )
-    compiler = (
-        _compiler
-        if use_engine_compiler
-        else (ShaderCompiler(color_mode=color_mode) if color_mode else None)
-    )
-    comp = compiler or _compiler
-    shaders = []
-    for i, g_data in enumerate(genomes_data):
-        dual = dual_genome_from_json(g_data, _engine.config, _engine.time_config)
-        individual_id, clicks = _extract_genome_id_clicks(
-            g_data, dual.key if dual else i
-        )
-        shaders.append(
-            _shader_response_for_dual(dual, individual_id, clicks, compiler=comp)
-        )
-    return shaders
+            def compile_fn(ind):
+                return alt.compile_to_glsl(ind, _substrate.config)
+        elif hasattr(_substrate, "engine"):
 
+            def compile_fn(ind):
+                return alt.compile_dual_to_glsl(
+                    ind,
+                    _substrate.engine.config,
+                    _substrate.engine.time_config,
+                )
 
-def _compile_single_genomes(genomes_data, color_mode):
-    """Compile a list of non-dual genome JSONs to shader response dicts."""
     shaders = []
     for i, g_data in enumerate(genomes_data):
         ind = _substrate.from_json(g_data)
         individual_id, clicks = _extract_genome_id_clicks(
             g_data, getattr(ind, "key", i)
         )
-        need_new_compiler = (
-            color_mode
-            and hasattr(_substrate, "config")
-            and _compiler
-            and color_mode != _compiler.color_mode
-        )
-        if need_new_compiler:
-            glsl = ShaderCompiler(color_mode=color_mode).compile_to_glsl(
-                ind, _substrate.config
-            )
+        glsl = compile_fn(ind)
+        resp = {
+            "id": individual_id,
+            "shader": glsl or "",
+            "clicks": clicks,
+        }
+        stats = _substrate.get_compile_stats(ind)
+        if stats:
+            resp["visual_nodes"] = stats.get("visual_nodes", 0)
+            resp["visual_connections"] = stats.get("visual_connections", 0)
+            resp["time_nodes"] = stats.get("time_nodes", 0)
+            resp["time_connections"] = stats.get("time_connections", 0)
+            resp["nodes"] = resp["visual_nodes"] + resp["time_nodes"]
+            resp["connections"] = resp["visual_connections"] + resp["time_connections"]
         else:
-            glsl = _substrate.compile_to_shader(ind)
-        num_nodes = len(getattr(ind, "nodes", {})) if hasattr(ind, "nodes") else 0
-        num_conn = (
-            len(getattr(ind, "connections", {})) if hasattr(ind, "connections") else 0
-        )
-        shaders.append(
-            {
-                "id": individual_id,
-                "shader": glsl or "",
-                "clicks": clicks,
-                "nodes": num_nodes,
-                "connections": num_conn,
-            }
-        )
+            resp["nodes"] = (
+                len(getattr(ind, "nodes", {})) if hasattr(ind, "nodes") else 0
+            )
+            resp["connections"] = (
+                len(getattr(ind, "connections", {}))
+                if hasattr(ind, "connections")
+                else 0
+            )
+        shaders.append(resp)
     return shaders
 
 
 def _require_can_compile():
-    """Error if substrate cannot compile genomes to shaders (no compile_to_shader)."""
-    if _engine is not None:
-        return None
-    compile_to_shader = getattr(_substrate, "compile_to_shader", None)
-    if not callable(compile_to_shader):
+    """Error if substrate cannot compile genomes to shaders."""
+    if not callable(getattr(_substrate, "compile_to_shader", None)):
         return api_error(
-            "This endpoint requires a substrate that implements compile_to_shader. "
-            "Use dual_cppn, single_cppn, or ca (or add compile_to_shader to your "
-            "substrate).",
+            "This endpoint requires a substrate that implements compile_to_shader.",
             501,
         )
     return None
@@ -201,10 +188,7 @@ def api_compile():
     color_mode = (data.get("color_mode") or "").strip().lower()
     if color_mode and color_mode not in ("hsv", "rgb"):
         color_mode = "hsv"
-    if _engine is not None:
-        shaders = _compile_dual_genomes(genomes_data, color_mode)
-    else:
-        shaders = _compile_single_genomes(genomes_data, color_mode)
+    shaders = _compile_genomes(genomes_data, color_mode)
     return jsonify({"shaders": shaders})
 
 
@@ -280,18 +264,13 @@ def api_evaluate():
 def api_time_output():
     """
     Stateless: query the Time CPPN for a genome with given inputs (for debug panel).
-    Body: { "genome": { ... }, <id>: value ... } (0-1) for each time CPPN
-    input; keys from signals TIME_INPUTS (e.g. raw_time, mouse_speed).
+    Body: { "genome": { ... }, <id>: value ... } for each time CPPN input.
     Returns: { "timeOutput": float, "inputs": { <id>: value ... } }.
     """
-    err = _require_engine()
+    dual, _, _, err = _require_dual_genome_from_request("time_output")
     if err is not None:
         return err
     data = request.json or {}
-    genome_data = data.get("genome")
-    if not genome_data:
-        return api_error(ERR_GENOME_REQUIRED, 400)
-    dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
     time_inputs = {}
     response_inputs = {}
     for s in TIME_INPUTS:
@@ -302,12 +281,7 @@ def api_time_output():
         time_inputs[s.id] = val * 2.0 - 1.0
         response_inputs[s.id] = val
     time_output = _engine.query_time_signal(dual.time_signal, time_inputs)
-    return jsonify(
-        {
-            "timeOutput": time_output,
-            "inputs": response_inputs,
-        }
-    )
+    return jsonify({"timeOutput": time_output, "inputs": response_inputs})
 
 
 @stateless_bp.route("/api/network", methods=["POST"])
@@ -318,17 +292,9 @@ def api_network():
     Body: { "genome": { "key", "visual", "time_signal" } }
     Returns: { "id": key, "nodes": [...], "connections": [...] }
     """
-    err = _require_engine()
+    dual, individual_id, _, err = _require_dual_genome_from_request("network")
     if err is not None:
         return err
-    data = request.json or {}
-    genome_data = data.get("genome")
-    if not genome_data:
-        return api_error(ERR_GENOME_REQUIRED, 400)
-
-    dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
-    individual_id, _ = _extract_genome_id_clicks(genome_data, dual.key if dual else 0)
-
     all_nodes = []
     all_connections = []
 
@@ -363,30 +329,17 @@ def api_network():
 def api_adjust_weight():
     """
     Stateless: adjust a connection weight in a genome and return updated shader.
-    Body: {
-        "genome": { "key", "visual", "time_signal" },
-        "network": "visual" or "time",
-        "source": source_node_id (string like "visual_input_-1"),
-        "target": target_node_id (string like "visual_hidden_5"),
-        "weight": new_weight_value (float)
-    }
+    Body: { "genome": {...}, "network": "visual"|"time", "source", "target", "weight" }
     Returns: { "status": "success", "shader": "...", "genome": {...} }
     """
-    err = _require_engine()
+    dual, _, _, err = _require_dual_genome_from_request("adjust_weight")
     if err is not None:
         return err
     data = request.json or {}
-    genome_data = data.get("genome")
-    if not genome_data:
-        return api_error(ERR_GENOME_REQUIRED, 400)
-
-    network_type = data.get("network")  # 'visual' or 'time'
+    network_type = data.get("network")
     source_node = data.get("source")
     target_node = data.get("target")
     new_weight = float(data.get("weight", 0))
-
-    # Parse the genome
-    dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
 
     # Select the appropriate network
     if network_type == "visual":

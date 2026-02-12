@@ -6,14 +6,18 @@ Individual = neat.DefaultGenome. Output = shader.
 
 from __future__ import annotations
 
+import json
 import os
-from typing import Any
+from typing import Any, Callable
 
 import neat
+import numpy as np
 
 from .. import get_root_dir
+from ..algorithm import DEFAULT_RENDER_RESOLUTION
 from ..algorithm import config as evolution_config
 from ..algorithm.operators import crossover_single_genomes, mutate_single_genome
+from ..evaluation.rendering import render_image
 from ..genome.genome import create_random_genome
 from ..genome.serialization import genome_from_json, genome_to_json
 from ..glsl import ShaderCompiler
@@ -97,6 +101,31 @@ class SingleCPPNSubstrate:
 
     def from_json(self, data: dict[str, Any]) -> neat.DefaultGenome:
         return genome_from_json(data, self.config)
+
+    def get_save_filenames(self, individual_id: int) -> dict[str, str]:
+        return {
+            "png": f"pattern_{individual_id}.png",
+            "glsl": f"pattern_{individual_id}.glsl",
+            "genome_json": f"genome_{individual_id}.json",
+            "zip": f"pattern_{individual_id}.zip",
+        }
+
+    def build_save_assets(
+        self, ind: neat.DefaultGenome, individual_id: int, **kwargs: Any
+    ) -> dict[str, bytes]:
+        to_png_bytes: Callable[[np.ndarray], bytes] = kwargs.get("to_png_bytes")
+        if not callable(to_png_bytes):
+            return {}
+        shader_code = self.compile_to_shader(ind) or ""
+        img = render_image(ind, self.config, resolution=DEFAULT_RENDER_RESOLUTION)
+        names = self.get_save_filenames(individual_id)
+        return {
+            names["png"]: to_png_bytes(img),
+            names["glsl"]: shader_code.encode("utf-8"),
+            names["genome_json"]: json.dumps(genome_to_json(ind), indent=2).encode(
+                "utf-8"
+            ),
+        }
 
     def get_capabilities(self) -> dict[str, bool]:
         return {

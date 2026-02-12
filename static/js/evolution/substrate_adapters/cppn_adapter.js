@@ -23,7 +23,12 @@
 
         const baseUniforms = new Set();
         if (toggles) {
-            ["time", "visual"].forEach(function (cppnType) {
+            (
+                (window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES) || [
+                    "time",
+                    "visual",
+                ]
+            ).forEach(function (cppnType) {
                 const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
                 if (!inputs) return;
                 inputs.forEach(function (s) {

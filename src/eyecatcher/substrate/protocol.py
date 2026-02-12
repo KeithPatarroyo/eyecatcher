@@ -76,6 +76,38 @@ class Substrate(Protocol[IndividualT]):
         """Deserialize individual from API/client payload."""
         ...
 
+    def get_compile_stats(self, ind: IndividualT) -> dict[str, Any] | None:
+        """
+        Return per-network node/connection stats for compile response, or None.
+
+        Substrates with network visualization (e.g. dual_cppn) return a dict
+        like { visual_nodes, visual_connections, time_nodes, time_connections }.
+        """
+        return None
+
+    def get_save_filenames(self, individual_id: int) -> dict[str, str]:
+        """
+        Return logical filenames for saved assets (e.g. png, glsl, zip).
+
+        Keys match those returned by build_save_assets. Used for zip name and
+        serve_saved_* routes.
+        """
+        return {
+            "png": f"pattern_{individual_id}.png",
+            "zip": f"pattern_{individual_id}.zip",
+        }
+
+    def build_save_assets(
+        self, ind: IndividualT, individual_id: int, **kwargs: Any
+    ) -> dict[str, bytes]:
+        """
+        Build filename -> raw bytes for all assets to include in the save zip.
+
+        Substrates override to add shader, genome JSON, network PDF, etc.
+        Default returns empty dict (caller may treat as unsupported).
+        """
+        return {}
+
 
 def get_substrate_capabilities(substrate: Any) -> dict[str, bool]:
     """

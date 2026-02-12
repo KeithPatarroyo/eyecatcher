@@ -103,7 +103,12 @@
         const config = window.EvolutionConfig;
         const toggles = config && config.SIGNAL_TOGGLES;
         if (!toggles || !signalValues) return out;
-        ["time", "visual"].forEach(function (cppnType) {
+        (
+            (window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES) || [
+                "time",
+                "visual",
+            ]
+        ).forEach(function (cppnType) {
             const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
             if (!inputs) return;
             inputs.forEach(function (s) {
@@ -347,26 +352,12 @@
             return { card: card, canvas: null, patternData: null };
         }
 
-        const canvas = document.createElement("canvas");
-        canvas.className = "pattern-canvas";
-        canvas.width = PATTERN_CANVAS_SIZE;
-        canvas.height = PATTERN_CANVAS_SIZE;
-        let patternData = setupPattern(canvas, pattern.shader);
-        if (!patternData || patternData.error) {
-            var fallbackEl = createErrorFallback(
-                patternData && patternData.error ? patternData.error : null
-            );
-            card.appendChild(fallbackEl);
-            card.appendChild(actions);
-            card.appendChild(info);
-            attachCardEvents(card, id, options);
-            return { card: card, canvas: null, patternData: null };
-        }
-        card.appendChild(canvas);
+        var fallbackEl = createErrorFallback(null);
+        card.appendChild(fallbackEl);
         card.appendChild(actions);
         card.appendChild(info);
         attachCardEvents(card, id, options);
-        return { card: card, canvas: canvas, patternData: patternData };
+        return { card: card, canvas: null, patternData: null };
     }
 
     window.PatternRenderer = {

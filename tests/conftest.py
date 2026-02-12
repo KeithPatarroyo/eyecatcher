@@ -12,6 +12,7 @@ import pytest
 from eyecatcher.algorithm import CPPNEngine
 from eyecatcher.genome import create_random_dual_genome, dual_genome_from_json
 from eyecatcher.server import app
+from eyecatcher.substrate import DualCPPNSubstrate
 from eyecatcher.web import community_routes
 
 
@@ -90,6 +91,12 @@ def random_dual_genome(cppn_engine):
     return create_random_dual_genome(
         cppn_engine.config, cppn_engine.time_config, genome_id=0
     )
+
+
+@pytest.fixture
+def dual_cppn_substrate():
+    """DualCPPNSubstrate instance for testing substrate protocol methods."""
+    return DualCPPNSubstrate()
 
 
 @pytest.fixture

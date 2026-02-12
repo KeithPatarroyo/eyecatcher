@@ -280,31 +280,18 @@
 
     function resolveAdapterAndOutput(outputType, substrateId, genomes) {
         var SubstrateAdapters = window.SubstrateAdapters;
-        var adapter = null;
-        if (substrateId && SubstrateAdapters && SubstrateAdapters.getAdapter) {
-            adapter = SubstrateAdapters.getAdapter(substrateId);
+        if (!SubstrateAdapters || !SubstrateAdapters.resolveForLoad) {
+            return {
+                adapter: null,
+                outputType: outputType || "shader",
+                substrateId: substrateId || "dual_cppn",
+            };
         }
-        if (
-            !adapter &&
-            genomes &&
-            genomes.length &&
-            SubstrateAdapters &&
-            SubstrateAdapters.resolveFromGenomes
-        ) {
-            var resolved = SubstrateAdapters.resolveFromGenomes(genomes);
-            adapter = SubstrateAdapters.getAdapter(resolved.substrateId);
-        }
-        if (!adapter && SubstrateAdapters && SubstrateAdapters.getAdapter) {
-            adapter = SubstrateAdapters.getAdapter("dual_cppn");
-        }
-        var resolvedOutputType =
-            (adapter && adapter.outputType) || outputType || "shader";
-        var resolvedSubstrateId = (adapter && adapter.id) || substrateId || "dual_cppn";
-        return {
-            adapter: adapter,
-            outputType: resolvedOutputType,
-            substrateId: resolvedSubstrateId,
-        };
+        return SubstrateAdapters.resolveForLoad({
+            outputType: outputType,
+            substrateId: substrateId,
+            genomes: genomes,
+        });
     }
 
     function evolveGeneration() {
@@ -607,23 +594,22 @@
         );
         var genNum =
             genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
-        var subId = genealogyLoad.substrate_id;
-        var outType;
-        if (subId != null) {
-            outType = subId === "ca" ? "grid" : "shader";
-        } else if (window.SubstrateAdapters.resolveFromGenomes) {
-            var r = window.SubstrateAdapters.resolveFromGenomes(genealogyLoad.genomes);
-            outType = r.outputType;
-            subId = r.substrateId;
-        } else {
-            outType = "shader";
-        }
+        var resolved =
+            window.SubstrateAdapters && window.SubstrateAdapters.resolveForLoad
+                ? window.SubstrateAdapters.resolveForLoad({
+                      substrateId: genealogyLoad.substrate_id,
+                      genomes: genealogyLoad.genomes,
+                  })
+                : {
+                      outputType: "shader",
+                      substrateId: genealogyLoad.substrate_id || "dual_cppn",
+                  };
         window.GridRenderer.loadFromStatelessGenomes(
             genealogyLoad.genomes,
             genNum,
             false,
-            outType,
-            subId
+            resolved.outputType,
+            resolved.substrateId
         );
     } else {
         window.PopulationUI.startNewRandomPopulation();

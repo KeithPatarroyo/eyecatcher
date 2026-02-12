@@ -53,14 +53,41 @@
         return opts;
     }
 
+    function _buildPatternMapEntry(pattern, result) {
+        var pd = result.patternData;
+        var entry = {
+            canvas: result.canvas,
+            gl: pd ? pd.gl : null,
+            program: pd ? pd.program : null,
+            positionBuffer: pd ? pd.positionBuffer : null,
+            clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
+        };
+        if (pd && pd.caRule !== undefined) entry.caRule = pd.caRule;
+        return entry;
+    }
+
+    function _appendPatternCards(
+        population,
+        grid,
+        callbacks,
+        patternsMap,
+        substrateId
+    ) {
+        var PatternRenderer = window.PatternRenderer;
+        if (!PatternRenderer || !PatternRenderer.createPatternCard) return;
+        population.forEach(function (pattern) {
+            var result = PatternRenderer.createPatternCard(
+                patternCardCallbacks(pattern, callbacks, substrateId)
+            );
+            grid.appendChild(result.card);
+            if (pattern.id !== undefined) {
+                patternsMap.set(pattern.id, _buildPatternMapEntry(pattern, result));
+            }
+        });
+    }
+
     /**
      * Render population into the grid and fill patternsMap (id -> { canvas, gl, program, positionBuffer, clicks }).
-     * @param {Array} population - list of { id, shader, nodes, connections, clicks }
-     * @param {Object} ids - { grid }
-     * @param {Object} callbacks - same as for patternCardCallbacks
-     * @param {Map} [patternsMap] - optional Map to fill; if not provided a new Map is created and returned
-     * @param {string} [substrateId] - current substrate id for adapter.preparePatternData
-     * @returns {Map} the patterns Map (same as patternsMap if provided)
      */
     function renderGridFromPopulation(
         population,
@@ -74,62 +101,17 @@
         clearGrid(ids);
         var grid = ids && ids.grid ? document.getElementById(ids.grid) : null;
         if (!grid || !population || !population.length) return map;
-
-        var PatternRenderer = window.PatternRenderer;
-        if (!PatternRenderer || !PatternRenderer.createPatternCard) return map;
-
-        population.forEach(function (pattern) {
-            var result = PatternRenderer.createPatternCard(
-                patternCardCallbacks(pattern, callbacks, substrateId)
-            );
-            grid.appendChild(result.card);
-            if (pattern.id !== undefined) {
-                var pd = result.patternData;
-                var entry = {
-                    canvas: result.canvas,
-                    gl: pd ? pd.gl : null,
-                    program: pd ? pd.program : null,
-                    positionBuffer: pd ? pd.positionBuffer : null,
-                    clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
-                };
-                if (pd && pd.caRule !== undefined) entry.caRule = pd.caRule;
-                map.set(pattern.id, entry);
-            }
-        });
+        _appendPatternCards(population, grid, callbacks, map, substrateId);
         return map;
     }
 
     /**
      * Append new pattern cards to the grid without clearing. Fills patternsMap with new entries.
-     * @param {Array} population - list of { id, shader, nodes, connections, clicks }
-     * @param {Object} ids - { grid }
-     * @param {Object} callbacks - same as for patternCardCallbacks
-     * @param {Map} patternsMap - existing Map to add to (mutated)
-     * @param {string} [substrateId] - current substrate id for adapter.preparePatternData
      */
     function appendCardsToGrid(population, ids, callbacks, patternsMap, substrateId) {
         var grid = ids && ids.grid ? document.getElementById(ids.grid) : null;
         if (!grid || !population || !population.length || !patternsMap) return;
-        var PatternRenderer = window.PatternRenderer;
-        if (!PatternRenderer || !PatternRenderer.createPatternCard) return;
-        population.forEach(function (pattern) {
-            var result = PatternRenderer.createPatternCard(
-                patternCardCallbacks(pattern, callbacks, substrateId)
-            );
-            grid.appendChild(result.card);
-            if (pattern.id !== undefined) {
-                var pd = result.patternData;
-                var entry = {
-                    canvas: result.canvas,
-                    gl: pd ? pd.gl : null,
-                    program: pd ? pd.program : null,
-                    positionBuffer: pd ? pd.positionBuffer : null,
-                    clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
-                };
-                if (pd && pd.caRule !== undefined) entry.caRule = pd.caRule;
-                patternsMap.set(pattern.id, entry);
-            }
-        });
+        _appendPatternCards(population, grid, callbacks, patternsMap, substrateId);
     }
 
     function loadFromStatelessGenomes(

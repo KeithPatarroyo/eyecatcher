@@ -17,7 +17,12 @@
             time: "Time Signal CPPN Inputs",
             visual: "Visual CPPN Inputs",
         };
-        ["time", "visual"].forEach(function (cppnType) {
+        (
+            (window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES) || [
+                "time",
+                "visual",
+            ]
+        ).forEach(function (cppnType) {
             const group = document.createElement("div");
             group.className = "signal-group";
             const titleEl = document.createElement("div");
@@ -94,7 +99,10 @@
             const config = window.EvolutionConfig.SIGNAL_TOGGLES;
             if (config) {
                 populateSignalControls(config);
-                ["time", "visual"].forEach(function (cppnType) {
+                (
+                    (window.EvolutionConfig &&
+                        window.EvolutionConfig.NETWORK_TYPES) || ["time", "visual"]
+                ).forEach(function (cppnType) {
                     config[cppnType].toggleableInputs.forEach(function (s) {
                         self.signalState[cppnType][s.id] = true;
                         const checkbox = document.getElementById(cppnType + "-" + s.id);

@@ -560,7 +560,12 @@ async function renderThumbnail(populationId) {
         // Render a single frame (signal state from config or default all on)
         let signalState = { time: {}, visual: {} };
         if (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_TOGGLES) {
-            ["time", "visual"].forEach(function (cppnType) {
+            (
+                (window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES) || [
+                    "time",
+                    "visual",
+                ]
+            ).forEach(function (cppnType) {
                 window.EvolutionConfig.SIGNAL_TOGGLES[
                     cppnType
                 ].toggleableInputs.forEach(function (s) {

@@ -2,7 +2,7 @@
 Network graph/stats extraction for UI and API.
 
 Produces node/connection lists and stats from genomes for visualization
-and API response shape. Used by response_builder, stateless_api, genome_visualizer.
+and API response shape. Used by stateless_api, substrate, genome_visualizer.
 """
 
 from typing import Any, Optional

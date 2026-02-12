@@ -311,27 +311,21 @@ void main() {{
             time_config: NEAT configuration for time signal CPPN
             filepath: Output file path
         """
-        from eyecatcher.web.response_builder import build_shader_response
+        from eyecatcher.evaluation import dual_genome_network_stats
 
-        resp = build_shader_response(
-            dual_genome,
-            individual_id=dual_genome.key,
-            clicks=0,
-            compiler=self,
-            visual_config=visual_config,
-            time_config=time_config,
-        )
+        shader_code = self.compile_dual_to_glsl(dual_genome, visual_config, time_config)
+        stats = dual_genome_network_stats(dual_genome)
         bundle = {
-            "shader": resp["shader"],
+            "shader": shader_code,
             "metadata": {
                 "type": "dual_cppn",
                 "visual": {
-                    "num_nodes": resp["visual_nodes"],
-                    "num_connections": resp["visual_connections"],
+                    "num_nodes": stats["visual_nodes"],
+                    "num_connections": stats["visual_connections"],
                 },
                 "time_signal": {
-                    "num_nodes": resp["time_nodes"],
-                    "num_connections": resp["time_connections"],
+                    "num_nodes": stats["time_nodes"],
+                    "num_connections": stats["time_connections"],
                 },
                 "fitness": dual_genome.fitness,
             },

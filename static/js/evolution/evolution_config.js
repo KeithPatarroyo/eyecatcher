@@ -30,12 +30,11 @@
                   time: { toggleableInputs: [] },
                   visual: { toggleableInputs: [] },
               },
-        OUTPUTS: signals
-            ? signals.OUTPUTS
-            : {
-                  visual: [],
-                  time: [],
-              },
+        OUTPUTS: signals ? signals.OUTPUTS : { visual: [], time: [] },
+        NETWORK_TYPES:
+            signals && signals.SIGNAL_TOGGLES
+                ? Object.keys(signals.SIGNAL_TOGGLES)
+                : ["time", "visual"],
     };
 
     /**

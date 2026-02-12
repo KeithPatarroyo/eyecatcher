@@ -50,6 +50,31 @@
     }
 
     /**
+     * Resolve outputType, substrateId, and adapter from a load payload (pop or state).
+     * @param {{ outputType?: string, substrateId?: string, genomes?: Array }} pop
+     * @returns {{ outputType: string, substrateId: string, adapter: Object|null }}
+     */
+    function resolveForLoad(pop) {
+        if (!pop) pop = {};
+        var adapter = null;
+        if (pop.substrateId) {
+            adapter = getAdapter(pop.substrateId);
+        }
+        if (!adapter && pop.genomes && pop.genomes.length) {
+            var r = resolveFromGenomes(pop.genomes);
+            adapter = getAdapter(r.substrateId);
+        }
+        if (!adapter) {
+            adapter = getAdapter("dual_cppn");
+        }
+        return {
+            outputType: (adapter && adapter.outputType) || pop.outputType || "shader",
+            substrateId: (adapter && adapter.id) || pop.substrateId || "dual_cppn",
+            adapter: adapter,
+        };
+    }
+
+    /**
      * Default getDisplayData: grid -> evaluate, shader -> compile.
      * Adapters can override with custom logic.
      * @param {Object} adapter - Adapter with outputType
@@ -107,6 +132,7 @@
         getAdapter: getAdapter,
         findAdapterByGenome: findAdapterByGenome,
         resolveFromGenomes: resolveFromGenomes,
+        resolveForLoad: resolveForLoad,
         getDisplayData: getDisplayData,
     };
 
