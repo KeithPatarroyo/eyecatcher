@@ -70,3 +70,11 @@ class DualCPPNSubstrate:
 
     def from_json(self, data: dict[str, Any]) -> DualGenome:
         return dual_genome_from_json(data, self.engine.config, self.engine.time_config)
+
+    def get_capabilities(self) -> dict[str, bool]:
+        return {
+            "save": True,
+            "network": True,
+            "time_output": True,
+            "adjust_weight": True,
+        }

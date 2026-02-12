@@ -53,17 +53,21 @@ def init_stateless_api(substrate, engine=None, compiler=None):
 def api_config():
     """
     Return current experiment config for bootstrap (substrate, output type,
-    population limits). GET /api/config → substrate_id, output_type,
-    population_size, max_population_size.
+    population limits, capabilities). GET /api/config → substrate_id,
+    output_type, population_size, max_population_size, capabilities.
     """
     if _substrate is None:
         return api_error("No substrate configured.", 503)
+    from ..substrate.protocol import get_substrate_capabilities
+
+    capabilities = get_substrate_capabilities(_substrate)
     return jsonify(
         {
             "substrate_id": _substrate.id,
             "output_type": _substrate.output_type,
             "population_size": DEFAULT_POPULATION_SIZE,
             "max_population_size": MAX_POPULATION_SIZE,
+            "capabilities": capabilities,
         }
     )
 

@@ -1,133 +1,140 @@
 """
-Batch evolution demo using dual-CPPN (visual + time signal).
-Simulates automated evolution with a proxy fitness function.
-Run from repo root: python examples/evolution_batch.py
+Batch evolution demo — substrate-agnostic.
+
+Uses EXPERIMENT_CONFIG (or default) to select substrate. Supports dual_cppn,
+single_cppn, and ca. Fitness is pluggable via --fitness.
+
+Run from repo root:
+  python examples/evolution_batch.py
+  python examples/evolution_batch.py --fitness color_variance
+  EXPERIMENT_CONFIG=ca python examples/evolution_batch.py --fitness ca_symmetry
+  EXPERIMENT_CONFIG=single python examples/evolution_batch.py --fitness color_variance
 """
 
+import argparse
+import json
 import os
-import random
 
 import numpy as np
 from eyecatcher.algorithm import (
+    CROSSOVER_PROBABILITY,
     DEFAULT_POPULATION_SIZE,
     PREVIEW_RENDER_RESOLUTION,
-    CPPNEngine,
 )
-from eyecatcher.genome import DualGenome, copy_dual_genome, create_random_dual_genome
-from eyecatcher.glsl import ShaderCompiler
+from eyecatcher.algorithm import (
+    config as evolution_config,
+)
+from eyecatcher.algorithm.reproduction import produce_next_generation
+from eyecatcher.evaluation.fitness import get_fitness, list_fitness
+from eyecatcher.evaluation.rendering import render_image
 from PIL import Image
 
 
-def simple_fitness(engine: CPPNEngine, dual_genome: DualGenome) -> float:
-    """
-    Proxy fitness: color variety and temporal variation via query_dual_cppn.
-    In the real system, fitness is user selection (clicks).
-    """
-    samples = []
-    coords = [(-0.5, -0.5), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0, 0)]
-    times = [0.2, 0.5, 0.8]
-    for t in times:
-        raw_t = -1.0 + t * 2.0
-        for x, y in coords:
-            inputs = {
-                "x": x,
-                "y": y,
-                "raw_time": raw_t,
-                "mouse_speed": 0.0,
-                "mouse_dist": 0.0,
-                "activity": 0.0,
-            }
-            r, g, b = engine.query_dual_cppn(dual_genome, inputs)
-            samples.append([r, g, b])
-    samples = np.array(samples)
-    color_variance = np.var(samples)
-    temporal_samples = []
-    for t in times:
-        raw_t = -1.0 + t * 2.0
-        inputs = {
-            "x": 0.0,
-            "y": 0.0,
-            "raw_time": raw_t,
-            "mouse_speed": 0.0,
-            "mouse_dist": 0.0,
-            "activity": 0.0,
-        }
-        r, g, b = engine.query_dual_cppn(dual_genome, inputs)
-        temporal_samples.append([r, g, b])
-    temporal_variance = np.var(temporal_samples)
-    fitness = color_variance * 10 + temporal_variance * 5
-    mean_color = np.mean(samples)
-    if mean_color < 0.1 or mean_color > 0.9:
-        fitness *= 0.5
-    return fitness
+def _render_for_save(substrate, ind):
+    """Render individual to image array for saving."""
+    from eyecatcher.genome import DualGenome
+
+    engine = getattr(substrate, "engine", None)
+    if engine is not None and isinstance(ind, DualGenome):
+        return engine.render_dual_image(ind, resolution=PREVIEW_RENDER_RESOLUTION)
+    if hasattr(substrate, "config"):
+        return render_image(ind, substrate.config, resolution=PREVIEW_RENDER_RESOLUTION)
+    out = substrate.evaluate(ind, {})
+    if out.output_type == "grid" and hasattr(out.data, "shape"):
+        arr = np.asarray(out.data)
+        if arr.ndim == 2:
+            arr = np.stack([arr, arr, arr], axis=-1)
+        if arr.dtype != np.uint8:
+            arr = (np.clip(arr, 0, 1) * 255).astype(np.uint8)
+        return arr
+    return np.zeros((256, 256, 3), dtype=np.uint8)
 
 
 def run_evolution(
     population_size: int = DEFAULT_POPULATION_SIZE,
     num_generations: int = 5,
     output_dir: str = "output/evolution",
+    fitness_name: str = "combined",
 ):
-    os.makedirs(output_dir, exist_ok=True)
-    engine = CPPNEngine()
-    engine.create_population()
-    compiler = ShaderCompiler()
-    population = []
-    genome_counter = 0
-    for i in range(population_size):
-        dual = create_random_dual_genome(
-            engine.config, engine.time_config, genome_id=genome_counter
+    substrate = evolution_config.get_configured_substrate()
+    fitness_fn = get_fitness(fitness_name)
+    if fitness_fn is None:
+        raise ValueError(
+            f"Unknown fitness: {fitness_name}. Available: {', '.join(list_fitness())}"
         )
-        genome_counter += 1
-        population.append(dual)
+
+    print(f"Substrate: {substrate.id}, fitness: {fitness_name}")
+
+    os.makedirs(output_dir, exist_ok=True)
+    population = []
+    for i in range(population_size):
+        ind = substrate.create_random(key=i)
+        population.append(ind)
 
     for gen in range(num_generations):
-        scores = [(d, simple_fitness(engine, d)) for d in population]
+        scores = [(ind, fitness_fn(ind, substrate)) for ind in population]
         scores.sort(key=lambda x: x[1], reverse=True)
-        parents = [d for d, _ in scores[:4]]
+        parents = [ind for ind, _ in scores[:4]]
         print(f"Gen {gen + 1}/{num_generations} best fitness: {scores[0][1]:.3f}")
 
         # Save gen images (best few)
         gen_dir = os.path.join(output_dir, f"gen_{gen:03d}")
         os.makedirs(gen_dir, exist_ok=True)
-        for idx, (dual, _) in enumerate(scores[:4]):
-            img = engine.render_dual_image(
-                dual,
-                resolution=PREVIEW_RENDER_RESOLUTION,
-                extra_inputs={"raw_time": 0.0},
-            )
+        for idx, (ind, _) in enumerate(scores[:4]):
+            img_arr = _render_for_save(substrate, ind)
+            img = Image.fromarray(img_arr, "RGB")
             path = os.path.join(gen_dir, f"pattern_{idx:02d}.png")
-            Image.fromarray(img, "RGB").save(path)
+            img.save(path)
 
-        # Breed: elitism + offspring
-        best = parents[0]
-        genome_counter = max(g.key for g in population) + 1
-        new_pop = [
-            copy_dual_genome(best, engine.config, engine.time_config, genome_counter)
+        # Breed: use produce_next_generation
+        parents_data = [
+            {"genome": substrate.to_json(p), "clicks": 1} for i, p in enumerate(parents)
         ]
-        genome_counter += 1
-        while len(new_pop) < population_size:
-            if random.random() < 0.7:
-                p = random.choice(parents)
-                child = engine.mutate_dual_genome(p, genome_counter)
-            else:
-                p1, p2 = random.sample(parents, 2)
-                child = engine.crossover_dual_genomes(p1, p2, genome_counter)
-            genome_counter += 1
-            new_pop.append(child)
-        population = new_pop
+        children = produce_next_generation(
+            substrate,
+            parents_data,
+            population_size=population_size,
+            elitism=True,
+            crossover_probability=CROSSOVER_PROBABILITY,
+        )
+        population = [substrate.from_json(c) for c in children]
 
-    # Export best as dual shader
-    scores = [(d, simple_fitness(engine, d)) for d in population]
+    # Export best
+    scores = [(ind, fitness_fn(ind, substrate)) for ind in population]
     scores.sort(key=lambda x: x[1], reverse=True)
     best = scores[0][0]
-    shader_path = os.path.join(output_dir, "best_pattern.glsl")
-    shader_code = compiler.compile_dual_to_glsl(best, engine.config, engine.time_config)
-    with open(shader_path, "w") as f:
-        f.write(shader_code)
-    print(f"Saved best shader: {shader_path}")
+    shader = substrate.compile_to_shader(best)
+    if shader:
+        shader_path = os.path.join(output_dir, "best_pattern.glsl")
+        with open(shader_path, "w") as f:
+            f.write(shader)
+        print(f"Saved best shader: {shader_path}")
+    genome_path = os.path.join(output_dir, "best_genome.json")
+    with open(genome_path, "w") as f:
+        json.dump(substrate.to_json(best), f, indent=2)
+    print(f"Saved best genome: {genome_path}")
     print(f"Results in: {output_dir}")
 
 
 if __name__ == "__main__":
-    print("Batch evolution (dual-CPPN) – proxy fitness, no UI")
-    run_evolution(num_generations=5)
+    parser = argparse.ArgumentParser(description="Batch evolution (substrate-agnostic)")
+    parser.add_argument(
+        "--fitness",
+        default="combined",
+        help=f"Fitness function. Available: {', '.join(list_fitness())}",
+    )
+    parser.add_argument(
+        "--generations", type=int, default=5, help="Number of generations"
+    )
+    parser.add_argument("--population", type=int, default=None, help="Population size")
+    parser.add_argument("--output", default="output/evolution", help="Output directory")
+    args = parser.parse_args()
+
+    pop_size = args.population or DEFAULT_POPULATION_SIZE
+    print("Batch evolution – substrate from EXPERIMENT_CONFIG, proxy fitness")
+    run_evolution(
+        population_size=pop_size,
+        num_generations=args.generations,
+        output_dir=args.output,
+        fitness_name=args.fitness,
+    )

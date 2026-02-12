@@ -21,6 +21,7 @@ import os
 import pickle
 import zipfile
 
+import numpy as np
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
@@ -171,17 +172,19 @@ def _evolve_stateless(data):
 @app.route("/api/save", methods=["POST"])
 def save_individual():
     """
-    Save a dual genome (stateless). Only supported for dual_cppn substrate.
+    Save an individual (stateless). Supported for dual_cppn, single_cppn, ca.
     Body: {
         "genome": { ... },       (required)
         "id": 123,               (optional, defaults to genome.key)
-        "visualize": true        (optional, default true; generate network PDF)
+        "visualize": true        (optional, default true; dual_cppn only, network PDF)
     }
     """
-    if engine is None:
+    from ..substrate.protocol import get_substrate_capabilities
+
+    caps = get_substrate_capabilities(substrate)
+    if not caps.get("save", False):
         return api_error(
-            "Save is only available for the dual_cppn substrate. "
-            "Use a different EXPERIMENT_CONFIG or substrate in experiments.json.",
+            "Save is not supported for this substrate.",
             501,
         )
     data = request.json or {}
@@ -191,12 +194,20 @@ def save_individual():
     if not genome_json:
         return api_error(ERR_GENOME_REQUIRED_REQUEST_BODY, 400)
     try:
-        dual_genome = dual_genome_from_json(
-            genome_json, engine.config, engine.time_config
-        )
-        return _save_dual_genome(
-            dual_genome, individual_id or dual_genome.key, visualize=visualize
-        )
+        if substrate.id == "dual_cppn" and engine is not None:
+            dual_genome = dual_genome_from_json(
+                genome_json, engine.config, engine.time_config
+            )
+            return _save_dual_genome(
+                dual_genome, individual_id or dual_genome.key, visualize=visualize
+            )
+        ind = substrate.from_json(genome_json)
+        ind_id = individual_id if individual_id is not None else getattr(ind, "key", 0)
+        if substrate.id == "single_cppn":
+            return _save_single_cppn(substrate, ind, ind_id)
+        if substrate.id == "ca":
+            return _save_ca(substrate, ind, ind_id)
+        return api_error("Save not implemented for this substrate.", 501)
     except ValueError as e:
         return api_error(str(e), 400)
     except Exception as e:
@@ -329,6 +340,86 @@ def _save_dual_genome(
             "id": individual_id,
             "status": "saved",
             "downloads": downloads,
+        }
+    )
+
+
+def _save_single_cppn(substrate, ind, individual_id: int):
+    """Save single-CPPN individual: shader, PNG, genome JSON."""
+    from PIL import Image
+
+    from ..evaluation.rendering import render_image
+
+    shader_code = substrate.compile_to_shader(ind)
+    img = render_image(ind, substrate.config, resolution=DEFAULT_RENDER_RESOLUTION)
+    img_buffer = io.BytesIO()
+    Image.fromarray(img).save(img_buffer, format="PNG")
+    img_base64 = base64.b64encode(img_buffer.getvalue()).decode("ascii")
+    genome_json = json.dumps(substrate.to_json(ind), indent=2)
+    names = {
+        "png": f"pattern_{individual_id}.png",
+        "glsl": f"pattern_{individual_id}.glsl",
+        "genome_json": f"genome_{individual_id}.json",
+        "zip": f"pattern_{individual_id}.zip",
+    }
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(names["png"], base64.b64decode(img_base64))
+        zf.writestr(names["glsl"], (shader_code or "").encode("utf-8"))
+        zf.writestr(names["genome_json"], genome_json.encode("utf-8"))
+    zip_base64 = base64.b64encode(zip_buffer.getvalue()).decode("ascii")
+    return jsonify(
+        {
+            "id": individual_id,
+            "status": "saved",
+            "downloads": [
+                {
+                    "filename": names["zip"],
+                    "mime": "application/zip",
+                    "content_base64": zip_base64,
+                },
+            ],
+        }
+    )
+
+
+def _save_ca(substrate, ind, individual_id: int):
+    """Save CA individual: rule JSON, PNG image."""
+    from PIL import Image
+
+    out = substrate.evaluate(ind, {})
+    if out.output_type != "grid" or not hasattr(out.data, "shape"):
+        return api_error("CA evaluate failed", 500)
+    arr = np.asarray(out.data)
+    if arr.dtype != np.uint8:
+        arr = (np.clip(arr, 0, 1) * 255).astype(np.uint8)
+    if arr.ndim == 2:
+        arr = np.stack([arr, arr, arr], axis=-1)
+    img_buffer = io.BytesIO()
+    Image.fromarray(arr).save(img_buffer, format="PNG")
+    img_base64 = base64.b64encode(img_buffer.getvalue()).decode("ascii")
+    genome_json = json.dumps(substrate.to_json(ind), indent=2)
+    names = {
+        "png": f"pattern_{individual_id}.png",
+        "genome_json": f"genome_{individual_id}.json",
+        "zip": f"pattern_{individual_id}.zip",
+    }
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(names["png"], base64.b64decode(img_base64))
+        zf.writestr(names["genome_json"], genome_json.encode("utf-8"))
+    zip_base64 = base64.b64encode(zip_buffer.getvalue()).decode("ascii")
+    return jsonify(
+        {
+            "id": individual_id,
+            "status": "saved",
+            "downloads": [
+                {
+                    "filename": names["zip"],
+                    "mime": "application/zip",
+                    "content_base64": zip_base64,
+                },
+            ],
         }
     )
 

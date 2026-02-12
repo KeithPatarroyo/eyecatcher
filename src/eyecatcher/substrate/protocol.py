@@ -75,3 +75,19 @@ class Substrate(Protocol[IndividualT]):
     def from_json(self, data: dict[str, Any]) -> IndividualT:
         """Deserialize individual from API/client payload."""
         ...
+
+
+def get_substrate_capabilities(substrate: Any) -> dict[str, bool]:
+    """
+    Return capability flags for a substrate.
+    Substrates may implement get_capabilities(); else returns defaults.
+    """
+    meth = getattr(substrate, "get_capabilities", None)
+    if callable(meth):
+        return meth()
+    return {
+        "save": True,
+        "network": False,
+        "time_output": False,
+        "adjust_weight": False,
+    }

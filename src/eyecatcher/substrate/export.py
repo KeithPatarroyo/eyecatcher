@@ -12,10 +12,11 @@ def export_substrates_for_frontend() -> list[dict]:
     """
     Return per-substrate config for the frontend adapter registry.
 
-    Each entry has: id, outputType, hasSignalControls, genomeKeys.
+    Each entry has: id, outputType, hasSignalControls, genomeKeys, capabilities.
     Optional excludeKeys for substrates that require a key absent
     (e.g. single_cppn: no time_signal). The JS registry builds
     isGenomeFormat from genomeKeys/excludeKeys.
+    capabilities: { save, network, timeOutput, adjustWeight }
     """
     return [
         {
@@ -23,6 +24,12 @@ def export_substrates_for_frontend() -> list[dict]:
             "outputType": "shader",
             "hasSignalControls": True,
             "genomeKeys": ["visual", "time_signal"],
+            "capabilities": {
+                "save": True,
+                "network": True,
+                "timeOutput": True,
+                "adjustWeight": True,
+            },
         },
         {
             "id": "single_cppn",
@@ -30,11 +37,23 @@ def export_substrates_for_frontend() -> list[dict]:
             "hasSignalControls": False,
             "genomeKeys": ["visual"],
             "excludeKeys": ["time_signal"],
+            "capabilities": {
+                "save": True,
+                "network": False,
+                "timeOutput": False,
+                "adjustWeight": False,
+            },
         },
         {
             "id": "ca",
             "outputType": "grid",
             "hasSignalControls": False,
             "genomeKeys": ["rule"],
+            "capabilities": {
+                "save": True,
+                "network": False,
+                "timeOutput": False,
+                "adjustWeight": False,
+            },
         },
     ]

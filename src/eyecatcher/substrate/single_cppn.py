@@ -97,3 +97,11 @@ class SingleCPPNSubstrate:
 
     def from_json(self, data: dict[str, Any]) -> neat.DefaultGenome:
         return genome_from_json(data, self.config)
+
+    def get_capabilities(self) -> dict[str, bool]:
+        return {
+            "save": True,
+            "network": False,
+            "time_output": False,
+            "adjust_weight": False,
+        }
