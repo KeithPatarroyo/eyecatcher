@@ -117,6 +117,35 @@
     }
 
     /**
+     * Get signal values from the active source (or fallback), build uniforms, and render one frame.
+     * Use this from animation loop, community preview, and genealogy thumbnails to avoid duplicating the pipeline.
+     * @param {Object} patternData - From setupPattern
+     * @param {Object} patternRenderer - Module with buildUniformValues and renderPattern (usually PatternRenderer)
+     * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
+     * @param {HTMLCanvasElement} [contextCanvas] - Optional canvas for per-pattern signal context (e.g. mouse_dist)
+     */
+    function renderWithSignals(
+        patternData,
+        patternRenderer,
+        signalState,
+        contextCanvas
+    ) {
+        const getSource = window.getSignalSource;
+        const signalValues = (getSource &&
+            getSource().getValues &&
+            getSource().getValues(
+                contextCanvas != null ? { canvas: contextCanvas } : {}
+            )) || { raw_time: 0.5 };
+        const uniformValues =
+            patternRenderer.buildUniformValues &&
+            patternRenderer.buildUniformValues(signalValues);
+        const u = uniformValues || signalValues;
+        if (patternRenderer.renderPattern) {
+            patternRenderer.renderPattern(patternData, u, signalState);
+        }
+    }
+
+    /**
      * Draw one frame of a pattern with given uniforms.
      * Uses SubstrateAdapters.getAdapter(substrateId).render when available; else infers adapter from patternData (caRule -> ca, else dual_cppn).
      * @param {Object} patternData - From setupPattern
@@ -125,13 +154,10 @@
      */
     function renderPattern(patternData, uniformValues, signalState) {
         var substrateId =
-            typeof window !== "undefined" &&
-            window.PopulationState &&
-            window.PopulationState.getState
+            window.PopulationState && window.PopulationState.getState
                 ? window.PopulationState.getState().substrateId
                 : null;
-        var SubstrateAdapters =
-            typeof window !== "undefined" && window.SubstrateAdapters;
+        var SubstrateAdapters = window.SubstrateAdapters;
         var adapter =
             SubstrateAdapters && SubstrateAdapters.getAdapter
                 ? SubstrateAdapters.getAdapter(substrateId)
@@ -163,8 +189,7 @@
     function createPatternCard(options) {
         const pattern = options.pattern;
         const substrateId = options.substrateId || null;
-        const SubstrateAdapters =
-            typeof window !== "undefined" && window.SubstrateAdapters;
+        const SubstrateAdapters = window.SubstrateAdapters;
         var adapter =
             SubstrateAdapters && SubstrateAdapters.getAdapter
                 ? SubstrateAdapters.getAdapter(substrateId)
@@ -388,6 +413,7 @@
     window.PatternRenderer = {
         setupPattern,
         buildUniformValues,
+        renderWithSignals,
         renderPattern,
         createPatternCard,
     };

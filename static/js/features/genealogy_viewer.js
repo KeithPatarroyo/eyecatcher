@@ -559,11 +559,7 @@ async function renderThumbnail(populationId) {
 
         // Render a single frame (signal state from config or default all on)
         let signalState = { time: {}, visual: {} };
-        if (
-            typeof window !== "undefined" &&
-            window.EvolutionConfig &&
-            window.EvolutionConfig.SIGNAL_TOGGLES
-        ) {
+        if (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_TOGGLES) {
             ["time", "visual"].forEach(function (cppnType) {
                 window.EvolutionConfig.SIGNAL_TOGGLES[
                     cppnType
@@ -588,17 +584,11 @@ async function renderThumbnail(populationId) {
                 },
             };
         }
-        var getSource = typeof window !== "undefined" && window.getSignalSource;
-        var signalValues = (getSource &&
-            getSource().getValues &&
-            getSource().getValues({})) || { raw_time: 0.5 };
-        var uniformValues =
-            PatternRenderer.buildUniformValues &&
-            PatternRenderer.buildUniformValues(signalValues);
-        PatternRenderer.renderPattern(
+        PatternRenderer.renderWithSignals(
             patternData,
-            uniformValues || signalValues,
-            signalState
+            PatternRenderer,
+            signalState,
+            patternData.canvas
         );
 
         // Convert to data URL
@@ -668,11 +658,13 @@ function onId(id, fn) {
     if (el) fn(el);
 }
 
-function attachEventListeners() {
+function bindRefreshEvents() {
     onId("refresh-btn", (el) => {
         el.onclick = () => loadTree();
     });
+}
 
+function bindExportModalEvents() {
     onId("download-genealogy-btn", (el) => {
         el.onclick = async () => {
             const modal = document.getElementById("export-genealogy-modal");
@@ -734,9 +726,12 @@ function attachEventListeners() {
             if (modal) modal.hidden = true;
         };
     });
-    document.querySelector(".export-modal-backdrop").onclick = () => {
-        document.getElementById("export-genealogy-modal").hidden = true;
-    };
+    const backdrop = document.querySelector(".export-modal-backdrop");
+    if (backdrop)
+        backdrop.onclick = () => {
+            const m = document.getElementById("export-genealogy-modal");
+            if (m) m.hidden = true;
+        };
     document.addEventListener("keydown", (e) => {
         const modal = document.getElementById("export-genealogy-modal");
         if (e.key === "Escape" && modal && !modal.hidden) modal.hidden = true;
@@ -778,7 +773,9 @@ function attachEventListeners() {
             }
         };
     });
+}
 
+function bindResetEvents() {
     onId("reset-genealogy-btn", (el) => {
         el.onclick = async () => {
             if (!confirm("Clear all genealogy data? This cannot be undone.")) return;
@@ -818,7 +815,9 @@ function attachEventListeners() {
             }
         };
     });
+}
 
+function bindLayoutEvents() {
     onId("fit-btn", (el) => {
         el.onclick = () => {
             if (treeNetwork) {
@@ -855,7 +854,9 @@ function attachEventListeners() {
             }
         };
     });
+}
 
+function bindActionEvents() {
     onId("load-population-btn", (el) => {
         el.onclick = () => {
             if (selectedNodeId !== null) {
@@ -879,6 +880,14 @@ function attachEventListeners() {
             }
         };
     });
+}
+
+function attachEventListeners() {
+    bindRefreshEvents();
+    bindExportModalEvents();
+    bindResetEvents();
+    bindLayoutEvents();
+    bindActionEvents();
 }
 
 function bindSliderInput(inputId, valueSpanId, formatter, onValueChange) {

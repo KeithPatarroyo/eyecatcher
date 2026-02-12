@@ -106,14 +106,11 @@
                 const signalState = _viewerControls.signalState;
                 patterns.forEach(function (patternData) {
                     if (!patternData.gl) return;
-                    const signalValues = getSignalValues(patternData.canvas);
-                    const uniformValues =
-                        _patternRenderer.buildUniformValues &&
-                        _patternRenderer.buildUniformValues(signalValues);
-                    _patternRenderer.renderPattern(
+                    _patternRenderer.renderWithSignals(
                         patternData,
-                        uniformValues || {},
-                        signalState
+                        _patternRenderer,
+                        signalState,
+                        patternData.canvas
                     );
                 });
             }
@@ -144,12 +141,8 @@
             },
         };
         _signalSource =
-            (options && options.signalSource) ||
-            (typeof window !== "undefined" && window.SignalSource) ||
-            _defaultSource;
-        if (typeof window !== "undefined") {
-            window.getSignalSource = getActiveSignalSource;
-        }
+            (options && options.signalSource) || window.SignalSource || _defaultSource;
+        window.getSignalSource = getActiveSignalSource;
         lastMouseTime = performance.now();
 
         document.addEventListener("mousemove", function (e) {

@@ -81,19 +81,13 @@
             _viewerControls.signalState != null
         ) {
             const signalState = _viewerControls.signalState;
-            var getSource = typeof window !== "undefined" && window.getSignalSource;
-            var signalValues = (getSource &&
-                getSource().getValues &&
-                getSource().getValues({})) || { raw_time: 0.5 };
-            var uniformValues =
-                _patternRenderer.buildUniformValues &&
-                _patternRenderer.buildUniformValues(signalValues);
             requestAnimationFrame(() => {
                 previewPatternData.forEach((pd) =>
-                    _patternRenderer.renderPattern(
+                    _patternRenderer.renderWithSignals(
                         pd,
-                        uniformValues || signalValues,
-                        signalState
+                        _patternRenderer,
+                        signalState,
+                        null
                     )
                 );
             });
