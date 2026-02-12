@@ -1,23 +1,34 @@
 {
   "default": {
+    "substrate": "dual_cppn",
     "neat_config_path": "config/neat/neat_config_experimental.txt",
     "neat_time_config_path": "config/neat/neat_config_time_experimental.txt",
     "population_size": 12,
     "max_population_size": 50,
     "crossover_probability": 0.3
   },
-  "experiment_a": {
+  "dual": {
+    "substrate": "dual_cppn",
     "neat_config_path": "config/neat/neat_config_experimental.txt",
     "neat_time_config_path": "config/neat/neat_config_time_experimental.txt",
     "population_size": 16,
     "max_population_size": 50,
     "crossover_probability": 0.4
   },
-  "experiment_b": {
+  "single": {
+    "substrate": "single_cppn",
     "neat_config_path": "config/neat/neat_config.txt",
     "neat_time_config_path": "config/neat/neat_config_time.txt",
     "population_size": 8,
     "max_population_size": 32,
     "crossover_probability": 0.2
+  },
+  "ca": {
+    "substrate": "ca",
+    "width": 256,
+    "generations": 128,
+    "population_size": 12,
+    "max_population_size": 50,
+    "crossover_probability": 0.3
   }
 }

@@ -75,3 +75,20 @@ def _apply_experiment_preset() -> None:
 
 
 _apply_experiment_preset()
+
+
+def get_configured_substrate():
+    """
+    Return the substrate instance for the current experiment preset.
+
+    Uses EXPERIMENT_CONFIG / config/experiments.json; preset may set "substrate"
+    (e.g. "dual_cppn") and pass through kwargs (neat_config_path, etc.).
+    Defaults to "dual_cppn" if no preset or substrate key.
+    """
+    from ..substrate import get_substrate
+
+    preset = _load_experiment_preset()
+    if preset:
+        substrate_id = preset.get("substrate", "dual_cppn")
+        return get_substrate(substrate_id, **preset)
+    return get_substrate("dual_cppn")
