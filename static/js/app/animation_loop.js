@@ -83,6 +83,7 @@
             ) {
                 const signalState = _viewerControls.signalState;
                 patterns.forEach(function (patternData) {
+                    if (!patternData.gl) return;
                     const signalValues = getSignalValues(patternData.canvas);
                     _patternRenderer.renderPattern(
                         patternData,

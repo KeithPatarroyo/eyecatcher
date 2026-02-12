@@ -76,6 +76,9 @@
                 program: patternData.program,
                 positionBuffer: patternData.positionBuffer,
             };
+            if (patternRef.rule !== undefined && patternRef.rule !== null) {
+                fullscreenPatternData.caRule = patternRef.rule;
+            }
         });
     }
 

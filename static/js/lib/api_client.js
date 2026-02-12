@@ -132,7 +132,7 @@
     }
 
     /**
-     * Get a new random population. Returns { genomes } or throws.
+     * Get a new random population. Returns { genomes, output_type } or throws.
      * @param {number} size - Population size
      */
     async function randomPopulation(size) {
@@ -147,12 +147,31 @@
         );
     }
 
+    /**
+     * Evaluate genomes with the current substrate. Returns displayable output for the grid.
+     * Returns { results: [ { id, output_type, image?|shader? } ], output_type } or throws.
+     * Use when output_type is "grid" (e.g. CA) to get images; or "shader" to get shader strings.
+     * @param {Array} genomes - Array of genome objects
+     */
+    async function evaluate(genomes) {
+        return apiFetch(
+            _apiUrl + "/evaluate",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ genomes: genomes }),
+            },
+            "Evaluate failed"
+        );
+    }
+
     window.ApiClient = {
         init: init,
         compile: compile,
         evolve: evolve,
         save: save,
         randomPopulation: randomPopulation,
+        evaluate: evaluate,
         apiFetch: apiFetch,
     };
 })();

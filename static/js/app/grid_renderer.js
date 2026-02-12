@@ -56,14 +56,17 @@
                 patternCardCallbacks(pattern, callbacks)
             );
             grid.appendChild(result.card);
-            if (result.patternData && pattern.id !== undefined) {
-                map.set(pattern.id, {
+            if (pattern.id !== undefined) {
+                var pd = result.patternData;
+                var entry = {
                     canvas: result.canvas,
-                    gl: result.patternData.gl,
-                    program: result.patternData.program,
-                    positionBuffer: result.patternData.positionBuffer,
+                    gl: pd ? pd.gl : null,
+                    program: pd ? pd.program : null,
+                    positionBuffer: pd ? pd.positionBuffer : null,
                     clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
-                });
+                };
+                if (pd && pd.caRule !== undefined) entry.caRule = pd.caRule;
+                map.set(pattern.id, entry);
             }
         });
         return map;
@@ -86,14 +89,17 @@
                 patternCardCallbacks(pattern, callbacks)
             );
             grid.appendChild(result.card);
-            if (result.patternData && pattern.id !== undefined) {
-                patternsMap.set(pattern.id, {
+            if (pattern.id !== undefined) {
+                var pd = result.patternData;
+                var entry = {
                     canvas: result.canvas,
-                    gl: result.patternData.gl,
-                    program: result.patternData.program,
-                    positionBuffer: result.patternData.positionBuffer,
+                    gl: pd ? pd.gl : null,
+                    program: pd ? pd.program : null,
+                    positionBuffer: pd ? pd.positionBuffer : null,
                     clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
-                });
+                };
+                if (pd && pd.caRule !== undefined) entry.caRule = pd.caRule;
+                patternsMap.set(pattern.id, entry);
             }
         });
     }

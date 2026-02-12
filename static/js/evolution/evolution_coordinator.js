@@ -85,7 +85,12 @@
         apiEvolve(parents, populationSize, opts)
             .then(function (data) {
                 if (data.children) {
-                    onSuccess(data.children, newGenerationNum, data.population_id);
+                    onSuccess(
+                        data.children,
+                        newGenerationNum,
+                        data.population_id,
+                        data.output_type
+                    );
                 } else {
                     onError(new Error("No children in evolve response"));
                 }

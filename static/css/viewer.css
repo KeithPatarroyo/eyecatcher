@@ -379,6 +379,10 @@ h1 {
     vertical-align: top;
 }
 
+.pattern-image {
+    object-fit: contain;
+}
+
 .pattern-info {
     padding: 8px 10px;
     display: flex;

@@ -59,7 +59,12 @@
                 12;
             const d = await window.ApiClient.randomPopulation(size);
             if (_loadFromStatelessGenomes) {
-                await _loadFromStatelessGenomes(d.genomes || [], 0, true);
+                await _loadFromStatelessGenomes(
+                    d.genomes || [],
+                    0,
+                    true,
+                    d.output_type
+                );
             }
         } catch (error) {
             console.error("Error starting random population:", error);

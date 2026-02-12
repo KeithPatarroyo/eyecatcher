@@ -100,6 +100,40 @@
      */
     function renderPattern(patternData, signalValues, signalState) {
         const { gl, program, positionBuffer } = patternData;
+        gl.useProgram(program);
+
+        if (patternData.caRule != null) {
+            const start =
+                (typeof window !== "undefined" && window.CA_ANIMATION_START_TIME) || 0;
+            const timeMs =
+                typeof performance !== "undefined" ? performance.now() - start : 0;
+            const step = Math.floor(timeMs / 500);
+            const CA_GRID_SIZE = 36;
+            const uGeneration = Math.min(1.0, step / CA_GRID_SIZE);
+            const locRule = gl.getUniformLocation(program, "uRule");
+            const locGen = gl.getUniformLocation(program, "uGeneration");
+            const locRes = gl.getUniformLocation(program, "uResolution");
+            const locGrid = gl.getUniformLocation(program, "uGridSize");
+            if (locRule !== null) gl.uniform1i(locRule, patternData.caRule);
+            if (locGen !== null) gl.uniform1f(locGen, uGeneration);
+            if (locRes !== null && patternData.canvas) {
+                gl.uniform2f(
+                    locRes,
+                    patternData.canvas.width,
+                    patternData.canvas.height
+                );
+            }
+            if (locGrid !== null) gl.uniform1i(locGrid, CA_GRID_SIZE);
+            const positionLocation = gl.getAttribLocation(program, "position");
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.enableVertexAttribArray(positionLocation);
+            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            return;
+        }
+
         const sig = signalState || { time: {}, visual: {} };
         const uniformValues = {};
         const config = window.EvolutionConfig;
@@ -116,8 +150,6 @@
                 });
             });
         }
-
-        gl.useProgram(program);
 
         const baseUniforms = new Set();
         if (toggles) {
@@ -189,22 +221,19 @@
         card.className = "pattern-card";
         card.dataset.id = id;
 
-        const canvas = document.createElement("canvas");
-        canvas.className = "pattern-canvas";
-        canvas.width = PATTERN_CANVAS_SIZE;
-        canvas.height = PATTERN_CANVAS_SIZE;
-
         const info = document.createElement("div");
         info.className = "pattern-info";
         const meta = document.createElement("div");
         meta.className = "pattern-meta";
         meta.textContent =
-            "ID: " +
-            id +
-            " | Nodes: " +
-            pattern.nodes +
-            " | Connections: " +
-            pattern.connections;
+            pattern.image != null
+                ? "ID: " + id
+                : "ID: " +
+                  id +
+                  " | Nodes: " +
+                  pattern.nodes +
+                  " | Connections: " +
+                  pattern.connections;
         const clickCount = document.createElement("div");
         clickCount.className = "click-count" + (clicks === 0 ? " zero" : "");
         clickCount.textContent = String(clicks);
@@ -261,6 +290,95 @@
         actions.appendChild(submitCommunityBtn);
         actions.appendChild(networkBtn);
         actions.appendChild(saveBtn);
+
+        if (pattern.shader) {
+            const canvas = document.createElement("canvas");
+            canvas.className = "pattern-canvas";
+            canvas.width = PATTERN_CANVAS_SIZE;
+            canvas.height = PATTERN_CANVAS_SIZE;
+            card.appendChild(canvas);
+            card.appendChild(actions);
+            card.appendChild(info);
+            let patternData = setupPattern(canvas, pattern.shader);
+            if (!patternData || patternData.error) {
+                const fallback = document.createElement("div");
+                fallback.className = "pattern-canvas-fallback";
+                fallback.textContent =
+                    patternData && patternData.error
+                        ? patternData.error
+                        : "WebGL not available";
+                if (patternData && patternData.error && patternData.error.length > 80) {
+                    fallback.setAttribute("title", patternData.error);
+                    fallback.textContent = "Shader error (hover for details)";
+                }
+                card.replaceChild(fallback, canvas);
+                return { card: card, canvas: null, patternData: null };
+            }
+            if (pattern.rule !== undefined && pattern.rule !== null) {
+                patternData.caRule = pattern.rule;
+            }
+            if (options.onClick) {
+                card.addEventListener("click", function () {
+                    options.onClick(id, card);
+                });
+            }
+            if (options.onUnclick) {
+                card.addEventListener("contextmenu", function (e) {
+                    e.preventDefault();
+                    options.onUnclick(id, card);
+                });
+            }
+            if (options.onMouseEnter) {
+                card.addEventListener("mouseenter", function () {
+                    options.onMouseEnter(id);
+                });
+            }
+            if (options.onMouseLeave) {
+                card.addEventListener("mouseleave", function () {
+                    options.onMouseLeave(id);
+                });
+            }
+            return { card: card, canvas: canvas, patternData: patternData };
+        }
+
+        if (pattern.image != null) {
+            const img = document.createElement("img");
+            img.className = "pattern-canvas pattern-image";
+            img.src = pattern.image;
+            img.width = PATTERN_CANVAS_SIZE;
+            img.height = PATTERN_CANVAS_SIZE;
+            img.alt = "Pattern " + id;
+            card.appendChild(img);
+            card.appendChild(actions);
+            card.appendChild(info);
+            if (options.onClick) {
+                card.addEventListener("click", function () {
+                    options.onClick(id, card);
+                });
+            }
+            if (options.onUnclick) {
+                card.addEventListener("contextmenu", function (e) {
+                    e.preventDefault();
+                    options.onUnclick(id, card);
+                });
+            }
+            if (options.onMouseEnter) {
+                card.addEventListener("mouseenter", function () {
+                    options.onMouseEnter(id);
+                });
+            }
+            if (options.onMouseLeave) {
+                card.addEventListener("mouseleave", function () {
+                    options.onMouseLeave(id);
+                });
+            }
+            return { card: card, canvas: null, patternData: null };
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.className = "pattern-canvas";
+        canvas.width = PATTERN_CANVAS_SIZE;
+        canvas.height = PATTERN_CANVAS_SIZE;
         card.appendChild(canvas);
         card.appendChild(actions);
         card.appendChild(info);

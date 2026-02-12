@@ -290,17 +290,42 @@
         }
     }
 
-    async function loadFromStatelessGenomes(genomes, generationNum, saveToGenealogy) {
+    async function loadFromStatelessGenomes(
+        genomes,
+        generationNum,
+        saveToGenealogy,
+        outputType
+    ) {
         if (!genomes || !genomes.length) return;
         if (typeof showLoading !== "undefined") showLoading(true);
         window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
         window.GridRenderer.clearGrid(IDS);
         try {
-            var compData = await window.ApiClient.compile(genomes, getColorMode());
-            var shaders = compData.shaders || [];
+            var population;
+            if (outputType === "grid") {
+                var evalData = await window.ApiClient.evaluate(genomes);
+                var results = evalData.results || [];
+                population = results.map(function (r) {
+                    return {
+                        id: r.id,
+                        image: r.image,
+                        shader: r.shader,
+                        rule: r.rule,
+                        nodes: 0,
+                        connections: 0,
+                        clicks: 0,
+                    };
+                });
+                if (typeof performance !== "undefined") {
+                    window.CA_ANIMATION_START_TIME = performance.now();
+                }
+            } else {
+                var compData = await window.ApiClient.compile(genomes, getColorMode());
+                population = compData.shaders || [];
+            }
             var patternsMap = new Map();
             window.GridRenderer.renderGridFromPopulation(
-                shaders,
+                population,
                 IDS,
                 getGridCallbacks(),
                 patternsMap
@@ -319,7 +344,7 @@
                         payload: { populationId: null, branchName: branchName },
                     });
                 }
-                var fitnessData = shaders.map(function (p) {
+                var fitnessData = population.map(function (p) {
                     var pat = patternsMap.get(p.id);
                     return pat ? pat.clicks || 0 : 0;
                 });
@@ -350,7 +375,7 @@
             window.PopulationState.dispatch({
                 type: "LOAD_POPULATION",
                 payload: {
-                    population: shaders,
+                    population: population,
                     genomes: genomes,
                     generationNum: generationNum,
                     patternsMap: patternsMap,
@@ -432,7 +457,7 @@
             window.PopulationState.getState,
             getPopulationSize,
             window.ApiClient.evolve.bind(window.ApiClient),
-            function (children, newGenerationNum, populationId) {
+            function (children, newGenerationNum, populationId, outputType) {
                 if (populationId != null) {
                     window.PopulationState.dispatch({
                         type: "SET_EVOLVE_RESULT",
@@ -440,7 +465,7 @@
                     });
                     window.GenealogySync.syncCurrentPopulationIdToStorage(populationId);
                 }
-                loadFromStatelessGenomes(children, newGenerationNum, false);
+                loadFromStatelessGenomes(children, newGenerationNum, false, outputType);
             },
             function (err) {
                 console.error("Error evolving:", err);
