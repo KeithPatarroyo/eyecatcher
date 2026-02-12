@@ -85,6 +85,11 @@ def _require_engine():
     return None
 
 
+def _extract_genome_id_clicks(g_data, default_key):
+    """Return (individual_id, clicks) from genome JSON and default key."""
+    return (g_data.get("key", default_key), g_data.get("clicks", 0))
+
+
 def _shader_response_for_dual(
     dual_genome: DualGenome,
     individual_id: int,
@@ -101,6 +106,65 @@ def _shader_response_for_dual(
         visual_config=_engine.config,
         time_config=_engine.time_config,
     )
+
+
+def _compile_dual_genomes(genomes_data, color_mode):
+    """Compile a list of dual-genome JSONs to shader response dicts."""
+    use_engine_compiler = _compiler and (
+        not color_mode or color_mode == _compiler.color_mode
+    )
+    compiler = (
+        _compiler
+        if use_engine_compiler
+        else (ShaderCompiler(color_mode=color_mode) if color_mode else None)
+    )
+    comp = compiler or _compiler
+    shaders = []
+    for i, g_data in enumerate(genomes_data):
+        dual = dual_genome_from_json(g_data, _engine.config, _engine.time_config)
+        individual_id, clicks = _extract_genome_id_clicks(
+            g_data, dual.key if dual else i
+        )
+        shaders.append(
+            _shader_response_for_dual(dual, individual_id, clicks, compiler=comp)
+        )
+    return shaders
+
+
+def _compile_single_genomes(genomes_data, color_mode):
+    """Compile a list of non-dual genome JSONs to shader response dicts."""
+    shaders = []
+    for i, g_data in enumerate(genomes_data):
+        ind = _substrate.from_json(g_data)
+        individual_id, clicks = _extract_genome_id_clicks(
+            g_data, getattr(ind, "key", i)
+        )
+        need_new_compiler = (
+            color_mode
+            and hasattr(_substrate, "config")
+            and _compiler
+            and color_mode != _compiler.color_mode
+        )
+        if need_new_compiler:
+            glsl = ShaderCompiler(color_mode=color_mode).compile_to_glsl(
+                ind, _substrate.config
+            )
+        else:
+            glsl = _substrate.compile_to_shader(ind)
+        num_nodes = len(getattr(ind, "nodes", {})) if hasattr(ind, "nodes") else 0
+        num_conn = (
+            len(getattr(ind, "connections", {})) if hasattr(ind, "connections") else 0
+        )
+        shaders.append(
+            {
+                "id": individual_id,
+                "shader": glsl or "",
+                "clicks": clicks,
+                "nodes": num_nodes,
+                "connections": num_conn,
+            }
+        )
+    return shaders
 
 
 def _require_can_compile():
@@ -137,56 +201,10 @@ def api_compile():
     color_mode = (data.get("color_mode") or "").strip().lower()
     if color_mode and color_mode not in ("hsv", "rgb"):
         color_mode = "hsv"
-    use_engine_compiler = _compiler and (
-        not color_mode or color_mode == _compiler.color_mode
-    )
-    compiler = (
-        _compiler
-        if use_engine_compiler
-        else (ShaderCompiler(color_mode=color_mode) if color_mode else None)
-    )
-    shaders = []
     if _engine is not None:
-        comp = compiler or _compiler
-        for i, g_data in enumerate(genomes_data):
-            dual = dual_genome_from_json(g_data, _engine.config, _engine.time_config)
-            individual_id = g_data.get("key", dual.key if dual else i)
-            clicks = g_data.get("clicks", 0)
-            shaders.append(
-                _shader_response_for_dual(dual, individual_id, clicks, compiler=comp)
-            )
+        shaders = _compile_dual_genomes(genomes_data, color_mode)
     else:
-        for i, g_data in enumerate(genomes_data):
-            ind = _substrate.from_json(g_data)
-            individual_id = g_data.get("key", getattr(ind, "key", i))
-            clicks = g_data.get("clicks", 0)
-            need_new_compiler = (
-                color_mode
-                and hasattr(_substrate, "config")
-                and _compiler
-                and color_mode != _compiler.color_mode
-            )
-            if need_new_compiler:
-                glsl = ShaderCompiler(color_mode=color_mode).compile_to_glsl(
-                    ind, _substrate.config
-                )
-            else:
-                glsl = _substrate.compile_to_shader(ind)
-            num_nodes = len(getattr(ind, "nodes", {})) if hasattr(ind, "nodes") else 0
-            num_conn = (
-                len(getattr(ind, "connections", {}))
-                if hasattr(ind, "connections")
-                else 0
-            )
-            shaders.append(
-                {
-                    "id": individual_id,
-                    "shader": glsl or "",
-                    "clicks": clicks,
-                    "nodes": num_nodes,
-                    "connections": num_conn,
-                }
-            )
+        shaders = _compile_single_genomes(genomes_data, color_mode)
     return jsonify({"shaders": shaders})
 
 
@@ -233,7 +251,7 @@ def api_evaluate():
     results = []
     for i, g_data in enumerate(genomes_data):
         ind = _substrate.from_json(g_data)
-        individual_id = g_data.get("key", getattr(ind, "key", i))
+        individual_id, _ = _extract_genome_id_clicks(g_data, getattr(ind, "key", i))
         out = _substrate.evaluate(ind, {})
         item = {"id": individual_id, "output_type": out.output_type}
         if out.output_type == "grid" and hasattr(out.data, "shape"):
@@ -309,7 +327,7 @@ def api_network():
         return api_error(ERR_GENOME_REQUIRED, 400)
 
     dual = dual_genome_from_json(genome_data, _engine.config, _engine.time_config)
-    individual_id = genome_data.get("key", dual.key if dual else 0)
+    individual_id, _ = _extract_genome_id_clicks(genome_data, dual.key if dual else 0)
 
     all_nodes = []
     all_connections = []
