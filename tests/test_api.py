@@ -188,9 +188,9 @@ def test_api_time_output(client):
         "/api/time-output",
         json={
             "genome": genome,
-            "time": 0.5,
-            "mouseSpeed": 0,
-            "mouseDist": 0,
+            "raw_time": 0.5,
+            "mouse_speed": 0,
+            "mouse_dist": 0,
             "activity": 0,
         },
     )
@@ -199,7 +199,7 @@ def test_api_time_output(client):
     assert "timeOutput" in data
     assert isinstance(data["timeOutput"], (int, float))
     assert "inputs" in data
-    assert data["inputs"]["rawTime"] == 0.5
+    assert data["inputs"]["raw_time"] == 0.5
 
 
 def test_api_time_output_missing_genome(client):
