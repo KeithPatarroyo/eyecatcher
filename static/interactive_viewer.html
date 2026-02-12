@@ -472,17 +472,19 @@
                 <span class="debug-label">Mouse Dist:</span>
                 <span class="debug-value" id="dbg-mouseDist">-</span>
             </div>
-            <h4 class="debug-section debug-section--small">Time CPPN → Visual CPPN</h4>
-            <div class="debug-row">
-                <span class="debug-label debug-time-output">Time (output):</span>
-                <span class="debug-value debug-time-output" id="dbg-v-time">-</span>
-            </div>
-            <div class="debug-checkbox">
-                <input type="checkbox" id="dbg-sample-time" />
-                <label for="dbg-sample-time">Sample time output</label>
-            </div>
-            <div class="debug-warning hidden" id="dbg-sample-warning">
-                ⚠ Sampling enabled (may add latency)
+            <div id="debug-time-output-section">
+                <h4 class="debug-section debug-section--small">Time CPPN → Visual CPPN</h4>
+                <div class="debug-row">
+                    <span class="debug-label debug-time-output">Time (output):</span>
+                    <span class="debug-value debug-time-output" id="dbg-v-time">-</span>
+                </div>
+                <div class="debug-checkbox">
+                    <input type="checkbox" id="dbg-sample-time" />
+                    <label for="dbg-sample-time">Sample time output</label>
+                </div>
+                <div class="debug-warning hidden" id="dbg-sample-warning">
+                    ⚠ Sampling enabled (may add latency)
+                </div>
             </div>
         </template>
 

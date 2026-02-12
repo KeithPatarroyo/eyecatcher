@@ -49,11 +49,65 @@
             : { outputType: "shader", substrateId: "dual_cppn" };
     }
 
+    /**
+     * Default getDisplayData: grid -> evaluate, shader -> compile.
+     * Adapters can override with custom logic.
+     * @param {Object} adapter - Adapter with outputType
+     * @param {Array} genomes - Genome objects
+     * @param {Object} options - { colorMode }
+     * @returns {Promise<{ population: Array }>}
+     */
+    async function defaultGetDisplayData(adapter, genomes, options) {
+        var ApiClient = typeof window !== "undefined" && window.ApiClient;
+        if (!ApiClient) throw new Error("ApiClient not available");
+        if (adapter.outputType === "grid") {
+            var evalData = await ApiClient.evaluate(genomes);
+            var results = evalData.results || [];
+            if (typeof performance !== "undefined") {
+                window.CA_ANIMATION_START_TIME = performance.now();
+            }
+            return {
+                population: results.map(function (r) {
+                    return {
+                        id: r.id,
+                        image: r.image,
+                        shader: r.shader,
+                        rule: r.rule,
+                        nodes: 0,
+                        connections: 0,
+                        clicks: 0,
+                    };
+                }),
+            };
+        }
+        var compData = await ApiClient.compile(genomes, options && options.colorMode);
+        return { population: compData.shaders || [] };
+    }
+
+    /**
+     * Fetch display data for genomes using adapter (evaluate for grid, compile for shader).
+     * @param {Object} adapter - Adapter (from getAdapter or resolveFromGenomes)
+     * @param {Array} genomes - Genome objects
+     * @param {Object} options - { colorMode }
+     * @returns {Promise<{ population: Array }>}
+     */
+    async function getDisplayData(adapter, genomes, options) {
+        var fn = adapter && adapter.getDisplayData;
+        return fn
+            ? fn(genomes, options)
+            : defaultGetDisplayData(
+                  adapter || { outputType: "shader" },
+                  genomes,
+                  options
+              );
+    }
+
     var SubstrateAdapters = {
         register: register,
         getAdapter: getAdapter,
         findAdapterByGenome: findAdapterByGenome,
         resolveFromGenomes: resolveFromGenomes,
+        getDisplayData: getDisplayData,
     };
 
     if (typeof window !== "undefined") {
@@ -78,48 +132,88 @@
         };
     }
 
+    var defaultCapabilities = {
+        save: true,
+        network: true,
+        timeOutput: false,
+        adjustWeight: false,
+    };
+
+    function mergeCapabilities(entry) {
+        var caps = entry && entry.capabilities;
+        if (!caps) return defaultCapabilities;
+        return {
+            save: caps.save !== false,
+            network: caps.network !== false,
+            timeOutput: caps.timeOutput === true,
+            adjustWeight: caps.adjustWeight !== false,
+        };
+    }
+
     var config = typeof window !== "undefined" && window.SubstrateAdapterConfig;
     if (config && Array.isArray(config) && window.createCppnAdapter) {
         config.forEach(function (entry) {
             var isGenomeFormat = buildIsGenomeFormatFromConfig(entry);
+            var capabilities = mergeCapabilities(entry);
             if (entry.outputType === "shader") {
-                register(
-                    window.createCppnAdapter({
-                        id: entry.id,
-                        outputType: entry.outputType,
-                        isGenomeFormat: isGenomeFormat,
-                        hasSignalControls: entry.hasSignalControls !== false,
-                    })
-                );
+                var cppnAdapter = window.createCppnAdapter({
+                    id: entry.id,
+                    outputType: entry.outputType,
+                    isGenomeFormat: isGenomeFormat,
+                    hasSignalControls: entry.hasSignalControls !== false,
+                });
+                cppnAdapter.capabilities = capabilities;
+                register(cppnAdapter);
             } else {
                 register({
                     id: entry.id,
                     outputType: entry.outputType,
                     isGenomeFormat: isGenomeFormat,
                     hasSignalControls: entry.hasSignalControls !== false,
+                    capabilities: capabilities,
                 });
             }
         });
     } else if (typeof window !== "undefined" && window.createCppnAdapter) {
         register(
-            window.createCppnAdapter({
-                id: "dual_cppn",
-                outputType: "shader",
-                isGenomeFormat: function (obj) {
-                    return obj && obj.visual && obj.time_signal;
-                },
-                hasSignalControls: true,
-            })
+            Object.assign(
+                window.createCppnAdapter({
+                    id: "dual_cppn",
+                    outputType: "shader",
+                    isGenomeFormat: function (obj) {
+                        return obj && obj.visual && obj.time_signal;
+                    },
+                    hasSignalControls: true,
+                }),
+                {
+                    capabilities: {
+                        save: true,
+                        network: true,
+                        timeOutput: true,
+                        adjustWeight: true,
+                    },
+                }
+            )
         );
         register(
-            window.createCppnAdapter({
-                id: "single_cppn",
-                outputType: "shader",
-                isGenomeFormat: function (obj) {
-                    return obj && obj.visual && !obj.time_signal;
-                },
-                hasSignalControls: false,
-            })
+            Object.assign(
+                window.createCppnAdapter({
+                    id: "single_cppn",
+                    outputType: "shader",
+                    isGenomeFormat: function (obj) {
+                        return obj && obj.visual && !obj.time_signal;
+                    },
+                    hasSignalControls: false,
+                }),
+                {
+                    capabilities: {
+                        save: true,
+                        network: false,
+                        timeOutput: false,
+                        adjustWeight: false,
+                    },
+                }
+            )
         );
     }
 })();

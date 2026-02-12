@@ -220,6 +220,10 @@
             if (options.onShare) options.onShare(id);
         };
 
+        var caps = adapter && adapter.capabilities;
+        var showNetwork = !caps || caps.network !== false;
+        var showSave = !caps || caps.save !== false;
+
         const networkBtn = document.createElement("button");
         networkBtn.className = "network-btn";
         networkBtn.textContent = "\uD83E\uDDE0";
@@ -245,8 +249,8 @@
 
         actions.appendChild(fullscreenBtn);
         actions.appendChild(submitCommunityBtn);
-        actions.appendChild(networkBtn);
-        actions.appendChild(saveBtn);
+        if (showNetwork) actions.appendChild(networkBtn);
+        if (showSave) actions.appendChild(saveBtn);
 
         if (pattern.shader) {
             const canvas = document.createElement("canvas");

@@ -56,6 +56,12 @@
             return obj && typeof obj.rule === "number";
         },
         hasSignalControls: false,
+        capabilities: {
+            save: true,
+            network: false,
+            timeOutput: false,
+            adjustWeight: false,
+        },
         preparePatternData: preparePatternData,
         render: renderCa,
     };

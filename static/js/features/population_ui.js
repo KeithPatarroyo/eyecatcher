@@ -110,9 +110,18 @@
                         if (_loadFromStatelessGenomes) {
                             var outputType;
                             var substrateId;
-                            if (pop.substrateId != null) {
-                                outputType =
-                                    pop.substrateId === "ca" ? "grid" : "shader";
+                            if (pop.outputType != null && pop.substrateId != null) {
+                                outputType = pop.outputType;
+                                substrateId = pop.substrateId;
+                            } else if (
+                                pop.substrateId != null &&
+                                window.SubstrateAdapters &&
+                                window.SubstrateAdapters.getAdapter
+                            ) {
+                                var adapter = window.SubstrateAdapters.getAdapter(
+                                    pop.substrateId
+                                );
+                                outputType = adapter ? adapter.outputType : "shader";
                                 substrateId = pop.substrateId;
                             } else if (
                                 window.SubstrateAdapters &&
@@ -173,7 +182,8 @@
                 name.trim() || "Unnamed",
                 data.genomes,
                 data.generation,
-                data.substrateId
+                data.substrateId,
+                data.outputType
             );
             Toast.show("Saved", "Population saved to browser storage.", "success");
         } catch (e) {
