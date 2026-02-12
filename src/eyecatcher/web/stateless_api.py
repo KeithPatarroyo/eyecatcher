@@ -122,9 +122,9 @@ def api_random():
 def api_time_output():
     """
     Stateless: query the Time CPPN for a genome with given inputs (for debug panel).
-    Body: { "genome": { ... }, <enable_key>: value ... } (0-1) for each time CPPN
-    input; keys from evolution.signals TIME_INPUTS (e.g. rawTime, mouseSpeed).
-    Returns: { "timeOutput": float, "inputs": { <enable_key>: value ... } }.
+    Body: { "genome": { ... }, <id>: value ... } (0-1) for each time CPPN
+    input; keys from signals TIME_INPUTS (e.g. raw_time, mouse_speed).
+    Returns: { "timeOutput": float, "inputs": { <id>: value ... } }.
     """
     try:
         data = request.json or {}
@@ -135,13 +135,12 @@ def api_time_output():
         time_inputs = {}
         response_inputs = {}
         for s in TIME_INPUTS:
-            key = s.enable_key or s.name
-            raw_val = data.get(key, data.get(s.name))
-            if raw_val is None and s.name == "raw_time":
+            raw_val = data.get(s.id)
+            if raw_val is None and s.id == "raw_time":
                 raw_val = data.get("time")
             val = float(raw_val if raw_val is not None else s.default)
-            time_inputs[s.name] = val * 2.0 - 1.0
-            response_inputs[key] = val
+            time_inputs[s.id] = val * 2.0 - 1.0
+            response_inputs[s.id] = val
         time_output = _engine.query_time_signal(dual.time_signal, time_inputs)
         return jsonify(
             {

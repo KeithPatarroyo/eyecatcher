@@ -46,7 +46,7 @@ def query_visual_cppn(
     Derived inputs (see signals.VISUAL_DERIVED_INPUTS) are computed when missing.
     Missing keys use Signal.default from the registry.
     """
-    full = {s.name: inputs.get(s.name, s.default) for s in VISUAL_INPUTS}
+    full = {s.id: inputs.get(s.id, s.default) for s in VISUAL_INPUTS}
     apply_derived_inputs(full, VISUAL_DERIVED_INPUTS)
     in_arr = inputs_array(VISUAL_INPUTS, full)
     net = neat.nn.FeedForwardNetwork.create(genome, visual_config)

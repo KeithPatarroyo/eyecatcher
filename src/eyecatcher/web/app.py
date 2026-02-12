@@ -3,8 +3,8 @@ Interactive Evolution Server
 Serves dual-CPPN population and handles evolution (stateless API only).
 
 Each individual has two CPPNs:
-- Visual CPPN: (x, y, dist, time, mouseSpeed, bias) -> (R, G, B)
-- Time Signal CPPN: (rawTime, mouseSpeed, bias) -> (modifiedTime)
+- Visual: (x, y, distance, time, mouse_speed, mouse_dist, activity, bias) -> (R,G,B)
+- Time: (raw_time, mouse_speed, mouse_dist, activity, bias) -> (modifiedTime)
 
 Population state lives on the client; server provides compile, random, evolve, save.
 Save returns file contents for client-side download (Railway / no server filesystem).
