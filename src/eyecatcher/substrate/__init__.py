@@ -7,10 +7,13 @@ evolution and API use the substrate interface only.
 
 from .ca import CARule, ElementaryCASubstrate
 from .dual_cppn import DualCPPNSubstrate
+from .export import export_substrates_for_frontend
 from .protocol import OutputType, Substrate, SubstrateOutput
 from .registry import SUBSTRATES, get_substrate
+from .single_cppn import SingleCPPNSubstrate
 
 __all__ = [
+    "export_substrates_for_frontend",
     "CARule",
     "DualCPPNSubstrate",
     "ElementaryCASubstrate",
@@ -18,5 +21,6 @@ __all__ = [
     "Substrate",
     "SubstrateOutput",
     "SUBSTRATES",
+    "SingleCPPNSubstrate",
     "get_substrate",
 ]

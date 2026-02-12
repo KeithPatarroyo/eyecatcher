@@ -109,12 +109,27 @@ The viewer frontend is grouped by role; see **[static/js/README.md](static/js/RE
 
 ## Keeping frontend in sync
 
-Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). Population size and max: [algorithm/config.py](src/eyecatcher/algorithm/config.py) and EvolutionConfig in evolution_config.js. **Signal toggles and outputs** come from the Python registry: run `make generate-signals` after changing [signals/signals.py](src/eyecatcher/signals/signals.py); the generated file is consumed by evolution_config.js. test_signal_registry checks that the generated file matches the registry.
+Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). Population size and max are bootstrapped from `GET /api/config` at load time (fallback: [algorithm/config.py](src/eyecatcher/algorithm/config.py) and EvolutionConfig). **Signal toggles and outputs** come from the Python registry: run `make generate-signals` after changing [signals/signals.py](src/eyecatcher/signals/signals.py). **Substrate adapter config** (ids, genome format) is generated from [substrate/export.py](src/eyecatcher/substrate/export.py): run `make generate-substrates` after adding or changing substrates. Run `make generate` to run all codegen. test_signal_registry checks that the generated signals file matches the registry.
+
+## Add a new substrate
+
+Substrates (dual_cppn, ca, future NCA/single_cppn) share a common protocol. To add a new one:
+
+1. **Python – substrate class:** Add a new module under `src/eyecatcher/substrate/` (e.g. `ca.py`, `dual_cppn.py`) implementing the `Substrate` protocol: `id`, `output_type`, `create_random`, `mutate`, `crossover`, `evaluate`, `compile_to_shader`, `to_json`, `from_json`. See [substrate/protocol.py](src/eyecatcher/substrate/protocol.py) and [substrate/ca.py](src/eyecatcher/substrate/ca.py) or [substrate/dual_cppn.py](src/eyecatcher/substrate/dual_cppn.py) for examples.
+2. **Python – exports:** In [substrate/__init__.py](src/eyecatcher/substrate/__init__.py), export the new class. In [substrate/registry.py](src/eyecatcher/substrate/registry.py), add it to the `SUBSTRATES` dict. In [substrate/export.py](src/eyecatcher/substrate/export.py), add an entry to `export_substrates_for_frontend()` (id, outputType, hasSignalControls, genomeKeys, optional excludeKeys); then run `make generate-substrates`.
+3. **Config – preset:** In [config/experiments.json](config/experiments.json), add a preset with `"substrate": "<id>"` and any substrate-specific kwargs (e.g. `width`, `generations` for CA).
+4. **Frontend – display:** If the substrate needs custom rendering (e.g. special uniforms like CA’s `uRule`, `uGeneration`), update [static/js/evolution/pattern_renderer.js](static/js/evolution/pattern_renderer.js) to branch on the pattern shape or `output_type` (e.g. `pattern.rule`, `patternData.caRule`). For CPPN variants, rendering is driven by SIGNAL_TOGGLES; no new branch needed.
+5. **Frontend – load/add:** [app.js](static/js/app/app.js) `loadFromStatelessGenomes` branches on `outputType` (grid → evaluate, shader → compile). Ensure `addToGrid` and load-from-saved flows receive `output_type`/`substrate_id` so they use evaluate for grid substrates and compile for shader substrates.
+6. **Frontend – import:** [population_ui.js](static/js/features/population_ui.js) `handleImportFile` must recognise the new genome format (e.g. `genome.visual && genome.time_signal` for dual_cppn, `genome.rule` for CA). Add a branch or use a substrate adapter so imported genomes are accepted and the correct `output_type` is used.
+7. **API:** See [substrate/API_REQUIREMENTS.md](src/eyecatcher/substrate/API_REQUIREMENTS.md) for which endpoints require which substrate capabilities. Compile works for any substrate that implements `compile_to_shader`; save, network, and time-output are dual_cppn-only (501 for others).
+
+Once substrate frontend adapters are in place, adding a new substrate will mostly be: Python substrate + registry + preset + one frontend adapter file (or config for CPPN variants).
 
 ## Quick reference
 
 | I want to… | File(s) |
 |------------|---------|
+| Add a new substrate | substrate/ (new module, protocol), substrate/registry.py, substrate/export.py, config/experiments.json; make generate-substrates; frontend adapter if custom (see “Add a new substrate” above) |
 | Add/rename a signal | signals/signals.py, then make generate-signals; update NEAT num_inputs/num_outputs if counts changed |
 | Change population size or NEAT paths | algorithm/config.py |
 | Change reproduction/selection | algorithm/reproduction.py, algorithm/operators.py |

@@ -1,7 +1,7 @@
 # Eyecatcher — common development tasks
 # Run `make` or `make help` to list targets.
 
-.PHONY: help install dev test lint format lint-js format-js generate-signals docker-build docker-up clean
+.PHONY: help install dev test lint format lint-js format-js generate generate-signals generate-substrates docker-build docker-up clean
 
 help:
 	@echo "Eyecatcher — development targets"
@@ -10,8 +10,9 @@ help:
 	@echo "  make dev        Run the Flask dev server (python -m eyecatcher.server)"
 	@echo "  make test       Run pytest"
 	@echo "  make lint       Run Ruff check (Python) and ESLint (JS)"
-	@echo "  make format     Run Ruff format (Python) and Prettier (JS)"
+	@echo "  make generate   Run all codegen (signals + substrates)"
 	@echo "  make generate-signals  Generate evolution_config_signals.generated.js from Python registry; validate NEAT"
+	@echo "  make generate-substrates  Generate substrate_adapters.generated.js from Python substrate export"
 	@echo "  make docker-build  Build Docker image"
 	@echo "  make docker-up  Start app with docker compose up"
 	@echo "  make clean      Remove build artifacts, caches, and optional venv/node_modules"
@@ -40,8 +41,13 @@ format:
 	ruff format .
 	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npm run format; fi
 
+generate: generate-signals generate-substrates
+
 generate-signals:
 	.venv/bin/python scripts/generate_signal_config.py
+
+generate-substrates:
+	.venv/bin/python scripts/generate_substrate_config.py
 
 docker-build:
 	docker compose -f docker/docker-compose.yml build
