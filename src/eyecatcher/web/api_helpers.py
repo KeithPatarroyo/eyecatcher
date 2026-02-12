@@ -3,9 +3,17 @@ Shared helpers for API route responses.
 
 Provides consistent error response format and shared error message constants
 so wording and API contract can be tuned in one place.
+Save helpers: numpy_to_png_base64, build_save_zip_response for /api/save handlers.
+Error handling: api_try_except decorator for route handlers.
 """
 
-from flask import jsonify
+import base64
+import io
+import zipfile
+from functools import wraps
+
+import numpy as np
+from flask import Response, jsonify
 
 # Shared API error messages (validation / required fields)
 ERR_GENOME_REQUIRED = "genome required"
@@ -28,3 +36,67 @@ def api_error(message: str, status: int = 400):
         Tuple of (Response, status_code) for use in route return.
     """
     return jsonify({"error": message}), status
+
+
+def api_try_except(fn):
+    """Decorator: ValueError -> 400, Exception -> 500. Use on route handlers."""
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except ValueError as e:
+            return api_error(str(e), 400)
+        except Exception as e:
+            return api_error(str(e), 500)
+
+    return wrapper
+
+
+def numpy_to_png_base64(arr: np.ndarray) -> str:
+    """
+    Encode a numpy image array as PNG base64 string.
+
+    Handles 2D (grayscale) by stacking to RGB; normalizes to uint8 0-255.
+    """
+    from PIL import Image
+
+    arr = np.asarray(arr)
+    if arr.dtype != np.uint8:
+        arr = (np.clip(arr, 0, 1) * 255).astype(np.uint8)
+    if arr.ndim == 2:
+        arr = np.stack([arr, arr, arr], axis=-1)
+    buf = io.BytesIO()
+    Image.fromarray(arr).save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def build_save_zip_response(
+    individual_id: int,
+    assets: dict[str, bytes],
+    zip_filename: str,
+) -> Response:
+    """
+    Build a zip from filename->bytes, return JSON response for client download.
+
+    assets: filename (e.g. pattern_1.png) -> raw bytes.
+    zip_filename: name for the zip in the downloads list (e.g. pattern_1.zip).
+    """
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, data in assets.items():
+            zf.writestr(name, data)
+    zip_base64 = base64.b64encode(zip_buffer.getvalue()).decode("ascii")
+    return jsonify(
+        {
+            "id": individual_id,
+            "status": "saved",
+            "downloads": [
+                {
+                    "filename": zip_filename,
+                    "mime": "application/zip",
+                    "content_base64": zip_base64,
+                },
+            ],
+        }
+    )
