@@ -32,11 +32,11 @@
                     "signal-checkbox" + (s.derived ? " signal-derived" : "");
                 const input = document.createElement("input");
                 input.type = "checkbox";
-                input.id = cppnType + "-" + s.enableKey;
+                input.id = cppnType + "-" + s.id;
                 input.checked = true;
                 const label = document.createElement("label");
                 label.htmlFor = input.id;
-                if (cppnType === "time" && s.enableKey === "rawTime") {
+                if (cppnType === "time" && s.id === "raw_time") {
                     label.appendChild(document.createTextNode(s.label + " "));
                     const hint = document.createElement("span");
                     hint.className = "signal-hint";
@@ -79,7 +79,7 @@
                     window.EvolutionConfig.SIGNAL_TOGGLES[
                         cppnType
                     ].toggleableInputs.forEach(function (s) {
-                        state[cppnType][s.enableKey] = true;
+                        state[cppnType][s.id] = true;
                     });
                 });
             }
@@ -105,13 +105,10 @@
                 populateSignalControls(config);
                 ["time", "visual"].forEach(function (cppnType) {
                     config[cppnType].toggleableInputs.forEach(function (s) {
-                        const checkbox = document.getElementById(
-                            cppnType + "-" + s.enableKey
-                        );
+                        const checkbox = document.getElementById(cppnType + "-" + s.id);
                         if (checkbox) {
                             checkbox.addEventListener("change", function (e) {
-                                self.signalState[cppnType][s.enableKey] =
-                                    e.target.checked;
+                                self.signalState[cppnType][s.id] = e.target.checked;
                             });
                         }
                     });

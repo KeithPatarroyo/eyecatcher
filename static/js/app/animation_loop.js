@@ -1,7 +1,7 @@
 /**
  * Animation loop: mouse tracking, time modes (loop/oscillate/infinite), and per-frame pattern rendering.
  * Exposes: AnimationLoop.init(), AnimationLoop.start(), AnimationLoop.stop(),
- *   AnimationLoop.getMouseSpeed(), AnimationLoop.getMouseDistance(canvas),
+ *   AnimationLoop.getSignalValues(canvas), AnimationLoop.getMouseSpeed(), AnimationLoop.getMouseDistance(canvas),
  *   AnimationLoop.getActivity(), AnimationLoop.getMouseX(), AnimationLoop.getMouseY(), AnimationLoop.getTime()
  */
 (function () {
@@ -39,6 +39,16 @@
         return Math.min(1.0, dist / MOUSE_DIST_SCALE);
     }
 
+    function getSignalValues(canvas) {
+        const mouse_dist = canvas ? getMouseDistanceToCanvas(canvas) : 0;
+        return {
+            raw_time: animationTime,
+            mouse_speed: mouseSpeed,
+            mouse_dist: mouse_dist,
+            activity: activity,
+        };
+    }
+
     function animate() {
         if (animating) {
             const timeMode =
@@ -73,13 +83,10 @@
             ) {
                 const signalState = _viewerControls.signalState;
                 patterns.forEach(function (patternData) {
-                    const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
+                    const signalValues = getSignalValues(patternData.canvas);
                     _patternRenderer.renderPattern(
                         patternData,
-                        normalizedTime,
-                        mouseSpeed,
-                        mouseDist,
-                        activity,
+                        signalValues,
                         signalState
                     );
                 });
@@ -153,6 +160,7 @@
         init: init,
         start: start,
         stop: stop,
+        getSignalValues: getSignalValues,
         getMouseSpeed: function () {
             return mouseSpeed;
         },

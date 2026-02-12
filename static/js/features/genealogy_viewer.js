@@ -548,27 +548,31 @@ async function renderThumbnail(populationId) {
                 window.EvolutionConfig.SIGNAL_TOGGLES[
                     cppnType
                 ].toggleableInputs.forEach(function (s) {
-                    signalState[cppnType][s.enableKey] = true;
+                    signalState[cppnType][s.id] = true;
                 });
             });
         } else {
             // Fallback must match SIGNAL_TOGGLES in evolution_config.js; see signals.py for canonical list
             signalState = {
                 time: {
-                    rawTime: true,
-                    mouseSpeed: true,
-                    mouseDist: true,
-                    inactivity: true,
+                    raw_time: true,
+                    mouse_speed: true,
+                    mouse_dist: true,
+                    activity: true,
                 },
                 visual: {
                     time: true,
-                    mouseSpeed: true,
-                    mouseDist: true,
-                    inactivity: true,
+                    mouse_speed: true,
+                    mouse_dist: true,
+                    activity: true,
                 },
             };
         }
-        PatternRenderer.renderPattern(patternData, 0.5, 0, 0, 0, signalState);
+        PatternRenderer.renderPattern(
+            patternData,
+            { raw_time: 0.5, mouse_speed: 0, mouse_dist: 0, activity: 0 },
+            signalState
+        );
 
         // Convert to data URL
         const dataUrl = canvas.toDataURL("image/png");

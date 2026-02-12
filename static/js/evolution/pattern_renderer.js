@@ -95,41 +95,50 @@
     /**
      * Draw one frame of a pattern with given uniforms.
      * @param {Object} patternData - From setupPattern
-     * @param {number} time - Normalized time (0–1 or unbounded for infinite mode)
-     * @param {number} mouseSpd - Mouse speed signal
-     * @param {number} mouseDist - Mouse distance to canvas (0–1)
-     * @param {number} inact - Inactivity/activity level
+     * @param {Object} signalValues - Keys match signal ids (raw_time, mouse_speed, mouse_dist, activity)
      * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
      */
-    function renderPattern(patternData, time, mouseSpd, mouseDist, inact, signalState) {
+    function renderPattern(patternData, signalValues, signalState) {
         const { gl, program, positionBuffer } = patternData;
         const sig = signalState || { time: {}, visual: {} };
-        const uniformValues = {
-            uTime: time,
-            uMouseSpeed: mouseSpd,
-            uMouseDist: mouseDist,
-            uInactivity: inact,
-        };
+        const uniformValues = {};
+        const config = window.EvolutionConfig;
+        const toggles = config && config.SIGNAL_TOGGLES;
+        if (toggles && signalValues) {
+            ["time", "visual"].forEach(function (cppnType) {
+                const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
+                if (!inputs) return;
+                inputs.forEach(function (s) {
+                    if (s.uniform && !s.derived && !uniformValues[s.uniform]) {
+                        uniformValues[s.uniform] =
+                            signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
+                    }
+                });
+            });
+        }
 
         gl.useProgram(program);
 
         const baseUniforms = new Set();
-        ["time", "visual"].forEach(function (cppnType) {
-            const inputs =
-                window.EvolutionConfig &&
-                window.EvolutionConfig.SIGNAL_TOGGLES &&
-                window.EvolutionConfig.SIGNAL_TOGGLES[cppnType].toggleableInputs;
-            if (!inputs) return;
-            inputs.forEach(function (s) {
-                if (s.uniform && !baseUniforms.has(s.uniform)) {
-                    const loc = gl.getUniformLocation(program, s.uniform);
-                    if (loc !== null) {
-                        gl.uniform1f(loc, uniformValues[s.uniform]);
+        if (toggles) {
+            ["time", "visual"].forEach(function (cppnType) {
+                const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
+                if (!inputs) return;
+                inputs.forEach(function (s) {
+                    if (s.uniform && !baseUniforms.has(s.uniform)) {
+                        const loc = gl.getUniformLocation(program, s.uniform);
+                        if (loc !== null) {
+                            const val =
+                                uniformValues[s.uniform] !== undefined
+                                    ? uniformValues[s.uniform]
+                                    : 0;
+                            gl.uniform1f(loc, val);
+                        }
+                        baseUniforms.add(s.uniform);
                     }
-                    baseUniforms.add(s.uniform);
-                }
+                });
             });
-        });
+        }
 
         ["time", "visual"].forEach(function (cppnType) {
             const inputs =
@@ -138,16 +147,12 @@
                 window.EvolutionConfig.SIGNAL_TOGGLES[cppnType].toggleableInputs;
             if (!inputs) return;
             const prefix =
-                "u" + cppnType.charAt(0).toUpperCase() + cppnType.slice(1) + "Enable";
+                "u" + cppnType.charAt(0).toUpperCase() + cppnType.slice(1) + "Enable_";
             inputs.forEach(function (s) {
-                const uniformName =
-                    prefix + s.enableKey.charAt(0).toUpperCase() + s.enableKey.slice(1);
+                const uniformName = prefix + s.id;
                 const loc = gl.getUniformLocation(program, uniformName);
                 if (loc !== null) {
-                    gl.uniform1f(
-                        loc,
-                        sig[cppnType] && sig[cppnType][s.enableKey] ? 1.0 : 0.0
-                    );
+                    gl.uniform1f(loc, sig[cppnType] && sig[cppnType][s.id] ? 1.0 : 0.0);
                 }
             });
         });

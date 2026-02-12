@@ -83,7 +83,11 @@
             const signalState = _viewerControls.signalState;
             requestAnimationFrame(() => {
                 previewPatternData.forEach((pd) =>
-                    _patternRenderer.renderPattern(pd, 0.5, 0, 0, 0, signalState)
+                    _patternRenderer.renderPattern(
+                        pd,
+                        { raw_time: 0.5, mouse_speed: 0, mouse_dist: 0, activity: 0 },
+                        signalState
+                    )
                 );
             });
         }

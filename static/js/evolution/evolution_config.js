@@ -1,10 +1,16 @@
 /**
  * Evolution and viewer constants. Single place for frontend defaults that align with the backend.
- * Load before: api_client, app_core, toolbar_ui.
+ * Signal toggles and outputs come from evolution_config_signals.generated.js (generated from Python registry).
+ * Load before: api_client, app_core, toolbar_ui. Load after: evolution_config_signals.generated.js.
  * Exposes: window.EvolutionConfig
  */
 (function () {
     "use strict";
+
+    var signals =
+        typeof window !== "undefined" && window.EvolutionConfigSignals
+            ? window.EvolutionConfigSignals
+            : null;
 
     var EvolutionConfig = {
         // Population (must match backend evolution/config.py)
@@ -20,74 +26,19 @@
         // Dev server (api_client fallback when not served from same origin)
         DEFAULT_DEV_PORT: 5001,
 
-        // Inputs that have on/off toggles in the UI (mirror backend toggleable signals only)
-        SIGNAL_TOGGLES: {
-            time: {
-                toggleableInputs: [
-                    {
-                        name: "rawTime",
-                        uniform: "uTime",
-                        label: "Raw Time",
-                        enableKey: "rawTime",
-                    },
-                    {
-                        name: "mouseSpeed",
-                        uniform: "uMouseSpeed",
-                        label: "Mouse Speed",
-                        enableKey: "mouseSpeed",
-                    },
-                    {
-                        name: "mouseDist",
-                        uniform: "uMouseDist",
-                        label: "Mouse Dist",
-                        enableKey: "mouseDist",
-                    },
-                    {
-                        name: "inactivity",
-                        uniform: "uInactivity",
-                        label: "Activity",
-                        enableKey: "inactivity",
-                    },
-                ],
-            },
-            visual: {
-                toggleableInputs: [
-                    {
-                        name: "time",
-                        uniform: null,
-                        label: "Body Clock",
-                        enableKey: "time",
-                        derived: true,
-                    },
-                    {
-                        name: "mouseSpeed",
-                        uniform: "uMouseSpeed",
-                        label: "Mouse Speed",
-                        enableKey: "mouseSpeed",
-                    },
-                    {
-                        name: "mouseDist",
-                        uniform: "uMouseDist",
-                        label: "Mouse Dist",
-                        enableKey: "mouseDist",
-                    },
-                    {
-                        name: "inactivity",
-                        uniform: "uInactivity",
-                        label: "Activity",
-                        enableKey: "inactivity",
-                    },
-                ],
-            },
-        },
-        OUTPUTS: {
-            visual: [
-                { name: "red", label: "Red" },
-                { name: "green", label: "Green" },
-                { name: "blue", label: "Blue" },
-            ],
-            time: [{ name: "output", label: "Modified Time" }],
-        },
+        // From generated config (Python registry) or fallback for dev without codegen
+        SIGNAL_TOGGLES: signals
+            ? signals.SIGNAL_TOGGLES
+            : {
+                  time: { toggleableInputs: [] },
+                  visual: { toggleableInputs: [] },
+              },
+        OUTPUTS: signals
+            ? signals.OUTPUTS
+            : {
+                  visual: [],
+                  time: [],
+              },
     };
 
     if (typeof window !== "undefined") {
