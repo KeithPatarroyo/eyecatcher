@@ -11,16 +11,38 @@ def test_health(client):
 
 
 def test_api_random(client):
-    """POST /api/random with size returns genomes."""
+    """POST /api/random with size returns genomes and output_type."""
     rv = client.post("/api/random", json={"size": 3})
     assert rv.status_code == 200
     data = rv.get_json()
     assert "genomes" in data
+    assert "output_type" in data
     assert len(data["genomes"]) == 3
     for g in data["genomes"]:
         assert "key" in g
         assert "visual" in g
         assert "time_signal" in g
+
+
+def test_api_evaluate(client):
+    """POST /api/evaluate returns results (shader or grid per substrate)."""
+    rv = client.post("/api/random", json={"size": 2})
+    assert rv.status_code == 200
+    genomes = rv.get_json()["genomes"]
+    rv = client.post("/api/evaluate", json={"genomes": genomes})
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert "results" in data
+    assert "output_type" in data
+    assert len(data["results"]) == 2
+    for r in data["results"]:
+        assert "id" in r
+        assert r["output_type"] == data["output_type"]
+    if data["output_type"] == "shader":
+        assert "shader" in data["results"][0]
+    elif data["output_type"] == "grid":
+        assert "image" in data["results"][0]
+        assert data["results"][0]["image"].startswith("data:image/png;base64,")
 
 
 @pytest.mark.slow
