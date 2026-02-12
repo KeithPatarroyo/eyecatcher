@@ -15,7 +15,12 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 
 from ..lib.db_util import default_db_path, with_db_connection
-from .api_helpers import ERR_GENOME_OBJECT_REQUIRED, ERR_ID_REQUIRED, api_error
+from .api_helpers import (
+    ERR_GENOME_OBJECT_REQUIRED,
+    ERR_ID_REQUIRED,
+    api_error,
+    api_try_except,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -93,58 +98,54 @@ def _check_admin_key():
 
 
 @community_bp.route("/api/community/submit", methods=["POST"])
+@api_try_except
 def api_community_submit():
     """POST /api/community/submit: body genome, name, creator; returns id, status."""
-    try:
-        data = request.json or {}
-        genome = data.get("genome")
-        name = (data.get("name") or "").strip() or "Unnamed"
-        creator = (data.get("creator") or "").strip() or "Anonymous"
-        if not genome or not isinstance(genome, dict):
-            return api_error(ERR_GENOME_OBJECT_REQUIRED, 400)
-        genome_json = json.dumps(genome)
-        with with_db_connection(DATABASE_PATH) as conn:
-            cur = conn.execute(
-                """INSERT INTO submissions
-                   (name, creator, genome_json, status, submitted_at)
-                   VALUES (?, ?, ?, 'pending', ?)""",
-                (name, creator, genome_json, datetime.now(timezone.utc).isoformat()),
-            )
-            conn.commit()
-            sid = cur.lastrowid
-        return jsonify({"id": sid, "status": "pending"})
-    except Exception as e:
-        return api_error(str(e), 500)
+    data = request.json or {}
+    genome = data.get("genome")
+    name = (data.get("name") or "").strip() or "Unnamed"
+    creator = (data.get("creator") or "").strip() or "Anonymous"
+    if not genome or not isinstance(genome, dict):
+        return api_error(ERR_GENOME_OBJECT_REQUIRED, 400)
+    genome_json = json.dumps(genome)
+    with with_db_connection(DATABASE_PATH) as conn:
+        cur = conn.execute(
+            """INSERT INTO submissions
+               (name, creator, genome_json, status, submitted_at)
+               VALUES (?, ?, ?, 'pending', ?)""",
+            (name, creator, genome_json, datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+        sid = cur.lastrowid
+    return jsonify({"id": sid, "status": "pending"})
 
 
 @community_bp.route("/api/community", methods=["GET"])
+@api_try_except
 def api_community():
     """GET /api/community: approved patterns (id, name, creator, genome)."""
-    try:
-        with with_db_connection(DATABASE_PATH) as conn:
-            rows = conn.execute(
-                """SELECT id, name, creator, genome_json, approved_at
-                   FROM submissions WHERE status = 'approved'
-                   ORDER BY approved_at DESC"""
-            ).fetchall()
-        patterns = []
-        for row in rows:
-            try:
-                genome = json.loads(row["genome_json"])
-                patterns.append(
-                    {
-                        "id": row["id"],
-                        "name": row["name"],
-                        "creator": row["creator"],
-                        "genome": genome,
-                        "approved_at": row["approved_at"],
-                    }
-                )
-            except (json.JSONDecodeError, TypeError):
-                continue
-        return jsonify({"patterns": patterns})
-    except Exception as e:
-        return api_error(str(e), 500)
+    with with_db_connection(DATABASE_PATH) as conn:
+        rows = conn.execute(
+            """SELECT id, name, creator, genome_json, approved_at
+               FROM submissions WHERE status = 'approved'
+               ORDER BY approved_at DESC"""
+        ).fetchall()
+    patterns = []
+    for row in rows:
+        try:
+            genome = json.loads(row["genome_json"])
+            patterns.append(
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "creator": row["creator"],
+                    "genome": genome,
+                    "approved_at": row["approved_at"],
+                }
+            )
+        except (json.JSONDecodeError, TypeError):
+            continue
+    return jsonify({"patterns": patterns})
 
 
 # ---------------------------------------------------------------------------
@@ -164,80 +165,78 @@ def api_admin_status():
 
 
 @community_bp.route("/api/admin/submissions", methods=["GET"])
+@api_try_except
 def api_admin_submissions():
     """GET /api/admin/submissions: list pending. Admin only; X-Admin-Key."""
     ok, err_response, status = _check_admin_key()
     if not ok:
         return err_response, status
-    try:
-        with with_db_connection(DATABASE_PATH) as conn:
-            rows = conn.execute(
-                """SELECT id, name, creator, genome_json, status, submitted_at
-                   FROM submissions WHERE status = 'pending'
-                   ORDER BY submitted_at ASC"""
-            ).fetchall()
-        submissions = []
-        for row in rows:
-            try:
-                genome = json.loads(row["genome_json"])
-                submissions.append(
-                    {
-                        "id": row["id"],
-                        "name": row["name"],
-                        "creator": row["creator"],
-                        "genome": genome,
-                        "status": row["status"],
-                        "submitted_at": row["submitted_at"],
-                    }
-                )
-            except (json.JSONDecodeError, TypeError):
-                continue
-        return jsonify({"submissions": submissions})
-    except Exception as e:
-        return api_error(str(e), 500)
+    with with_db_connection(DATABASE_PATH) as conn:
+        rows = conn.execute(
+            """SELECT id, name, creator, genome_json, status, submitted_at
+               FROM submissions WHERE status = 'pending'
+               ORDER BY submitted_at ASC"""
+        ).fetchall()
+    submissions = []
+    for row in rows:
+        try:
+            genome = json.loads(row["genome_json"])
+            submissions.append(
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "creator": row["creator"],
+                    "genome": genome,
+                    "status": row["status"],
+                    "submitted_at": row["submitted_at"],
+                }
+            )
+        except (json.JSONDecodeError, TypeError):
+            continue
+    return jsonify({"submissions": submissions})
+
+
+def _admin_moderate(action):
+    """Approve or reject a submission. Used by api_admin_approve / api_admin_reject."""
+    data = request.json or {}
+    submission_id = data.get("id")
+    if not submission_id:
+        return api_error(ERR_ID_REQUIRED, 400)
+    if action == "approve":
+        sql = (
+            "UPDATE submissions SET status = 'approved', approved_at = ? "
+            "WHERE id = ? AND status = 'pending'"
+        )
+        params = (datetime.now(timezone.utc).isoformat(), submission_id)
+        status_val = "approved"
+    else:
+        sql = (
+            "UPDATE submissions SET status = 'rejected' "
+            "WHERE id = ? AND status = 'pending'"
+        )
+        params = (submission_id,)
+        status_val = "rejected"
+    with with_db_connection(DATABASE_PATH) as conn:
+        conn.execute(sql, params)
+        conn.commit()
+    return jsonify({"id": submission_id, "status": status_val})
 
 
 @community_bp.route("/api/admin/approve", methods=["POST"])
+@api_try_except
 def api_admin_approve():
     """POST /api/admin/approve: body id; approve. Admin only; X-Admin-Key."""
     ok, err_response, status = _check_admin_key()
     if not ok:
         return err_response, status
-    try:
-        data = request.json or {}
-        submission_id = data.get("id")
-        if not submission_id:
-            return api_error(ERR_ID_REQUIRED, 400)
-        with with_db_connection(DATABASE_PATH) as conn:
-            conn.execute(
-                """UPDATE submissions SET status = 'approved', approved_at = ?
-                   WHERE id = ? AND status = 'pending'""",
-                (datetime.now(timezone.utc).isoformat(), submission_id),
-            )
-            conn.commit()
-        return jsonify({"id": submission_id, "status": "approved"})
-    except Exception as e:
-        return api_error(str(e), 500)
+    return _admin_moderate("approve")
 
 
 @community_bp.route("/api/admin/reject", methods=["POST"])
+@api_try_except
 def api_admin_reject():
     """POST /api/admin/reject: body id; reject. Admin only; X-Admin-Key."""
     ok, err_response, status = _check_admin_key()
     if not ok:
         return err_response, status
-    try:
-        data = request.json or {}
-        submission_id = data.get("id")
-        if not submission_id:
-            return api_error(ERR_ID_REQUIRED, 400)
-        with with_db_connection(DATABASE_PATH) as conn:
-            conn.execute(
-                """UPDATE submissions SET status = 'rejected'
-                   WHERE id = ? AND status = 'pending'""",
-                (submission_id,),
-            )
-            conn.commit()
-        return jsonify({"id": submission_id, "status": "rejected"})
-    except Exception as e:
-        return api_error(str(e), 500)
+    return _admin_moderate("reject")
