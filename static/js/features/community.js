@@ -341,35 +341,21 @@
             return;
         }
         try {
-            const r = await fetch(
+            const d = await window.ApiClient.apiFetch(
                 _apiUrl + "/admin/submissions?admin_key=" + encodeURIComponent(key),
-                {
-                    headers: { "X-Admin-Key": key },
-                }
+                { headers: { "X-Admin-Key": key } },
+                "Load submissions failed"
             );
-            if (r.status === 403) {
-                errEl.textContent = "Invalid API key.";
-                errEl.classList.remove("hidden");
-                return;
-            }
-            if (!r.ok) {
-                errEl.textContent = "Request failed (status " + r.status + ").";
-                errEl.classList.remove("hidden");
-                return;
-            }
             _adminKey = key;
-            const d = await r.json();
             const list = d.submissions || [];
             document.getElementById("admin-step-key").classList.add("hidden");
             document.getElementById("admin-step-list").classList.remove("hidden");
             await renderAdminPendingList(list);
         } catch (e) {
-            if (e.status === 403) {
-                errEl.textContent = "Invalid API key.";
-            } else {
-                errEl.textContent =
-                    "Error: " + Utils.formatApiError(e, "Request failed");
-            }
+            errEl.textContent =
+                e.status === 403
+                    ? "Invalid API key."
+                    : "Error: " + Utils.formatApiError(e, "Request failed");
             errEl.classList.remove("hidden");
         }
     }
@@ -408,12 +394,16 @@
                 approveBtn.type = "button";
                 approveBtn.className = "approve-btn";
                 approveBtn.textContent = "Approve";
-                approveBtn.addEventListener("click", () => adminApprove(sub.id, li));
+                approveBtn.addEventListener("click", () =>
+                    adminModerate(sub.id, "approve", li)
+                );
                 const rejectBtn = document.createElement("button");
                 rejectBtn.type = "button";
                 rejectBtn.className = "reject-btn";
                 rejectBtn.textContent = "Reject";
-                rejectBtn.addEventListener("click", () => adminReject(sub.id, li));
+                rejectBtn.addEventListener("click", () =>
+                    adminModerate(sub.id, "reject", li)
+                );
                 actions.appendChild(approveBtn);
                 actions.appendChild(rejectBtn);
                 li.appendChild(actions);
@@ -425,10 +415,12 @@
         );
     }
 
-    async function adminApprove(id, rowEl) {
+    async function adminModerate(id, action, rowEl) {
+        const endpoint = action === "approve" ? "/admin/approve" : "/admin/reject";
+        const errorLabel = action === "approve" ? "Approve failed" : "Reject failed";
         try {
             await window.ApiClient.apiFetch(
-                _apiUrl + "/admin/approve?admin_key=" + encodeURIComponent(_adminKey),
+                _apiUrl + endpoint + "?admin_key=" + encodeURIComponent(_adminKey),
                 {
                     method: "POST",
                     headers: {
@@ -437,36 +429,14 @@
                     },
                     body: JSON.stringify({ id }),
                 },
-                "Approve failed"
-            );
-            rowEl.remove();
-        } catch (e) {
-            Toast.error(
-                e.status === 403 ? "Invalid API key." : "Error: " + (e.message || e)
-            );
-        }
-    }
-
-    async function adminReject(id, rowEl) {
-        try {
-            await window.ApiClient.apiFetch(
-                _apiUrl + "/admin/reject?admin_key=" + encodeURIComponent(_adminKey),
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-Admin-Key": _adminKey,
-                    },
-                    body: JSON.stringify({ id }),
-                },
-                "Reject failed"
+                errorLabel
             );
             rowEl.remove();
         } catch (e) {
             Toast.error(
                 e.status === 403
                     ? "Invalid API key."
-                    : "Error: " + Utils.formatApiError(e, "Request failed")
+                    : "Error: " + (e.message || String(e))
             );
         }
     }
