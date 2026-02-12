@@ -67,6 +67,61 @@ def init_genealogy_db() -> None:
         conn.commit()
 
 
+def _insert_population_with_individuals(
+    conn,
+    parent_id: int | None,
+    generation_num: int,
+    branch_name: str,
+    description: str,
+    user_id: str,
+    genomes: list,
+    metadata: dict[str, Any] | None,
+    fitness_data: list[float] | None = None,
+) -> tuple[int, list[int]]:
+    """
+    Insert one population row and its individual rows. Caller must hold conn.
+    Returns (population_id, list of individual_ids).
+    """
+    meta_json = json.dumps(metadata) if metadata else "{}"
+    cur = conn.execute(
+        """INSERT INTO populations
+           (parent_id, generation_num, created_at, branch_name, description,
+            user_id, population_size, metadata_json)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            parent_id,
+            generation_num,
+            datetime.now(timezone.utc).isoformat(),
+            branch_name,
+            description,
+            user_id,
+            len(genomes),
+            meta_json,
+        ),
+    )
+    population_id = cur.lastrowid
+    individual_ids = []
+    fitness_data = fitness_data or []
+    for idx, genome in enumerate(genomes):
+        genome_json = json.dumps(genome) if not isinstance(genome, str) else genome
+        genome_key = genome.get("key", idx) if isinstance(genome, dict) else idx
+        fitness = fitness_data[idx] if idx < len(fitness_data) else 0
+        cur = conn.execute(
+            """INSERT INTO individuals
+               (population_id, genome_key, genome_json, fitness, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                population_id,
+                genome_key,
+                genome_json,
+                fitness,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        individual_ids.append(cur.lastrowid)
+    return population_id, individual_ids
+
+
 def save_generation_result(
     parent_population_id: int,
     generation_num: int,
@@ -87,48 +142,19 @@ def save_generation_result(
         ).fetchone()
         if not parent_row or generation_num != parent_row["generation_num"] + 1:
             return None
-        meta_json = json.dumps(metadata) if metadata else "{}"
-        cur = conn.execute(
-            """INSERT INTO populations
-               (parent_id, generation_num, created_at, branch_name, description,
-                user_id, population_size, metadata_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                parent_population_id,
-                generation_num,
-                datetime.now(timezone.utc).isoformat(),
-                branch_name,
-                f"Generation {generation_num}",
-                "user",
-                len(children),
-                meta_json,
-            ),
+        population_id, _ = _insert_population_with_individuals(
+            conn,
+            parent_population_id,
+            generation_num,
+            branch_name,
+            f"Generation {generation_num}",
+            "user",
+            children,
+            metadata,
+            None,
         )
-        new_population_id = cur.lastrowid
-        for idx, child_genome in enumerate(children):
-            genome_json = (
-                json.dumps(child_genome)
-                if not isinstance(child_genome, str)
-                else child_genome
-            )
-            conn.execute(
-                """INSERT INTO individuals
-                   (population_id, genome_key, genome_json, fitness, created_at)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (
-                    new_population_id,
-                    (
-                        child_genome.get("key", idx)
-                        if isinstance(child_genome, dict)
-                        else idx
-                    ),
-                    genome_json,
-                    0,
-                    datetime.now(timezone.utc).isoformat(),
-                ),
-            )
         conn.commit()
-        return new_population_id
+        return population_id
 
 
 def save_population(
@@ -148,7 +174,6 @@ def save_population(
     On validation error returns { "error": "parent_not_found" } or
     { "error": "generation_mismatch", "parent_generation_num": int }.
     """
-    fitness_data = fitness_data or []
     with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
         if parent_id is not None:
             parent_row = conn.execute(
@@ -162,47 +187,53 @@ def save_population(
                     "error": "generation_mismatch",
                     "parent_generation_num": parent_row["generation_num"],
                 }
-        meta_json = json.dumps(metadata) if metadata else "{}"
-        cur = conn.execute(
-            """INSERT INTO populations
-               (parent_id, generation_num, created_at, branch_name, description,
-                user_id, population_size, metadata_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                parent_id,
-                generation_num,
-                datetime.now(timezone.utc).isoformat(),
-                branch_name,
-                description,
-                user_id,
-                len(genomes),
-                meta_json,
-            ),
+        population_id, individual_ids = _insert_population_with_individuals(
+            conn,
+            parent_id,
+            generation_num,
+            branch_name,
+            description,
+            user_id,
+            genomes,
+            metadata,
+            fitness_data,
         )
-        population_id = cur.lastrowid
-        individual_ids = []
-        for idx, genome in enumerate(genomes):
-            genome_json = json.dumps(genome) if not isinstance(genome, str) else genome
-            fitness = fitness_data[idx] if idx < len(fitness_data) else 0
-            cur = conn.execute(
-                """INSERT INTO individuals
-                   (population_id, genome_key, genome_json, fitness, created_at)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (
-                    population_id,
-                    genome.get("key", idx) if isinstance(genome, dict) else idx,
-                    genome_json,
-                    fitness,
-                    datetime.now(timezone.utc).isoformat(),
-                ),
-            )
-            individual_ids.append(cur.lastrowid)
         conn.commit()
         return {
             "population_id": population_id,
             "individual_ids": individual_ids,
             "generation_num": generation_num,
         }
+
+
+def _get_population_and_individual_stats(
+    conn, population_ids: list[int] | None
+) -> tuple[int, int, int]:
+    """
+    Return (pop_count, ind_count, total_json_bytes) for the given population
+    IDs, or for all DB if population_ids is None.
+    """
+    if population_ids is None:
+        pop_row = conn.execute("SELECT COUNT(*) as c FROM populations").fetchone()
+        pop_count = pop_row["c"]
+        ind_row = conn.execute(
+            "SELECT COUNT(*) as c, COALESCE(SUM(LENGTH(genome_json)), 0) as total_json "
+            "FROM individuals"
+        ).fetchone()
+        return (pop_count, ind_row["c"], ind_row["total_json"] or 0)
+    pop_count = len(population_ids)
+    if not population_ids:
+        return (0, 0, 0)
+    placeholders = ",".join("?" * len(population_ids))
+    ind_row = conn.execute(
+        f"""SELECT COUNT(*) as c, COALESCE(SUM(LENGTH(genome_json)), 0) as total_json
+            FROM individuals
+            WHERE population_id IN ({placeholders})""",
+        population_ids,
+    ).fetchone()
+    ind_count = ind_row["c"]
+    json_bytes = ind_row["total_json"] or 0
+    return (pop_count, ind_count, json_bytes)
 
 
 def get_population(population_id: int) -> dict[str, Any] | None:
@@ -299,44 +330,28 @@ def reset_genealogy() -> None:
 def export_sizes() -> dict[str, Any]:
     """Full and per-branch counts and estimated export size in bytes."""
     with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
-        full_pop = conn.execute("SELECT COUNT(*) as c FROM populations").fetchone()["c"]
-        full_ind = conn.execute(
-            "SELECT COUNT(*) as c, "
-            "COALESCE(SUM(LENGTH(genome_json)), 0) as total_json "
-            "FROM individuals"
-        ).fetchone()
-        full_ind_count = full_ind["c"]
-        full_json_bytes = full_ind["total_json"] or 0
+        full_pop, full_ind_count, full_json_bytes = (
+            _get_population_and_individual_stats(conn, None)
+        )
         full_estimated = full_pop * 300 + full_ind_count * 80 + full_json_bytes
 
         branch_rows = conn.execute(
             """SELECT branch_name, COUNT(*) as pop_count
-               FROM populations GROUP BY branch_name ORDER BY branch_name"""
+               FROM populations
+               GROUP BY branch_name ORDER BY branch_name"""
         ).fetchall()
         branches = []
         for row in branch_rows:
             name = row["branch_name"]
-            pop_count = row["pop_count"]
             pop_ids = [
                 r["id"]
                 for r in conn.execute(
                     "SELECT id FROM populations WHERE branch_name = ?", (name,)
                 ).fetchall()
             ]
-            if not pop_ids:
-                ind_count = 0
-                json_bytes = 0
-            else:
-                placeholders = ",".join("?" * len(pop_ids))
-                ind_row = conn.execute(
-                    f"""SELECT COUNT(*) as c,
-                        COALESCE(SUM(LENGTH(genome_json)), 0) as total_json
-                        FROM individuals
-                        WHERE population_id IN ({placeholders})""",
-                    pop_ids,
-                ).fetchone()
-                ind_count = ind_row["c"]
-                json_bytes = ind_row["total_json"] or 0
+            pop_count, ind_count, json_bytes = _get_population_and_individual_stats(
+                conn, pop_ids
+            )
             estimated = pop_count * 300 + ind_count * 80 + json_bytes
             branches.append(
                 {
@@ -364,38 +379,33 @@ def export_genealogy_data(branch_name: str | None = None) -> dict[str, Any] | No
     dict with exported_at, version, branch_name, populations, individuals
     (genome_json parsed to Python objects).
     """
+    pop_cols = """id, parent_id, generation_num, created_at, branch_name,
+                  description, user_id, population_size, metadata_json"""
+    ind_cols = """id, population_id, genome_key, genome_json, fitness, created_at"""
     with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
         if branch_name:
             pop_rows = conn.execute(
-                """SELECT id, parent_id, generation_num, created_at, branch_name,
-                          description, user_id, population_size, metadata_json
-                   FROM populations
-                   WHERE branch_name = ? ORDER BY id ASC""",
+                f"SELECT {pop_cols} FROM populations "
+                "WHERE branch_name = ? ORDER BY id ASC",
                 (branch_name,),
-            ).fetchall()
-            pop_ids = [r["id"] for r in pop_rows]
-            if not pop_ids:
-                return None
-            placeholders = ",".join("?" * len(pop_ids))
-            ind_rows = conn.execute(
-                f"""SELECT id, population_id, genome_key, genome_json,
-                    fitness, created_at
-                    FROM individuals
-                    WHERE population_id IN ({placeholders}) ORDER BY id ASC""",
-                pop_ids,
             ).fetchall()
         else:
             pop_rows = conn.execute(
-                """SELECT id, parent_id, generation_num, created_at, branch_name,
-                          description, user_id, population_size, metadata_json
-                   FROM populations
-                   ORDER BY id ASC"""
+                f"SELECT {pop_cols} FROM populations " "ORDER BY id ASC"
             ).fetchall()
+        pop_ids = [r["id"] for r in pop_rows]
+        if branch_name and not pop_ids:
+            return None
+        if pop_ids:
+            placeholders = ",".join("?" * len(pop_ids))
             ind_rows = conn.execute(
-                """SELECT id, population_id, genome_key, genome_json,
-                   fitness, created_at
-                   FROM individuals
-                   ORDER BY id ASC"""
+                f"SELECT {ind_cols} FROM individuals "
+                f"WHERE population_id IN ({placeholders}) ORDER BY id ASC",
+                pop_ids,
+            ).fetchall()
+        else:
+            ind_rows = conn.execute(
+                f"SELECT {ind_cols} FROM individuals ORDER BY id ASC"
             ).fetchall()
 
         populations = [dict(r) for r in pop_rows]

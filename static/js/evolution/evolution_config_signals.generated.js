@@ -2,79 +2,84 @@
 (function () {
     "use strict";
     window.EvolutionConfigSignals = {
-        SIGNAL_TOGGLES: {
-            time: {
-                toggleableInputs: [
-                    {
-                        id: "raw_time",
-                        label: "Raw Time",
-                        uniform: "u_raw_time",
-                    },
-                    {
-                        id: "mouse_speed",
-                        label: "Mouse Speed",
-                        uniform: "u_mouse_speed",
-                    },
-                    {
-                        id: "mouse_dist",
-                        label: "Mouse Dist",
-                        uniform: "u_mouse_dist",
-                    },
-                    {
-                        id: "activity",
-                        label: "Activity",
-                        uniform: "u_activity",
-                    },
-                ],
-            },
-            visual: {
-                toggleableInputs: [
-                    {
-                        id: "time",
-                        label: "Time",
-                        uniform: "u_time",
-                        derived: true,
-                    },
-                    {
-                        id: "mouse_speed",
-                        label: "Mouse Speed",
-                        uniform: "u_mouse_speed",
-                    },
-                    {
-                        id: "mouse_dist",
-                        label: "Mouse Dist",
-                        uniform: "u_mouse_dist",
-                    },
-                    {
-                        id: "activity",
-                        label: "Activity",
-                        uniform: "u_activity",
-                    },
-                ],
-            },
+    "SIGNAL_TOGGLES": {
+        "time": {
+            "toggleableInputs": [
+                {
+                    "id": "raw_time",
+                    "label": "Raw Time",
+                    "uniform": "u_raw_time"
+                },
+                {
+                    "id": "mouse_speed",
+                    "label": "Mouse Speed",
+                    "uniform": "u_mouse_speed"
+                },
+                {
+                    "id": "mouse_dist",
+                    "label": "Mouse Dist",
+                    "uniform": "u_mouse_dist"
+                },
+                {
+                    "id": "activity",
+                    "label": "Activity",
+                    "uniform": "u_activity"
+                }
+            ]
         },
-        OUTPUTS: {
-            visual: [
+        "visual": {
+            "toggleableInputs": [
                 {
-                    id: "red",
-                    label: "Red",
+                    "id": "time",
+                    "label": "Time",
+                    "uniform": "u_time",
+                    "derived": true
                 },
                 {
-                    id: "green",
-                    label: "Green",
+                    "id": "mouse_speed",
+                    "label": "Mouse Speed",
+                    "uniform": "u_mouse_speed"
                 },
                 {
-                    id: "blue",
-                    label: "Blue",
+                    "id": "mouse_dist",
+                    "label": "Mouse Dist",
+                    "uniform": "u_mouse_dist"
                 },
-            ],
-            time: [
                 {
-                    id: "output",
-                    label: "Modified Time",
-                },
-            ],
-        },
-        SIGNAL_IDS: ["activity", "mouse_dist", "mouse_speed", "raw_time"],
-    };
+                    "id": "activity",
+                    "label": "Activity",
+                    "uniform": "u_activity"
+                }
+            ]
+        }
+    },
+    "OUTPUTS": {
+        "visual": [
+            {
+                "id": "red",
+                "label": "Red"
+            },
+            {
+                "id": "green",
+                "label": "Green"
+            },
+            {
+                "id": "blue",
+                "label": "Blue"
+            }
+        ],
+        "time": [
+            {
+                "id": "output",
+                "label": "Modified Time"
+            }
+        ]
+    },
+    "SIGNAL_IDS": [
+        "activity",
+        "mouse_dist",
+        "mouse_speed",
+        "raw_time"
+    ]
+};
 })();

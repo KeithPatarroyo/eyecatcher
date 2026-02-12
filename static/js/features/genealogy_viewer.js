@@ -557,38 +557,10 @@ async function renderThumbnail(populationId) {
             patternData.caRule = data.genome.rule;
         }
 
-        // Render a single frame (signal state from config or default all on)
-        let signalState = { time: {}, visual: {} };
-        if (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_TOGGLES) {
-            (
-                (window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES) || [
-                    "time",
-                    "visual",
-                ]
-            ).forEach(function (cppnType) {
-                window.EvolutionConfig.SIGNAL_TOGGLES[
-                    cppnType
-                ].toggleableInputs.forEach(function (s) {
-                    signalState[cppnType][s.id] = true;
-                });
-            });
-        } else {
-            // Fallback must match SIGNAL_TOGGLES in evolution_config.js; see signals.py for canonical list
-            signalState = {
-                time: {
-                    raw_time: true,
-                    mouse_speed: true,
-                    mouse_dist: true,
-                    activity: true,
-                },
-                visual: {
-                    time: true,
-                    mouse_speed: true,
-                    mouse_dist: true,
-                    activity: true,
-                },
-            };
-        }
+        const signalState =
+            window.EvolutionConfig && window.EvolutionConfig.getDefaultSignalState
+                ? window.EvolutionConfig.getDefaultSignalState()
+                : { time: {}, visual: {} };
         PatternRenderer.renderWithSignals(
             patternData,
             PatternRenderer,
@@ -658,19 +630,14 @@ async function renderAllThumbnails(visNodes) {
     }
 }
 
-function onId(id, fn) {
-    const el = document.getElementById(id);
-    if (el) fn(el);
-}
-
 function bindRefreshEvents() {
-    onId("refresh-btn", (el) => {
+    Utils.onId("refresh-btn", (el) => {
         el.onclick = () => loadTree();
     });
 }
 
 function bindExportModalEvents() {
-    onId("download-genealogy-btn", (el) => {
+    Utils.onId("download-genealogy-btn", (el) => {
         el.onclick = async () => {
             const modal = document.getElementById("export-genealogy-modal");
             try {
@@ -725,7 +692,7 @@ function bindExportModalEvents() {
         };
     });
 
-    onId("export-modal-cancel", (el) => {
+    Utils.onId("export-modal-cancel", (el) => {
         el.onclick = () => {
             const modal = document.getElementById("export-genealogy-modal");
             if (modal) modal.hidden = true;
@@ -741,7 +708,7 @@ function bindExportModalEvents() {
         const modal = document.getElementById("export-genealogy-modal");
         if (e.key === "Escape" && modal && !modal.hidden) modal.hidden = true;
     });
-    onId("export-modal-download", (el) => {
+    Utils.onId("export-modal-download", (el) => {
         el.onclick = async () => {
             const scope = document.querySelector('input[name="export-scope"]:checked');
             const branchName = scope && scope.value !== "full" ? scope.value : null;
@@ -781,7 +748,7 @@ function bindExportModalEvents() {
 }
 
 function bindResetEvents() {
-    onId("reset-genealogy-btn", (el) => {
+    Utils.onId("reset-genealogy-btn", (el) => {
         el.onclick = async () => {
             if (!confirm("Clear all genealogy data? This cannot be undone.")) return;
             try {
@@ -823,7 +790,7 @@ function bindResetEvents() {
 }
 
 function bindLayoutEvents() {
-    onId("fit-btn", (el) => {
+    Utils.onId("fit-btn", (el) => {
         el.onclick = () => {
             if (treeNetwork) {
                 treeNetwork.fit({ animation: { duration: 500 } });
@@ -831,7 +798,7 @@ function bindLayoutEvents() {
         };
     });
 
-    onId("hierarchical-btn", (el) => {
+    Utils.onId("hierarchical-btn", (el) => {
         el.onclick = function () {
             if (!hierarchicalLayout) {
                 if (treeNetwork) {
@@ -847,7 +814,7 @@ function bindLayoutEvents() {
         };
     });
 
-    onId("physics-btn", (el) => {
+    Utils.onId("physics-btn", (el) => {
         el.onclick = function () {
             if (hierarchicalLayout) {
                 hierarchicalLayout = false;
@@ -862,7 +829,7 @@ function bindLayoutEvents() {
 }
 
 function bindActionEvents() {
-    onId("load-population-btn", (el) => {
+    Utils.onId("load-population-btn", (el) => {
         el.onclick = () => {
             if (selectedNodeId !== null) {
                 loadPopulation(selectedNodeId);
@@ -870,7 +837,7 @@ function bindActionEvents() {
         };
     });
 
-    onId("focus-current-btn", (el) => {
+    Utils.onId("focus-current-btn", (el) => {
         el.onclick = () => {
             if (currentPopulationId && treeNetwork) {
                 const popId = parseInt(currentPopulationId);
@@ -906,7 +873,45 @@ function bindSliderInput(inputId, valueSpanId, formatter, onValueChange) {
     });
 }
 
-// Initialize physics controls
+// Physics slider config: inputId, valueSpanId, formatter, setPhysics key, negate
+const PHYSICS_SLIDERS = [
+    {
+        inputId: "center-force",
+        valueSpanId: "center-force-value",
+        formatter: (v) => v.toFixed(2),
+        key: "centralGravity",
+        negate: false,
+    },
+    {
+        inputId: "repel-force",
+        valueSpanId: "repel-force-value",
+        formatter: (v) => String(v),
+        key: "gravitationalConstant",
+        negate: true,
+    },
+    {
+        inputId: "link-force",
+        valueSpanId: "link-force-value",
+        formatter: (v) => v.toFixed(2),
+        key: "springConstant",
+        negate: false,
+    },
+    {
+        inputId: "link-distance",
+        valueSpanId: "link-distance-value",
+        formatter: (v) => String(v),
+        key: "springLength",
+        negate: false,
+    },
+    {
+        inputId: "damping",
+        valueSpanId: "damping-value",
+        formatter: (v) => v.toFixed(2),
+        key: "damping",
+        negate: false,
+    },
+];
+
 function initPhysicsControls() {
     const setPhysics = (key, value, negate) => {
         if (treeNetwork && !hierarchicalLayout) {
@@ -917,38 +922,13 @@ function initPhysicsControls() {
             });
         }
     };
-    bindSliderInput(
-        "center-force",
-        "center-force-value",
-        (v) => v.toFixed(2),
-        (v) => setPhysics("centralGravity", v)
-    );
-    bindSliderInput(
-        "repel-force",
-        "repel-force-value",
-        (v) => String(v),
-        (v) => setPhysics("gravitationalConstant", v, true)
-    );
-    bindSliderInput(
-        "link-force",
-        "link-force-value",
-        (v) => v.toFixed(2),
-        (v) => setPhysics("springConstant", v)
-    );
-    bindSliderInput(
-        "link-distance",
-        "link-distance-value",
-        (v) => String(v),
-        (v) => setPhysics("springLength", v)
-    );
-    bindSliderInput(
-        "damping",
-        "damping-value",
-        (v) => v.toFixed(2),
-        (v) => setPhysics("damping", v)
-    );
+    PHYSICS_SLIDERS.forEach((s) => {
+        bindSliderInput(s.inputId, s.valueSpanId, s.formatter, (v) =>
+            setPhysics(s.key, v, s.negate)
+        );
+    });
 
-    onId("show-arrows", (el) => {
+    Utils.onId("show-arrows", (el) => {
         el.addEventListener("change", function (e) {
             if (treeNetwork) {
                 const edges = treeNetwork.body.data.edges;

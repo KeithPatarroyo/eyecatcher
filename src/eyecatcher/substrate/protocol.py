@@ -5,8 +5,8 @@ CPPNs (dual, single), NCAs, CAs, and generic neural nets implement this
 protocol so evolution and API stay substrate-agnostic.
 
 Which API endpoints require which substrate capabilities is documented in
-API_REQUIREMENTS.md in this package (e.g. /api/compile requires compile_to_shader;
-save/time-output/network are dual_cppn-only).
+API_REQUIREMENTS.md (e.g. /api/compile requires compile_to_shader;
+save/time-output/network require capabilities such as network, time_output).
 """
 
 from __future__ import annotations

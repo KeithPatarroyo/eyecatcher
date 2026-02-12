@@ -1,7 +1,7 @@
 /**
  * Shared pure helpers for the frontend.
  * Exposes: formatBytes, escapeHtml, showLoading, safeGetItem, safeSetItem,
- * formatApiError, createListEmptyEl, and constants BYTES_KB, BYTES_MB.
+ * formatApiError, createListEmptyEl, onId, and constants BYTES_KB, BYTES_MB.
  */
 (function () {
     "use strict";
@@ -83,6 +83,16 @@
         return el;
     }
 
+    /**
+     * Run a callback with the element for the given id, if present.
+     * @param {string} id - Element id
+     * @param {function(HTMLElement): void} fn - Callback given the element
+     */
+    function onId(id, fn) {
+        var el = document.getElementById(id);
+        if (el) fn(el);
+    }
+
     window.Utils = {
         formatBytes: formatBytes,
         escapeHtml: escapeHtml,
@@ -91,6 +101,7 @@
         safeSetItem: safeSetItem,
         formatApiError: formatApiError,
         createListEmptyEl: createListEmptyEl,
+        onId: onId,
         BYTES_KB: BYTES_KB,
         BYTES_MB: BYTES_MB,
     };

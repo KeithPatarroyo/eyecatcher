@@ -12,13 +12,13 @@ from .web.app import app
 __all__ = ["app"]
 
 if __name__ == "__main__":
-    from .web.app import DEFAULT_PORT, app, logger
+    from .web.app import DEFAULT_PORT, app, logger, substrate
 
     port = int(os.environ.get("PORT", DEFAULT_PORT))
     debug = os.environ.get("FLASK_ENV") == "development"
     logger.info("=" * 60)
     logger.info("EYECATCHER - Interactive Evolution Server")
-    logger.info("Dual-CPPN Mode: Visual + Time Signal Networks")
+    logger.info("Substrate: %s", substrate.id)
     logger.info("=" * 60)
     logger.info("Starting server... Open http://localhost:%s in your browser", port)
     logger.info("Press Ctrl+C to stop")

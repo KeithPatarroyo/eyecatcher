@@ -47,6 +47,40 @@
     }
 
     /**
+     * Build one list entry: li + preview canvas + info. Options customize class, dataset, prepend/append nodes, and info content.
+     * @param {HTMLLIElement} li
+     * @param {*} item
+     * @param {HTMLCanvasElement} canvas
+     * @param {Object|null} shaderInfo
+     * @param {Object} options - itemClass, dataset (object), prependNodes(li, item), infoContent(item) => string|Node, appendNodes(li, item)
+     * @returns {Object|null} patternData for renderWithSignals or null
+     */
+    function buildPatternListEntry(li, item, canvas, shaderInfo, options) {
+        li.className = options.itemClass || "";
+        if (options.dataset) {
+            Object.keys(options.dataset).forEach((k) => {
+                li.dataset[k] = options.dataset[k];
+            });
+        }
+        if (options.prependNodes) options.prependNodes(li, item);
+        li.appendChild(canvas.parentElement);
+        const info = document.createElement("div");
+        info.className = "info";
+        const content = options.infoContent ? options.infoContent(item) : "";
+        if (typeof content === "string") {
+            info.textContent = content;
+        } else if (content) {
+            info.appendChild(content);
+        }
+        li.appendChild(info);
+        if (options.appendNodes) options.appendNodes(li, item);
+        if (shaderInfo && shaderInfo.shader && _patternRenderer) {
+            return _patternRenderer.setupPattern(canvas, shaderInfo.shader);
+        }
+        return null;
+    }
+
+    /**
      * Render a list into ul with canvas previews; buildLiContent(li, item, canvas, shaderInfo) adds content and returns patternData or null.
      * @param {HTMLUListElement} ul
      * @param {Array} list
@@ -217,30 +251,24 @@
                     _communityPatternsList,
                     shadersByKey,
                     (pat) => pat.id,
-                    (li, pat, canvas, shaderInfo) => {
-                        li.className = "community-item";
-                        li.dataset.idx = String(_communityPatternsList.indexOf(pat));
-                        const checkWrap = document.createElement("div");
-                        checkWrap.className = "check-wrap";
-                        const checkbox = document.createElement("input");
-                        checkbox.type = "checkbox";
-                        checkbox.checked = false;
-                        checkWrap.appendChild(checkbox);
-                        li.appendChild(checkWrap);
-                        li.appendChild(canvas.parentElement);
-                        const info = document.createElement("div");
-                        info.className = "info";
-                        info.textContent =
-                            (pat.name || "Unnamed") + " by " + (pat.creator || "?");
-                        li.appendChild(info);
-                        if (shaderInfo && shaderInfo.shader && _patternRenderer) {
-                            return _patternRenderer.setupPattern(
-                                canvas,
-                                shaderInfo.shader
-                            );
-                        }
-                        return null;
-                    }
+                    (li, pat, canvas, shaderInfo) =>
+                        buildPatternListEntry(li, pat, canvas, shaderInfo, {
+                            itemClass: "community-item",
+                            dataset: {
+                                idx: String(_communityPatternsList.indexOf(pat)),
+                            },
+                            prependNodes: (listItem) => {
+                                const checkWrap = document.createElement("div");
+                                checkWrap.className = "check-wrap";
+                                const checkbox = document.createElement("input");
+                                checkbox.type = "checkbox";
+                                checkbox.checked = false;
+                                checkWrap.appendChild(checkbox);
+                                listItem.appendChild(checkWrap);
+                            },
+                            infoContent: (p) =>
+                                (p.name || "Unnamed") + " by " + (p.creator || "?"),
+                        })
                 );
             }
             document.getElementById("community-list-modal").classList.add("show");
@@ -377,41 +405,40 @@
             submissions,
             shadersByKey,
             (sub) => sub.id,
-            (li, sub, canvas, shaderInfo) => {
-                li.className = "pending-item";
-                li.appendChild(canvas.parentElement);
-                const info = document.createElement("div");
-                info.className = "info";
-                const strong = document.createElement("strong");
-                strong.textContent = sub.name || "Unnamed";
-                info.appendChild(strong);
-                info.appendChild(document.createTextNode(" by "));
-                info.appendChild(document.createTextNode(sub.creator || "?"));
-                li.appendChild(info);
-                const actions = document.createElement("div");
-                actions.className = "actions";
-                const approveBtn = document.createElement("button");
-                approveBtn.type = "button";
-                approveBtn.className = "approve-btn";
-                approveBtn.textContent = "Approve";
-                approveBtn.addEventListener("click", () =>
-                    adminModerate(sub.id, "approve", li)
-                );
-                const rejectBtn = document.createElement("button");
-                rejectBtn.type = "button";
-                rejectBtn.className = "reject-btn";
-                rejectBtn.textContent = "Reject";
-                rejectBtn.addEventListener("click", () =>
-                    adminModerate(sub.id, "reject", li)
-                );
-                actions.appendChild(approveBtn);
-                actions.appendChild(rejectBtn);
-                li.appendChild(actions);
-                if (shaderInfo && shaderInfo.shader && _patternRenderer) {
-                    return _patternRenderer.setupPattern(canvas, shaderInfo.shader);
-                }
-                return null;
-            }
+            (li, sub, canvas, shaderInfo) =>
+                buildPatternListEntry(li, sub, canvas, shaderInfo, {
+                    itemClass: "pending-item",
+                    infoContent: (s) => {
+                        const frag = document.createDocumentFragment();
+                        const strong = document.createElement("strong");
+                        strong.textContent = s.name || "Unnamed";
+                        frag.appendChild(strong);
+                        frag.appendChild(document.createTextNode(" by "));
+                        frag.appendChild(document.createTextNode(s.creator || "?"));
+                        return frag;
+                    },
+                    appendNodes: (listItem, s) => {
+                        const actions = document.createElement("div");
+                        actions.className = "actions";
+                        const approveBtn = document.createElement("button");
+                        approveBtn.type = "button";
+                        approveBtn.className = "approve-btn";
+                        approveBtn.textContent = "Approve";
+                        approveBtn.addEventListener("click", () =>
+                            adminModerate(s.id, "approve", listItem)
+                        );
+                        const rejectBtn = document.createElement("button");
+                        rejectBtn.type = "button";
+                        rejectBtn.className = "reject-btn";
+                        rejectBtn.textContent = "Reject";
+                        rejectBtn.addEventListener("click", () =>
+                            adminModerate(s.id, "reject", listItem)
+                        );
+                        actions.appendChild(approveBtn);
+                        actions.appendChild(rejectBtn);
+                        listItem.appendChild(actions);
+                    },
+                })
         );
     }
 

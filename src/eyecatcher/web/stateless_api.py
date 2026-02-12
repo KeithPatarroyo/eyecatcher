@@ -35,9 +35,9 @@ def init_stateless_api(substrate, engine=None, compiler=None):
     """
     Initialize the stateless API with substrate and optional engine/compiler.
 
-    Substrate is the active evolvable (dual_cppn, etc.). Engine and compiler
-    are set for dual_cppn for shader response building; other substrates may
-    leave them None.
+    Substrate is the active evolvable (dual_cppn, single_cppn, ca, etc.).
+    Engine and compiler are used when the substrate supports them; other
+    substrates may leave them None.
     """
     global _substrate, _engine, _compiler
     _substrate = substrate

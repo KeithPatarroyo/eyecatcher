@@ -2,42 +2,51 @@
 (function () {
     "use strict";
     window.SubstrateAdapterConfig = [
-        {
-            id: "dual_cppn",
-            outputType: "shader",
-            hasSignalControls: true,
-            genomeKeys: ["visual", "time_signal"],
-            capabilities: {
-                save: true,
-                network: true,
-                timeOutput: true,
-                adjustWeight: true,
-            },
-        },
-        {
-            id: "single_cppn",
-            outputType: "shader",
-            hasSignalControls: false,
-            genomeKeys: ["visual"],
-            excludeKeys: ["time_signal"],
-            capabilities: {
-                save: true,
-                network: false,
-                timeOutput: false,
-                adjustWeight: false,
-            },
-        },
-        {
-            id: "ca",
-            outputType: "grid",
-            hasSignalControls: false,
-            genomeKeys: ["rule"],
-            capabilities: {
-                save: true,
-                network: false,
-                timeOutput: false,
-                adjustWeight: false,
-            },
-        },
-    ];
+    {
+        "id": "dual_cppn",
+        "outputType": "shader",
+        "hasSignalControls": true,
+        "genomeKeys": [
+            "visual",
+            "time_signal"
+        ],
+        "capabilities": {
+            "save": true,
+            "network": true,
+            "timeOutput": true,
+            "adjustWeight": true
+        }
+    },
+    {
+        "id": "single_cppn",
+        "outputType": "shader",
+        "hasSignalControls": false,
+        "genomeKeys": [
+            "visual"
+        ],
+        "excludeKeys": [
+            "time_signal"
+        ],
+        "capabilities": {
+            "save": true,
+            "network": false,
+            "timeOutput": false,
+            "adjustWeight": false
+        }
+    },
+    {
+        "id": "ca",
+        "outputType": "grid",
+        "hasSignalControls": false,
+        "genomeKeys": [
+            "rule"
+        ],
+        "capabilities": {
+            "save": true,
+            "network": false,
+            "timeOutput": false,
+            "adjustWeight": false
+        }
+    }
+];
 })();

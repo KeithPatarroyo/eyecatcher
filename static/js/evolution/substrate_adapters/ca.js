@@ -10,7 +10,7 @@
         gridSize: 36,
     };
 
-    function renderCa(patternData, uniformValues, signalState) {
+    function renderCa(patternData, _uniformValues, _signalState) {
         const { gl, program, positionBuffer } = patternData;
         gl.useProgram(program);
 

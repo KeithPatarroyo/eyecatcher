@@ -38,6 +38,41 @@
     };
 
     /**
+     * Default signal state: all toggleable inputs enabled (true).
+     * Used by genealogy thumbnails and anywhere a default CPPN signal state is needed.
+     * @returns {{ time: Object<string, boolean>, visual: Object<string, boolean> }}
+     */
+    EvolutionConfig.getDefaultSignalState = function () {
+        var toggles = this.SIGNAL_TOGGLES;
+        var types = this.NETWORK_TYPES;
+        if (toggles && types && types.length) {
+            var state = { time: {}, visual: {} };
+            types.forEach(function (cppnType) {
+                if (toggles[cppnType] && toggles[cppnType].toggleableInputs) {
+                    toggles[cppnType].toggleableInputs.forEach(function (s) {
+                        state[cppnType][s.id] = true;
+                    });
+                }
+            });
+            return state;
+        }
+        return {
+            time: {
+                raw_time: true,
+                mouse_speed: true,
+                mouse_dist: true,
+                activity: true,
+            },
+            visual: {
+                time: true,
+                mouse_speed: true,
+                mouse_dist: true,
+                activity: true,
+            },
+        };
+    };
+
+    /**
      * Merge server config (from GET /api/config) into EvolutionConfig.
      * Call after fetchConfig() so population limits match the active preset.
      * @param {Object} config - { population_size, max_population_size }
