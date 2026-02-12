@@ -84,6 +84,7 @@ def main() -> None:
     # Use NEAT paths from config (respects EXPERIMENT_CONFIG and experiments.json)
     visual_path = evolution_config.NEAT_CONFIG_PATH
     time_path = evolution_config.NEAT_TIME_CONFIG_PATH
+    print(f"Validating NEAT: visual={visual_path}, time={time_path}", file=sys.stderr)
     validate_neat(root, visual_path, time_path)
 
     data = export_for_frontend()

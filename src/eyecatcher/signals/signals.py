@@ -154,6 +154,28 @@ def default_inputs(signals: Sequence[Signal]) -> dict[str, float]:
     return {s.id: s.default for s in signals}
 
 
+def get_viewer_signal_ids() -> list[str]:
+    """Viewer (or pluggable source) ids. Same set as export_for_frontend SIGNAL_IDS."""
+    seen: set[str] = set()
+    for s in TIME_INPUTS:
+        if _is_toggleable(s):
+            seen.add(s.id)
+    for s in VISUAL_INPUTS:
+        if _is_toggleable(s) and not s._is_derived():
+            seen.add(s.id)
+    return sorted(seen)
+
+
+def get_default_signal_values(
+    time: float = 0.5, **overrides: float
+) -> dict[str, float]:
+    """Default signal values for headless/batch. Keys match get_viewer_signal_ids()."""
+    result = {sid: 0.0 for sid in get_viewer_signal_ids()}
+    result["raw_time"] = time
+    result.update(overrides)
+    return result
+
+
 def export_for_frontend() -> dict:
     """Export signal config for JS. Used by generate_signal_config.py.
 
@@ -176,16 +198,6 @@ def export_for_frontend() -> dict:
             out.append(entry)
         return out
 
-    # SIGNAL_IDS = ids that viewer provides (all toggleable, excluding derived)
-    signal_ids_seen: set[str] = set()
-    for s in TIME_INPUTS:
-        if _is_toggleable(s):
-            signal_ids_seen.add(s.id)
-    for s in VISUAL_INPUTS:
-        if _is_toggleable(s) and not s._is_derived():
-            signal_ids_seen.add(s.id)
-    signal_ids = sorted(signal_ids_seen)
-
     return {
         "SIGNAL_TOGGLES": {
             "time": {"toggleableInputs": toggleable_inputs(TIME_INPUTS)},
@@ -195,5 +207,5 @@ def export_for_frontend() -> dict:
             "visual": [{"id": o.id, "label": o.label} for o in VISUAL_OUTPUTS],
             "time": [{"id": o.id, "label": o.label} for o in TIME_OUTPUTS],
         },
-        "SIGNAL_IDS": signal_ids,
+        "SIGNAL_IDS": get_viewer_signal_ids(),
     }
