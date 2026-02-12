@@ -5,7 +5,7 @@
 - `neat_config_experimental.txt` – visual CPPN (8 inputs, 3 outputs)
 - `neat_config_time_experimental.txt` – time CPPN (5 inputs, 1 output)
 
-**Where paths are set:** Paths are defined in [src/eyecatcher/algorithm/config.py](../../src/eyecatcher/algorithm/config.py) (`NEAT_CONFIG_PATH`, `NEAT_TIME_CONFIG_PATH`). Change those constants to switch to different files in this folder.
+**Where paths are set:** Paths are defined in [src/eyecatcher/algorithm/config.py](../../src/eyecatcher/algorithm/config.py) (`NEAT_CONFIG_PATH`, `NEAT_TIME_CONFIG_PATH`). To switch without editing code, use [config/experiments.json](../experiments.json) and set `EXPERIMENT_CONFIG=preset_name` when starting the server.
 
 **Alternatives:** `neat_config.txt` and `neat_config_time.txt` are alternative configs (e.g. different topology or activation options). Use them by updating the two path constants in `algorithm/config.py`.
 

@@ -39,9 +39,20 @@ Signals are defined in Python only; the frontend config is generated from the re
 3. **NEAT counts:** If you added or removed inputs/outputs, update num_inputs/num_outputs in [config/neat/](config/neat/) (neat_config_experimental.txt, neat_config_time_experimental.txt). The generate script will fail with a clear message if they don’t match the registry.
 4. Restart the server and reload the app.
 
+## Switch experiment (preset)
+
+To run a different experiment without editing code, use **presets** in [config/experiments.json](config/experiments.json). Each preset sets NEAT config paths, population size, and crossover probability. Start the server with:
+
+```bash
+EXPERIMENT_CONFIG=experiment_b python -m eyecatcher.server
+```
+
+If `EXPERIMENT_CONFIG` is unset, the `"default"` preset is used (when the file exists). Add or edit presets in `config/experiments.json`; one restart per experiment.
+
 ## Change NEAT config paths or population size
 
-- [src/eyecatcher/algorithm/config.py](src/eyecatcher/algorithm/config.py) – NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH, DEFAULT_POPULATION_SIZE, CROSSOVER_PROBABILITY, etc. Config files live in [config/neat/](config/neat/); see config/neat/README.md for which are default. Crossover rate (probability of crossover vs mutate-one-parent when producing next generation) is here; gene-level mutation rates are in the NEAT .txt files.
+- [src/eyecatcher/algorithm/config.py](src/eyecatcher/algorithm/config.py) – Built-in defaults and preset loading. [config/experiments.json](config/experiments.json) – Presets (neat_config_path, neat_time_config_path, population_size, crossover_probability). Set `EXPERIMENT_CONFIG` to the preset name to use it.
+- Config files live in [config/neat/](config/neat/); see config/neat/README.md. Crossover rate is in the preset or config.py; gene-level mutation rates are in the NEAT .txt files.
 
 ## Breeding and selection
 
