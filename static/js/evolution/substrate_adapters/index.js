@@ -58,7 +58,7 @@
      * @returns {Promise<{ population: Array }>}
      */
     async function defaultGetDisplayData(adapter, genomes, options) {
-        var ApiClient = typeof window !== "undefined" && window.ApiClient;
+        var ApiClient = window.ApiClient;
         if (!ApiClient) throw new Error("ApiClient not available");
         if (adapter.outputType === "grid") {
             var evalData = await ApiClient.evaluate(genomes);
@@ -110,9 +110,7 @@
         getDisplayData: getDisplayData,
     };
 
-    if (typeof window !== "undefined") {
-        window.SubstrateAdapters = SubstrateAdapters;
-    }
+    window.SubstrateAdapters = SubstrateAdapters;
 
     function buildIsGenomeFormatFromConfig(entry) {
         var genomeKeys = entry.genomeKeys || [];
@@ -150,7 +148,7 @@
         };
     }
 
-    var config = typeof window !== "undefined" && window.SubstrateAdapterConfig;
+    var config = window.SubstrateAdapterConfig;
     if (config && Array.isArray(config) && window.createCppnAdapter) {
         config.forEach(function (entry) {
             var isGenomeFormat = buildIsGenomeFormatFromConfig(entry);
@@ -174,7 +172,7 @@
                 });
             }
         });
-    } else if (typeof window !== "undefined" && window.createCppnAdapter) {
+    } else if (window.createCppnAdapter) {
         register(
             Object.assign(
                 window.createCppnAdapter({

@@ -16,8 +16,7 @@
 
         if (patternData.caRule == null) return;
 
-        const start =
-            (typeof window !== "undefined" && window.CA_ANIMATION_START_TIME) || 0;
+        const start = window.CA_ANIMATION_START_TIME || 0;
         const timeMs =
             typeof performance !== "undefined" ? performance.now() - start : 0;
         const step = Math.floor(timeMs / RENDER_PARAMS.rowIntervalMs);
@@ -66,7 +65,7 @@
         render: renderCa,
     };
 
-    if (typeof window !== "undefined" && window.SubstrateAdapters) {
+    if (window.SubstrateAdapters) {
         window.SubstrateAdapters.register(caAdapter);
     }
 })();

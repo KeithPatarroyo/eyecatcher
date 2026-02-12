@@ -17,7 +17,7 @@
         gl.useProgram(program);
 
         const sig = signalState || { time: {}, visual: {} };
-        const config = typeof window !== "undefined" && window.EvolutionConfig;
+        const config = window.EvolutionConfig;
         const toggles = config && config.SIGNAL_TOGGLES;
         const values = uniformValues || {};
 
@@ -83,7 +83,5 @@
         };
     }
 
-    if (typeof window !== "undefined") {
-        window.createCppnAdapter = createCppnAdapter;
-    }
+    window.createCppnAdapter = createCppnAdapter;
 })();

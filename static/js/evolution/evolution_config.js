@@ -7,10 +7,7 @@
 (function () {
     "use strict";
 
-    var signals =
-        typeof window !== "undefined" && window.EvolutionConfigSignals
-            ? window.EvolutionConfigSignals
-            : null;
+    var signals = window.EvolutionConfigSignals || null;
 
     var EvolutionConfig = {
         // Population (must match backend evolution/config.py)
@@ -56,7 +53,5 @@
         }
     };
 
-    if (typeof window !== "undefined") {
-        window.EvolutionConfig = EvolutionConfig;
-    }
+    window.EvolutionConfig = EvolutionConfig;
 })();
