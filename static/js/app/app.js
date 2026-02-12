@@ -291,8 +291,7 @@
     }
 
     function resolveAdapterAndOutput(outputType, substrateId, genomes) {
-        var SubstrateAdapters =
-            typeof window !== "undefined" && window.SubstrateAdapters;
+        var SubstrateAdapters = window.SubstrateAdapters;
         var adapter = null;
         if (substrateId && SubstrateAdapters && SubstrateAdapters.getAdapter) {
             adapter = SubstrateAdapters.getAdapter(substrateId);
@@ -318,179 +317,6 @@
             outputType: resolvedOutputType,
             substrateId: resolvedSubstrateId,
         };
-    }
-
-    async function loadFromStatelessGenomes(
-        genomes,
-        generationNum,
-        saveToGenealogy,
-        outputType,
-        substrateId
-    ) {
-        if (!genomes || !genomes.length) return;
-        var resolved = resolveAdapterAndOutput(outputType, substrateId, genomes);
-        var resolvedOutputType = resolved.outputType;
-        var resolvedSubstrateId = resolved.substrateId;
-        var adapter = resolved.adapter;
-        if (typeof showLoading !== "undefined") showLoading(true);
-        window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
-        window.GridRenderer.clearGrid(IDS);
-        try {
-            var displayResult = await (window.SubstrateAdapters &&
-            window.SubstrateAdapters.getDisplayData
-                ? window.SubstrateAdapters.getDisplayData(adapter, genomes, {
-                      colorMode: getColorMode(),
-                  })
-                : Promise.reject(
-                      new Error("SubstrateAdapters.getDisplayData not available")
-                  ));
-            var population = displayResult.population || [];
-            var patternsMap = new Map();
-            window.GridRenderer.renderGridFromPopulation(
-                population,
-                IDS,
-                getGridCallbacks(),
-                patternsMap,
-                resolvedSubstrateId
-            );
-            var branchName = window.PopulationState.getState().branchName || "main";
-            var parentId = window.PopulationState.getState().populationId;
-            if (saveToGenealogy) {
-                if (generationNum === 0) {
-                    parentId = null;
-                    window.GenealogySync.syncCurrentPopulationIdToStorage(null);
-                    var counter = window.GenealogySync.getGenealogyBranchCounter();
-                    branchName = counter === 1 ? "main" : "branch-" + counter;
-                    window.GenealogySync.setGenealogyBranchCounter(counter + 1);
-                    window.PopulationState.dispatch({
-                        type: "SET_GENEALOGY",
-                        payload: { populationId: null, branchName: branchName },
-                    });
-                }
-                var fitnessData = population.map(function (p) {
-                    var pat = patternsMap.get(p.id);
-                    return pat ? pat.clicks || 0 : 0;
-                });
-                try {
-                    var data =
-                        await window.GenealogySync.saveCurrentPopulationToGenealogy(
-                            API_URL,
-                            genomes,
-                            generationNum,
-                            branchName,
-                            parentId,
-                            fitnessData,
-                            window.ApiClient.apiFetch,
-                            resolvedSubstrateId
-                        );
-                    if (data && data.population_id != null) {
-                        window.PopulationState.dispatch({
-                            type: "SET_EVOLVE_RESULT",
-                            payload: { populationId: data.population_id },
-                        });
-                        window.GenealogySync.syncCurrentPopulationIdToStorage(
-                            data.population_id
-                        );
-                    }
-                } catch (e) {
-                    console.warn("Genealogy save failed:", e);
-                }
-            }
-            window.PopulationState.dispatch({
-                type: "LOAD_POPULATION",
-                payload: {
-                    population: population,
-                    genomes: genomes,
-                    generationNum: generationNum,
-                    patternsMap: patternsMap,
-                    substrateId: resolvedSubstrateId,
-                    outputType: resolvedOutputType,
-                },
-            });
-            if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
-                window.ViewerControls.updateForSubstrate(resolvedSubstrateId);
-            }
-            if (window.EyecatcherDebug && window.EyecatcherDebug.updateForSubstrate) {
-                window.EyecatcherDebug.updateForSubstrate(resolvedSubstrateId);
-            }
-            var genEl = document.getElementById(IDS.genNum);
-            if (genEl) genEl.textContent = generationNum;
-            updateStats();
-        } catch (e) {
-            console.error(e);
-            showGridError(e.message || "Failed to compile", true);
-        } finally {
-            if (typeof showLoading !== "undefined") showLoading(false);
-            window.PopulationState.dispatch({ type: "SET_LOADING", payload: false });
-        }
-    }
-
-    async function addToGrid(genomes, outputTypeOverride) {
-        if (!genomes || !genomes.length) return;
-        var state = window.PopulationState.getState();
-        var outputType =
-            outputTypeOverride != null
-                ? outputTypeOverride
-                : state.outputType || "shader";
-        var resolved = resolveAdapterAndOutput(outputType, state.substrateId, genomes);
-        var adapter = resolved.adapter;
-        var nextKey = 0;
-        state.patterns.forEach(function (_, id) {
-            nextKey = Math.max(nextKey, id + 1);
-        });
-        var payload = genomes.map(function (g) {
-            var copy = Object.assign({}, g);
-            copy.key = nextKey++;
-            copy.clicks = 0;
-            return copy;
-        });
-        if (typeof showLoading !== "undefined") showLoading(true);
-        window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
-        try {
-            var displayResult = await (window.SubstrateAdapters &&
-            window.SubstrateAdapters.getDisplayData
-                ? window.SubstrateAdapters.getDisplayData(adapter, payload, {
-                      colorMode: getColorMode(),
-                  })
-                : Promise.reject(
-                      new Error("SubstrateAdapters.getDisplayData not available")
-                  ));
-            var population = displayResult.population || [];
-            window.GridRenderer.appendCardsToGrid(
-                population,
-                IDS,
-                getGridCallbacks(),
-                state.patterns,
-                state.substrateId
-            );
-            window.PopulationState.dispatch({
-                type: "ADD_TO_GRID",
-                payload: {
-                    genomes: payload,
-                    population: population,
-                    patternsMap: undefined,
-                },
-            });
-            if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
-                window.ViewerControls.updateForSubstrate(state.substrateId);
-            }
-            if (window.EyecatcherDebug && window.EyecatcherDebug.updateForSubstrate) {
-                window.EyecatcherDebug.updateForSubstrate(state.substrateId);
-            }
-            updateStats();
-        } catch (e) {
-            console.error(e);
-            if (window.Toast) {
-                window.Toast.show(
-                    "Add failed",
-                    e.message || "Failed to compile",
-                    "error"
-                );
-            }
-        } finally {
-            if (typeof showLoading !== "undefined") showLoading(false);
-            window.PopulationState.dispatch({ type: "SET_LOADING", payload: false });
-        }
     }
 
     function evolveGeneration() {
@@ -523,7 +349,7 @@
                     });
                     window.GenealogySync.syncCurrentPopulationIdToStorage(populationId);
                 }
-                loadFromStatelessGenomes(
+                window.GridRenderer.loadFromStatelessGenomes(
                     children,
                     newGenerationNum,
                     false,
@@ -636,6 +462,21 @@
     window.PopulationState.init();
     window.ApiClient.init(API_URL);
 
+    if (window.GridRenderer && window.GridRenderer.init) {
+        window.GridRenderer.init({
+            IDS: IDS,
+            API_URL: API_URL,
+            getGridCallbacks: getGridCallbacks,
+            resolveAdapterAndOutput: resolveAdapterAndOutput,
+            getColorMode: getColorMode,
+            showLoading: function (show) {
+                if (typeof showLoading !== "undefined") showLoading(show);
+            },
+            showGridError: showGridError,
+            updateStats: updateStats,
+        });
+    }
+
     window.ApiClient.fetchConfig()
         .then(function (c) {
             if (window.EvolutionConfig && window.EvolutionConfig.mergeFromServer) {
@@ -650,20 +491,20 @@
         getPatterns: getPatterns,
         patternRenderer: window.PatternRenderer || null,
         viewerControls: window.ViewerControls || null,
-        signalSource: typeof window !== "undefined" ? window.SignalSource : undefined,
+        signalSource: window.SignalSource,
     });
 
     window.PopulationUI.init({
         apiUrl: API_URL,
-        loadFromStatelessGenomes: loadFromStatelessGenomes,
-        addToGrid: addToGrid,
+        loadFromStatelessGenomes: window.GridRenderer.loadFromStatelessGenomes,
+        addToGrid: window.GridRenderer.addToGrid,
         getCurrentGenomesForSave: getCurrentGenomesForSave,
     });
 
     window.CommunityUI.init({
         apiUrl: API_URL,
-        loadFromStatelessGenomes: loadFromStatelessGenomes,
-        addToGrid: addToGrid,
+        loadFromStatelessGenomes: window.GridRenderer.loadFromStatelessGenomes,
+        addToGrid: window.GridRenderer.addToGrid,
         getGenomeForPattern: getGenomeForPattern,
         patternRenderer: window.PatternRenderer || null,
         viewerControls: window.ViewerControls || null,
@@ -683,7 +524,7 @@
         radio.addEventListener("change", function () {
             var data = getCurrentGenomesForSave();
             if (data && data.outputType === "shader") {
-                loadFromStatelessGenomes(
+                window.GridRenderer.loadFromStatelessGenomes(
                     data.genomes,
                     data.generation,
                     false,
@@ -830,7 +671,13 @@
         } else {
             outType = "shader";
         }
-        loadFromStatelessGenomes(genealogyLoad.genomes, genNum, false, outType, subId);
+        window.GridRenderer.loadFromStatelessGenomes(
+            genealogyLoad.genomes,
+            genNum,
+            false,
+            outType,
+            subId
+        );
     } else {
         window.PopulationUI.startNewRandomPopulation();
     }
