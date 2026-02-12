@@ -74,18 +74,17 @@ def validate_neat(root: str, visual_path: str, time_path: str) -> None:
         sys.exit(1)
 
 
-# Default NEAT paths (must match src/eyecatcher/algorithm/config.py)
-NEAT_CONFIG_PATH = "config/neat/neat_config_experimental.txt"
-NEAT_TIME_CONFIG_PATH = "config/neat/neat_config_time_experimental.txt"
-
-
 def main() -> None:
     root = _repo_root()
     sys.path.insert(0, os.path.join(root, "src"))
 
+    from eyecatcher.algorithm import config as evolution_config
     from eyecatcher.signals import export_for_frontend
 
-    validate_neat(root, NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH)
+    # Use NEAT paths from config (respects EXPERIMENT_CONFIG and experiments.json)
+    visual_path = evolution_config.NEAT_CONFIG_PATH
+    time_path = evolution_config.NEAT_TIME_CONFIG_PATH
+    validate_neat(root, visual_path, time_path)
 
     data = export_for_frontend()
     out_path = os.path.join(
