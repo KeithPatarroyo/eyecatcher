@@ -44,6 +44,8 @@ def test_signals_export_for_frontend():
         "activity",
         "mouse_dist",
         "mouse_speed",
+        "mouse_x",
+        "mouse_y",
         "raw_time",
     }
 

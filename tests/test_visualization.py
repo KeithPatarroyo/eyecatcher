@@ -10,8 +10,9 @@ from pathlib import Path
 import neat
 import pytest
 from eyecatcher.algorithm import mutate_single_genome
-from eyecatcher.evaluation import render_genome_network_pdf, render_image
+from eyecatcher.evaluation import render_genome_network_pdf
 from eyecatcher.genome import create_random_genome
+from eyecatcher.substrate import SingleCPPNSubstrate
 from PIL import Image
 
 
@@ -75,7 +76,8 @@ def test_visualization(tmp_path, cppn_engine):
     )
     _save_genome_as_text(genome, str(txt_path), cppn_engine.config)
 
-    img = render_image(genome, cppn_engine.config, resolution=64, time=0.5)
+    single_substrate = SingleCPPNSubstrate()
+    img = single_substrate.render_to_image(genome, resolution=64)
     Image.fromarray(img).save(str(png_path))
 
     assert pkl_path.exists()
@@ -90,7 +92,7 @@ def test_visualization(tmp_path, cppn_engine):
 
     assert png_path.exists()
     assert png_path.stat().st_size > 0
-    assert img.shape == (64, 64, 3), "render_image(resolution=64) returns 64x64x3 RGB"
+    assert img.shape == (64, 64, 3), "render_to_image(64) -> 64x64x3 RGB"
 
     viz_pdf = tmp_path / "test_genome_network.pdf"
     if viz_pdf.exists():

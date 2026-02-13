@@ -1,7 +1,6 @@
 """Tests for dual-CPPN substrate: population, mutation, crossover, query."""
 
 from eyecatcher.algorithm import mutate_single_genome
-from eyecatcher.evaluation.query import query_dual_cppn
 from eyecatcher.genome import (
     DualGenome,
     create_random_genome,
@@ -26,11 +25,9 @@ def test_create_random_dual_genome(cppn_engine):
 
 
 def test_query_dual_cppn_returns_rgb(cppn_engine, random_dual_genome):
-    """query_dual_cppn returns (r, g, b) in 0-1."""
+    """Substrate._query_dual_cppn returns (r, g, b) in 0-1."""
     inputs = {"x": 0.0, "y": 0.0, "raw_time": 0.0}
-    r, g, b = query_dual_cppn(
-        random_dual_genome, cppn_engine.config, cppn_engine.time_config, inputs
-    )
+    r, g, b = cppn_engine._query_dual_cppn(random_dual_genome, inputs)
     assert 0 <= r <= 1
     assert 0 <= g <= 1
     assert 0 <= b <= 1

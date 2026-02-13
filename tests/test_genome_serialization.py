@@ -2,7 +2,6 @@
 
 import pytest
 from eyecatcher.evaluation import extract_network_data
-from eyecatcher.evaluation.query import query_dual_cppn
 from eyecatcher.genome import (
     create_random_dual_genome,
     dual_genome_from_json,
@@ -37,9 +36,8 @@ def test_dual_genome_round_trip_query_consistency(cppn_engine, random_dual_genom
     restored = dual_genome_from_json(data, cppn_engine.config, cppn_engine.time_config)
 
     inputs = {"x": 0.5, "y": 0.5, "raw_time": 0.3}
-    cfg, tcfg = cppn_engine.config, cppn_engine.time_config
-    r0, g0, b0 = query_dual_cppn(random_dual_genome, cfg, tcfg, inputs)
-    r1, g1, b1 = query_dual_cppn(restored, cfg, tcfg, inputs)
+    r0, g0, b0 = cppn_engine._query_dual_cppn(random_dual_genome, inputs)
+    r1, g1, b1 = cppn_engine._query_dual_cppn(restored, inputs)
     assert isinstance(r0, (int, float)) and isinstance(r1, (int, float))
     assert 0 <= r0 <= 1 and 0 <= r1 <= 1
     assert 0 <= g0 <= 1 and 0 <= g1 <= 1

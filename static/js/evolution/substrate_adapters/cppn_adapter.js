@@ -23,26 +23,26 @@
 
         const baseUniforms = new Set();
         if (toggles) {
-            (
-                (window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES) || [
-                    "time",
-                    "visual",
-                ]
-            ).forEach(function (cppnType) {
-                const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
-                if (!inputs) return;
-                inputs.forEach(function (s) {
-                    if (s.uniform && !baseUniforms.has(s.uniform)) {
-                        const loc = gl.getUniformLocation(program, s.uniform);
-                        if (loc !== null) {
-                            const val =
-                                values[s.uniform] !== undefined ? values[s.uniform] : 0;
-                            gl.uniform1f(loc, val);
+            (window.EvolutionConfig.NETWORK_TYPES || ["time", "visual"]).forEach(
+                function (cppnType) {
+                    const inputs =
+                        toggles[cppnType] && toggles[cppnType].toggleableInputs;
+                    if (!inputs) return;
+                    inputs.forEach(function (s) {
+                        if (s.uniform && !baseUniforms.has(s.uniform)) {
+                            const loc = gl.getUniformLocation(program, s.uniform);
+                            if (loc !== null) {
+                                const val =
+                                    values[s.uniform] !== undefined
+                                        ? values[s.uniform]
+                                        : 0;
+                                gl.uniform1f(loc, val);
+                            }
+                            baseUniforms.add(s.uniform);
                         }
-                        baseUniforms.add(s.uniform);
-                    }
-                });
-            });
+                    });
+                }
+            );
         }
 
         ["time", "visual"].forEach(function (cppnType) {

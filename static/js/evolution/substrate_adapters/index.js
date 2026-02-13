@@ -219,46 +219,5 @@
                 });
             }
         });
-    } else if (window.createCppnAdapter) {
-        register(
-            Object.assign(
-                window.createCppnAdapter({
-                    id: "dual_cppn",
-                    outputType: "shader",
-                    isGenomeFormat: function (obj) {
-                        return obj && obj.visual && obj.time_signal;
-                    },
-                    hasSignalControls: true,
-                }),
-                {
-                    capabilities: {
-                        save: true,
-                        network: true,
-                        timeOutput: true,
-                        adjustWeight: true,
-                    },
-                }
-            )
-        );
-        register(
-            Object.assign(
-                window.createCppnAdapter({
-                    id: "single_cppn",
-                    outputType: "shader",
-                    isGenomeFormat: function (obj) {
-                        return obj && obj.visual && !obj.time_signal;
-                    },
-                    hasSignalControls: false,
-                }),
-                {
-                    capabilities: {
-                        save: true,
-                        network: false,
-                        timeOutput: false,
-                        adjustWeight: false,
-                    },
-                }
-            )
-        );
     }
 })();

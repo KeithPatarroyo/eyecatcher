@@ -294,8 +294,6 @@ def api_adjust_weight():
     source_node = data.get("source")
     target_node = data.get("target")
     new_weight = float(data.get("weight", 0))
-    if network_type not in ("visual", "time"):
-        return api_error(f"Unknown network type: {network_type}", 400)
     result = _substrate.adjust_weight(
         ind, network_type, source_node, target_node, new_weight
     )

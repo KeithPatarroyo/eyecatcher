@@ -366,7 +366,7 @@ class GenomeVisualizer:
         num_disabled = len([c for c in genome.connections.values() if not c.enabled])
 
         # Title - positioned closer to plot
-        title = f"CPPN Genome #{genome.key}  |  "
+        title = f"Network #{genome.key}  |  "
         title += (
             f"Nodes: {self.num_inputs}in + {num_hidden}hid + {self.num_outputs}out  |  "
         )

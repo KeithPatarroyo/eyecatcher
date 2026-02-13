@@ -9,7 +9,7 @@ output (HSV/RGB) in _get_color_output_code; signals in signals.py.
 import neat
 
 from ..genome import DualGenome
-from ..signals import TIME_INPUTS, VISUAL_INPUTS
+from ..signals import TIME_INPUTS, VISUAL_DERIVED_INPUTS, VISUAL_INPUTS
 from .compiler_topology import get_enabled_connections, topological_sort
 from .glsl_fragments import ACTIVATION_GLSL_BLOCK
 from .node_code_generator import generate_node_code, generate_time_signal_code
@@ -133,10 +133,14 @@ out vec4 fragColor;
 {ACTIVATION_GLSL_BLOCK}"""
 
     def _glsl_uv_to_cppn(self) -> str:
-        """Convert UV to CPPN coordinate space (-1 to 1)."""
-        return """    float v_x = vUV.x * 2.0 - 1.0;
-    float v_y = vUV.y * 2.0 - 1.0;
-    float v_distance = sqrt(v_x * v_x + v_y * v_y);"""
+        """UV to coord space (-1..1) and derived spatial inputs from registry."""
+        lines = [
+            "    float v_x = vUV.x * 2.0 - 1.0;",
+            "    float v_y = vUV.y * 2.0 - 1.0;",
+        ]
+        for d in VISUAL_DERIVED_INPUTS:
+            lines.append(f"    {d.glsl}")
+        return "\n".join(lines)
 
     def _build_shader(self, main_body: str) -> str:
         """Build complete GLSL shader from header, main body, and color output."""
@@ -172,8 +176,16 @@ void main() {{
                         f"    float {s._glsl_var()} = {src} * uVisualEnable_{s.id};"
                     )
                 else:
-                    src = f"{s.id}_base"
-                    lines.append(f"    {s._glsl_var()} = {src} * uVisualEnable_{s.id};")
+                    # Visual non-time inputs: use uniform inline. If already declared in
+                    # time gating (shared signal: mouse_speed, mouse_dist, activity),
+                    # assign only; otherwise declare.
+                    u = s._uniform()
+                    already_declared = s.id in {t.id for t in TIME_INPUTS}
+                    expr = f"({u} * 2.0 - 1.0) * uVisualEnable_{s.id}"
+                    if already_declared:
+                        lines.append(f"    {s._glsl_var()} = {expr};")
+                    else:
+                        lines.append(f"    float {s._glsl_var()} = {expr};")
             else:
                 u = s._uniform()
                 gvar = s._glsl_var()

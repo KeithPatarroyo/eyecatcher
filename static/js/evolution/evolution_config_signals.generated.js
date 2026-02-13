@@ -49,6 +49,16 @@
                     "id": "activity",
                     "label": "Activity",
                     "uniform": "u_activity"
+                },
+                {
+                    "id": "mouse_x",
+                    "label": "Mouse X",
+                    "uniform": "u_mouse_x"
+                },
+                {
+                    "id": "mouse_y",
+                    "label": "Mouse Y",
+                    "uniform": "u_mouse_y"
                 }
             ]
         }
@@ -79,6 +89,8 @@
         "activity",
         "mouse_dist",
         "mouse_speed",
+        "mouse_x",
+        "mouse_y",
         "raw_time"
     ]
 };

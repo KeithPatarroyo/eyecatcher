@@ -26,7 +26,6 @@ from eyecatcher.algorithm import (
 )
 from eyecatcher.algorithm.reproduction import produce_next_generation
 from eyecatcher.evaluation.fitness import get_fitness, list_fitness
-from eyecatcher.evaluation.rendering import render_image
 from PIL import Image
 
 
@@ -35,8 +34,6 @@ def _render_for_save(substrate, ind):
     img = substrate.render_to_image(ind, resolution=PREVIEW_RENDER_RESOLUTION)
     if img is not None:
         return img
-    if hasattr(substrate, "config"):
-        return render_image(ind, substrate.config, resolution=PREVIEW_RENDER_RESOLUTION)
     out = substrate.evaluate(ind, {})
     if out.output_type == "grid" and hasattr(out.data, "shape"):
         arr = np.asarray(out.data)

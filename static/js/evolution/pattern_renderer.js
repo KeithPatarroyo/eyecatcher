@@ -1,7 +1,7 @@
 /**
  * Pattern Renderer Module for Eyecatcher
  *
- * WebGL 2 setup, shader compilation, and pattern draw for dual-CPPN fragment shaders.
+ * WebGL 2 setup, shader compilation, and pattern draw for fragment shaders.
  * Used by the main grid and by community/population previews.
  *
  * Dependencies: none (signal state passed into renderPattern).
@@ -103,21 +103,18 @@
         const config = window.EvolutionConfig;
         const toggles = config && config.SIGNAL_TOGGLES;
         if (!toggles || !signalValues) return out;
-        (
-            (window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES) || [
-                "time",
-                "visual",
-            ]
-        ).forEach(function (cppnType) {
-            const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
-            if (!inputs) return;
-            inputs.forEach(function (s) {
-                if (s.uniform && !s.derived) {
-                    out[s.uniform] =
-                        signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
-                }
-            });
-        });
+        (window.EvolutionConfig.NETWORK_TYPES || ["time", "visual"]).forEach(
+            function (cppnType) {
+                const inputs = toggles[cppnType] && toggles[cppnType].toggleableInputs;
+                if (!inputs) return;
+                inputs.forEach(function (s) {
+                    if (s.uniform && !s.derived) {
+                        out[s.uniform] =
+                            signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
+                    }
+                });
+            }
+        );
         return out;
     }
 

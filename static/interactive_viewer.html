@@ -180,7 +180,7 @@
             <div id="time-mode-controls">
                 <div class="signal-group-title">
                     Time signal
-                    <span class="signal-hint">(raw input; CPPN modifies it)</span>
+                    <span class="signal-hint">(raw input; time signal modifies it)</span>
                 </div>
                 <div class="time-mode-radios">
                     <div class="time-mode-radio">
@@ -473,7 +473,7 @@
             </div>
             <div id="debug-time-output-section">
                 <h4 class="debug-section debug-section--small">
-                    Time CPPN → Visual CPPN
+                    Time Signal → Visual
                 </h4>
                 <div class="debug-row">
                     <span class="debug-label debug-time-output">Time (output):</span>
@@ -491,7 +491,7 @@
 
         <template id="grid-error-tpl">
             <div class="grid-error">
-                <div class="grid-error__title">Could not load CPPN patterns</div>
+                <div class="grid-error__title">Could not load patterns</div>
                 <div class="grid-error__message"></div>
                 <div class="grid-error__hint">
                     Start the server: <code>python server.py</code><br />Then open

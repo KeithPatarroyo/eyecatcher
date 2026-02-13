@@ -6,20 +6,16 @@ from __future__ import annotations
 
 import io
 import json
-import os
 import pickle
 from typing import Any, Callable
 
 import neat
 import numpy as np
 
-from .. import get_root_dir
 from ..algorithm import DEFAULT_RENDER_RESOLUTION
 from ..algorithm import config as evolution_config
 from ..algorithm.operators import crossover_dual_genomes, mutate_dual_genome
 from ..evaluation import extract_network_data, parse_network_node_id
-from ..evaluation.query import query_dual_cppn
-from ..evaluation.rendering import _render_pixel_grid
 from ..genome import (
     DualGenome,
     create_random_dual_genome,
@@ -27,16 +23,24 @@ from ..genome import (
     dual_genome_to_json,
 )
 from ..glsl import ShaderCompiler
-from ..signals.activation import register_custom_activations
 from ..signals.signals import (
     TIME_INPUTS,
     TIME_OUTPUTS,
+    VISUAL_DERIVED_INPUTS,
     VISUAL_INPUTS,
     VISUAL_OUTPUTS,
+    VISUAL_TIME_INPUT_NAME,
     default_inputs,
+    get_default_signal_values,
     parse_time_inputs,
 )
-from ..signals.validation import validate_neat_config
+from .cppn_base import (
+    _load_neat_config,
+    base_evaluate,
+    compile_with_color_mode,
+    query_neat_network,
+    render_pixel_grid,
+)
 from .protocol import OutputType, SubstrateOutput
 
 
@@ -69,33 +73,20 @@ class DualCPPNSubstrate:
         color_mode: str = "hsv",
         **kwargs: Any,
     ) -> None:
-        neat_config_path = neat_config_path or evolution_config.NEAT_CONFIG_PATH
-        time_config_path = time_config_path or evolution_config.NEAT_TIME_CONFIG_PATH
-        root = get_root_dir()
-        if not os.path.isabs(neat_config_path):
-            neat_config_path = os.path.join(root, neat_config_path)
-        if not os.path.isabs(time_config_path):
-            time_config_path = os.path.join(root, time_config_path)
-
-        self.config = neat.Config(
-            neat.DefaultGenome,
-            neat.DefaultReproduction,
-            neat.DefaultSpeciesSet,
-            neat.DefaultStagnation,
+        self.config = _load_neat_config(
             neat_config_path,
+            evolution_config.NEAT_CONFIG_PATH,
+            VISUAL_INPUTS,
+            VISUAL_OUTPUTS,
+            "visual",
         )
-        register_custom_activations(self.config)
-        self.time_config = neat.Config(
-            neat.DefaultGenome,
-            neat.DefaultReproduction,
-            neat.DefaultSpeciesSet,
-            neat.DefaultStagnation,
+        self.time_config = _load_neat_config(
             time_config_path,
+            evolution_config.NEAT_TIME_CONFIG_PATH,
+            TIME_INPUTS,
+            TIME_OUTPUTS,
+            "time",
         )
-        register_custom_activations(self.time_config)
-        validate_neat_config(self.config, VISUAL_INPUTS, VISUAL_OUTPUTS, "visual")
-        validate_neat_config(self.time_config, TIME_INPUTS, TIME_OUTPUTS, "time")
-
         self._population = neat.Population(self.config)
         self._time_population = neat.Population(self.time_config)
         self.population = self._population
@@ -114,18 +105,48 @@ class DualCPPNSubstrate:
     def evaluate(
         self, ind: DualGenome, inputs: dict[str, float], **kwargs: Any
     ) -> SubstrateOutput:
-        """Return shader output for display (real-time path uses compile_to_shader)."""
-        glsl = self.compile_to_shader(ind)
-        out = SubstrateOutput("shader", glsl) if glsl else SubstrateOutput("shader", "")
-        return out
+        return base_evaluate(lambda i: self.compile_to_shader(i), ind)
 
     def compile_to_shader(
         self, ind: DualGenome, color_mode: str | None = None
     ) -> str | None:
-        if color_mode and color_mode != self.compiler.color_mode:
-            alt = ShaderCompiler(color_mode=color_mode)
-            return alt.compile_dual_to_glsl(ind, self.config, self.time_config)
-        return self.compiler.compile_dual_to_glsl(ind, self.config, self.time_config)
+        return compile_with_color_mode(
+            self.compiler,
+            ind,
+            color_mode,
+            lambda c, i, cfg, tc: c.compile_dual_to_glsl(i, cfg, tc),
+            ind,
+            self.config,
+            self.time_config,
+        )
+
+    def _query_time_signal(
+        self, time_genome: neat.DefaultGenome, inputs: dict[str, float]
+    ) -> float:
+        out = query_neat_network(time_genome, self.time_config, TIME_INPUTS, [], inputs)
+        return max(-1.0, min(1.0, out[0]))
+
+    def _query_visual_rgb(
+        self, ind: DualGenome, inputs: dict[str, float]
+    ) -> tuple[float, float, float]:
+        out = query_neat_network(
+            ind.visual,
+            self.config,
+            VISUAL_INPUTS,
+            VISUAL_DERIVED_INPUTS,
+            inputs,
+        )
+        r = max(0.0, min(1.0, (out[0] + 1.0) / 2.0))
+        g = max(0.0, min(1.0, (out[1] + 1.0) / 2.0))
+        b = max(0.0, min(1.0, (out[2] + 1.0) / 2.0))
+        return r, g, b
+
+    def _query_dual_cppn(
+        self, ind: DualGenome, inputs: dict[str, float]
+    ) -> tuple[float, float, float]:
+        modified_time = self._query_time_signal(ind.time_signal, inputs)
+        visual_inputs = {**inputs, VISUAL_TIME_INPUT_NAME: modified_time}
+        return self._query_visual_rgb(ind, visual_inputs)
 
     def sample_rgb(
         self,
@@ -133,14 +154,11 @@ class DualCPPNSubstrate:
         coords: list[tuple[float, float]],
         time: float = 0.0,
     ) -> list[list[float]]:
-        from ..evaluation.query import query_dual_cppn
-        from ..signals.signals import get_default_signal_values
-
         samples = []
         base = get_default_signal_values(time)
         for x, y in coords:
             inputs = {"x": x, "y": y, **base}
-            r, g, b = query_dual_cppn(ind, self.config, self.time_config, inputs)
+            r, g, b = self._query_dual_cppn(ind, inputs)
             samples.append([r, g, b])
         return samples
 
@@ -151,16 +169,15 @@ class DualCPPNSubstrate:
         extra_inputs: dict[str, float] | None = None,
         **kwargs: Any,
     ) -> np.ndarray:
-        """Render dual CPPN to RGB image array."""
         if resolution is None:
             resolution = DEFAULT_RENDER_RESOLUTION
         base = default_inputs(TIME_INPUTS)
         if extra_inputs:
             base.update(extra_inputs)
-        return _render_pixel_grid(
+        return render_pixel_grid(
             resolution,
             base,
-            lambda inputs: query_dual_cppn(ind, self.config, self.time_config, inputs),
+            lambda inputs: self._query_dual_cppn(ind, inputs),
         )
 
     def to_json(self, ind: DualGenome) -> dict[str, Any]:
@@ -170,7 +187,6 @@ class DualCPPNSubstrate:
         return dual_genome_from_json(data, self.config, self.time_config)
 
     def get_compile_stats(self, ind: DualGenome) -> dict[str, Any] | None:
-        """Return per-network node/connection counts for compile response."""
         v_nodes = len(ind.visual.nodes)
         v_conns = len([c for c in ind.visual.connections.values() if c.enabled])
         t_nodes = len(ind.time_signal.nodes)
@@ -252,11 +268,9 @@ class DualCPPNSubstrate:
     def query_time_output(
         self, ind: DualGenome, inputs: dict[str, float]
     ) -> dict[str, Any] | None:
-        from ..evaluation.query import query_time_signal
-
         response_inputs = parse_time_inputs(inputs, bipolar=False)
         time_inputs = parse_time_inputs(inputs, bipolar=True)
-        out = query_time_signal(ind.time_signal, self.time_config, time_inputs)
+        out = self._query_time_signal(ind.time_signal, time_inputs)
         return {"timeOutput": out, "inputs": response_inputs}
 
     def get_network_data(self, ind: DualGenome) -> dict[str, Any] | None:

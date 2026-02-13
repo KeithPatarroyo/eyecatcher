@@ -1,4 +1,4 @@
-"""Central registry of CPPN input and output signals.
+"""Central registry of network input and output signals.
 
 Defines VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS so that
 query, glsl (shader compiler), serialization, and genome_visualizer consume one
@@ -29,7 +29,7 @@ def _is_toggleable(s: Signal) -> bool:
 
 @dataclass(frozen=True)
 class Signal:
-    """CPPN input signal. id used everywhere; GLSL gets u_/v_ prefix in compiler."""
+    """Network input signal. id used everywhere; GLSL gets u_/v_ prefix in compiler."""
 
     id: str
     label: str
@@ -48,21 +48,23 @@ class Signal:
 
 @dataclass(frozen=True)
 class Output:
-    """Single CPPN output."""
+    """Single network output."""
 
     id: str
     label: str
 
 
-# Visual CPPN: 8 inputs (x, y, distance, time, mouse_speed, mouse_dist, activity, bias)
+# Visual network: 10 inputs (x, y, distance, time, mouse_*, activity, mouse_x/y, bias)
 VISUAL_INPUTS: list[Signal] = [
     Signal("x", "x", 0.0, True),
     Signal("y", "y", 0.0, True),
     Signal("distance", "distance", 0.0, True),
-    Signal("time", "Time", 0.0, False),  # derived from Time CPPN
+    Signal("time", "Time", 0.0, False),  # derived from time signal network
     Signal("mouse_speed", "Mouse Speed"),
     Signal("mouse_dist", "Mouse Dist"),
     Signal("activity", "Activity"),
+    Signal("mouse_x", "Mouse X"),
+    Signal("mouse_y", "Mouse Y"),
     Signal("bias", "Bias", 1.0),
 ]
 
@@ -94,20 +96,36 @@ NETWORK_SIGNALS: dict[str, tuple[list[Signal], list[Output]]] = {
 VISUAL_TIME_INPUT_NAME: str = "time"
 TIME_CPPN_TIME_INPUT_NAME: str = TIME_INPUTS[0].id
 
+
+@dataclass(frozen=True)
+class DerivedInput:
+    """Derived spatial input: id, dependencies, Python compute fn, and GLSL snippet."""
+
+    id: str
+    deps: tuple[str, ...]
+    compute: Callable[..., float]
+    glsl: str  # GLSL line(s) computing v_{id} from v_{dep} / u_{dep} vars
+
+
 # Derived inputs: computed from other inputs when not provided.
-# List of (output_signal_id, (dependency_ids, ...), compute_fn).
-VISUAL_DERIVED_INPUTS: list[tuple[str, tuple[str, ...], Callable[..., float]]] = [
-    ("distance", ("x", "y"), lambda x, y: math.sqrt(x * x + y * y)),
+# Single source of truth for Python evaluation and GLSL generation.
+VISUAL_DERIVED_INPUTS: list[DerivedInput] = [
+    DerivedInput(
+        id="distance",
+        deps=("x", "y"),
+        compute=lambda x, y: math.sqrt(x * x + y * y),
+        glsl="float v_distance = sqrt(v_x * v_x + v_y * v_y);",
+    ),
 ]
 
 
 def apply_derived_inputs(values: dict[str, float], derived: list) -> None:
     """Fill in derived signal values when dependencies are present. Mutates values."""
-    for name, deps, fn in derived:
-        if name in values:
+    for d in derived:
+        if d.id in values:
             continue
-        if all(d in values for d in deps):
-            values[name] = float(fn(*[values[d] for d in deps]))
+        if all(dep in values for dep in d.deps):
+            values[d.id] = float(d.compute(*[values[dep] for dep in d.deps]))
 
 
 def input_labels(signals: Sequence[Signal]) -> list[str]:
@@ -142,7 +160,7 @@ def build_glsl_input_map(signals: Sequence[Signal]) -> dict:
 
 def inputs_array(signals: Sequence[Signal], values: dict) -> list[float]:
     """
-    Build the input array for a CPPN from a dict of signal id -> value.
+    Build the input array for a network from a dict of signal id -> value.
 
     Missing keys use Signal.default. Viewer sends keys matching signal ids.
     """

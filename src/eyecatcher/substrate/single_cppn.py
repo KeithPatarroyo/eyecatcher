@@ -7,23 +7,33 @@ Individual = neat.DefaultGenome. Output = shader.
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, Callable
 
 import neat
 import numpy as np
 
-from .. import get_root_dir
 from ..algorithm import DEFAULT_RENDER_RESOLUTION
 from ..algorithm import config as evolution_config
 from ..algorithm.operators import crossover_single_genomes, mutate_single_genome
-from ..evaluation.rendering import render_image
 from ..genome.genome import create_random_genome
 from ..genome.serialization import genome_from_json, genome_to_json
 from ..glsl import ShaderCompiler
-from ..signals.activation import register_custom_activations
-from ..signals.signals import VISUAL_INPUTS, VISUAL_OUTPUTS
-from ..signals.validation import validate_neat_config
+from ..lib.math_utils import normalize_to_bipolar
+from ..signals.signals import (
+    VISUAL_DERIVED_INPUTS,
+    VISUAL_INPUTS,
+    VISUAL_OUTPUTS,
+    VISUAL_TIME_INPUT_NAME,
+    default_inputs,
+    get_default_signal_values,
+)
+from .cppn_base import (
+    _load_neat_config,
+    base_evaluate,
+    compile_with_color_mode,
+    query_neat_network,
+    render_pixel_grid,
+)
 from .protocol import OutputType, SubstrateOutput
 
 
@@ -56,21 +66,13 @@ class SingleCPPNSubstrate:
         color_mode: str = "hsv",
         **kwargs: Any,
     ) -> None:
-        neat_config_path = neat_config_path or evolution_config.NEAT_CONFIG_PATH
-        root = get_root_dir()
-        if not os.path.isabs(neat_config_path):
-            neat_config_path = os.path.join(root, neat_config_path)
-        self.config = neat.Config(
-            neat.DefaultGenome,
-            neat.DefaultReproduction,
-            neat.DefaultSpeciesSet,
-            neat.DefaultStagnation,
+        self.config = _load_neat_config(
             neat_config_path,
+            evolution_config.NEAT_CONFIG_PATH,
+            VISUAL_INPUTS,
+            VISUAL_OUTPUTS,
+            "visual",
         )
-        register_custom_activations(self.config)
-        validate_neat_config(self.config, VISUAL_INPUTS, VISUAL_OUTPUTS, "visual")
-        # Prime config with innovation tracker (required by NEAT for
-        # create_random/mutate/crossover)
         self._population = neat.Population(self.config)
         self.compiler = ShaderCompiler(color_mode=color_mode)
 
@@ -92,18 +94,30 @@ class SingleCPPNSubstrate:
     def evaluate(
         self, ind: neat.DefaultGenome, inputs: dict[str, float], **kwargs: Any
     ) -> SubstrateOutput:
-        glsl = self.compile_to_shader(ind)
-        if glsl:
-            return SubstrateOutput("shader", glsl)
-        return SubstrateOutput("shader", "")
+        return base_evaluate(lambda i: self.compile_to_shader(i), ind)
 
     def compile_to_shader(
         self, ind: neat.DefaultGenome, color_mode: str | None = None
     ) -> str | None:
-        if color_mode and color_mode != self.compiler.color_mode:
-            alt = ShaderCompiler(color_mode=color_mode)
-            return alt.compile_to_glsl(ind, self.config)
-        return self.compiler.compile_to_glsl(ind, self.config)
+        return compile_with_color_mode(
+            self.compiler,
+            ind,
+            color_mode,
+            lambda c, i, cfg: c.compile_to_glsl(i, cfg),
+            ind,
+            self.config,
+        )
+
+    def _query_visual_rgb(
+        self, ind: neat.DefaultGenome, inputs: dict[str, float]
+    ) -> tuple[float, float, float]:
+        out = query_neat_network(
+            ind, self.config, VISUAL_INPUTS, VISUAL_DERIVED_INPUTS, inputs
+        )
+        r = max(0.0, min(1.0, (out[0] + 1.0) / 2.0))
+        g = max(0.0, min(1.0, (out[1] + 1.0) / 2.0))
+        b = max(0.0, min(1.0, (out[2] + 1.0) / 2.0))
+        return r, g, b
 
     def sample_rgb(
         self,
@@ -111,14 +125,11 @@ class SingleCPPNSubstrate:
         coords: list[tuple[float, float]],
         time: float = 0.0,
     ) -> list[list[float]]:
-        from ..evaluation.query import query_visual_cppn
-        from ..signals.signals import VISUAL_TIME_INPUT_NAME, get_default_signal_values
-
         samples = []
         sigs = get_default_signal_values(time)
         for x, y in coords:
             inputs = {"x": x, "y": y, VISUAL_TIME_INPUT_NAME: time * 2.0 - 1.0, **sigs}
-            r, g, b = query_visual_cppn(ind, self.config, inputs)
+            r, g, b = self._query_visual_rgb(ind, inputs)
             samples.append([r, g, b])
         return samples
 
@@ -128,9 +139,12 @@ class SingleCPPNSubstrate:
         resolution: int | None = None,
         **kwargs: Any,
     ) -> np.ndarray:
-        """Render single CPPN to RGB image array."""
-        return render_image(
-            ind, self.config, resolution=resolution or DEFAULT_RENDER_RESOLUTION
+        if resolution is None:
+            resolution = DEFAULT_RENDER_RESOLUTION
+        base = default_inputs(VISUAL_INPUTS)
+        base[VISUAL_TIME_INPUT_NAME] = normalize_to_bipolar(0.0)
+        return render_pixel_grid(
+            resolution, base, lambda inputs: self._query_visual_rgb(ind, inputs)
         )
 
     def to_json(self, ind: neat.DefaultGenome) -> dict[str, Any]:
@@ -154,7 +168,7 @@ class SingleCPPNSubstrate:
         if not callable(to_png_bytes):
             return {}
         shader_code = self.compile_to_shader(ind) or ""
-        img = render_image(ind, self.config, resolution=DEFAULT_RENDER_RESOLUTION)
+        img = self.render_to_image(ind, resolution=DEFAULT_RENDER_RESOLUTION)
         names = self.get_save_filenames(individual_id)
         return {
             names["png"]: to_png_bytes(img),

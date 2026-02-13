@@ -22,7 +22,7 @@ def test_canonical_package_imports():
 
 def test_new_submodule_imports():
     """Test that new submodules are importable directly."""
-    from eyecatcher.evaluation.rendering import render_image
+    from eyecatcher.evaluation import render_genome_network_pdf
     from eyecatcher.genome import DualGenome
     from eyecatcher.signals import VISUAL_INPUTS
     from eyecatcher.substrate import DualCPPNSubstrate
@@ -30,7 +30,7 @@ def test_new_submodule_imports():
     assert DualCPPNSubstrate is not None
     assert DualGenome is not None
     assert VISUAL_INPUTS is not None
-    assert render_image is not None
+    assert render_genome_network_pdf is not None
     substrate = DualCPPNSubstrate()
     assert callable(getattr(substrate, "render_to_image", None))
 

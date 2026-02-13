@@ -50,11 +50,20 @@
     function buildDefaultSignalValues(context) {
         const canvas = context && context.canvas;
         const mouse_dist = canvas ? getMouseDistanceToCanvas(canvas) : 0;
+        const rect = canvas ? canvas.getBoundingClientRect() : null;
+        const mouse_x = rect
+            ? Math.min(1.0, Math.max(0.0, (mouseX - rect.left) / rect.width))
+            : 0.5;
+        const mouse_y = rect
+            ? Math.min(1.0, Math.max(0.0, (mouseY - rect.top) / rect.height))
+            : 0.5;
         return {
             raw_time: animationTime,
             mouse_speed: mouseSpeed,
             mouse_dist: mouse_dist,
             activity: activity,
+            mouse_x: mouse_x,
+            mouse_y: mouse_y,
         };
     }
 
