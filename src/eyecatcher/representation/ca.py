@@ -14,7 +14,10 @@ from typing import Any, Callable
 
 import numpy as np
 
+from ..signals import catalog
+from ..signals.spec import SignalSpec
 from .protocol import OutputType, RepresentationOutput
+from .sockets import GridSocket
 
 # Default grid size for genome and simulation (same size).
 DEFAULT_GRID_SIZE = 64
@@ -82,6 +85,10 @@ class ConwayRepresentation:
     """
     Representation for Conway's Game of Life (2D).
     Individual = ConwayGenome (initial grid); output = grid (H×W×3 RGB).
+
+    Declares interaction signals (mouse_x, mouse_y) in its signal_spec.
+    Internal routing maps these to the toggleMask / onCellInteraction
+    mechanism on the frontend.
     """
 
     id = "ca"
@@ -100,6 +107,19 @@ class ConwayRepresentation:
     ) -> None:
         self.grid_size = grid_size
         self.gol_steps = gol_steps
+
+        # -- Socket: interaction signal translation --
+        self.interaction = GridSocket(
+            "interaction",
+            inputs=catalog.CA_INTERACTION_INPUTS,
+            grid_size=grid_size,
+        )
+
+        # -- Public signal spec (socket-centric) --
+        self.signal_spec = SignalSpec(
+            sockets=(self.interaction,),
+            outputs=(),
+        )
 
     def create_random(self, key: int = 0) -> ConwayGenome:
         n = self.grid_size
