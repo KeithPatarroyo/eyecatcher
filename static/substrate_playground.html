@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Substrate Playground – Eyecatcher</title>
+        <style>
+            body {
+                font-family: system-ui, sans-serif;
+                margin: 1rem;
+                background: #1a1a1a;
+                color: #e0e0e0;
+            }
+            h1 {
+                font-size: 1.25rem;
+                margin-bottom: 0.5rem;
+            }
+            .wrap {
+                display: flex;
+                gap: 1rem;
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+            .panel {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .panel label {
+                display: block;
+                font-size: 0.85rem;
+            }
+            canvas {
+                display: block;
+                background: #000;
+                border: 1px solid #444;
+            }
+            textarea {
+                width: 420px;
+                height: 280px;
+                font-family: monospace;
+                font-size: 12px;
+                background: #252525;
+                color: #e0e0e0;
+                border: 1px solid #444;
+                padding: 6px;
+                resize: vertical;
+            }
+            input[type="range"] {
+                width: 120px;
+            }
+            .uniforms {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+                align-items: center;
+            }
+            .uniforms label {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            .uniforms span {
+                min-width: 2.5rem;
+                font-variant-numeric: tabular-nums;
+            }
+            #error {
+                color: #f66;
+                font-size: 0.9rem;
+                white-space: pre-wrap;
+                max-width: 420px;
+            }
+            #clickCoords {
+                font-size: 0.85rem;
+                color: #8af;
+            }
+            button {
+                padding: 0.35rem 0.75rem;
+                cursor: pointer;
+                background: #333;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                border-radius: 4px;
+            }
+            button:hover {
+                background: #444;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Substrate Playground</h1>
+        <p style="font-size: 0.9rem; color: #999">
+            Edit the fragment shader and see the result. <strong>Time</strong> runs
+            automatically (0–1 loop). <strong>Mouse</strong> over the canvas drives
+            <code>u_mouse_x</code> / <code>u_mouse_y</code>; sliders apply when the
+            pointer is outside the canvas. Click to see normalized coordinates.
+        </p>
+        <div class="wrap">
+            <div class="panel">
+                <label>Fragment shader (GLSL 300 es)</label>
+                <textarea id="fragSource" spellcheck="false"></textarea>
+                <div id="error"></div>
+                <div class="uniforms">
+                    <label
+                        >raw_time <span style="color: #888">(auto)</span>
+                        <input
+                            type="range"
+                            id="u_raw_time"
+                            min="0"
+                            max="100"
+                            value="50"
+                        /><span id="v_raw_time">0.5</span></label
+                    >
+                    <label
+                        >mouse_x
+                        <input
+                            type="range"
+                            id="u_mouse_x"
+                            min="0"
+                            max="100"
+                            value="50"
+                        /><span id="v_mouse_x">0.5</span></label
+                    >
+                    <label
+                        >mouse_y
+                        <input
+                            type="range"
+                            id="u_mouse_y"
+                            min="0"
+                            max="100"
+                            value="50"
+                        /><span id="v_mouse_y">0.5</span></label
+                    >
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center">
+                    <button type="button" id="reloadBtn">Reload shader</button>
+                    <span id="clickCoords"></span>
+                </div>
+            </div>
+            <div class="panel">
+                <label>Preview (512×512)</label>
+                <canvas id="canvas" width="512" height="512"></canvas>
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                "use strict";
+
+                var VERTEX_SOURCE =
+                    "#version 300 es\nin vec2 position;\nout vec2 vUV;\nvoid main() { vUV = position * 0.5 + 0.5; gl_Position = vec4(position, 0.0, 1.0); }\n";
+                var DEFAULT_FRAG =
+                    "#version 300 es\nprecision highp float;\nin vec2 vUV;\nuniform float u_raw_time;\nuniform float u_mouse_x;\nuniform float u_mouse_y;\nout vec4 fragColor;\nvoid main() {\n  float t = u_raw_time;\n  float mx = u_mouse_x, my = u_mouse_y;\n  float d = length(vUV - vec2(mx, my));\n  vec3 c = 0.5 + 0.5 * cos(t + 3.0 * d + vec3(0, 2, 4));\n  fragColor = vec4(c, 1.0);\n}\n";
+
+                var canvas = document.getElementById("canvas");
+                var fragSource = document.getElementById("fragSource");
+                var errorEl = document.getElementById("error");
+                var clickCoords = document.getElementById("clickCoords");
+
+                fragSource.value = DEFAULT_FRAG;
+
+                var mouseOverCanvas = false;
+                var mouseNormX = 0.5;
+                var mouseNormY = 0.5;
+
+                function getUniforms() {
+                    var t = (performance.now() / 1000) % 1;
+                    var mx = mouseOverCanvas
+                        ? mouseNormX
+                        : parseInt(document.getElementById("u_mouse_x").value, 10) /
+                          100;
+                    var my = mouseOverCanvas
+                        ? mouseNormY
+                        : parseInt(document.getElementById("u_mouse_y").value, 10) /
+                          100;
+                    return {
+                        u_raw_time: t,
+                        u_mouse_x: mx,
+                        u_mouse_y: my,
+                    };
+                }
+
+                function compileProgram(gl, vertSrc, fragSrc) {
+                    var vs = gl.createShader(gl.VERTEX_SHADER);
+                    gl.shaderSource(vs, vertSrc);
+                    gl.compileShader(vs);
+                    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+                        gl.deleteShader(vs);
+                        return { error: "Vertex: " + gl.getShaderInfoLog(vs) };
+                    }
+                    var fs = gl.createShader(gl.FRAGMENT_SHADER);
+                    gl.shaderSource(fs, fragSrc);
+                    gl.compileShader(fs);
+                    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+                        gl.deleteShader(vs);
+                        gl.deleteShader(fs);
+                        return { error: "Fragment: " + gl.getShaderInfoLog(fs) };
+                    }
+                    var prog = gl.createProgram();
+                    gl.attachShader(prog, vs);
+                    gl.attachShader(prog, fs);
+                    gl.linkProgram(prog);
+                    gl.deleteShader(vs);
+                    gl.deleteShader(fs);
+                    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+                        gl.deleteProgram(prog);
+                        return { error: "Link: " + gl.getProgramInfoLog(prog) };
+                    }
+                    return { program: prog };
+                }
+
+                var gl = canvas.getContext("webgl2");
+                if (!gl) {
+                    errorEl.textContent = "WebGL 2 not supported.";
+                    return;
+                }
+
+                var positionBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                gl.bufferData(
+                    gl.ARRAY_BUFFER,
+                    new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+                    gl.STATIC_DRAW
+                );
+
+                var currentProgram = null;
+
+                function tryCompile() {
+                    if (currentProgram) gl.deleteProgram(currentProgram);
+                    currentProgram = null;
+                    var result = compileProgram(gl, VERTEX_SOURCE, fragSource.value);
+                    if (result.error) {
+                        errorEl.textContent = result.error;
+                        return;
+                    }
+                    errorEl.textContent = "";
+                    currentProgram = result.program;
+                }
+
+                function draw() {
+                    if (!currentProgram) return;
+                    gl.useProgram(currentProgram);
+                    var u = getUniforms();
+                    ["u_raw_time", "u_mouse_x", "u_mouse_y"].forEach(function (name) {
+                        var loc = gl.getUniformLocation(currentProgram, name);
+                        if (loc !== null) gl.uniform1f(loc, u[name]);
+                    });
+                    var posLoc = gl.getAttribLocation(currentProgram, "position");
+                    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                    gl.enableVertexAttribArray(posLoc);
+                    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+                    gl.clearColor(0, 0, 0, 1);
+                    gl.clear(gl.COLOR_BUFFER_BIT);
+                    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                }
+
+                document
+                    .getElementById("reloadBtn")
+                    .addEventListener("click", function () {
+                        tryCompile();
+                        draw();
+                    });
+
+                ["u_raw_time", "u_mouse_x", "u_mouse_y"].forEach(function (id) {
+                    var r = document.getElementById(id);
+                    var v = document.getElementById("v_" + id.replace("u_", ""));
+                    r.addEventListener("input", function () {
+                        v.textContent = (parseInt(r.value, 10) / 100).toFixed(2);
+                        draw();
+                    });
+                });
+
+                function updateMouseFromEvent(e) {
+                    var rect = canvas.getBoundingClientRect();
+                    mouseNormX = (e.clientX - rect.left) / rect.width;
+                    mouseNormY = 1 - (e.clientY - rect.top) / rect.height;
+                }
+                canvas.addEventListener("mouseenter", function () {
+                    mouseOverCanvas = true;
+                });
+                canvas.addEventListener("mouseleave", function () {
+                    mouseOverCanvas = false;
+                });
+                canvas.addEventListener("mousemove", function (e) {
+                    updateMouseFromEvent(e);
+                });
+                canvas.addEventListener("click", function (e) {
+                    updateMouseFromEvent(e);
+                    clickCoords.textContent =
+                        "Click: x=" +
+                        mouseNormX.toFixed(3) +
+                        " y=" +
+                        mouseNormY.toFixed(3);
+                });
+
+                tryCompile();
+                function loop() {
+                    draw();
+                    requestAnimationFrame(loop);
+                }
+                requestAnimationFrame(loop);
+            })();
+        </script>
+    </body>
+</html>
