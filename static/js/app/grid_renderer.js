@@ -5,6 +5,117 @@
  * Dependencies: window.PatternRenderer.createPatternCard, window.PopulationState, window.SubstrateAdapters, etc.
  * Exposes: init, clearGrid, renderGridFromPopulation, appendCardsToGrid, patternCardCallbacks, loadFromStatelessGenomes, addToGrid
  */
+
+/**
+ * GridTopology: tracks which pattern is at which row/col position in the grid
+ * and provides neighbor lookups. Used by the animation loop to pass neighbor
+ * context to adapter lifecycle hooks (onBeforeRender, onAfterRender).
+ *
+ * Exposes: window.GridTopology.getPosition(patternId), getNeighbors(patternId),
+ *   getAll(), getColumns(), rebuild(gridElement)
+ */
+(function () {
+    "use strict";
+
+    /** @type {Map<number|string, { row: number, col: number }>} */
+    var _positions = new Map();
+    var _columns = 0;
+
+    /**
+     * Rebuild the topology from the current grid DOM.
+     * Call this after renderGridFromPopulation or appendCardsToGrid.
+     * @param {HTMLElement} gridElement - The grid container element
+     */
+    function rebuild(gridElement) {
+        _positions.clear();
+        _columns = 0;
+        if (!gridElement) return;
+
+        var cards = gridElement.querySelectorAll(".pattern-card");
+        if (!cards.length) return;
+
+        // Detect number of columns from CSS grid layout
+        var style = window.getComputedStyle(gridElement);
+        var templateCols = style.getPropertyValue("grid-template-columns");
+        if (templateCols && templateCols !== "none") {
+            _columns = templateCols.split(/\s+/).filter(Boolean).length;
+        }
+        if (_columns === 0) {
+            // Fallback: count cards in the first row by matching top offset
+            var firstTop = cards[0].getBoundingClientRect().top;
+            for (var c = 0; c < cards.length; c++) {
+                if (cards[c].getBoundingClientRect().top !== firstTop) break;
+                _columns++;
+            }
+        }
+        if (_columns === 0) _columns = 1;
+
+        for (var i = 0; i < cards.length; i++) {
+            var id = cards[i].dataset.id;
+            if (id !== undefined) {
+                var numId = parseInt(id, 10);
+                var key = isNaN(numId) ? id : numId;
+                _positions.set(key, {
+                    row: Math.floor(i / _columns),
+                    col: i % _columns,
+                });
+            }
+        }
+    }
+
+    /**
+     * Get the grid position of a pattern.
+     * @param {number|string} patternId
+     * @returns {{ row: number, col: number } | null}
+     */
+    function getPosition(patternId) {
+        return _positions.get(patternId) || null;
+    }
+
+    /**
+     * Get the IDs of the four neighbors (top, bottom, left, right) of a pattern.
+     * Returns null for edges where no neighbor exists.
+     * @param {number|string} patternId
+     * @returns {{ top: number|string|null, bottom: number|string|null, left: number|string|null, right: number|string|null } | null}
+     */
+    function getNeighbors(patternId) {
+        var pos = _positions.get(patternId);
+        if (!pos) return null;
+        var result = { top: null, bottom: null, left: null, right: null };
+        _positions.forEach(function (p, id) {
+            if (p.col === pos.col && p.row === pos.row - 1) result.top = id;
+            if (p.col === pos.col && p.row === pos.row + 1) result.bottom = id;
+            if (p.row === pos.row && p.col === pos.col - 1) result.left = id;
+            if (p.row === pos.row && p.col === pos.col + 1) result.right = id;
+        });
+        return result;
+    }
+
+    /**
+     * Get all positions as a Map<patternId, { row, col }>.
+     * @returns {Map}
+     */
+    function getAll() {
+        return new Map(_positions);
+    }
+
+    /**
+     * Get the current number of columns in the grid.
+     * @returns {number}
+     */
+    function getColumns() {
+        return _columns;
+    }
+
+    window.GridTopology = {
+        rebuild: rebuild,
+        getPosition: getPosition,
+        getNeighbors: getNeighbors,
+        getAll: getAll,
+        getColumns: getColumns,
+    };
+})();
+
 (function () {
     "use strict";
 
@@ -13,6 +124,7 @@
     function clearGrid(ids) {
         var grid = ids && ids.grid ? document.getElementById(ids.grid) : null;
         if (grid) grid.innerHTML = "";
+        if (window.GridTopology) window.GridTopology.rebuild(null);
     }
 
     function _notifySubstrateChange(substrateId) {
@@ -61,8 +173,14 @@
             program: pd ? pd.program : null,
             positionBuffer: pd ? pd.positionBuffer : null,
             clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
+            patternId: pattern.id,
         };
-        if (pd && pd.caRule !== undefined) entry.caRule = pd.caRule;
+        if (pd) {
+            if (pd.caRule !== undefined) entry.caRule = pd.caRule;
+            if (pd.grid !== undefined) entry.grid = pd.grid;
+            if (pd.toggleMask !== undefined) entry.toggleMask = pd.toggleMask;
+        }
+        if (pattern.grid !== undefined) entry.grid = pattern.grid;
         return entry;
     }
 
@@ -75,15 +193,50 @@
     ) {
         var PatternRenderer = window.PatternRenderer;
         if (!PatternRenderer || !PatternRenderer.createPatternCard) return;
+        var SA = window.SubstrateAdapters;
+        var resolved =
+            SA && SA.safeResolve
+                ? SA.safeResolve({ substrateId: substrateId })
+                : { adapter: null };
+        var adapter = resolved.adapter;
         population.forEach(function (pattern) {
             var result = PatternRenderer.createPatternCard(
                 patternCardCallbacks(pattern, callbacks, substrateId)
             );
             grid.appendChild(result.card);
+            var entry = _buildPatternMapEntry(pattern, result);
+            if (adapter && typeof adapter.onSetup === "function" && entry.gl) {
+                adapter.onSetup(entry, entry.gl);
+            }
             if (pattern.id !== undefined) {
-                patternsMap.set(pattern.id, _buildPatternMapEntry(pattern, result));
+                patternsMap.set(pattern.id, entry);
             }
         });
+        if (
+            adapter &&
+            adapter.id === "ca" &&
+            typeof adapter.gridOverlap === "function"
+        ) {
+            var entries = Array.from(patternsMap.values());
+            for (var i = 0; i < entries.length; i++) {
+                var ei = entries[i];
+                if (!ei.grid) continue;
+                var bestId = null;
+                var bestOverlap = 0;
+                for (var j = 0; j < entries.length; j++) {
+                    if (i === j) continue;
+                    var ej = entries[j];
+                    if (!ej.grid) continue;
+                    var ov = adapter.gridOverlap(ei.grid, ej.grid);
+                    if (ov > bestOverlap && ov < 1) {
+                        bestOverlap = ov;
+                        bestId = ej.patternId;
+                    }
+                }
+                ei._mostSimilarId = bestId;
+                ei._mostSimilarOverlap = bestOverlap;
+            }
+        }
     }
 
     /**
@@ -102,6 +255,7 @@
         var grid = ids && ids.grid ? document.getElementById(ids.grid) : null;
         if (!grid || !population || !population.length) return map;
         _appendPatternCards(population, grid, callbacks, map, substrateId);
+        if (window.GridTopology) window.GridTopology.rebuild(grid);
         return map;
     }
 
@@ -112,6 +266,7 @@
         var grid = ids && ids.grid ? document.getElementById(ids.grid) : null;
         if (!grid || !population || !population.length || !patternsMap) return;
         _appendPatternCards(population, grid, callbacks, patternsMap, substrateId);
+        if (window.GridTopology) window.GridTopology.rebuild(grid);
     }
 
     function loadFromStatelessGenomes(

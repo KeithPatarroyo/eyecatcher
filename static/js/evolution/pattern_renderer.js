@@ -95,8 +95,10 @@
     /**
      * Build uniform values from signal values. Delegates to adapter.buildUniforms when present (CPPN);
      * otherwise returns empty object (e.g. grid adapters do not use uniforms).
+     * @param {Object} signalValues - Signal-id-keyed values from getValues
+     * @param {Object} [context] - Optional RenderContext (gridPosition, neighbors, patternId) for context-derived uniforms
      */
-    function buildUniformValues(signalValues) {
+    function buildUniformValues(signalValues, context) {
         var state =
             window.PopulationState &&
             window.PopulationState.getState &&
@@ -108,7 +110,7 @@
                 ? SA.safeResolve({ substrateId: substrateId })
                 : window.__eyecatcherDefaultResolution || { adapter: null };
         if (resolved.adapter && typeof resolved.adapter.buildUniforms === "function") {
-            return resolved.adapter.buildUniforms(signalValues);
+            return resolved.adapter.buildUniforms(signalValues, context);
         }
         return {};
     }
@@ -120,22 +122,27 @@
      * @param {Object} patternRenderer - Module with buildUniformValues and renderPattern (usually PatternRenderer)
      * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
      * @param {HTMLCanvasElement} [contextCanvas] - Optional canvas for per-pattern signal context (e.g. mouse_dist)
+     * @param {Object} [context] - Optional RenderContext (gridPosition, neighbors, patternId) passed to getValues and buildUniformValues
      */
     function renderWithSignals(
         patternData,
         patternRenderer,
         signalState,
-        contextCanvas
+        contextCanvas,
+        context
     ) {
         const getSource = window.getSignalSource;
+        const signalContext = context
+            ? { canvas: contextCanvas || (context && context.canvas), ...context }
+            : contextCanvas != null
+              ? { canvas: contextCanvas }
+              : {};
         const signalValues = (getSource &&
             getSource().getValues &&
-            getSource().getValues(
-                contextCanvas != null ? { canvas: contextCanvas } : {}
-            )) || { raw_time: 0.5 };
+            getSource().getValues(signalContext)) || { raw_time: 0.5 };
         const uniformValues =
             patternRenderer.buildUniformValues &&
-            patternRenderer.buildUniformValues(signalValues);
+            patternRenderer.buildUniformValues(signalValues, context);
         const u = uniformValues || signalValues;
         if (patternRenderer.renderPattern) {
             patternRenderer.renderPattern(patternData, u, signalState);
@@ -155,14 +162,10 @@
             window.PopulationState.getState &&
             window.PopulationState.getState();
         var substrateId = state ? state.substrateId : null;
-        var genomes =
-            patternData && patternData.caRule != null
-                ? [{ rule: patternData.caRule }]
-                : [];
         var SA = window.SubstrateAdapters;
         var resolved =
             SA && SA.safeResolve
-                ? SA.safeResolve({ substrateId: substrateId, genomes: genomes })
+                ? SA.safeResolve({ substrateId: substrateId, genomes: [] })
                 : window.__eyecatcherDefaultResolution || { adapter: null };
         var adapter = resolved.adapter;
         if (adapter && typeof adapter.render === "function") {
@@ -182,15 +185,41 @@
     }
 
     function attachCardEvents(card, id, options) {
+        var canvas = card.querySelector("canvas");
+        var SA = window.SubstrateAdapters;
+        var resolved =
+            SA && SA.safeResolve
+                ? SA.safeResolve({ substrateId: options.substrateId })
+                : { adapter: null };
+        var adapter = resolved.adapter;
+        var hasCellInteraction =
+            adapter && typeof adapter.onCellInteraction === "function";
+
         if (options.onClick) {
-            card.addEventListener("click", function () {
+            card.addEventListener("click", function (e) {
+                if (canvas && e.target === canvas && hasCellInteraction) {
+                    _fireCellInteraction(e, canvas, options.substrateId, id, "click");
+                    return;
+                }
                 options.onClick(id, card);
+                _fireCellInteraction(e, canvas, options.substrateId, id, "click");
             });
         }
         if (options.onUnclick) {
             card.addEventListener("contextmenu", function (e) {
                 e.preventDefault();
+                if (canvas && e.target === canvas && hasCellInteraction) {
+                    _fireCellInteraction(
+                        e,
+                        canvas,
+                        options.substrateId,
+                        id,
+                        "contextmenu"
+                    );
+                    return;
+                }
                 options.onUnclick(id, card);
+                _fireCellInteraction(e, canvas, options.substrateId, id, "contextmenu");
             });
         }
         if (options.onMouseEnter) {
@@ -202,6 +231,53 @@
             card.addEventListener("mouseleave", function () {
                 options.onMouseLeave(id);
             });
+        }
+    }
+
+    /**
+     * Fire onCellInteraction on the adapter if it supports it.
+     * @param {MouseEvent} event
+     * @param {HTMLCanvasElement|null} canvas
+     * @param {string|null} substrateId
+     * @param {number} patternId
+     * @param {string} interactionType - "click" or "contextmenu"
+     */
+    function _fireCellInteraction(
+        event,
+        canvas,
+        substrateId,
+        patternId,
+        interactionType
+    ) {
+        if (!canvas) return;
+        var SA = window.SubstrateAdapters;
+        var resolved =
+            SA && SA.safeResolve
+                ? SA.safeResolve({ substrateId: substrateId })
+                : { adapter: null };
+        var adapter = resolved.adapter;
+        if (adapter && typeof adapter.onCellInteraction === "function") {
+            var coords = getClickCoordinates(event, canvas);
+            var state =
+                window.PopulationState &&
+                window.PopulationState.getState &&
+                window.PopulationState.getState();
+            var patternsMap = state ? state.patterns : null;
+            var patternData = null;
+            if (patternsMap) {
+                patternData = patternsMap.get(patternId);
+                if (
+                    patternData == null &&
+                    typeof patternId === "string" &&
+                    /^\d+$/.test(patternId)
+                ) {
+                    patternData = patternsMap.get(parseInt(patternId, 10));
+                }
+                if (patternData == null && typeof patternId === "number") {
+                    patternData = patternsMap.get(String(patternId));
+                }
+            }
+            adapter.onCellInteraction(patternData, coords.x, coords.y, interactionType);
         }
     }
 
@@ -234,8 +310,11 @@
         var adapter = resolved.adapter;
         const id = pattern.id;
         const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;
+        const hasCellInteraction =
+            adapter && typeof adapter.onCellInteraction === "function";
         const card = document.createElement("div");
-        card.className = "pattern-card";
+        card.className =
+            "pattern-card" + (hasCellInteraction ? " pattern-card--interactive" : "");
         card.dataset.id = id;
 
         const info = document.createElement("div");
@@ -243,7 +322,8 @@
         const meta = document.createElement("div");
         meta.className = "pattern-meta";
         if (adapter && typeof adapter.getMetaLabel === "function") {
-            meta.textContent = "ID: " + id + " | " + adapter.getMetaLabel(pattern);
+            var idPrefix = adapter.id === "ca" ? "Pattern " : "ID: ";
+            meta.textContent = idPrefix + id + " | " + adapter.getMetaLabel(pattern);
         } else {
             meta.textContent =
                 pattern.image != null
@@ -364,11 +444,175 @@
         return { card: card, canvas: null, patternData: null };
     }
 
+    // -- FBO helpers for stateful substrates (NCA, etc.) --
+
+    /**
+     * Create a framebuffer object (FBO) with an attached RGBA float texture.
+     * Use for ping-pong rendering in stateful substrates like NCA.
+     * @param {WebGL2RenderingContext} gl
+     * @param {number} width - Texture width in pixels
+     * @param {number} height - Texture height in pixels
+     * @returns {{ fbo: WebGLFramebuffer, texture: WebGLTexture, width: number, height: number }}
+     */
+    function createFBO(gl, width, height) {
+        var texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            width,
+            height,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            null
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        var fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            texture,
+            0
+        );
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+
+        return { fbo: fbo, texture: texture, width: width, height: height };
+    }
+
+    /**
+     * Swap two FBO objects (for ping-pong rendering).
+     * Returns { read, write } where read was the previous write and vice versa.
+     * @param {{ fbo: WebGLFramebuffer, texture: WebGLTexture }} a
+     * @param {{ fbo: WebGLFramebuffer, texture: WebGLTexture }} b
+     * @returns {{ read: Object, write: Object }}
+     */
+    function swapFBOs(a, b) {
+        return { read: b, write: a };
+    }
+
+    /**
+     * Destroy an FBO and its attached texture.
+     * @param {WebGL2RenderingContext} gl
+     * @param {{ fbo: WebGLFramebuffer, texture: WebGLTexture }} fboObj
+     */
+    function destroyFBO(gl, fboObj) {
+        if (fboObj.fbo) gl.deleteFramebuffer(fboObj.fbo);
+        if (fboObj.texture) gl.deleteTexture(fboObj.texture);
+    }
+
+    /**
+     * Read pixels along one edge of an FBO and return average RGB (0-1).
+     * Uses the FBO's gl context; call from adapter onBeforeRender when reading a neighbor's edge.
+     * @param {WebGL2RenderingContext} gl - Context that owns the FBO
+     * @param {{ fbo: WebGLFramebuffer, texture: WebGLTexture, width: number, height: number }} fboObj - From createFBO
+     * @param {string} edge - "top" | "bottom" | "left" | "right"
+     * @param {number} width - FBO width (use fboObj.width)
+     * @param {number} height - FBO height (use fboObj.height)
+     * @returns {{ r: number, g: number, b: number }} Average RGB in 0-1 range
+     */
+    function readEdgePixels(gl, fboObj, edge, width, height) {
+        if (!fboObj || !fboObj.fbo) return { r: 0, g: 0, b: 0 };
+        var w = width || fboObj.width || 1;
+        var h = height || fboObj.height || 1;
+        var x = 0,
+            y = 0,
+            readW = 1,
+            readH = 1;
+        if (edge === "top") {
+            x = 0;
+            y = h - 1;
+            readW = w;
+            readH = 1;
+        } else if (edge === "bottom") {
+            x = 0;
+            y = 0;
+            readW = w;
+            readH = 1;
+        } else if (edge === "left") {
+            x = 0;
+            y = 0;
+            readW = 1;
+            readH = h;
+        } else if (edge === "right") {
+            x = w - 1;
+            y = 0;
+            readW = 1;
+            readH = h;
+        } else {
+            return { r: 0, g: 0, b: 0 };
+        }
+        var pixelCount = readW * readH;
+        var pixels = new Uint8Array(pixelCount * 4);
+        var prevFbo = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fboObj.fbo);
+        gl.readPixels(x, y, readW, readH, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, prevFbo);
+        var r = 0,
+            g = 0,
+            b = 0;
+        for (var i = 0; i < pixelCount; i++) {
+            r += pixels[i * 4] / 255;
+            g += pixels[i * 4 + 1] / 255;
+            b += pixels[i * 4 + 2] / 255;
+        }
+        return {
+            r: r / pixelCount,
+            g: g / pixelCount,
+            b: b / pixelCount,
+        };
+    }
+
+    /**
+     * Get patternData for a pattern by id (e.g. a neighbor). Used by adapters in onBeforeRender to read neighbor FBOs.
+     * @param {number|string} patternId
+     * @returns {Object|null} patternData from PopulationState.patterns, or null
+     */
+    function getNeighborPatternData(patternId) {
+        var state =
+            window.PopulationState &&
+            window.PopulationState.getState &&
+            window.PopulationState.getState();
+        var patterns = state ? state.patterns : null;
+        return (patterns && patterns.get && patterns.get(patternId)) || null;
+    }
+
+    // -- Click coordinate extraction --
+
+    /**
+     * Extract normalized (0-1) coordinates from a mouse/click event relative to a canvas.
+     * @param {MouseEvent} event
+     * @param {HTMLCanvasElement} canvas
+     * @returns {{ x: number, y: number }} - Normalized coordinates (0-1 range, origin top-left)
+     */
+    function getClickCoordinates(event, canvas) {
+        var rect = canvas.getBoundingClientRect();
+        return {
+            x: Math.min(1.0, Math.max(0.0, (event.clientX - rect.left) / rect.width)),
+            y: Math.min(1.0, Math.max(0.0, (event.clientY - rect.top) / rect.height)),
+        };
+    }
+
     window.PatternRenderer = {
         setupPattern,
         buildUniformValues,
         renderWithSignals,
         renderPattern,
         createPatternCard,
+        createFBO,
+        swapFBOs,
+        destroyFBO,
+        readEdgePixels,
+        getNeighborPatternData,
+        getClickCoordinates,
     };
 })();
