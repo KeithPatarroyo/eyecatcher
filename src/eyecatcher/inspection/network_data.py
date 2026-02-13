@@ -5,15 +5,12 @@ Produces node/connection lists from genomes for visualization.
 Used by substrate get_network_data, genome_visualizer.
 """
 
+from collections.abc import Sequence
 from typing import Any, Optional
 
 import neat
 
-from ..signals.registry import (
-    NETWORK_SIGNALS,
-    input_labels,
-    output_labels,
-)
+from ..signals.spec import Output, Signal, input_labels, output_labels
 
 
 def _append_nodes_for_layer(
@@ -48,18 +45,22 @@ def _append_nodes_for_layer(
 
 def extract_network_data(
     genome: neat.DefaultGenome,
-    network_type: str,
+    signals: Sequence[Signal],
+    outputs: Sequence[Output],
     neat_config: neat.Config,
     x_offset: float = 0,
+    network_type: str = "main",
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
     Extract nodes and connections from a genome for network visualization.
 
     Args:
         genome: NEAT DefaultGenome for any network type.
-        network_type: Key for NETWORK_SIGNALS (e.g. "visual", "time").
+        signals: Input signal list for this network (from representation).
+        outputs: Output signal list for this network (from representation).
         neat_config: NEAT config for this genome.
         x_offset: X offset for layout (e.g. 0 for first network, 1000 for second).
+        network_type: Label for the network (e.g. "visual", "time", "main").
 
     Returns:
         (nodes, connections) as lists of dicts with id, label, type, etc.
@@ -68,7 +69,6 @@ def extract_network_data(
     node_id_map = {}
     num_inputs = neat_config.genome_config.num_inputs
     num_outputs = neat_config.genome_config.num_outputs
-    signals, outputs = NETWORK_SIGNALS[network_type]
     input_label_list = input_labels(signals)
     input_list = [
         (-(i + 1), input_label_list[i] if i < len(input_label_list) else f"Input {i}")
