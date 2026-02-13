@@ -1,35 +1,33 @@
 """
-Signal definitions and utilities for CPPN inputs/outputs.
+Signal definitions and utilities for representation inputs/outputs.
+
+Public API: spec primitives (Signal, Output, DerivedInput, SignalSpec),
+catalog presets, and registry helpers that take spec/signal lists explicitly.
 """
 
+from . import catalog
 from .registry import (
-    NETWORK_SIGNALS,
-    TIME_CPPN_TIME_INPUT_NAME,
-    TIME_INPUTS,
-    TIME_OUTPUTS,
-    VISUAL_DERIVED_INPUTS,
-    VISUAL_INPUTS,
-    VISUAL_OUTPUTS,
-    VISUAL_TIME_INPUT_NAME,
     apply_derived_inputs,
     build_glsl_input_map,
     default_inputs,
     export_for_frontend,
+    get_default_signal_values,
+    get_viewer_signal_ids,
     input_labels,
     input_names,
     output_labels,
     parse_time_inputs,
 )
+from .socket import Socket
+from .spec import DerivedInput, Output, Signal, SignalSpec
 
 __all__ = [
-    "VISUAL_INPUTS",
-    "TIME_INPUTS",
-    "VISUAL_OUTPUTS",
-    "TIME_OUTPUTS",
-    "NETWORK_SIGNALS",
-    "VISUAL_TIME_INPUT_NAME",
-    "TIME_CPPN_TIME_INPUT_NAME",
-    "VISUAL_DERIVED_INPUTS",
+    "Signal",
+    "Output",
+    "DerivedInput",
+    "SignalSpec",
+    "Socket",
+    "catalog",
     "apply_derived_inputs",
     "export_for_frontend",
     "input_labels",
@@ -37,5 +35,7 @@ __all__ = [
     "input_names",
     "build_glsl_input_map",
     "default_inputs",
+    "get_default_signal_values",
+    "get_viewer_signal_ids",
     "parse_time_inputs",
 ]
