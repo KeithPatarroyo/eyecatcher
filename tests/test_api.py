@@ -1,7 +1,7 @@
 """Tests for Flask API endpoints using test client."""
 
 import pytest
-from eyecatcher.substrate import create_random_dual_genome, dual_genome_to_json
+from eyecatcher.representation import create_random_dual_genome, dual_genome_to_json
 
 
 def test_health(client):
@@ -11,25 +11,25 @@ def test_health(client):
 
 
 def test_api_random(client):
-    """POST /api/random with size returns genomes and output_type."""
+    """POST /api/random with size returns individuals and output_type."""
     rv = client.post("/api/random", json={"size": 3})
     assert rv.status_code == 200
     data = rv.get_json()
-    assert "genomes" in data
+    assert "individuals" in data
     assert "output_type" in data
-    assert len(data["genomes"]) == 3
-    for g in data["genomes"]:
+    assert len(data["individuals"]) == 3
+    for g in data["individuals"]:
         assert "key" in g
         assert "visual" in g
         assert "time_signal" in g
 
 
 def test_api_evaluate(client):
-    """POST /api/evaluate returns results (shader or grid per substrate)."""
+    """POST /api/evaluate returns results (shader or grid per representation)."""
     rv = client.post("/api/random", json={"size": 2})
     assert rv.status_code == 200
-    genomes = rv.get_json()["genomes"]
-    rv = client.post("/api/evaluate", json={"genomes": genomes})
+    individuals = rv.get_json()["individuals"]
+    rv = client.post("/api/evaluate", json={"individuals": individuals})
     assert rv.status_code == 200
     data = rv.get_json()
     assert "results" in data
@@ -47,12 +47,11 @@ def test_api_evaluate(client):
 
 @pytest.mark.slow
 def test_api_compile(client):
-    """POST /api/compile with genomes returns shaders."""
-    # Get genomes first
+    """POST /api/compile with individuals returns shaders."""
     rv = client.post("/api/random", json={"size": 2})
     assert rv.status_code == 200
-    genomes = rv.get_json()["genomes"]
-    rv = client.post("/api/compile", json={"genomes": genomes})
+    individuals = rv.get_json()["individuals"]
+    rv = client.post("/api/compile", json={"individuals": individuals})
     assert rv.status_code == 200
     data = rv.get_json()
     assert "shaders" in data
@@ -66,8 +65,8 @@ def test_api_evolve(client):
     """POST /api/evolve with parents returns children."""
     rv = client.post("/api/random", json={"size": 2})
     assert rv.status_code == 200
-    genomes = rv.get_json()["genomes"]
-    parents = [{"genome": g, "clicks": 1} for g in genomes]
+    individuals = rv.get_json()["individuals"]
+    parents = [{"individual": g, "clicks": 1} for g in individuals]
     rv = client.post(
         "/api/evolve",
         json={"parents": parents, "population_size": 4},
@@ -78,14 +77,14 @@ def test_api_evolve(client):
     assert len(data["children"]) == 4
 
 
-def test_api_evolve_without_genealogy(client, substrate):
+def test_api_evolve_without_genealogy(client, representation):
     """Evolve without parent_population_id returns children only, no population_id."""
     dual = create_random_dual_genome(
-        substrate.config, substrate.time_config, genome_id=0
+        representation.config, representation.time_config, genome_id=0
     )
-    genome = dual_genome_to_json(dual)
-    genome["key"] = 0
-    parents = [{"genome": genome, "clicks": 0}]
+    ind_json = dual_genome_to_json(dual)
+    ind_json["key"] = 0
+    parents = [{"individual": ind_json, "clicks": 0}]
     rv = client.post(
         "/api/evolve",
         json={"parents": parents, "population_size": 2},
@@ -111,27 +110,27 @@ def test_api_evolve_empty_parents(client):
 
 
 def test_api_evolve_malformed_parents(client):
-    """POST /api/evolve with invalid genome in parents returns 400."""
+    """POST /api/evolve with invalid individual in parents returns 400."""
     rv = client.post(
         "/api/evolve",
-        json={"parents": [{"genome": "not a genome", "clicks": 0}]},
+        json={"parents": [{"individual": "not an individual", "clicks": 0}]},
     )
     assert rv.status_code == 400
     assert "no valid parents" in rv.get_json().get("error", "").lower()
 
 
 @pytest.mark.slow
-def test_api_evolve_with_genealogy(client, genealogy_db, substrate):
+def test_api_evolve_with_genealogy(client, genealogy_db, representation):
     """Evolve with parent_population_id saves to genealogy and returns population_id."""
     dual = create_random_dual_genome(
-        substrate.config, substrate.time_config, genome_id=0
+        representation.config, representation.time_config, genome_id=0
     )
     payload = dual_genome_to_json(dual)
     payload["key"] = 0
     save_rv = client.post(
         "/api/genealogy/save-population",
         json={
-            "genomes": [payload],
+            "individuals": [payload],
             "parent_id": None,
             "generation_num": 0,
             "branch_name": "main",
@@ -139,7 +138,7 @@ def test_api_evolve_with_genealogy(client, genealogy_db, substrate):
     )
     assert save_rv.status_code == 200
     pop_id = save_rv.get_json()["population_id"]
-    parents = [{"genome": payload, "clicks": 1}]
+    parents = [{"individual": payload, "clicks": 1}]
     evolve_rv = client.post(
         "/api/evolve",
         json={
@@ -158,14 +157,14 @@ def test_api_evolve_with_genealogy(client, genealogy_db, substrate):
 
 
 @pytest.mark.slow
-def test_api_save(client, substrate):
-    """POST /api/save with genome returns id, status, and downloads."""
+def test_api_save(client, representation):
+    """POST /api/save with individual returns id, status, and downloads."""
     dual = create_random_dual_genome(
-        substrate.config, substrate.time_config, genome_id=0
+        representation.config, representation.time_config, genome_id=0
     )
-    genome = dual_genome_to_json(dual)
-    genome["key"] = 0
-    rv = client.post("/api/save", json={"genome": genome})
+    ind_json = dual_genome_to_json(dual)
+    ind_json["key"] = 0
+    rv = client.post("/api/save", json={"individual": ind_json})
     assert rv.status_code == 200
     data = rv.get_json()
     assert data.get("id") == 0
@@ -177,14 +176,14 @@ def test_api_save(client, substrate):
 
 
 @pytest.mark.slow
-def test_save_download_structure(client, substrate):
+def test_save_download_structure(client, representation):
     """Save returns downloads[0] with .zip filename and non-empty content_base64."""
     dual = create_random_dual_genome(
-        substrate.config, substrate.time_config, genome_id=0
+        representation.config, representation.time_config, genome_id=0
     )
-    genome = dual_genome_to_json(dual)
-    genome["key"] = 0
-    rv = client.post("/api/save", json={"genome": genome})
+    ind_json = dual_genome_to_json(dual)
+    ind_json["key"] = 0
+    rv = client.post("/api/save", json={"individual": ind_json})
     assert rv.status_code == 200
     data = rv.get_json()
     assert len(data["downloads"]) >= 1
@@ -195,21 +194,21 @@ def test_save_download_structure(client, substrate):
 
 
 def test_api_save_missing_genome(client):
-    """POST /api/save without genome returns 400."""
+    """POST /api/save without individual returns 400."""
     rv = client.post("/api/save", json={})
     assert rv.status_code == 400
-    assert "genome" in rv.get_json().get("error", "").lower()
+    assert "individual" in rv.get_json().get("error", "").lower()
 
 
 def test_api_time_output(client):
-    """POST /api/time-output with genome returns timeOutput and inputs."""
+    """POST /api/time-output with individual returns timeOutput and inputs."""
     rv = client.post("/api/random", json={"size": 1})
     assert rv.status_code == 200
-    genome = rv.get_json()["genomes"][0]
+    ind = rv.get_json()["individuals"][0]
     rv = client.post(
         "/api/time-output",
         json={
-            "genome": genome,
+            "individual": ind,
             "raw_time": 0.5,
             "mouse_speed": 0,
             "mouse_dist": 0,
@@ -224,19 +223,19 @@ def test_api_time_output(client):
     assert data["inputs"]["raw_time"] == 0.5
 
 
-def test_api_time_output_missing_genome(client):
-    """POST /api/time-output without genome returns 400."""
+def test_api_time_output_missing_individual(client):
+    """POST /api/time-output without individual returns 400."""
     rv = client.post("/api/time-output", json={})
     assert rv.status_code == 400
-    assert "genome" in rv.get_json().get("error", "").lower()
+    assert "individual" in rv.get_json().get("error", "").lower()
 
 
 def test_api_network(client):
-    """POST /api/network with genome returns nodes and connections."""
+    """POST /api/network with individual returns nodes and connections."""
     rv = client.post("/api/random", json={"size": 1})
     assert rv.status_code == 200
-    genome = rv.get_json()["genomes"][0]
-    rv = client.post("/api/network", json={"genome": genome})
+    ind = rv.get_json()["individuals"][0]
+    rv = client.post("/api/network", json={"individual": ind})
     assert rv.status_code == 200
     data = rv.get_json()
     assert data.get("status") == "success"
@@ -246,11 +245,11 @@ def test_api_network(client):
     assert isinstance(data["connections"], list)
 
 
-def test_api_network_missing_genome(client):
-    """POST /api/network without genome returns 400."""
+def test_api_network_missing_individual(client):
+    """POST /api/network without individual returns 400."""
     rv = client.post("/api/network", json={})
     assert rv.status_code == 400
-    assert "genome" in rv.get_json().get("error", "").lower()
+    assert "individual" in rv.get_json().get("error", "").lower()
 
 
 def test_api_error_response_shape(client):
@@ -263,21 +262,21 @@ def test_api_error_response_shape(client):
     assert len(data["error"]) > 0
 
 
-def test_api_adjust_weight(client, substrate):
-    """POST /api/adjust-weight with valid payload returns shader and genome."""
+def test_api_adjust_weight(client, representation):
+    """POST /api/adjust-weight with valid payload returns shader and individual."""
     from tests.conftest import minimal_dual_genome_one_hidden_visual
 
-    dual = minimal_dual_genome_one_hidden_visual(substrate)
-    genome = dual_genome_to_json(dual)
-    genome["key"] = 0
-    net_rv = client.post("/api/network", json={"genome": genome})
+    dual = minimal_dual_genome_one_hidden_visual(representation)
+    ind_json = dual_genome_to_json(dual)
+    ind_json["key"] = 0
+    net_rv = client.post("/api/network", json={"individual": ind_json})
     assert net_rv.status_code == 200
     conns = [
         c
         for c in net_rv.get_json().get("connections", [])
         if c.get("network") == "visual"
     ]
-    assert len(conns) >= 1, "minimal genome has visual connections"
+    assert len(conns) >= 1, "minimal individual has visual connections"
     c = conns[0]
     source = c.get("source")
     target = c.get("target")
@@ -285,7 +284,7 @@ def test_api_adjust_weight(client, substrate):
     rv = client.post(
         "/api/adjust-weight",
         json={
-            "genome": genome,
+            "individual": ind_json,
             "network": "visual",
             "source": source,
             "target": target,
@@ -296,61 +295,61 @@ def test_api_adjust_weight(client, substrate):
     data = rv.get_json()
     assert data.get("status") == "success"
     assert "shader" in data
-    assert "genome" in data
+    assert "individual" in data
 
 
 def test_api_config_get(client):
-    """GET /api/config returns substrate_id, output_type, available_substrate_ids."""
+    """GET /api/config returns representation_id, output_type, available_representation_ids."""  # noqa: E501
     rv = client.get("/api/config")
     assert rv.status_code == 200
     data = rv.get_json()
-    assert "substrate_id" in data
+    assert "representation_id" in data
     assert "output_type" in data
-    assert "available_substrate_ids" in data
-    assert isinstance(data["available_substrate_ids"], list)
-    assert data["substrate_id"] in data["available_substrate_ids"]
+    assert "available_representation_ids" in data
+    assert isinstance(data["available_representation_ids"], list)
+    assert data["representation_id"] in data["available_representation_ids"]
 
 
-def test_api_config_patch_substrate_id(client):
-    """PATCH /api/config substrate_id; next GET and /api/random use it."""
+def test_api_config_patch_representation_id(client):
+    """PATCH /api/config representation_id; next GET and /api/random use it."""
     rv = client.get("/api/config")
     assert rv.status_code == 200
-    initial_id = rv.get_json()["substrate_id"]
+    initial_id = rv.get_json()["representation_id"]
 
     rv = client.patch(
         "/api/config",
-        json={"substrate_id": "ca"},
+        json={"representation_id": "ca"},
         headers={"Content-Type": "application/json"},
     )
     assert rv.status_code == 200
     data = rv.get_json()
-    assert data["substrate_id"] == "ca"
+    assert data["representation_id"] == "ca"
     assert data["output_type"] == "grid"
 
     rv = client.get("/api/config")
     assert rv.status_code == 200
-    assert rv.get_json()["substrate_id"] == "ca"
+    assert rv.get_json()["representation_id"] == "ca"
 
     rv = client.post("/api/random", json={"size": 1})
     assert rv.status_code == 200
     assert rv.get_json()["output_type"] == "grid"
-    genomes = rv.get_json()["genomes"]
-    assert len(genomes) == 1
-    assert "grid" in genomes[0]
+    individuals = rv.get_json()["individuals"]
+    assert len(individuals) == 1
+    assert "grid" in individuals[0]
 
-    # Restore so other tests see default substrate
+    # Restore so other tests see default representation
     client.patch(
         "/api/config",
-        json={"substrate_id": initial_id},
+        json={"representation_id": initial_id},
         headers={"Content-Type": "application/json"},
     )
 
 
-def test_api_config_patch_invalid_substrate_id(client):
-    """PATCH /api/config with unknown substrate_id returns 400."""
+def test_api_config_patch_invalid_representation_id(client):
+    """PATCH /api/config with unknown representation_id returns 400."""
     rv = client.patch(
         "/api/config",
-        json={"substrate_id": "nonexistent"},
+        json={"representation_id": "nonexistent"},
         headers={"Content-Type": "application/json"},
     )
     assert rv.status_code == 400

@@ -11,9 +11,7 @@ import subprocess
 import tempfile
 
 import pytest
-from eyecatcher.substrate import (
-    ElementaryCASubstrate,
-)
+from eyecatcher.representation import ConwayRepresentation
 
 
 def _glslang_available() -> bool:
@@ -47,10 +45,10 @@ def _validate_fragment_shader(glsl: str) -> tuple[bool, str]:
 
 @pytest.mark.slow
 def test_ca_compiled_shader_valid_glsl():
-    """CA substrate compiled shader passes glslangValidator (if available)."""
-    substrate = ElementaryCASubstrate(grid_size=64, gol_steps=32)
-    ind = substrate.create_random(key=0)
-    glsl = substrate.compile_to_shader(ind)
+    """CA representation compiled shader passes glslangValidator (if available)."""
+    representation = ConwayRepresentation(grid_size=64, gol_steps=32)
+    ind = representation.create_random(key=0)
+    glsl = representation.compile_to_shader(ind)
     assert glsl is not None and "void main()" in glsl
     ok, err = _validate_fragment_shader(glsl)
     if not _glslang_available():
@@ -59,9 +57,11 @@ def test_ca_compiled_shader_valid_glsl():
 
 
 @pytest.mark.slow
-def test_dual_cppn_compiled_shader_valid_glsl(dual_cppn_substrate, random_dual_genome):
+def test_dual_cppn_compiled_shader_valid_glsl(
+    dual_cppn_representation, random_dual_genome
+):
     """Dual CPPN compiled shader passes glslangValidator (if available)."""
-    glsl = dual_cppn_substrate.compile_to_shader(random_dual_genome)
+    glsl = dual_cppn_representation.compile_to_shader(random_dual_genome)
     assert glsl is not None and "void main()" in glsl
     ok, err = _validate_fragment_shader(glsl)
     if not _glslang_available():

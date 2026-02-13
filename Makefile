@@ -12,7 +12,7 @@ help:
 	@echo "  make lint       Run Ruff check (Python) and ESLint (JS)"
 	@echo "  make generate   Run all codegen (signals + substrates + evolution config)"
 	@echo "  make generate-signals  Generate evolution_config_signals.generated.js from Python registry; validate NEAT"
-	@echo "  make generate-substrates  Generate substrate_adapters.generated.js from Python substrate export"
+	@echo "  make generate-substrates  Generate config.generated.js from Python representation export"
 	@echo "  make generate-evolution-config  Generate evolution_config_defaults.generated.js from config/evolution_defaults.json"
 	@echo "  make docker-build  Build Docker image"
 	@echo "  make docker-up  Start app with docker compose up"
@@ -48,7 +48,7 @@ generate-signals:
 	.venv/bin/python scripts/generate_signal_config.py
 
 generate-substrates:
-	.venv/bin/python scripts/generate_substrate_config.py
+	.venv/bin/python scripts/generate_representation_config.py
 
 generate-evolution-config:
 	.venv/bin/python scripts/generate_evolution_config.py

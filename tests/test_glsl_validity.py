@@ -7,8 +7,8 @@ of v_* (e.g. shared time/visual signals), that would fail at WebGL compile time.
 import re
 from collections import Counter
 
+from eyecatcher.representation import SingleCPPNRepresentation
 from eyecatcher.signals import TIME_INPUTS
-from eyecatcher.substrate import SingleCPPNSubstrate
 
 
 def _declared_v_identifiers(glsl: str) -> set[str]:
@@ -65,17 +65,17 @@ def _time_input_ids() -> set[str]:
 
 
 def test_dual_shader_all_signal_variables_declared(
-    dual_cppn_substrate, random_dual_genome
+    dual_cppn_representation, random_dual_genome
 ):
     """Dual shader: every v_* and *_base used in the output is declared/defined."""
-    glsl = dual_cppn_substrate.compile_to_shader(random_dual_genome)
+    glsl = dual_cppn_representation.compile_to_shader(random_dual_genome)
     assert glsl is not None and "void main()" in glsl
     _assert_all_used_vars_declared(glsl)
 
 
-def test_dual_shader_no_redefinition(dual_cppn_substrate, random_dual_genome):
+def test_dual_shader_no_redefinition(dual_cppn_representation, random_dual_genome):
     """Dual shader must not declare the same v_* twice (WebGL redefinition)."""
-    glsl = dual_cppn_substrate.compile_to_shader(random_dual_genome)
+    glsl = dual_cppn_representation.compile_to_shader(random_dual_genome)
     assert glsl is not None
     redefs = _v_redefinitions(glsl)
     assert not redefs, f"GLSL redefines (declare float twice): {sorted(redefs)}"
@@ -83,22 +83,22 @@ def test_dual_shader_no_redefinition(dual_cppn_substrate, random_dual_genome):
 
 def test_single_shader_all_signal_variables_declared():
     """Single CPPN shader: every v_* used is declared (no _base in single path)."""
-    substrate = SingleCPPNSubstrate()
-    genome = substrate.create_random(key=0)
-    glsl = substrate.compile_to_shader(genome)
+    representation = SingleCPPNRepresentation()
+    genome = representation.create_random(key=0)
+    glsl = representation.compile_to_shader(genome)
     assert glsl is not None and "void main()" in glsl
     _assert_all_used_vars_declared(glsl)
 
 
 def test_dual_shader_base_variables_only_for_time_inputs(
-    dual_cppn_substrate, random_dual_genome
+    dual_cppn_representation, random_dual_genome
 ):
     """Regression: dual shader must not reference *_base for visual-only signals.
 
     Only TIME_INPUTS get _base in the dual shader. Visual-only inputs (e.g. mouse_x,
     mouse_y) must not be referenced as mouse_x_base / mouse_y_base.
     """
-    glsl = dual_cppn_substrate.compile_to_shader(random_dual_genome)
+    glsl = dual_cppn_representation.compile_to_shader(random_dual_genome)
     assert glsl is not None
 
     used_base = _used_base_identifiers(glsl)
@@ -112,20 +112,20 @@ def test_dual_shader_base_variables_only_for_time_inputs(
         )
 
 
-def test_glsl_validity_with_minimal_dual(substrate, minimal_dual):
+def test_glsl_validity_with_minimal_dual(representation, minimal_dual):
     """Minimal dual genome still produces GLSL with all variables declared."""
-    glsl = substrate.compile_to_shader(minimal_dual)
+    glsl = representation.compile_to_shader(minimal_dual)
     assert glsl is not None
     _assert_all_used_vars_declared(glsl)
 
 
-def test_glsl_validity_dual_empty_connections(substrate, random_dual_genome):
+def test_glsl_validity_dual_empty_connections(representation, random_dual_genome):
     """Dual with all connections disabled still has valid variable declarations."""
     dual = random_dual_genome
     for conn in dual.visual.connections.values():
         conn.enabled = False
     for conn in dual.time_signal.connections.values():
         conn.enabled = False
-    glsl = substrate.compile_to_shader(dual)
+    glsl = representation.compile_to_shader(dual)
     assert glsl is not None
     _assert_all_used_vars_declared(glsl)

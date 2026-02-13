@@ -1,26 +1,27 @@
 """Shared pytest fixtures for Eyecatcher.
 
-Provides client, substrate (DualCPPNSubstrate), random_dual_genome, minimal_dual,
-genealogy_db, community_db. DB fixtures use temp paths; no real data modified.
+Provides client, representation (DualCPPNRepresentation), random_dual_genome,
+minimal_dual, genealogy_db, community_db. DB fixtures use temp paths; no real
+data modified.
 """
 
 from unittest.mock import patch
 
 import eyecatcher.data.genealogy_db as genealogy_db_module
 import pytest
-from eyecatcher.server import app
-from eyecatcher.substrate import (
-    DualCPPNSubstrate,
+from eyecatcher.representation import (
+    DualCPPNRepresentation,
     create_random_dual_genome,
     dual_genome_from_json,
 )
+from eyecatcher.server import app
 from eyecatcher.web import community_routes
 
 
-def minimal_dual_genome_one_hidden_visual(substrate):
+def minimal_dual_genome_one_hidden_visual(representation):
     """Dual genome with exactly one hidden node in the visual CPPN (deterministic)."""
-    vc = substrate.config.genome_config
-    tc = substrate.time_config.genome_config
+    vc = representation.config.genome_config
+    tc = representation.time_config.genome_config
     visual_nodes = {
         str(i): {
             "bias": 0.0,
@@ -61,7 +62,9 @@ def minimal_dual_genome_one_hidden_visual(substrate):
             "connections": time_conns,
         },
     }
-    return dual_genome_from_json(data, substrate.config, substrate.time_config)
+    return dual_genome_from_json(
+        data, representation.config, representation.time_config
+    )
 
 
 @pytest.fixture
@@ -73,29 +76,29 @@ def client():
 
 
 @pytest.fixture
-def substrate():
-    """DualCPPNSubstrate for mutation, crossover, query tests."""
-    return DualCPPNSubstrate()
+def representation():
+    """DualCPPNRepresentation for mutation, crossover, query tests."""
+    return DualCPPNRepresentation()
 
 
 @pytest.fixture
-def minimal_dual(substrate):
+def minimal_dual(representation):
     """Dual genome with one hidden node in visual CPPN (deterministic)."""
-    return minimal_dual_genome_one_hidden_visual(substrate)
+    return minimal_dual_genome_one_hidden_visual(representation)
 
 
 @pytest.fixture
-def random_dual_genome(substrate):
+def random_dual_genome(representation):
     """Random dual genome with genome_id=0 (for tests that need one random genome)."""
     return create_random_dual_genome(
-        substrate.config, substrate.time_config, genome_id=0
+        representation.config, representation.time_config, genome_id=0
     )
 
 
 @pytest.fixture
-def dual_cppn_substrate():
-    """DualCPPNSubstrate instance for testing substrate protocol methods."""
-    return DualCPPNSubstrate()
+def dual_cppn_representation():
+    """DualCPPNRepresentation instance for testing representation protocol methods."""
+    return DualCPPNRepresentation()
 
 
 @pytest.fixture

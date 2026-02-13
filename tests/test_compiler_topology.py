@@ -6,7 +6,9 @@ from eyecatcher.glsl.compiler_topology import (
 )
 
 
-def test_get_enabled_connections_returns_only_enabled(substrate, random_dual_genome):
+def test_get_enabled_connections_returns_only_enabled(
+    representation, random_dual_genome
+):
     """get_enabled_connections returns (src, dst, weight) for enabled only."""
     genome = random_dual_genome.visual
     keys = list(genome.connections.keys())[:3]
@@ -28,10 +30,12 @@ def test_get_enabled_connections_empty_when_all_disabled(random_dual_genome):
     assert get_enabled_connections(genome) == []
 
 
-def test_topological_sort_respects_input_output_indices(substrate, random_dual_genome):
+def test_topological_sort_respects_input_output_indices(
+    representation, random_dual_genome
+):
     """topological_sort returns order where inputs/outputs use config indices."""
     genome = random_dual_genome.visual
-    config = substrate.config
+    config = representation.config
     num_inputs = config.genome_config.num_inputs
     num_outputs = config.genome_config.num_outputs
     connections = get_enabled_connections(genome)
@@ -46,10 +50,10 @@ def test_topological_sort_respects_input_output_indices(substrate, random_dual_g
     assert len(nodes) >= len(input_nodes) + len(output_nodes)
 
 
-def test_topological_sort_deterministic(substrate, random_dual_genome):
+def test_topological_sort_deterministic(representation, random_dual_genome):
     """topological_sort is deterministic for same genome."""
     genome = random_dual_genome.visual
-    config = substrate.config
+    config = representation.config
     connections = get_enabled_connections(genome)
     a = topological_sort(genome, connections, config)
     b = topological_sort(genome, connections, config)

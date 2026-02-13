@@ -9,10 +9,10 @@ from pathlib import Path
 
 import neat
 import pytest
-from eyecatcher.inspection import render_genome_network_pdf
 from eyecatcher.evolution import mutate_genome
 from eyecatcher.genome import create_random_genome
-from eyecatcher.substrate import SingleCPPNSubstrate
+from eyecatcher.inspection import render_genome_network_pdf
+from eyecatcher.representation import SingleCPPNRepresentation
 from PIL import Image
 
 
@@ -55,15 +55,15 @@ def _save_genome_as_text(
 
 
 @pytest.mark.slow
-def test_visualization(tmp_path, substrate):
+def test_visualization(tmp_path, representation):
     """Save pkl, text, optional PDF, and render PNG into tmp_path.
 
     Set EYECATCHER_KEEP_VISUALIZATION_ARTIFACTS=1 to copy outputs to output/test/
     so you can open the PDF (and other files) after the test.
     """
-    genome = create_random_genome(substrate.config, genome_id=42)
+    genome = create_random_genome(representation.config, genome_id=42)
     for _ in range(5):
-        genome = mutate_genome(genome, substrate.config)
+        genome = mutate_genome(genome, representation.config)
 
     pkl_path = tmp_path / "test_genome.pkl"
     txt_path = tmp_path / "test_genome.txt"
@@ -72,12 +72,12 @@ def test_visualization(tmp_path, substrate):
     with open(pkl_path, "wb") as f:
         pickle.dump(genome, f)
     render_genome_network_pdf(
-        genome, substrate.config, str(tmp_path / "test_genome_network.pdf")
+        genome, representation.config, str(tmp_path / "test_genome_network.pdf")
     )
-    _save_genome_as_text(genome, str(txt_path), substrate.config)
+    _save_genome_as_text(genome, str(txt_path), representation.config)
 
-    single_substrate = SingleCPPNSubstrate()
-    img = single_substrate.render_to_image(genome, resolution=64)
+    single_representation = SingleCPPNRepresentation()
+    img = single_representation.render_to_image(genome, resolution=64)
     Image.fromarray(img).save(str(png_path))
 
     assert pkl_path.exists()

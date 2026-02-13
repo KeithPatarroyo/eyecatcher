@@ -1,21 +1,21 @@
-"""Tests for the Conway's Game of Life (CA) substrate."""
+"""Tests for the Conway's Game of Life (CA) representation."""
 
 import numpy as np
 import pytest
-from eyecatcher.substrate import (
+from eyecatcher.representation import (
     ConwayGenome,
-    ElementaryCASubstrate,
-    SubstrateOutput,
-    get_substrate,
+    ConwayRepresentation,
+    RepresentationOutput,
+    get_representation,
 )
-from eyecatcher.substrate.ca import DEFAULT_GRID_SIZE
+from eyecatcher.representation.ca import DEFAULT_GRID_SIZE
 
-from tests.substrate_test_helpers import assert_substrate_protocol_compliance
+from tests.representation_test_helpers import assert_representation_protocol_compliance
 
 
 @pytest.fixture
 def ca_substrate():
-    return ElementaryCASubstrate(grid_size=64, gol_steps=32)
+    return ConwayRepresentation(grid_size=64, gol_steps=32)
 
 
 def test_ca_substrate_id_and_output_type(ca_substrate):
@@ -53,19 +53,19 @@ def test_crossover_returns_valid_conway_genome(ca_substrate):
     assert child.grid.dtype == np.uint8
 
 
-def test_evaluate_returns_grid_output(ca_substrate):
+def test_express_returns_grid_output(ca_substrate):
     ind = ca_substrate.create_random(key=0)
-    out = ca_substrate.evaluate(ind, {})
-    assert isinstance(out, SubstrateOutput)
+    out = ca_substrate.express(ind, {})
+    assert isinstance(out, RepresentationOutput)
     assert out.output_type == "grid"
     assert out.data.shape == (64, 64, 3)
     assert out.data.dtype == np.uint8
     assert out.data.min() in (0, 255) and out.data.max() in (0, 255)
 
 
-def test_evaluate_respects_kwargs(ca_substrate):
+def test_express_respects_kwargs(ca_substrate):
     ind = ca_substrate.create_random(key=0)
-    out = ca_substrate.evaluate(ind, {}, gol_steps=8)
+    out = ca_substrate.express(ind, {}, gol_steps=8)
     assert out.output_type == "grid"
     assert out.data.shape == (64, 64, 3)
 
@@ -93,18 +93,18 @@ def test_to_json_from_json_roundtrip(ca_substrate):
     assert restored.key == ind.key
 
 
-def test_get_substrate_ca():
-    sub = get_substrate("ca", grid_size=32, gol_steps=16)
-    assert sub.id == "ca"
-    ind = sub.create_random(key=0)
-    out = sub.evaluate(ind, {})
+def test_get_representation_ca():
+    rep = get_representation("ca", grid_size=32, gol_steps=16)
+    assert rep.id == "ca"
+    ind = rep.create_random(key=0)
+    out = rep.express(ind, {})
     assert out.output_type == "grid"
     assert out.data.shape == (32, 32, 3)
 
 
 def test_ca_protocol_compliance(ca_substrate):
-    """CA substrate satisfies the generic protocol compliance helper."""
-    assert_substrate_protocol_compliance(ca_substrate)
+    """CA representation satisfies the generic protocol compliance helper."""
+    assert_representation_protocol_compliance(ca_substrate)
 
 
 def test_serialize_individual_extra_includes_grid(ca_substrate):

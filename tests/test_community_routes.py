@@ -4,7 +4,7 @@ import os
 from unittest.mock import patch
 
 import pytest
-from eyecatcher.substrate import create_random_dual_genome, dual_genome_to_json
+from eyecatcher.representation import create_random_dual_genome, dual_genome_to_json
 
 
 @pytest.fixture
@@ -14,17 +14,17 @@ def admin_headers():
 
 
 @pytest.mark.slow
-def test_community_submit(client, community_db, substrate):
-    """POST submit with genome returns id and status pending."""
+def test_community_submit(client, community_db, representation):
+    """POST submit with individual returns id and status pending."""
     dual = create_random_dual_genome(
-        substrate.config, substrate.time_config, genome_id=0
+        representation.config, representation.time_config, genome_id=0
     )
-    genome = dual_genome_to_json(dual)
-    genome["key"] = 0
+    ind_json = dual_genome_to_json(dual)
+    ind_json["key"] = 0
 
     rv = client.post(
         "/api/community/submit",
-        json={"genome": genome, "name": "Test Pattern", "creator": "Tester"},
+        json={"individual": ind_json, "name": "Test Pattern", "creator": "Tester"},
     )
     assert rv.status_code == 200
     data = rv.get_json()
@@ -32,14 +32,14 @@ def test_community_submit(client, community_db, substrate):
     assert data["status"] == "pending"
 
 
-def test_community_submit_missing_genome(client, community_db):
-    """POST submit without genome returns 400."""
+def test_community_submit_missing_individual(client, community_db):
+    """POST submit without individual returns 400."""
     rv = client.post(
         "/api/community/submit",
         json={"name": "x", "creator": "y"},
     )
     assert rv.status_code == 400
-    assert "genome" in rv.get_json().get("error", "").lower()
+    assert "individual" in rv.get_json().get("error", "").lower()
 
 
 def test_community_empty(client, community_db):
@@ -66,19 +66,19 @@ def test_admin_submissions_forbidden_without_key(client, community_db):
 
 @pytest.mark.slow
 def test_admin_submit_then_list_and_approve(
-    client, community_db, substrate, admin_headers
+    client, community_db, representation, admin_headers
 ):
     """Submit, list pending as admin, approve, then list public shows pattern."""
     dual = create_random_dual_genome(
-        substrate.config, substrate.time_config, genome_id=0
+        representation.config, representation.time_config, genome_id=0
     )
-    genome = dual_genome_to_json(dual)
-    genome["key"] = 0
+    ind_json = dual_genome_to_json(dual)
+    ind_json["key"] = 0
 
     with patch.dict(os.environ, {"FLASK_ENV": "development"}):
         submit_rv = client.post(
             "/api/community/submit",
-            json={"genome": genome, "name": "ToApprove", "creator": "Me"},
+            json={"individual": ind_json, "name": "ToApprove", "creator": "Me"},
         )
     assert submit_rv.status_code == 200
     sid = submit_rv.get_json()["id"]
