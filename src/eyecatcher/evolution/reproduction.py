@@ -10,7 +10,7 @@ import logging
 import random
 from typing import Any, Optional
 
-from . import config as evolution_config
+from . import config
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +39,9 @@ def produce_next_generation(
         List of genome JSON dicts (substrate.to_json per child).
     """
     if population_size is None:
-        population_size = evolution_config.DEFAULT_POPULATION_SIZE
+        population_size = config.DEFAULT_POPULATION_SIZE
     if crossover_probability is None:
-        crossover_probability = evolution_config.CROSSOVER_PROBABILITY
+        crossover_probability = config.CROSSOVER_PROBABILITY
 
     parents = []
     for idx, p in enumerate(parents_data):

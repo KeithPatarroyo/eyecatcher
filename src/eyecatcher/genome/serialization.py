@@ -2,7 +2,7 @@
 Genome serialization for stateless API and client storage.
 
 JSON serialization/deserialization for NEAT genomes, plus deep copy.
-DualGenome serialization lives in substrate._dual_genome.
+DualGenome serialization lives in substrate.dual_genome.
 """
 
 from typing import Any

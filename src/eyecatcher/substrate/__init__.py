@@ -6,15 +6,15 @@ evolution and API use the substrate interface only.
 Dual-genome type and helpers (DualGenome, create_random_dual_genome, etc.) are here.
 """
 
-from ._dual_genome import (
+from .ca import CARule, ElementaryCASubstrate
+from .dual_cppn import DualCPPNSubstrate
+from .dual_genome import (
     DualGenome,
     copy_dual_genome,
     create_random_dual_genome,
     dual_genome_from_json,
     dual_genome_to_json,
 )
-from .ca import CARule, ElementaryCASubstrate
-from .dual_cppn import DualCPPNSubstrate
 from .export import export_substrates_for_frontend
 from .protocol import OutputType, Substrate, SubstrateOutput
 from .registry import SUBSTRATES, get_substrate

@@ -9,7 +9,7 @@
 | test_cppn_engine.py | Dual-CPPN substrate: create_random, evaluate (query), mutate, crossover; uses DualCPPNSubstrate fixture. |
 | test_substrate_compile.py | Substrate compile_to_shader and get_compile_stats (GLSL output, visual/time node and connection counts). |
 | test_genome_serialization.py | Dual-genome serialization (substrate): dual_genome_to_json/from_json round-trip, extract_network_data shape, query consistency after round-trip. |
-| test_shader_compiler.py | GLSL module (glsl.shader_compiler): compile_dual_to_glsl (structure, main, activations, empty connections, single hidden node). |
+| test_shader_compiler.py | GLSL module (glsl.shader_compiler): compile (structure, main, activations, empty connections, single hidden node). |
 | test_glsl_validity.py | Generated GLSL sanity: every v_* and *_base used is declared/defined; no redefinition of v_* (shared time/visual signals); dual shader uses _base only for time inputs (catches WebGL compile-time regressions). |
 | test_signal_registry.py | Signals module (signals.signals): NEAT config matches registry; frontend evolution_config.js matches Python (toggleable inputs). |
 | test_api.py | Flask API: /api/random, /api/compile, /api/evolve (with/without genealogy), /api/save, save download structure, /api/adjust-weight. Uses test client and cppn_engine/minimal_dual fixtures. |

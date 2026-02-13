@@ -1,6 +1,6 @@
 """Tests for dual-CPPN substrate: population, mutation, crossover, query."""
 
-from eyecatcher.algorithm import mutate_genome
+from eyecatcher.evolution import mutate_genome
 from eyecatcher.genome import create_random_genome
 from eyecatcher.substrate import DualGenome
 

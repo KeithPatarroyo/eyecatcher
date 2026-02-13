@@ -129,6 +129,9 @@ class ElementaryCASubstrate:
         key = int(data.get("key", 0))
         return CARule(rule=rule, key=key)
 
+    def serialize_individual_extra(self, ind: CARule) -> dict[str, Any]:
+        return {"rule": int(ind.rule)}
+
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         return {
             "png": f"pattern_{individual_id}.png",

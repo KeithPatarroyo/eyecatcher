@@ -1,7 +1,7 @@
 /**
  * Genealogy load from localStorage and population restore.
  * Reads genealogy_load key, then either restores from genomes or starts new random population.
- * Depends: Utils.safeGetItem, SubstrateAdapters.resolve, EvolutionConfig.getDefaultResolution,
+ * Depends: Utils.safeGetItem, SubstrateAdapters.safeResolve,
  * GridRenderer.loadFromStatelessGenomes, PopulationUI.startNewRandomPopulation.
  */
 (function () {
@@ -36,19 +36,16 @@
             );
             var genNum =
                 genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
-            var def =
-                window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
-                    ? window.EvolutionConfig.getDefaultResolution()
-                    : { outputType: "shader", substrateId: "dual_cppn" };
+            var SA = window.SubstrateAdapters;
             var resolved =
-                window.SubstrateAdapters && window.SubstrateAdapters.resolve
-                    ? window.SubstrateAdapters.resolve({
+                SA && SA.safeResolve
+                    ? SA.safeResolve({
                           substrateId: genealogyLoad.substrate_id,
                           genomes: genealogyLoad.genomes,
                       })
-                    : {
-                          outputType: def.outputType,
-                          substrateId: genealogyLoad.substrate_id || def.substrateId,
+                    : window.__eyecatcherDefaultResolution || {
+                          outputType: "shader",
+                          substrateId: "dual_cppn",
                       };
             window.GridRenderer.loadFromStatelessGenomes(
                 genealogyLoad.genomes,

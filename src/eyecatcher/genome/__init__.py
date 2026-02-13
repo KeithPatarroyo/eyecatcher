@@ -2,7 +2,7 @@
 Genome representation and serialization.
 
 Generic NEAT genome: create_random_genome, genome_to_json, genome_from_json,
-copy_genome. Dual-genome types and helpers live in substrate._dual_genome and
+copy_genome. Dual-genome types and helpers live in substrate.dual_genome and
 are exported from substrate.
 """
 

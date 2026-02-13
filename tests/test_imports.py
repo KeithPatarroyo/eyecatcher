@@ -2,8 +2,8 @@
 
 
 def test_canonical_package_imports():
-    """Test that algorithm, genome, glsl, substrate export the main API."""
-    from eyecatcher.algorithm import produce_next_generation
+    """Test that evolution, genome, glsl, substrate export the main API."""
+    from eyecatcher.evolution import produce_next_generation
     from eyecatcher.glsl import ShaderCompiler
     from eyecatcher.substrate import (
         DualCPPNSubstrate,

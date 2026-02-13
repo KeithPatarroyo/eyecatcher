@@ -175,24 +175,23 @@
 
     function resolveAdapterAndOutput(outputType, substrateId, genomes) {
         var SA = window.SubstrateAdapters;
-        if (!SA || !SA.resolve) {
-            var def = (window.EvolutionConfig &&
-                window.EvolutionConfig.getDefaultResolution &&
-                window.EvolutionConfig.getDefaultResolution()) || {
-                outputType: "shader",
-                substrateId: "dual_cppn",
-            };
-            return {
-                adapter: null,
-                outputType: outputType || def.outputType,
-                substrateId: substrateId || def.substrateId,
-            };
-        }
-        return SA.resolve({
-            outputType: outputType,
-            substrateId: substrateId,
-            genomes: genomes,
-        });
+        var resolved =
+            SA && SA.safeResolve
+                ? SA.safeResolve({
+                      outputType: outputType,
+                      substrateId: substrateId,
+                      genomes: genomes,
+                  })
+                : window.__eyecatcherDefaultResolution || {
+                      outputType: "shader",
+                      substrateId: "dual_cppn",
+                      adapter: null,
+                  };
+        return {
+            adapter: resolved.adapter,
+            outputType: outputType || resolved.outputType,
+            substrateId: substrateId || resolved.substrateId,
+        };
     }
 
     function evolveGeneration() {

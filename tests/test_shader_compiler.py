@@ -6,11 +6,9 @@ from eyecatcher.glsl.activation_registry import get_activation_names_sorted
 
 
 def test_compile_dual_to_glsl_returns_string(substrate, random_dual_genome):
-    """compile_dual_to_glsl returns a non-empty GLSL string."""
+    """compile returns a non-empty GLSL string for dual genome."""
     compiler = ShaderCompiler(color_mode="hsv")
-    glsl = compiler.compile_dual_to_glsl(
-        random_dual_genome, substrate.config, substrate.time_config
-    )
+    glsl = compiler.compile(random_dual_genome, substrate.config, substrate.time_config)
     assert isinstance(glsl, str)
     assert len(glsl) > 0
 
@@ -18,18 +16,14 @@ def test_compile_dual_to_glsl_returns_string(substrate, random_dual_genome):
 def test_compile_dual_to_glsl_contains_main(substrate, random_dual_genome):
     """Output GLSL contains void main()."""
     compiler = ShaderCompiler(color_mode="hsv")
-    glsl = compiler.compile_dual_to_glsl(
-        random_dual_genome, substrate.config, substrate.time_config
-    )
+    glsl = compiler.compile(random_dual_genome, substrate.config, substrate.time_config)
     assert "void main()" in glsl
 
 
 def test_compile_dual_to_glsl_rgb_mode(substrate, random_dual_genome):
     """Compiler works with color_mode='rgb'."""
     compiler = ShaderCompiler(color_mode="rgb")
-    glsl = compiler.compile_dual_to_glsl(
-        random_dual_genome, substrate.config, substrate.time_config
-    )
+    glsl = compiler.compile(random_dual_genome, substrate.config, substrate.time_config)
     assert "void main()" in glsl
     assert len(glsl) > 0
 
@@ -42,7 +36,7 @@ def test_compile_dual_empty_connections(substrate, random_dual_genome):
     for conn in dual.time_signal.connections.values():
         conn.enabled = False
     compiler = ShaderCompiler(color_mode="hsv")
-    glsl = compiler.compile_dual_to_glsl(dual, substrate.config, substrate.time_config)
+    glsl = compiler.compile(dual, substrate.config, substrate.time_config)
     assert isinstance(glsl, str)
     assert "void main()" in glsl
 
@@ -57,7 +51,7 @@ def test_compile_dual_single_hidden_node(substrate):
         len(hidden_visual) == 1
     ), "test fixture must have exactly one hidden node in visual"
     compiler = ShaderCompiler(color_mode="hsv")
-    glsl = compiler.compile_dual_to_glsl(dual, substrate.config, substrate.time_config)
+    glsl = compiler.compile(dual, substrate.config, substrate.time_config)
     assert "void main()" in glsl
     assert len(glsl) > 0
 
@@ -65,9 +59,7 @@ def test_compile_dual_single_hidden_node(substrate):
 def test_compile_dual_activation_functions_in_output(substrate, random_dual_genome):
     """Compiled GLSL contains at least one known activation function call."""
     compiler = ShaderCompiler(color_mode="hsv")
-    glsl = compiler.compile_dual_to_glsl(
-        random_dual_genome, substrate.config, substrate.time_config
-    )
+    glsl = compiler.compile(random_dual_genome, substrate.config, substrate.time_config)
     activations_found = [
         name for name in get_activation_names_sorted() if f"{name}(" in glsl
     ]

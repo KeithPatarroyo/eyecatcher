@@ -202,7 +202,7 @@ The server does not hold population state. The client (web UI) stores genomes (e
 ### Core components
 
 - **Evolution** – Config and reproduction in `algorithm/`; generic genome in `genome/`, dual-genome and substrates in `substrate/` (get_configured_substrate, get_substrate).
-- **Shader Compiler** (`src/eyecatcher/glsl/`) – CPPN → GLSL; `ShaderCompiler` and `compile_dual_to_glsl()` for the web renderer.
+- **Shader Compiler** (`src/eyecatcher/glsl/`) – CPPN → GLSL; `ShaderCompiler.compile()` for the web renderer.
 - **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API in `web/` (compile, random, evolve, save, time-output), reproduction logic in `algorithm/reproduction.py`, community and genealogy routes, static serving.
 
 Researchers: see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for where to change signals, NEAT config, reproduction, and rendering.

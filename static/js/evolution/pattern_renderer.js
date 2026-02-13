@@ -102,10 +102,11 @@
             window.PopulationState.getState &&
             window.PopulationState.getState();
         var substrateId = state ? state.substrateId : null;
+        var SA = window.SubstrateAdapters;
         var resolved =
-            window.SubstrateAdapters && window.SubstrateAdapters.resolve
-                ? window.SubstrateAdapters.resolve({ substrateId: substrateId })
-                : { adapter: null };
+            SA && SA.safeResolve
+                ? SA.safeResolve({ substrateId: substrateId })
+                : window.__eyecatcherDefaultResolution || { adapter: null };
         if (resolved.adapter && typeof resolved.adapter.buildUniforms === "function") {
             return resolved.adapter.buildUniforms(signalValues);
         }
@@ -154,23 +155,15 @@
             window.PopulationState.getState &&
             window.PopulationState.getState();
         var substrateId = state ? state.substrateId : null;
-        var SubstrateAdapters = window.SubstrateAdapters;
         var genomes =
             patternData && patternData.caRule != null
                 ? [{ rule: patternData.caRule }]
                 : [];
+        var SA = window.SubstrateAdapters;
         var resolved =
-            SubstrateAdapters && SubstrateAdapters.resolve
-                ? SubstrateAdapters.resolve({
-                      substrateId: substrateId,
-                      genomes: genomes,
-                  })
-                : {
-                      adapter:
-                          SubstrateAdapters && SubstrateAdapters.getAdapter
-                              ? SubstrateAdapters.getAdapter(substrateId)
-                              : null,
-                  };
+            SA && SA.safeResolve
+                ? SA.safeResolve({ substrateId: substrateId, genomes: genomes })
+                : window.__eyecatcherDefaultResolution || { adapter: null };
         var adapter = resolved.adapter;
         if (adapter && typeof adapter.render === "function") {
             adapter.render(patternData, uniformValues, signalState);
@@ -230,18 +223,14 @@
     function createPatternCard(options) {
         const pattern = options.pattern;
         const substrateId = options.substrateId || null;
-        const SubstrateAdapters = window.SubstrateAdapters;
+        var SA = window.SubstrateAdapters;
         var resolved =
-            SubstrateAdapters && SubstrateAdapters.resolve
-                ? SubstrateAdapters.resolve({
+            SA && SA.safeResolve
+                ? SA.safeResolve({
                       substrateId: substrateId,
                       genomes: pattern ? [pattern] : [],
                   })
-                : {
-                      adapter: SubstrateAdapters
-                          ? SubstrateAdapters.getAdapter(substrateId)
-                          : null,
-                  };
+                : window.__eyecatcherDefaultResolution || { adapter: null };
         var adapter = resolved.adapter;
         const id = pattern.id;
         const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;

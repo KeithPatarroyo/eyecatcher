@@ -4,6 +4,7 @@ Evolution algorithm: config, reproduction, and optimization operators.
 Core neuroevolution for CPPN and other substrates.
 """
 
+from . import config
 from .config import (
     CROSSOVER_PROBABILITY,
     DEFAULT_NUM_FRAMES,
@@ -19,6 +20,7 @@ from .operators import crossover_genomes, mutate_genome
 from .reproduction import produce_next_generation
 
 __all__ = [
+    "config",
     "produce_next_generation",
     "mutate_genome",
     "crossover_genomes",

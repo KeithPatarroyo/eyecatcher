@@ -78,12 +78,12 @@ def main() -> None:
     root = _repo_root()
     sys.path.insert(0, os.path.join(root, "src"))
 
-    from eyecatcher.algorithm import config as evolution_config
+    from eyecatcher.evolution import config
     from eyecatcher.signals import export_for_frontend
 
     # Use NEAT paths from config (respects EXPERIMENT_CONFIG and experiments.json)
-    visual_path = evolution_config.NEAT_CONFIG_PATH
-    time_path = evolution_config.NEAT_TIME_CONFIG_PATH
+    visual_path = config.NEAT_CONFIG_PATH
+    time_path = config.NEAT_TIME_CONFIG_PATH
     print(f"Validating NEAT: visual={visual_path}, time={time_path}", file=sys.stderr)
     validate_neat(root, visual_path, time_path)
 

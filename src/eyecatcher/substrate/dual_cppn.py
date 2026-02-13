@@ -12,8 +12,8 @@ from typing import Any, Callable
 import neat
 import numpy as np
 
-from ..algorithm import config as evolution_config
 from ..evaluation import extract_network_data, parse_network_node_id
+from ..evolution import config
 from ..glsl import ShaderCompiler
 from ..signals.signals import (
     TIME_INPUTS,
@@ -25,20 +25,20 @@ from ..signals.signals import (
     default_inputs,
     parse_time_inputs,
 )
-from ._dual_genome import (
-    DualGenome,
-    create_random_dual_genome,
-    crossover_dual_genomes,
-    dual_genome_from_json,
-    dual_genome_to_json,
-    mutate_dual_genome,
-)
 from .cppn_base import (
     CPPNSubstrateBase,
     _clamp_rgb,
     _compute_network_stats,
     _load_neat_config,
     query_neat_network,
+)
+from .dual_genome import (
+    DualGenome,
+    create_random_dual_genome,
+    crossover_dual_genomes,
+    dual_genome_from_json,
+    dual_genome_to_json,
+    mutate_dual_genome,
 )
 from .protocol import OutputType
 
@@ -61,14 +61,14 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
     ) -> None:
         self.config = _load_neat_config(
             neat_config_path,
-            evolution_config.NEAT_CONFIG_PATH,
+            config.NEAT_CONFIG_PATH,
             VISUAL_INPUTS,
             VISUAL_OUTPUTS,
             "visual",
         )
         self.time_config = _load_neat_config(
             time_config_path,
-            evolution_config.NEAT_TIME_CONFIG_PATH,
+            config.NEAT_TIME_CONFIG_PATH,
             TIME_INPUTS,
             TIME_OUTPUTS,
             "time",
@@ -91,7 +91,7 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
         return crossover_dual_genomes(a, b, self.config, self.time_config, key)
 
     def _compile(self, compiler: Any, ind: DualGenome) -> str | None:
-        return compiler.compile_dual_to_glsl(ind, self.config, self.time_config)
+        return compiler.compile(ind, self.config, self.time_config)
 
     def _query_time_signal(
         self, time_genome: neat.DefaultGenome, inputs: dict[str, float]

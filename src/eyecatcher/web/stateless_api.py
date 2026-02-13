@@ -10,8 +10,8 @@ Endpoints: /api/compile, /api/random, /api/evaluate,
 import numpy as np
 from flask import Blueprint, jsonify, request
 
-from ..algorithm import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
-from ..signals import parse_time_inputs
+from ..evolution import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
+from ..signals import NETWORK_SIGNALS, parse_time_inputs
 from .api_helpers import (
     ERR_GENOME_REQUIRED,
     ERR_GENOMES_ARRAY_REQUIRED,
@@ -225,8 +225,8 @@ def api_evaluate():
         glsl = _substrate.compile_to_shader(ind)
         if glsl:
             item["shader"] = glsl
-            if hasattr(ind, "rule"):
-                item["rule"] = int(ind.rule)
+        extra = getattr(_substrate, "serialize_individual_extra", lambda i: {})(ind)
+        item.update(extra)
         results.append(item)
     return jsonify(
         {
@@ -285,7 +285,7 @@ def api_network():
 def api_adjust_weight():
     """
     Stateless: adjust a connection weight in a genome and return updated shader.
-    Body: { "genome": {...}, "network": "visual"|"time", "source", "target", "weight" }
+    Body: { "genome": {...}, "network": <from registry>, "source", "target", "weight" }
     Returns: { "status": "success", "shader": "...", "genome": {...} }
     """
     ind, _, _, err = _require_genome_from_request("adjust_weight")
@@ -293,6 +293,8 @@ def api_adjust_weight():
         return err
     data = request.json or {}
     network_type = data.get("network")
+    if network_type not in NETWORK_SIGNALS:
+        return api_error("Invalid network type.", 400)
     source_node = data.get("source")
     target_node = data.get("target")
     new_weight = float(data.get("weight", 0))

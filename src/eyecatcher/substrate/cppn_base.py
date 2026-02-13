@@ -16,7 +16,7 @@ import neat
 import numpy as np
 
 from .. import get_root_dir
-from ..algorithm import DEFAULT_RENDER_RESOLUTION
+from ..evolution import DEFAULT_RENDER_RESOLUTION
 from ..signals.activation import register_custom_activations
 from ..signals.signals import (
     apply_derived_inputs,

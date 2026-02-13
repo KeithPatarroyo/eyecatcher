@@ -1,7 +1,7 @@
 """
 Genome types and creation: generic NEAT genome creation.
 
-DualGenome and dual-specific helpers live in substrate._dual_genome (used by
+DualGenome and dual-specific helpers live in substrate.dual_genome (used by
 DualCPPNSubstrate only).
 """
 

@@ -2,7 +2,7 @@
 Mutation and crossover for NEAT genomes.
 
 Used by reproduction and CPPN substrates. Dual-genome operators live in
-substrate._dual_genome (used by DualCPPNSubstrate only).
+substrate.dual_genome (used by DualCPPNSubstrate only).
 """
 
 import neat

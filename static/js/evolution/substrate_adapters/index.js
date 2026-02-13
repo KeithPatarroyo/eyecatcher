@@ -2,9 +2,17 @@
  * Substrate adapter registry. Each substrate (dual_cppn, single_cppn, ca) can register
  * an adapter for render, preparePatternData, and import detection (isGenomeFormat).
  * Pattern renderer and app use getAdapter(substrateId) to delegate.
+ * Single source for default resolution: use resolve() everywhere.
  */
 (function () {
     "use strict";
+
+    var DEFAULT_RESOLUTION = { outputType: "shader", substrateId: "dual_cppn" };
+    window.__eyecatcherDefaultResolution = {
+        outputType: "shader",
+        substrateId: "dual_cppn",
+        adapter: null,
+    };
 
     const adaptersById = {};
 
@@ -48,7 +56,24 @@
     function getDefaultResolution() {
         return window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
             ? window.EvolutionConfig.getDefaultResolution()
-            : { outputType: "shader", substrateId: "dual_cppn" };
+            : DEFAULT_RESOLUTION;
+    }
+
+    /**
+     * Safe resolve: use from any script. If SubstrateAdapters not yet loaded, returns default.
+     * @param {{ outputType?: string, substrateId?: string, genomes?: Array }} opts
+     * @returns {{ outputType: string, substrateId: string, adapter: Object|null }}
+     */
+    function safeResolve(opts) {
+        var SA = window.SubstrateAdapters;
+        if (SA && SA.resolve) {
+            return SA.resolve(opts || {});
+        }
+        return {
+            outputType: DEFAULT_RESOLUTION.outputType,
+            substrateId: DEFAULT_RESOLUTION.substrateId,
+            adapter: null,
+        };
     }
 
     function resolveFromGenomes(genomes) {
@@ -158,6 +183,7 @@
         getAdapter: getAdapter,
         findAdapterByGenome: findAdapterByGenome,
         resolve: resolve,
+        safeResolve: safeResolve,
         resolveFromGenomes: resolveFromGenomes,
         resolveForLoad: resolveForLoad,
         getDefaultResolution: getDefaultResolution,

@@ -104,6 +104,14 @@ class Substrate(Protocol[IndividualT]):
         """
         return None
 
+    def serialize_individual_extra(self, ind: IndividualT) -> dict[str, Any]:
+        """
+        Optional: extra key-value pairs to merge into response for this individual.
+
+        E.g. CA: {"rule": int(ind.rule)}; CPPN: {}.
+        """
+        return {}
+
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         """
         Return logical filenames for saved assets (e.g. png, glsl, zip).

@@ -66,29 +66,47 @@ class ShaderCompiler:
             color_mode=color_mode,
         )
 
-    def compile_to_glsl(
-        self, genome: neat.DefaultGenome, visual_config: neat.Config
+    def compile(
+        self,
+        genome_or_dual: neat.DefaultGenome | DualGenome,
+        visual_config: neat.Config,
+        time_config: neat.Config | None = None,
     ) -> str:
         """
-        Compile a genome into GLSL shader code.
+        Compile a genome (or dual genome) into GLSL shader code.
+
+        Single-CPPN: pass a neat.DefaultGenome and time_config=None.
+        Dual-CPPN: pass a DualGenome and time_config for the time signal network.
 
         Args:
-            genome: NEAT genome to compile
-            visual_config: NEAT configuration for the genome
+            genome_or_dual: NEAT genome (single) or DualGenome (dual)
+            visual_config: NEAT configuration for the visual network
+            time_config: NEAT config for time network, or None for single-CPPN
 
         Returns:
             Complete GLSL fragment shader code as string
         """
-        connections = get_enabled_connections(genome)
-        nodes = topological_sort(genome, connections, visual_config)
-        node_computations = generate_node_code(
-            genome,
+        if time_config is not None and isinstance(genome_or_dual, DualGenome):
+            time_code = generate_time_signal_code(
+                genome_or_dual.time_signal,
+                time_config,
+                time_inputs=self.time_signals,
+            )
+            visual_genome = genome_or_dual.visual
+        else:
+            time_code = None
+            visual_genome = genome_or_dual  # type: ignore[assignment]
+
+        connections = get_enabled_connections(visual_genome)
+        nodes = topological_sort(visual_genome, connections, visual_config)
+        visual_code = generate_node_code(
+            visual_genome,
             connections,
             nodes,
             visual_config,
             input_names=build_glsl_input_map(self.visual_signals),
         )
-        return self._build_shader_template(node_computations, visual_config)
+        return self._build_main_body(visual_code, visual_config, time_code=time_code)
 
     def _get_color_output_code(self, num_outputs: int = 3) -> str:
         """Get GLSL code for converting network outputs to RGB based on color_mode."""
@@ -210,9 +228,10 @@ void main() {{
     def _glsl_visual_enable_gating(self, use_time_from_network: bool) -> str:
         """Generate visual network gated input assignments.
 
-        If use_time_from_network True, time uses timeFromNetwork and others use _base
-        (reassign without 'float' where already declared in time section).
-        Else all use inline (uniform*2-1) for single-CPPN mode.
+        When use_time_from_network is True (dual-CPPN build), time uses
+        timeFromNetwork and others use _base (reassign without 'float' where
+        already declared in time section). Otherwise all use inline (uniform*2-1)
+        for single-CPPN mode.
         """
         lines = []
         time_ids = {t.id for t in self.time_signals}
@@ -246,64 +265,23 @@ void main() {{
                 )
         return "\n".join(lines)
 
-    def _build_shader_template(self, node_code: str, visual_config: neat.Config) -> str:
-        """Build the complete GLSL shader with node computations (single CPPN)."""
-        visual_gating = self._glsl_visual_enable_gating(use_time_from_network=False)
-        num_outputs = visual_config.genome_config.num_outputs
-        main_body = f"""    // Convert UV to coordinate space (-1 to 1)
-{self._glsl_uv_to_coord()}
-
-    // Apply enable gates (disabled = 0.0 neutral)
-{visual_gating}
-
-    // Network computations
-{node_code}"""
-        return self._build_shader(main_body, num_outputs)
-
-    def compile_dual_to_glsl(
+    def _build_main_body(
         self,
-        dual_genome: DualGenome,
+        visual_code: str,
         visual_config: neat.Config,
-        time_config: neat.Config,
+        time_code: str | None = None,
     ) -> str:
+        """Build the complete GLSL shader main body and final shader.
+
+        If time_code is provided (dual-CPPN), includes time network section first,
+        then visual. Otherwise (single-CPPN) only visual network.
         """
-        Compile a dual network (time signal + visual) into GLSL shader code.
-
-        The time signal network transforms the raw time based on mouse speed,
-        then the visual network uses this modified time to generate colors.
-
-        Args:
-            dual_genome: DualGenome containing visual and time_signal genomes
-            visual_config: NEAT configuration for visual network
-            time_config: NEAT configuration for time signal network
-
-        Returns:
-            Complete GLSL fragment shader code as string
-        """
-        time_code = generate_time_signal_code(
-            dual_genome.time_signal, time_config, time_inputs=self.time_signals
-        )
-        visual_connections = get_enabled_connections(dual_genome.visual)
-        visual_nodes = topological_sort(
-            dual_genome.visual, visual_connections, visual_config
-        )
-        visual_code = generate_node_code(
-            dual_genome.visual,
-            visual_connections,
-            visual_nodes,
-            visual_config,
-            input_names=build_glsl_input_map(self.visual_signals),
-        )
-        return self._build_dual_shader_template(time_code, visual_code, visual_config)
-
-    def _build_dual_shader_template(
-        self, time_code: str, visual_code: str, visual_config: neat.Config
-    ) -> str:
-        """Build the complete GLSL shader for dual network (time signal + visual)."""
-        base_scaling = self._glsl_base_scaling()
-        time_gating = self._glsl_time_enable_gating()
-        visual_gating = self._glsl_visual_enable_gating(use_time_from_network=True)
-        main_body = f"""    // Raw inputs (before enable gating)
+        num_outputs = visual_config.genome_config.num_outputs
+        if time_code is not None:
+            base_scaling = self._glsl_base_scaling()
+            time_gating = self._glsl_time_enable_gating()
+            visual_gating = self._glsl_visual_enable_gating(use_time_from_network=True)
+            main_body = f"""    // Raw inputs (before enable gating)
 {base_scaling}
 
     // === TIME SIGNAL NETWORK ===
@@ -325,4 +303,14 @@ void main() {{
 
     // Visual network computations (using modified time)
 {visual_code}"""
-        return self._build_shader(main_body, visual_config.genome_config.num_outputs)
+        else:
+            visual_gating = self._glsl_visual_enable_gating(use_time_from_network=False)
+            main_body = f"""    // Convert UV to coordinate space (-1 to 1)
+{self._glsl_uv_to_coord()}
+
+    // Apply enable gates (disabled = 0.0 neutral)
+{visual_gating}
+
+    // Network computations
+{visual_code}"""
+        return self._build_shader(main_body, num_outputs)

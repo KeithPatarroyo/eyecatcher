@@ -15,12 +15,12 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from .. import get_root_dir
-from ..algorithm import (
+from ..evolution import (
     CROSSOVER_PROBABILITY,
     DEFAULT_POPULATION_SIZE,
+    config,
 )
-from ..algorithm import config as evolution_config
-from ..algorithm.reproduction import produce_next_generation
+from ..evolution.reproduction import produce_next_generation
 from .api_helpers import (
     ERR_GENOME_REQUIRED_REQUEST_BODY,
     ERR_PARENTS_ARRAY_REQUIRED,
@@ -55,7 +55,7 @@ else:
     CORS(app, origins=[o.strip() for o in _cors_origins.split(",")])
 
 # Substrate from experiment preset (config/experiments.json, EXPERIMENT_CONFIG)
-substrate = evolution_config.get_configured_substrate()
+substrate = config.get_configured_substrate()
 
 # Initialize and register API blueprints
 init_stateless_api(substrate)
