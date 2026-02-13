@@ -4,7 +4,7 @@ import os
 from unittest.mock import patch
 
 import pytest
-from eyecatcher.genome import create_random_dual_genome, dual_genome_to_json
+from eyecatcher.substrate import create_random_dual_genome, dual_genome_to_json
 
 
 @pytest.fixture

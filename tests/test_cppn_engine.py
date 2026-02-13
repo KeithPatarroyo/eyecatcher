@@ -1,10 +1,8 @@
 """Tests for dual-CPPN substrate: population, mutation, crossover, query."""
 
-from eyecatcher.algorithm import mutate_single_genome
-from eyecatcher.genome import (
-    DualGenome,
-    create_random_genome,
-)
+from eyecatcher.algorithm import mutate_genome
+from eyecatcher.genome import create_random_genome
+from eyecatcher.substrate import DualGenome
 
 
 def test_engine_create_population(cppn_engine):
@@ -56,10 +54,10 @@ def test_crossover_dual_genomes(cppn_engine):
 
 
 def test_create_random_genome_and_mutate(cppn_engine):
-    """Single-genome path: create_random_genome and mutate_single_genome work."""
+    """Single-genome path: create_random_genome and mutate_genome work."""
     genome = create_random_genome(cppn_engine.config, genome_id=42)
     assert genome is not None
-    mutated = mutate_single_genome(genome, cppn_engine.config)
+    mutated = mutate_genome(genome, cppn_engine.config)
     assert mutated is not None
     assert mutated.key == 43, "mutate returns child with parent_key + 1"
     assert isinstance(mutated.nodes, dict)

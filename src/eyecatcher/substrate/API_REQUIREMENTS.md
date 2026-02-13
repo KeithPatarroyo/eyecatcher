@@ -26,7 +26,7 @@ Every substrate must implement the full `Substrate` protocol in `protocol.py`:
 | **POST /api/evaluate** | from_json, evaluate, output_type; compile_to_shader used when present for response | All substrates. |
 | **POST /api/evolve** (app) | create_random, mutate, crossover, from_json, to_json, output_type | All substrates. |
 | **POST /api/compile** | from_json, **compile_to_shader** (must be implemented and return a GLSL string for thumbnails / shader display) | 501 if compile_to_shader is missing or not callable. dual_cppn gets full stats; others get id, shader, clicks, nodes, connections. |
-| **POST /api/save** | **dual_cppn only**: engine, compiler; build_shader_response | 501 for other substrates. |
+| **POST /api/save** | **dual_cppn only**: get_compile_stats, compile_to_shader, build_save_assets; response built in web/stateless_api | 501 for other substrates. |
 | **POST /api/time-output** | **dual_cppn only**: engine (time CPPN query) | 501 for other substrates. |
 | **GET/POST /api/network** | **dual_cppn only**: engine (extract_network_data) | 501 for other substrates. |
 | **POST /api/adjust-weight** | **dual_cppn only**: engine | 501 for other substrates. |

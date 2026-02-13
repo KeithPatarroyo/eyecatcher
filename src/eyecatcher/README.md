@@ -12,12 +12,11 @@ src/eyecatcher/
 ├── server.py            # Entry point: re-exports app from web.app (eyecatcher.server:app)
 ├── README.md            # This file
 │
-├── algorithm/           # Evolution algorithm (config, engine, reproduction, operators)
+├── algorithm/           # Evolution algorithm (config, reproduction, operators)
 │   ├── __init__.py
-│   ├── breeding.py
 │   ├── config.py
-│   ├── engine.py
-│   └── operators.py
+│   ├── operators.py
+│   └── reproduction.py
 │
 ├── genome/              # Genome representation and serialization
 │   ├── __init__.py
@@ -29,12 +28,11 @@ src/eyecatcher/
 │   ├── activation.py
 │   └── signals.py
 │
-├── evaluation/          # CPU rendering, query, genome viz, network graph/stats for UI/API
+├── evaluation/          # Genome viz, network graph/stats for UI/API, fitness
 │   ├── __init__.py
+│   ├── fitness.py
 │   ├── genome_visualizer.py
-│   ├── network_data.py  # extract_network_data, parse_network_node_id
-│   ├── query.py
-│   └── rendering.py
+│   └── network_data.py  # extract_network_data, parse_network_node_id
 │
 ├── glsl/                # Display pipeline: genome → GLSL fragment shader
 │   ├── __init__.py
@@ -49,7 +47,6 @@ src/eyecatcher/
 │   ├── api_helpers.py
 │   ├── community_routes.py
 │   ├── genealogy_routes.py
-│   ├── response_builder.py
 │   └── stateless_api.py
 │
 ├── lib/                 # Infrastructure (DB, paths)
@@ -68,20 +65,21 @@ src/eyecatcher/
 | Package | Role | When you look here |
 |---------|------|--------------------|
 | **algorithm/** | NEAT config, reproduction, mutation, crossover, get_configured_substrate. | Changing the evolution algorithm or NEAT config. |
-| **genome/** | DualGenome, create_random_dual_genome, wire serialization (genome_to_json, dual_genome_to_json, copy_*). Network graph/stats re-exported from evaluation. | Changing genome representation or JSON serialization. |
+| **genome/** | Generic NEAT genome: create_random_genome, genome_to_json, genome_from_json, copy_genome. | Changing generic genome representation or JSON. |
+| **substrate/** | Substrates (Single/ DualCPPN, CA, …), DualGenome, create_random_dual_genome, dual_genome_to_json/from_json, copy_dual_genome. | Changing substrate types or dual-genome serialization. |
 | **signals/** | VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map, activation helpers. | Adding/changing input signals or activation functions. |
 | **evaluation/** | render_image, query, genome_visualizer, network_data (extract_network_data for UI/API). Substrates implement render_to_image. | Changing CPU rendering, CPPN query, network visualization, or API graph/stats. |
 | **glsl/** | ShaderCompiler; topology, node code, GLSL fragments. Genome → fragment shader. | Changing how genomes become shader code (display pipeline). |
-| **web/** | Flask app, /api/compile, /api/evolve, /api/save, genealogy routes, community routes, response_builder. | Adding endpoints or changing API response shape. |
+| **web/** | Flask app, /api/compile, /api/evolve, /api/save, genealogy routes, community routes, stateless_api. | Adding endpoints or changing API response shape. |
 | **lib/** | with_db_connection, default_db_path. | Fixing DB or path helpers. |
-| **data/** | genealogy_db; genome_persistence (pickle save/load). | Changing genealogy storage, genome file storage, or export. |
+| **data/** | genealogy_db. | Changing genealogy storage or export. |
 
 ---
 
 ## Entry points
 
 - **Flask app:** `eyecatcher.server:app` (root `server.py` re-exports from `web.app`).
-- **Public API:** `from eyecatcher.algorithm import CPPNEngine, ...`; `from eyecatcher.genome import DualGenome, dual_genome_to_json, ...`; `from eyecatcher.glsl import ShaderCompiler`; `from eyecatcher.signals import ...`; `from eyecatcher.evaluation import ...`.
+- **Public API:** `from eyecatcher.algorithm import produce_next_generation, ...`; `from eyecatcher.algorithm.config import get_configured_substrate`; `from eyecatcher.genome import create_random_genome, genome_to_json, ...`; `from eyecatcher.substrate import DualGenome, get_substrate, create_random_dual_genome, dual_genome_to_json, ...`; `from eyecatcher.glsl import ShaderCompiler`; `from eyecatcher.signals import ...`; `from eyecatcher.evaluation import ...`.
 
 ---
 
@@ -94,11 +92,11 @@ src/eyecatcher/
 | Change reproduction/selection | algorithm/reproduction.py, algorithm/operators.py |
 | Change genome or wire serialization | genome/genome.py, genome/serialization.py |
 | Change network graph/stats for UI or API | evaluation/network_data.py |
-| Change CPU rendering or query | evaluation/rendering.py, evaluation/query.py |
+| Change CPU rendering or substrate query | substrate (e.g. cppn_base.evaluate, dual_cppn, ca) |
 | Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl_fragments.py, node_code_generator.py, compiler_topology.py |
-| Change compile/save/export response shape | web/response_builder.py |
+| Change compile/save/export response shape | web/stateless_api.py, substrate get_compile_stats / build_save_assets |
 | Change genealogy storage or export | data/genealogy_db.py |
-| Change genome file save/load (pickle) | data/genome_persistence.py |
+| Change genome bundle save/load (pickle, etc.) | substrate build_save_assets (e.g. dual_cppn) |
 | Add an endpoint or change API | web/ (app.py, stateless_api.py, genealogy_routes.py, community_routes.py) |
 
 For signal/NEAT/shader details and a short “I want to…” guide, see [RESEARCHER_GUIDE.md](../../RESEARCHER_GUIDE.md) in the repo root.

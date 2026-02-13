@@ -18,6 +18,14 @@
         // Substrate (backend default; overridden by mergeFromServer when /api/config provides substrate_id)
         DEFAULT_SUBSTRATE_ID: "dual_cppn",
 
+        /** Single source of truth for default resolution when adapter cannot be determined. */
+        getDefaultResolution: function () {
+            return {
+                outputType: "shader",
+                substrateId: this.DEFAULT_SUBSTRATE_ID,
+            };
+        },
+
         // Fullscreen / canvas (viewer-only; backend uses DEFAULT_RENDER_RESOLUTION for saves)
         FULLSCREEN_CANVAS_DEFAULT: 800,
         FULLSCREEN_CANVAS_MAX: 1024,

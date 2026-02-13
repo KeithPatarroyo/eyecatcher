@@ -8,8 +8,8 @@ output (HSV/RGB) in _get_color_output_code; signals in signals.py.
 
 import neat
 
-from ..genome import DualGenome
 from ..signals import TIME_INPUTS, VISUAL_DERIVED_INPUTS, VISUAL_INPUTS
+from ..substrate import DualGenome
 from .compiler_topology import get_enabled_connections, topological_sort
 from .glsl_fragments import ACTIVATION_GLSL_BLOCK
 from .node_code_generator import generate_node_code, generate_time_signal_code

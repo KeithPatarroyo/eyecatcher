@@ -12,7 +12,6 @@ let hierarchicalLayout = false; // Default to physics layout
 let currentPopulationId = null; // Track which population is currently active
 let thumbnailCache = new Map(); // Cache rendered thumbnails
 let savedPositions = null; // Save positions when switching modes
-let compileUnavailableLogged = false; // Log once when compile returns 501 (e.g. ca substrate)
 
 function updateControlsVisibility() {
     const physicsControls = document.getElementById("physics-controls");
@@ -472,11 +471,19 @@ function getBranchColor(branchName) {
     return `hsl(${hue}, 60%, 30%)`;
 }
 
-// Render a thumbnail for a population
+// Render a thumbnail for a population using substrate adapter (getDisplayData).
 async function renderThumbnail(populationId) {
-    // Check cache first
     if (thumbnailCache.has(populationId)) {
         return thumbnailCache.get(populationId);
+    }
+
+    const SubstrateAdapters = window.SubstrateAdapters;
+    if (
+        !SubstrateAdapters ||
+        !SubstrateAdapters.getDisplayData ||
+        !SubstrateAdapters.findAdapterByGenome
+    ) {
+        return null;
     }
 
     try {
@@ -487,71 +494,52 @@ async function renderThumbnail(populationId) {
         );
         if (!data.genome) return null;
 
-        let compileData;
-        try {
-            compileData = await ApiClient.apiFetch(
-                `${API_URL}/compile`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ genomes: [data.genome] }),
-                },
-                "Compile failed"
-            );
-        } catch (compileErr) {
-            if (
-                compileErr.status === 501 ||
-                (compileErr.message &&
-                    compileErr.message.indexOf("shader substrate") !== -1)
-            ) {
-                if (!compileUnavailableLogged) {
-                    compileUnavailableLogged = true;
-                    console.info(
-                        "Genealogy thumbnails skipped: server is using a substrate that does not support compile (e.g. ca). Use dual_cppn or single_cppn preset for thumbnails."
-                    );
-                }
-                return null;
-            }
-            throw compileErr;
-        }
-        if (!compileData.shaders || !compileData.shaders[0]) return null;
+        const adapter = SubstrateAdapters.findAdapterByGenome(data.genome);
+        if (!adapter) return null;
 
-        const shader = compileData.shaders[0].shader;
+        const result = await SubstrateAdapters.getDisplayData(
+            adapter,
+            [data.genome],
+            {}
+        );
+        const pop = result && result.population && result.population[0];
+        if (!pop) return null;
 
-        // Create a small canvas and render
         const canvas = document.createElement("canvas");
         canvas.width = THUMBNAIL_CANVAS_SIZE;
         canvas.height = THUMBNAIL_CANVAS_SIZE;
 
-        // Check if PatternRenderer is available
-        if (!window.PatternRenderer) {
-            console.warn(
-                `PatternRenderer not available for population ${populationId}`
+        if (pop.image) {
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = pop.image;
+            });
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+                ctx.drawImage(img, 0, 0, THUMBNAIL_CANVAS_SIZE, THUMBNAIL_CANVAS_SIZE);
+            }
+        } else if (pop.shader && window.PatternRenderer) {
+            const patternData = PatternRenderer.setupPattern(canvas, pop.shader);
+            if (!patternData || patternData.error) return null;
+            if (data.genome && typeof data.genome.rule === "number") {
+                patternData.caRule = data.genome.rule;
+            }
+            const signalState =
+                window.EvolutionConfig && window.EvolutionConfig.getDefaultSignalState
+                    ? window.EvolutionConfig.getDefaultSignalState()
+                    : { time: {}, visual: {} };
+            PatternRenderer.renderWithSignals(
+                patternData,
+                PatternRenderer,
+                signalState,
+                canvas
             );
+        } else {
             return null;
         }
 
-        const patternData = PatternRenderer.setupPattern(canvas, shader);
-        if (!patternData || patternData.error) {
-            console.warn(`Failed to setup pattern for population ${populationId}`);
-            return null;
-        }
-        if (data.genome && typeof data.genome.rule === "number") {
-            patternData.caRule = data.genome.rule;
-        }
-
-        const signalState =
-            window.EvolutionConfig && window.EvolutionConfig.getDefaultSignalState
-                ? window.EvolutionConfig.getDefaultSignalState()
-                : { time: {}, visual: {} };
-        PatternRenderer.renderWithSignals(
-            patternData,
-            PatternRenderer,
-            signalState,
-            patternData.canvas
-        );
-
-        // Convert to data URL
         const dataUrl = canvas.toDataURL("image/png");
         if (thumbnailCache.size >= MAX_THUMBNAIL_CACHE) {
             const firstKey = thumbnailCache.keys().next().value;
@@ -560,15 +548,7 @@ async function renderThumbnail(populationId) {
         thumbnailCache.set(populationId, dataUrl);
         return dataUrl;
     } catch (error) {
-        if (
-            error.status !== 501 &&
-            (!error.message || error.message.indexOf("shader substrate") === -1)
-        ) {
-            console.error(
-                "Failed to render thumbnail for population " + populationId + ":",
-                error
-            );
-        }
+        console.warn("Thumbnail failed for population " + populationId + ":", error);
         return null;
     }
 }

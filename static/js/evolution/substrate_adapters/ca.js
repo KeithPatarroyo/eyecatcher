@@ -63,6 +63,12 @@
         },
         preparePatternData: preparePatternData,
         render: renderCa,
+        getMetaLabel: function (pattern) {
+            return (
+                "Rule: " +
+                (pattern && typeof pattern.rule === "number" ? pattern.rule : "?")
+            );
+        },
     };
 
     if (window.SubstrateAdapters) {

@@ -35,13 +35,44 @@
         },
     };
 
-    const networkColors = {
-        visual: { opacity: 1.0 },
-        time: { opacity: 0.5 },
-    };
-
     const WEIGHT_MIN = -5;
     const WEIGHT_MAX = 5;
+
+    function getNetworkTypesFromData(data) {
+        const types = new Set();
+        if (data.nodes) {
+            data.nodes.forEach(function (n) {
+                if (n.network) types.add(n.network);
+            });
+        }
+        if (data.connections) {
+            data.connections.forEach(function (c) {
+                if (c.network) types.add(c.network);
+            });
+        }
+        return types.size ? Array.from(types) : ["visual"];
+    }
+
+    function colorForNetwork(networkType, isPositive) {
+        let hash = 0;
+        const s = String(networkType);
+        for (let i = 0; i < s.length; i++) {
+            hash = s.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = Math.abs(hash % 360);
+        const sat = 60;
+        const light = isPositive ? 45 : 55;
+        return "hsla(" + hue + "," + sat + "%," + light + "%,0.4)";
+    }
+
+    function opacityForNetwork(networkType) {
+        let hash = 0;
+        const s = String(networkType);
+        for (let i = 0; i < s.length; i++) {
+            hash = s.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return 0.4 + (Math.abs(hash) % 60) / 100;
+    }
 
     function extractNodeLabel(nodeId) {
         const parts = String(nodeId).split("_");
@@ -65,11 +96,12 @@
             const vizContainer = container.querySelector(".network-visualization");
             vizContainer.innerHTML = "";
 
+            const networkTypes = getNetworkTypesFromData(data);
             const nodes = new vis.DataSet();
             data.nodes.forEach(function (node) {
                 const color = nodeColors[node.type];
-                const network = node.network || "visual";
-                const opacity = networkColors[network].opacity;
+                const network = node.network || networkTypes[0] || "visual";
+                const opacity = opacityForNetwork(network);
                 let label = node.label;
                 if (node.type === "hidden") {
                     label += "\nBias: " + node.bias.toFixed(2);
@@ -109,19 +141,10 @@
 
             const edges = new vis.DataSet();
             data.connections.forEach(function (conn) {
-                const network = conn.network || "visual";
+                const network = conn.network || networkTypes[0] || "visual";
                 const width = Math.max(0.5, Math.abs(conn.weight));
                 const isPositive = conn.weight > 0;
-                let color;
-                if (network === "time") {
-                    color = isPositive
-                        ? "rgba(0, 150, 200, 0.3)"
-                        : "rgba(200, 150, 0, 0.3)";
-                } else {
-                    color = isPositive
-                        ? "rgba(0, 200, 100, 0.5)"
-                        : "rgba(255, 100, 100, 0.5)";
-                }
+                const color = colorForNetwork(network, isPositive);
                 edges.add({
                     from: conn.source,
                     to: conn.target,
@@ -203,17 +226,20 @@
                 nodeIdToLabel[node.id] = node.label;
             });
         }
-        const visualConns = data.connections.filter(function (c) {
-            return c.network === "visual";
-        });
-        const timeConns = data.connections.filter(function (c) {
-            return c.network === "time";
-        });
-        visualConns.forEach(function (conn) {
-            createWeightSlider(individualId, conn, "visual", container, nodeIdToLabel);
-        });
-        timeConns.forEach(function (conn) {
-            createWeightSlider(individualId, conn, "time", container, nodeIdToLabel);
+        const networkTypes = getNetworkTypesFromData(data);
+        networkTypes.forEach(function (networkType) {
+            const conns = data.connections.filter(function (c) {
+                return c.network === networkType;
+            });
+            conns.forEach(function (conn) {
+                createWeightSlider(
+                    individualId,
+                    conn,
+                    networkType,
+                    container,
+                    nodeIdToLabel
+                );
+            });
         });
     }
 
@@ -297,12 +323,13 @@
         if (!tpl || !tpl.content) {
             return;
         }
-        const isTimeNetwork = networkType === "time";
         const sliderDiv = tpl.content
             .cloneNode(true)
             .querySelector(".weight-slider-item");
         if (!sliderDiv) return;
-        if (isTimeNetwork) sliderDiv.classList.add("time-network");
+        sliderDiv.setAttribute("data-network-type", networkType);
+        sliderDiv.classList.add("network-" + networkType);
+        if (networkType === "time") sliderDiv.classList.add("time-network");
         const sourceLabel =
             (labelMap && labelMap[connection.source]) ||
             extractNodeLabel(connection.source);
@@ -348,16 +375,7 @@
             if (edge.from === sourceId && edge.to === targetId) {
                 const width = Math.max(0.5, Math.abs(newWeight));
                 const isPositive = newWeight > 0;
-                let color;
-                if (networkType === "time") {
-                    color = isPositive
-                        ? "rgba(0, 150, 200, 0.3)"
-                        : "rgba(200, 150, 0, 0.3)";
-                } else {
-                    color = isPositive
-                        ? "rgba(0, 200, 100, 0.5)"
-                        : "rgba(255, 100, 100, 0.5)";
-                }
+                const color = colorForNetwork(networkType, isPositive);
                 edges.update({
                     id: edge.id,
                     width: width,
@@ -420,24 +438,29 @@
             );
             const infoPanel = sidebar.querySelector(".network-info-panel");
             if (infoPanel) {
-                const visualNodes = data.nodes.filter(function (n) {
-                    return n.network === "visual" && n.type === "hidden";
-                }).length;
-                const timeNodes = data.nodes.filter(function (n) {
-                    return n.network === "time" && n.type === "hidden";
-                }).length;
-                const visualConns = data.connections.filter(function (c) {
-                    return c.network === "visual";
-                }).length;
-                const timeConns = data.connections.filter(function (c) {
-                    return c.network === "time";
-                }).length;
+                const networkTypes = getNetworkTypesFromData(data);
+                const nodeCounts = networkTypes.map(function (t) {
+                    return (
+                        t.substring(0, 1).toUpperCase() +
+                        ":" +
+                        data.nodes.filter(function (n) {
+                            return n.network === t && n.type === "hidden";
+                        }).length
+                    );
+                });
+                const connCounts = networkTypes.map(function (t) {
+                    return (
+                        t.substring(0, 1).toUpperCase() +
+                        ":" +
+                        data.connections.filter(function (c) {
+                            return c.network === t;
+                        }).length
+                    );
+                });
                 const nodesEl = infoPanel.querySelector("[data-nodes]");
                 const connsEl = infoPanel.querySelector("[data-connections]");
-                if (nodesEl)
-                    nodesEl.textContent = "V:" + visualNodes + " T:" + timeNodes;
-                if (connsEl)
-                    connsEl.textContent = "V:" + visualConns + " T:" + timeConns;
+                if (nodesEl) nodesEl.textContent = nodeCounts.join(" ");
+                if (connsEl) connsEl.textContent = connCounts.join(" ");
             }
             visualizeNetworkInline(individualId, data, sidebar);
             sidebar.classList.add("open");

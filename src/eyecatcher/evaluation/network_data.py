@@ -47,15 +47,19 @@ def _append_nodes_for_layer(
 
 
 def extract_network_data(
-    genome: neat.DefaultGenome, network_type: str, neat_config: neat.Config
+    genome: neat.DefaultGenome,
+    network_type: str,
+    neat_config: neat.Config,
+    x_offset: float = 0,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
     Extract nodes and connections from a genome for network visualization.
 
     Args:
         genome: NEAT DefaultGenome (visual or time_signal).
-        network_type: "visual" or "time"; determines which signal registry is used.
-        neat_config: NEAT config for this genome (visual or time).
+        network_type: Key for NETWORK_SIGNALS (e.g. "visual", "time").
+        neat_config: NEAT config for this genome.
+        x_offset: X offset for layout (e.g. 0 for first network, 1000 for second).
 
     Returns:
         (nodes, connections) as lists of dicts with id, label, type, etc.
@@ -64,7 +68,6 @@ def extract_network_data(
     node_id_map = {}
     num_inputs = neat_config.genome_config.num_inputs
     num_outputs = neat_config.genome_config.num_outputs
-    x_offset = 1000 if network_type == "time" else 0
     signals, outputs = NETWORK_SIGNALS[network_type]
     input_label_list = input_labels(signals)
     input_list = [

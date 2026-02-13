@@ -17,13 +17,20 @@ import matplotlib.pyplot as plt  # noqa: E402
 import neat  # noqa: E402
 from matplotlib.patches import FancyArrowPatch  # noqa: E402
 
-from ..signals.signals import VISUAL_INPUTS, VISUAL_OUTPUTS, input_names, output_labels
+from ..signals.signals import (
+    VISUAL_INPUTS,
+    VISUAL_OUTPUTS,
+    Output,
+    Signal,
+    input_names,
+    output_labels,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class GenomeVisualizer:
-    """Visualizes NEAT genome network structure."""
+    """Visualizes NEAT genome network structure (any input/output signal set)."""
 
     # Node size for all circles
     NODE_SIZE = 2000
@@ -39,11 +46,20 @@ class GenomeVisualizer:
         "negative": "#E74C3C",  # Red
     }
 
-    def __init__(self, visual_config: neat.Config):
-        """Initialize visualizer with NEAT config (visual CPPN)."""
-        self.config = visual_config
-        self.num_inputs = visual_config.genome_config.num_inputs
-        self.num_outputs = visual_config.genome_config.num_outputs
+    def __init__(
+        self,
+        neat_config: neat.Config,
+        signals_in: list[Signal] | None = None,
+        signals_out: list[Output] | None = None,
+    ):
+        """Initialize with NEAT config and optional signal labels (default: visual)."""
+        self.config = neat_config
+        self.num_inputs = neat_config.genome_config.num_inputs
+        self.num_outputs = neat_config.genome_config.num_outputs
+        self._signals_in = signals_in if signals_in is not None else list(VISUAL_INPUTS)
+        self._signals_out = (
+            signals_out if signals_out is not None else list(VISUAL_OUTPUTS)
+        )
 
     def visualize_genome(
         self,
@@ -286,8 +302,8 @@ class GenomeVisualizer:
 
     def _draw_nodes(self, ax, genome: neat.DefaultGenome, positions: dict):
         """Draw nodes."""
-        input_name_list = input_names(VISUAL_INPUTS)
-        output_name_list = output_labels(VISUAL_OUTPUTS)
+        input_name_list = input_names(self._signals_in)
+        output_name_list = output_labels(self._signals_out)
 
         # Identify which nodes are connected to outputs (active nodes)
         active_nodes = self._get_nodes_required_for_output(genome)
@@ -393,8 +409,10 @@ class GenomeVisualizer:
 
 def render_genome_network_pdf(
     genome: neat.DefaultGenome,
-    visual_config: neat.Config,
+    neat_config: neat.Config,
     output: Union[str, BinaryIO],
+    signals_in: list[Signal] | None = None,
+    signals_out: list[Output] | None = None,
 ) -> Optional[bytes]:
     """
     Render a genome network to PDF (optional matplotlib).
@@ -407,7 +425,11 @@ def render_genome_network_pdf(
         PDF bytes when output is file-like, else None.
     """
     try:
-        visualizer = GenomeVisualizer(visual_config)
+        visualizer = GenomeVisualizer(
+            neat_config,
+            signals_in=signals_in,
+            signals_out=signals_out,
+        )
         visualizer.visualize_genome(genome, output)
         if isinstance(output, io.BytesIO):
             return output.getvalue()

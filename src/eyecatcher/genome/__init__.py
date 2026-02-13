@@ -1,29 +1,17 @@
 """
 Genome representation and serialization.
 
-DualGenome, genome creation, JSON serialization.
-Network graph (extract_network_data, parse_network_node_id) live in
-evaluation.network_data; import from eyecatcher.evaluation or evaluation.network_data.
+Generic NEAT genome: create_random_genome, genome_to_json, genome_from_json,
+copy_genome. Dual-genome types and helpers live in substrate._dual_genome and
+are exported from substrate.
 """
 
-from .genome import DualGenome, create_random_dual_genome, create_random_genome
-from .serialization import (
-    copy_dual_genome,
-    copy_genome,
-    dual_genome_from_json,
-    dual_genome_to_json,
-    genome_from_json,
-    genome_to_json,
-)
+from .genome import create_random_genome
+from .serialization import copy_genome, genome_from_json, genome_to_json
 
 __all__ = [
-    "DualGenome",
     "create_random_genome",
-    "create_random_dual_genome",
-    "genome_to_json",
-    "genome_from_json",
-    "dual_genome_to_json",
-    "dual_genome_from_json",
     "copy_genome",
-    "copy_dual_genome",
+    "genome_from_json",
+    "genome_to_json",
 ]

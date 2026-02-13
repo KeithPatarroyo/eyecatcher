@@ -12,16 +12,8 @@ from typing import Any, Callable
 import neat
 import numpy as np
 
-from ..algorithm import DEFAULT_RENDER_RESOLUTION
 from ..algorithm import config as evolution_config
-from ..algorithm.operators import crossover_dual_genomes, mutate_dual_genome
 from ..evaluation import extract_network_data, parse_network_node_id
-from ..genome import (
-    DualGenome,
-    create_random_dual_genome,
-    dual_genome_from_json,
-    dual_genome_to_json,
-)
 from ..glsl import ShaderCompiler
 from ..signals.signals import (
     TIME_INPUTS,
@@ -31,20 +23,27 @@ from ..signals.signals import (
     VISUAL_OUTPUTS,
     VISUAL_TIME_INPUT_NAME,
     default_inputs,
-    get_default_signal_values,
     parse_time_inputs,
 )
+from ._dual_genome import (
+    DualGenome,
+    create_random_dual_genome,
+    crossover_dual_genomes,
+    dual_genome_from_json,
+    dual_genome_to_json,
+    mutate_dual_genome,
+)
 from .cppn_base import (
+    CPPNSubstrateBase,
+    _clamp_rgb,
     _load_neat_config,
-    base_evaluate,
     compile_with_color_mode,
     query_neat_network,
-    render_pixel_grid,
 )
-from .protocol import OutputType, SubstrateOutput
+from .protocol import OutputType
 
 
-class DualCPPNSubstrate:
+class DualCPPNSubstrate(CPPNSubstrateBase):
     """
     Substrate that wraps the current dual-CPPN (visual + time) setup.
     Individual = DualGenome; output = shader.
@@ -102,11 +101,6 @@ class DualCPPNSubstrate:
     def crossover(self, a: DualGenome, b: DualGenome, key: int) -> DualGenome:
         return crossover_dual_genomes(a, b, self.config, self.time_config, key)
 
-    def evaluate(
-        self, ind: DualGenome, inputs: dict[str, float], **kwargs: Any
-    ) -> SubstrateOutput:
-        return base_evaluate(lambda i: self.compile_to_shader(i), ind)
-
     def compile_to_shader(
         self, ind: DualGenome, color_mode: str | None = None
     ) -> str | None:
@@ -136,49 +130,30 @@ class DualCPPNSubstrate:
             VISUAL_DERIVED_INPUTS,
             inputs,
         )
-        r = max(0.0, min(1.0, (out[0] + 1.0) / 2.0))
-        g = max(0.0, min(1.0, (out[1] + 1.0) / 2.0))
-        b = max(0.0, min(1.0, (out[2] + 1.0) / 2.0))
-        return r, g, b
+        return _clamp_rgb(out)
+
+    def query_rgb(
+        self, ind: DualGenome, inputs: dict[str, float]
+    ) -> tuple[float, float, float]:
+        modified_time = self._query_time_signal(ind.time_signal, inputs)
+        visual_inputs = {
+            **inputs,
+            VISUAL_TIME_INPUT_NAME: modified_time,
+        }
+        return self._query_visual_rgb(ind, visual_inputs)
 
     def _query_dual_cppn(
         self, ind: DualGenome, inputs: dict[str, float]
     ) -> tuple[float, float, float]:
-        modified_time = self._query_time_signal(ind.time_signal, inputs)
-        visual_inputs = {**inputs, VISUAL_TIME_INPUT_NAME: modified_time}
-        return self._query_visual_rgb(ind, visual_inputs)
+        return self.query_rgb(ind, inputs)
 
-    def sample_rgb(
-        self,
-        ind: DualGenome,
-        coords: list[tuple[float, float]],
-        time: float = 0.0,
-    ) -> list[list[float]]:
-        samples = []
-        base = get_default_signal_values(time)
-        for x, y in coords:
-            inputs = {"x": x, "y": y, **base}
-            r, g, b = self._query_dual_cppn(ind, inputs)
-            samples.append([r, g, b])
-        return samples
+    def _sample_inputs(
+        self, x: float, y: float, time: float, base: dict[str, float]
+    ) -> dict[str, float]:
+        return {**base, "x": x, "y": y}
 
-    def render_to_image(
-        self,
-        ind: DualGenome,
-        resolution: int | None = None,
-        extra_inputs: dict[str, float] | None = None,
-        **kwargs: Any,
-    ) -> np.ndarray:
-        if resolution is None:
-            resolution = DEFAULT_RENDER_RESOLUTION
-        base = default_inputs(TIME_INPUTS)
-        if extra_inputs:
-            base.update(extra_inputs)
-        return render_pixel_grid(
-            resolution,
-            base,
-            lambda inputs: self._query_dual_cppn(ind, inputs),
-        )
+    def get_base_inputs_for_render(self) -> dict[str, float]:
+        return default_inputs(TIME_INPUTS)
 
     def to_json(self, ind: DualGenome) -> dict[str, Any]:
         return dual_genome_to_json(ind)
@@ -199,23 +174,20 @@ class DualCPPNSubstrate:
         }
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
-        return {
-            "png": f"pattern_{individual_id}.png",
-            "glsl": f"pattern_{individual_id}.glsl",
-            "bundle_json": f"pattern_{individual_id}_bundle.json",
-            "genome_json": f"genome_{individual_id}.json",
-            "pkl": f"genome_{individual_id}.pkl",
-            "network_pdf": f"genome_{individual_id}_network.pdf",
-            "zip": f"pattern_{individual_id}.zip",
-        }
+        base = super().get_save_filenames(individual_id)
+        base["bundle_json"] = f"pattern_{individual_id}_bundle.json"
+        base["pkl"] = f"genome_{individual_id}.pkl"
+        base["network_pdf"] = f"genome_{individual_id}_network.pdf"
+        return base
 
     def build_save_assets(
         self, ind: DualGenome, individual_id: int, **kwargs: Any
     ) -> dict[str, bytes]:
-        to_png_bytes: Callable[[np.ndarray], bytes] = kwargs.get("to_png_bytes")
+        to_png_bytes: Callable[[np.ndarray], bytes] | None = kwargs.get("to_png_bytes")
         visualize: bool = kwargs.get("visualize", True)
         if not callable(to_png_bytes):
             return {}
+        assets = super().build_save_assets(ind, individual_id, **kwargs)
         shader_code = self.compile_to_shader(ind) or ""
         stats = self.get_compile_stats(ind) or {}
         bundle = {
@@ -234,21 +206,13 @@ class DualCPPNSubstrate:
             },
         }
         names = self.get_save_filenames(individual_id)
-        img = self.render_to_image(ind, resolution=DEFAULT_RENDER_RESOLUTION)
         pkl_buffer = io.BytesIO()
         pickle.dump(
             {"visual": ind.visual, "time_signal": ind.time_signal, "key": ind.key},
             pkl_buffer,
         )
-        assets = {
-            names["png"]: to_png_bytes(img),
-            names["glsl"]: shader_code.encode("utf-8"),
-            names["bundle_json"]: json.dumps(bundle, indent=2).encode("utf-8"),
-            names["genome_json"]: json.dumps(dual_genome_to_json(ind), indent=2).encode(
-                "utf-8"
-            ),
-            names["pkl"]: pkl_buffer.getvalue(),
-        }
+        assets[names["bundle_json"]] = json.dumps(bundle, indent=2).encode("utf-8")
+        assets[names["pkl"]] = pkl_buffer.getvalue()
         if visualize:
             from ..evaluation.genome_visualizer import render_genome_network_pdf
 
@@ -277,12 +241,14 @@ class DualCPPNSubstrate:
         all_nodes = []
         all_connections = []
         if ind.visual:
-            nodes, conns = extract_network_data(ind.visual, "visual", self.config)
+            nodes, conns = extract_network_data(
+                ind.visual, "visual", self.config, x_offset=0
+            )
             all_nodes.extend(nodes)
             all_connections.extend(conns)
         if ind.time_signal:
             nodes, conns = extract_network_data(
-                ind.time_signal, "time", self.time_config
+                ind.time_signal, "time", self.time_config, x_offset=1000
             )
             all_nodes.extend(nodes)
             all_connections.extend(conns)

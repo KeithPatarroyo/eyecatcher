@@ -15,20 +15,13 @@ from .config import (
     NEAT_TIME_CONFIG_PATH,
     PREVIEW_RENDER_RESOLUTION,
 )
-from .operators import (
-    crossover_dual_genomes,
-    crossover_single_genomes,
-    mutate_dual_genome,
-    mutate_single_genome,
-)
+from .operators import crossover_genomes, mutate_genome
 from .reproduction import produce_next_generation
 
 __all__ = [
     "produce_next_generation",
-    "mutate_single_genome",
-    "mutate_dual_genome",
-    "crossover_single_genomes",
-    "crossover_dual_genomes",
+    "mutate_genome",
+    "crossover_genomes",
     "NEAT_CONFIG_PATH",
     "NEAT_TIME_CONFIG_PATH",
     "DEFAULT_POPULATION_SIZE",

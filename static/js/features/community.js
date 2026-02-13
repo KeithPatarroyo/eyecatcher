@@ -2,12 +2,12 @@
  * Community UI Module for Eyecatcher
  *
  * Handles community pattern submission, browsing, and admin moderation.
+ * Thumbnails use SubstrateAdapters.getDisplayData so shader and grid substrates both work.
  *
  * Dependencies:
- * - API_URL global
- * - patternRenderer, viewerControls for previews (PatternRenderer.setupPattern, .renderPattern + signalState)
- * - loadFromStatelessGenomes function
- * - addToGrid function (append patterns to current grid)
+ * - API_URL global, SubstrateAdapters (getDisplayData, findAdapterByGenome)
+ * - patternRenderer, viewerControls for previews
+ * - loadFromStatelessGenomes, addToGrid
  */
 
 (function () {
@@ -27,35 +27,56 @@
     const PREVIEW_CANVAS_SIZE = 80;
 
     /**
-     * Compile a list of items to shaders; returns map id -> shader info.
+     * Fetch display data for a list of items using substrate adapters (compile or evaluate).
+     * Returns map key -> display item { id, shader?, image?, outputType, ... }.
      * @param {Array} list
-     * @param {Function} toCompileItem - (item) => { genome, key, clicks }
-     * @returns {Promise<Object>} shadersByKey
+     * @param {Function} toItem - (item) => { genome, key } e.g. (pat) => ({ ...pat.genome, key: pat.id })
+     * @param {Function} getKey - (item) => key e.g. (pat) => pat.id
+     * @returns {Promise<Object>} displayByKey
      */
-    async function compileListToShaders(list, toCompileItem) {
-        const shadersByKey = {};
-        try {
-            const compilePayload = list.map(toCompileItem);
-            const compData = await window.ApiClient.compile(compilePayload);
-            (compData.shaders || []).forEach((sh) => {
-                shadersByKey[sh.id] = sh;
-            });
-        } catch (e) {
-            console.warn("Could not compile previews:", e);
+    async function fetchDisplayDataForList(list, toItem, getKey) {
+        const SubstrateAdapters = window.SubstrateAdapters;
+        if (
+            !SubstrateAdapters ||
+            !SubstrateAdapters.getDisplayData ||
+            !SubstrateAdapters.findAdapterByGenome
+        ) {
+            return {};
         }
-        return shadersByKey;
+        const displayByKey = {};
+        const promises = list.map(async (item) => {
+            const payload = toItem(item);
+            const genome =
+                payload && (payload.genome !== undefined ? payload.genome : payload);
+            const key = getKey(item);
+            const adapter = SubstrateAdapters.findAdapterByGenome(genome);
+            if (!adapter) return;
+            try {
+                const result = await SubstrateAdapters.getDisplayData(
+                    adapter,
+                    [genome],
+                    {}
+                );
+                const pop = result && result.population && result.population[0];
+                if (pop) displayByKey[key] = pop;
+            } catch (e) {
+                console.warn("Could not fetch preview for item " + key + ":", e);
+            }
+        });
+        await Promise.all(promises);
+        return displayByKey;
     }
 
     /**
-     * Build one list entry: li + preview canvas + info. Options customize class, dataset, prepend/append nodes, and info content.
+     * Build one list entry: li + preview (canvas or img) + info. Uses displayItem from getDisplayData (shader or image).
      * @param {HTMLLIElement} li
      * @param {*} item
      * @param {HTMLCanvasElement} canvas
-     * @param {Object|null} shaderInfo
-     * @param {Object} options - itemClass, dataset (object), prependNodes(li, item), infoContent(item) => string|Node, appendNodes(li, item)
-     * @returns {Object|null} patternData for renderWithSignals or null
+     * @param {Object|null} displayItem - { shader?, image?, outputType } from SubstrateAdapters.getDisplayData
+     * @param {Object} options - itemClass, dataset, prependNodes, infoContent, appendNodes
+     * @returns {Object|null} patternData for renderWithSignals (shader only) or null
      */
-    function buildPatternListEntry(li, item, canvas, shaderInfo, options) {
+    function buildPatternListEntry(li, item, canvas, displayItem, options) {
         li.className = options.itemClass || "";
         if (options.dataset) {
             Object.keys(options.dataset).forEach((k) => {
@@ -63,7 +84,17 @@
             });
         }
         if (options.prependNodes) options.prependNodes(li, item);
-        li.appendChild(canvas.parentElement);
+        const previewWrap = canvas.parentElement;
+        if (displayItem && displayItem.image) {
+            const img = document.createElement("img");
+            img.className = "preview-img";
+            img.src = displayItem.image;
+            img.width = PREVIEW_CANVAS_SIZE;
+            img.alt = "";
+            previewWrap.innerHTML = "";
+            previewWrap.appendChild(img);
+        }
+        li.appendChild(previewWrap);
         const info = document.createElement("div");
         info.className = "info";
         const content = options.infoContent ? options.infoContent(item) : "";
@@ -74,24 +105,24 @@
         }
         li.appendChild(info);
         if (options.appendNodes) options.appendNodes(li, item);
-        if (shaderInfo && shaderInfo.shader && _patternRenderer) {
-            return _patternRenderer.setupPattern(canvas, shaderInfo.shader);
+        if (displayItem && displayItem.shader && _patternRenderer) {
+            return _patternRenderer.setupPattern(canvas, displayItem.shader);
         }
         return null;
     }
 
     /**
-     * Render a list into ul with canvas previews; buildLiContent(li, item, canvas, shaderInfo) adds content and returns patternData or null.
+     * Render a list into ul with previews (canvas for shader, img for grid); buildLiContent adds content and returns patternData or null.
      * @param {HTMLUListElement} ul
      * @param {Array} list
-     * @param {Object} shadersByKey
+     * @param {Object} displayByKey - key -> display item from getDisplayData
      * @param {Function} getItemKey - (item) => id
-     * @param {Function} buildLiContent - (li, item, canvas, shaderInfo) => patternData|null
+     * @param {Function} buildLiContent - (li, item, canvas, displayItem) => patternData|null
      */
     function renderListWithPreviews(
         ul,
         list,
-        shadersByKey,
+        displayByKey,
         getItemKey,
         buildLiContent
     ) {
@@ -104,15 +135,16 @@
             canvas.width = PREVIEW_CANVAS_SIZE;
             canvas.height = PREVIEW_CANVAS_SIZE;
             previewWrap.appendChild(canvas);
-            const shaderInfo = shadersByKey[getItemKey(item)];
-            const pd = buildLiContent(li, item, canvas, shaderInfo);
+            const displayItem = displayByKey[getItemKey(item)];
+            const pd = buildLiContent(li, item, canvas, displayItem);
             if (pd) previewPatternData.push(pd);
             ul.appendChild(li);
         });
         if (
             _patternRenderer &&
             _viewerControls &&
-            _viewerControls.signalState != null
+            _viewerControls.signalState != null &&
+            previewPatternData.length > 0
         ) {
             const signalState = _viewerControls.signalState;
             requestAnimationFrame(() => {
@@ -242,17 +274,18 @@
                 if (load12Btn) load12Btn.classList.remove("hidden");
                 if (selectAllBtn) selectAllBtn.classList.remove("hidden");
                 if (deselectAllBtn) deselectAllBtn.classList.remove("hidden");
-                const shadersByKey = await compileListToShaders(
+                const displayByKey = await fetchDisplayDataForList(
                     _communityPatternsList,
-                    (pat) => ({ ...pat.genome, key: pat.id, clicks: 0 })
+                    (pat) => ({ ...pat.genome, key: pat.id }),
+                    (pat) => pat.id
                 );
                 renderListWithPreviews(
                     ul,
                     _communityPatternsList,
-                    shadersByKey,
+                    displayByKey,
                     (pat) => pat.id,
-                    (li, pat, canvas, shaderInfo) =>
-                        buildPatternListEntry(li, pat, canvas, shaderInfo, {
+                    (li, pat, canvas, displayItem) =>
+                        buildPatternListEntry(li, pat, canvas, displayItem, {
                             itemClass: "community-item",
                             dataset: {
                                 idx: String(_communityPatternsList.indexOf(pat)),
@@ -395,18 +428,18 @@
             ul.appendChild(Utils.createListEmptyEl("li", "No pending submissions."));
             return;
         }
-        const shadersByKey = await compileListToShaders(submissions, (s) => ({
-            ...s.genome,
-            key: s.id,
-            clicks: 0,
-        }));
+        const displayByKey = await fetchDisplayDataForList(
+            submissions,
+            (s) => ({ ...s.genome, key: s.id }),
+            (sub) => sub.id
+        );
         renderListWithPreviews(
             ul,
             submissions,
-            shadersByKey,
+            displayByKey,
             (sub) => sub.id,
-            (li, sub, canvas, shaderInfo) =>
-                buildPatternListEntry(li, sub, canvas, shaderInfo, {
+            (li, sub, canvas, displayItem) =>
+                buildPatternListEntry(li, sub, canvas, displayItem, {
                     itemClass: "pending-item",
                     infoContent: (s) => {
                         const frag = document.createDocumentFragment();

@@ -2,7 +2,7 @@
 
 import pytest
 from eyecatcher.evaluation import extract_network_data
-from eyecatcher.genome import (
+from eyecatcher.substrate import (
     create_random_dual_genome,
     dual_genome_from_json,
     dual_genome_to_json,

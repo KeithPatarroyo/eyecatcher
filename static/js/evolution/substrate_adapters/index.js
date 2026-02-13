@@ -21,10 +21,16 @@
 
     /**
      * Find adapter whose isGenomeFormat(genome) returns true. First match wins.
-     * Order: dual_cppn, single_cppn, ca so that dual genomes match dual first.
+     * Order follows SubstrateAdapterConfig so that dual genomes match dual first.
      */
     function findAdapterByGenome(genome) {
-        const order = ["dual_cppn", "single_cppn", "ca"];
+        var config = window.SubstrateAdapterConfig;
+        var order =
+            config && Array.isArray(config)
+                ? config.map(function (e) {
+                      return e.id;
+                  })
+                : ["dual_cppn", "single_cppn", "ca"];
         for (var i = 0; i < order.length; i++) {
             var adapter = adaptersById[order[i]];
             if (adapter && adapter.isGenomeFormat && adapter.isGenomeFormat(genome)) {
@@ -39,26 +45,20 @@
      * @param {Array} genomes
      * @returns {{ outputType: string, substrateId: string }}
      */
+    function getDefaultResolution() {
+        return window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
+            ? window.EvolutionConfig.getDefaultResolution()
+            : { outputType: "shader", substrateId: "dual_cppn" };
+    }
+
     function resolveFromGenomes(genomes) {
         if (!genomes || !genomes.length) {
-            return {
-                outputType: "shader",
-                substrateId:
-                    (window.EvolutionConfig &&
-                        window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
-                    "dual_cppn",
-            };
+            return getDefaultResolution();
         }
         var adapter = findAdapterByGenome(genomes[0]);
         return adapter
             ? { outputType: adapter.outputType, substrateId: adapter.id }
-            : {
-                  outputType: "shader",
-                  substrateId:
-                      (window.EvolutionConfig &&
-                          window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
-                      "dual_cppn",
-              };
+            : getDefaultResolution();
     }
 
     /**
@@ -77,20 +77,15 @@
             adapter = getAdapter(r.substrateId);
         }
         if (!adapter) {
-            adapter = getAdapter(
-                (window.EvolutionConfig &&
-                    window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
-                    "dual_cppn"
-            );
+            var def = getDefaultResolution();
+            adapter = getAdapter(def.substrateId);
         }
+        var defRes = getDefaultResolution();
         return {
-            outputType: (adapter && adapter.outputType) || pop.outputType || "shader",
+            outputType:
+                (adapter && adapter.outputType) || pop.outputType || defRes.outputType,
             substrateId:
-                (adapter && adapter.id) ||
-                pop.substrateId ||
-                (window.EvolutionConfig &&
-                    window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
-                "dual_cppn",
+                (adapter && adapter.id) || pop.substrateId || defRes.substrateId,
             adapter: adapter,
         };
     }
@@ -142,7 +137,7 @@
         return fn
             ? fn(genomes, options)
             : defaultGetDisplayData(
-                  adapter || { outputType: "shader" },
+                  adapter || getDefaultResolution(),
                   genomes,
                   options
               );

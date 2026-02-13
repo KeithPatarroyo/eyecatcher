@@ -4,13 +4,13 @@
 def test_canonical_package_imports():
     """Test that algorithm, genome, glsl, substrate export the main API."""
     from eyecatcher.algorithm import produce_next_generation
-    from eyecatcher.genome import (
+    from eyecatcher.glsl import ShaderCompiler
+    from eyecatcher.substrate import (
+        DualCPPNSubstrate,
         DualGenome,
         create_random_dual_genome,
         dual_genome_to_json,
     )
-    from eyecatcher.glsl import ShaderCompiler
-    from eyecatcher.substrate import DualCPPNSubstrate
 
     assert produce_next_generation is not None
     assert DualCPPNSubstrate is not None
@@ -23,9 +23,8 @@ def test_canonical_package_imports():
 def test_new_submodule_imports():
     """Test that new submodules are importable directly."""
     from eyecatcher.evaluation import render_genome_network_pdf
-    from eyecatcher.genome import DualGenome
     from eyecatcher.signals import VISUAL_INPUTS
-    from eyecatcher.substrate import DualCPPNSubstrate
+    from eyecatcher.substrate import DualCPPNSubstrate, DualGenome
 
     assert DualCPPNSubstrate is not None
     assert DualGenome is not None

@@ -281,14 +281,14 @@
     function resolveAdapterAndOutput(outputType, substrateId, genomes) {
         var SubstrateAdapters = window.SubstrateAdapters;
         if (!SubstrateAdapters || !SubstrateAdapters.resolveForLoad) {
+            var def =
+                window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
+                    ? window.EvolutionConfig.getDefaultResolution()
+                    : { outputType: "shader", substrateId: "dual_cppn" };
             return {
                 adapter: null,
-                outputType: outputType || "shader",
-                substrateId:
-                    substrateId ||
-                    (window.EvolutionConfig &&
-                        window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
-                    "dual_cppn",
+                outputType: outputType || def.outputType,
+                substrateId: substrateId || def.substrateId,
             };
         }
         return SubstrateAdapters.resolveForLoad({
@@ -574,6 +574,14 @@
                 return window.ViewerControls.signalState;
             },
             getGenomeForPattern: getGenomeForPattern,
+            getAdapter: function () {
+                var state = window.PopulationState && window.PopulationState.getState();
+                return (
+                    window.SubstrateAdapters &&
+                    state &&
+                    window.SubstrateAdapters.getAdapter(state.substrateId)
+                );
+            },
         });
     }
 
@@ -598,20 +606,22 @@
         );
         var genNum =
             genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
-        var resolved =
-            window.SubstrateAdapters && window.SubstrateAdapters.resolveForLoad
-                ? window.SubstrateAdapters.resolveForLoad({
-                      substrateId: genealogyLoad.substrate_id,
-                      genomes: genealogyLoad.genomes,
-                  })
-                : {
-                      outputType: "shader",
-                      substrateId:
-                          genealogyLoad.substrate_id ||
-                          (window.EvolutionConfig &&
-                              window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
-                          "dual_cppn",
-                  };
+        var resolved;
+        if (window.SubstrateAdapters && window.SubstrateAdapters.resolveForLoad) {
+            resolved = window.SubstrateAdapters.resolveForLoad({
+                substrateId: genealogyLoad.substrate_id,
+                genomes: genealogyLoad.genomes,
+            });
+        } else {
+            var def =
+                window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
+                    ? window.EvolutionConfig.getDefaultResolution()
+                    : { outputType: "shader", substrateId: "dual_cppn" };
+            resolved = {
+                outputType: def.outputType,
+                substrateId: genealogyLoad.substrate_id || def.substrateId,
+            };
+        }
         window.GridRenderer.loadFromStatelessGenomes(
             genealogyLoad.genomes,
             genNum,

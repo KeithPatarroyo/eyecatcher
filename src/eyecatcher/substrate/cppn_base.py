@@ -1,12 +1,13 @@
 """
 Shared CPPN substrate helpers: NEAT config loading, query, render, and evaluate.
 
-Used by DualCPPNSubstrate and SingleCPPNSubstrate. Query and rendering logic
-moved here from evaluation.query and evaluation.rendering.
+CPPNSubstrateBase implements shared logic for SingleCPPNSubstrate and DualCPPNSubstrate.
 """
 
 from __future__ import annotations
 
+import json
+from abc import ABC, abstractmethod
 from collections.abc import Callable as Cb
 from collections.abc import Sequence
 from typing import Any
@@ -15,11 +16,24 @@ import neat
 import numpy as np
 
 from .. import get_root_dir
+from ..algorithm import DEFAULT_RENDER_RESOLUTION
 from ..lib.math_utils import normalize_to_bipolar
 from ..signals.activation import register_custom_activations
-from ..signals.signals import apply_derived_inputs, inputs_array
+from ..signals.signals import (
+    apply_derived_inputs,
+    get_default_signal_values,
+    inputs_array,
+)
 from ..signals.validation import validate_neat_config
 from .protocol import SubstrateOutput
+
+
+def _clamp_rgb(out: list[float]) -> tuple[float, float, float]:
+    """Convert three bipolar outputs to 0–1 RGB."""
+    r = max(0.0, min(1.0, (out[0] + 1.0) / 2.0))
+    g = max(0.0, min(1.0, (out[1] + 1.0) / 2.0))
+    b = max(0.0, min(1.0, (out[2] + 1.0) / 2.0))
+    return r, g, b
 
 
 def _load_neat_config(
@@ -85,22 +99,6 @@ def render_pixel_grid(
     return img
 
 
-def render_frames(
-    render_fn: Cb[[float], np.ndarray],
-    time_range: tuple[float, float],
-    num_frames: int,
-    include_end_frame: bool,
-) -> list:
-    """Return list of frames by calling render_fn(t) for t in time_range."""
-    start_time, end_time = time_range
-    frames = []
-    for frame_idx in range(num_frames):
-        denom = max(1, num_frames - 1) if include_end_frame else num_frames
-        t = start_time + (end_time - start_time) * (frame_idx / denom)
-        frames.append(render_fn(t))
-    return frames
-
-
 def base_evaluate(compile_fn: Cb[[Any], str | None], ind: Any) -> SubstrateOutput:
     """Wrap compile_to_shader result in SubstrateOutput."""
     glsl = compile_fn(ind)
@@ -121,3 +119,105 @@ def compile_with_color_mode(
         alt = ShaderCompiler(color_mode=color_mode)
         return compile_fn(alt, *compile_args)
     return compile_fn(compiler, *compile_args)
+
+
+class CPPNSubstrateBase(ABC):
+    """
+    Shared base for single and dual CPPN substrates.
+    Subclasses implement query_rgb, _sample_inputs, get_base_inputs_for_render,
+    compile_to_shader, to_json, from_json, create_random, mutate, crossover.
+    """
+
+    @abstractmethod
+    def query_rgb(
+        self, ind: Any, inputs: dict[str, float]
+    ) -> tuple[float, float, float]:
+        """Return (r, g, b) in 0–1 for this individual and inputs."""
+        ...
+
+    @abstractmethod
+    def _sample_inputs(
+        self, x: float, y: float, time: float, base: dict[str, float]
+    ) -> dict[str, float]:
+        """Build input dict for one sample point."""
+        ...
+
+    @abstractmethod
+    def get_base_inputs_for_render(self) -> dict[str, float]:
+        """Base inputs for render_to_image (e.g. default_inputs for the network)."""
+        ...
+
+    @abstractmethod
+    def compile_to_shader(self, ind: Any, color_mode: str | None = None) -> str | None:
+        """Compile individual to GLSL fragment shader string."""
+        ...
+
+    @abstractmethod
+    def to_json(self, ind: Any) -> dict[str, Any]:
+        """Serialize individual to JSON-serializable dict."""
+        ...
+
+    @abstractmethod
+    def from_json(self, data: dict[str, Any]) -> Any:
+        """Deserialize individual from dict."""
+        ...
+
+    def evaluate(
+        self, ind: Any, inputs: dict[str, float], **kwargs: Any
+    ) -> SubstrateOutput:
+        """Wrap compile_to_shader in SubstrateOutput."""
+        return base_evaluate(lambda i: self.compile_to_shader(i), ind)
+
+    def sample_rgb(
+        self,
+        ind: Any,
+        coords: list[tuple[float, float]],
+        time: float = 0.0,
+    ) -> list[list[float]]:
+        """Sample RGB at each (x, y) with shared time/signal base."""
+        base = get_default_signal_values(time)
+        return [
+            list(self.query_rgb(ind, self._sample_inputs(x, y, time, base)))
+            for x, y in coords
+        ]
+
+    def render_to_image(
+        self,
+        ind: Any,
+        resolution: int | None = None,
+        **kwargs: Any,
+    ) -> np.ndarray:
+        """Render individual to (resolution, resolution, 3) RGB image."""
+        if resolution is None:
+            resolution = DEFAULT_RENDER_RESOLUTION
+        return render_pixel_grid(
+            resolution,
+            self.get_base_inputs_for_render(),
+            lambda inputs: self.query_rgb(ind, inputs),
+        )
+
+    def get_save_filenames(self, individual_id: int) -> dict[str, str]:
+        """Common filenames for save bundle; subclasses may override to add keys."""
+        return {
+            "png": f"pattern_{individual_id}.png",
+            "glsl": f"pattern_{individual_id}.glsl",
+            "genome_json": f"genome_{individual_id}.json",
+            "zip": f"pattern_{individual_id}.zip",
+        }
+
+    def build_save_assets(
+        self, ind: Any, individual_id: int, **kwargs: Any
+    ) -> dict[str, bytes]:
+        """Common save assets (png, glsl, genome_json). Override to add more."""
+        to_png_bytes: Cb[[np.ndarray], bytes] | None = kwargs.get("to_png_bytes")
+        if not callable(to_png_bytes):
+            return {}
+        names = self.get_save_filenames(individual_id)
+        shader_code = self.compile_to_shader(ind) or ""
+        img = self.render_to_image(ind, resolution=DEFAULT_RENDER_RESOLUTION)
+        json_bytes = json.dumps(self.to_json(ind), indent=2).encode("utf-8")
+        return {
+            names["png"]: to_png_bytes(img),
+            names["glsl"]: shader_code.encode("utf-8"),
+            names["genome_json"]: json_bytes,
+        }

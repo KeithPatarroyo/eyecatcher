@@ -112,14 +112,13 @@
                                 window.SubstrateAdapters &&
                                 window.SubstrateAdapters.resolveForLoad
                                     ? window.SubstrateAdapters.resolveForLoad(pop)
-                                    : {
-                                          outputType: "shader",
-                                          substrateId:
-                                              (window.EvolutionConfig &&
-                                                  window.EvolutionConfig
-                                                      .DEFAULT_SUBSTRATE_ID) ||
-                                              "dual_cppn",
-                                      };
+                                    : window.EvolutionConfig &&
+                                        window.EvolutionConfig.getDefaultResolution
+                                      ? window.EvolutionConfig.getDefaultResolution()
+                                      : {
+                                            outputType: "shader",
+                                            substrateId: "dual_cppn",
+                                        };
                             await _loadFromStatelessGenomes(
                                 pop.genomes || [],
                                 pop.generation || 0,
@@ -232,14 +231,10 @@
                             ? window.SubstrateAdapters.resolveForLoad({
                                   genomes: genomes,
                               })
-                            : {
-                                  outputType: "shader",
-                                  substrateId:
-                                      (window.EvolutionConfig &&
-                                          window.EvolutionConfig
-                                              .DEFAULT_SUBSTRATE_ID) ||
-                                      "dual_cppn",
-                              };
+                            : window.EvolutionConfig &&
+                                window.EvolutionConfig.getDefaultResolution
+                              ? window.EvolutionConfig.getDefaultResolution()
+                              : { outputType: "shader", substrateId: "dual_cppn" };
                     var importPayload = Object.assign({}, json, {
                         substrateId: json.substrateId || r.substrateId,
                         outputType: json.outputType || r.outputType,
@@ -254,13 +249,10 @@
             var resolved =
                 window.SubstrateAdapters && window.SubstrateAdapters.resolveForLoad
                     ? window.SubstrateAdapters.resolveForLoad({ genomes: genomes })
-                    : {
-                          outputType: "shader",
-                          substrateId:
-                              (window.EvolutionConfig &&
-                                  window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
-                              "dual_cppn",
-                      };
+                    : window.EvolutionConfig &&
+                        window.EvolutionConfig.getDefaultResolution
+                      ? window.EvolutionConfig.getDefaultResolution()
+                      : { outputType: "shader", substrateId: "dual_cppn" };
             if (_addToGrid) {
                 await _addToGrid(genomes, resolved.outputType);
             }

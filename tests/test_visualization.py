@@ -9,7 +9,7 @@ from pathlib import Path
 
 import neat
 import pytest
-from eyecatcher.algorithm import mutate_single_genome
+from eyecatcher.algorithm import mutate_genome
 from eyecatcher.evaluation import render_genome_network_pdf
 from eyecatcher.genome import create_random_genome
 from eyecatcher.substrate import SingleCPPNSubstrate
@@ -63,7 +63,7 @@ def test_visualization(tmp_path, cppn_engine):
     """
     genome = create_random_genome(cppn_engine.config, genome_id=42)
     for _ in range(5):
-        genome = mutate_single_genome(genome, cppn_engine.config)
+        genome = mutate_genome(genome, cppn_engine.config)
 
     pkl_path = tmp_path / "test_genome.pkl"
     txt_path = tmp_path / "test_genome.txt"

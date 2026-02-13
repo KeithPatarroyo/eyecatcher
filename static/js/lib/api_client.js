@@ -36,6 +36,11 @@
         _apiUrl = apiUrl || "";
     }
 
+    /** Base URL for API (so pages that never call init, e.g. genealogy, still hit /api/...). */
+    function getBase() {
+        return _apiUrl || getApiBaseUrl();
+    }
+
     /**
      * Compile genomes to shaders. Returns { shaders } or throws.
      * @param {Array} genomes - Array of genome objects (with optional clicks; will be normalized to 0 for compile)
@@ -50,7 +55,7 @@
         const body = { genomes: payload };
         if (colorMode === "hsv" || colorMode === "rgb") body.color_mode = colorMode;
         return apiFetch(
-            _apiUrl + "/compile",
+            getBase() + "/compile",
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -77,7 +82,7 @@
             if (genealogy.branchName) body.branch_name = genealogy.branchName;
         }
         const data = await apiFetch(
-            _apiUrl + "/evolve",
+            getBase() + "/evolve",
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -98,7 +103,7 @@
      */
     async function save(id, genome) {
         return apiFetch(
-            _apiUrl + "/save",
+            getBase() + "/save",
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -137,8 +142,11 @@
      * @returns {Promise<Object>} Config object or rejects on failure
      */
     async function fetchConfig() {
-        var base = _apiUrl || getApiBaseUrl();
-        var data = await apiFetch(base + "/config", { method: "GET" }, "Config failed");
+        var data = await apiFetch(
+            getBase() + "/config",
+            { method: "GET" },
+            "Config failed"
+        );
         if (typeof window !== "undefined") {
             window.ServerConfig = data;
         }
@@ -151,7 +159,7 @@
      */
     async function randomPopulation(size) {
         return apiFetch(
-            _apiUrl + "/random",
+            getBase() + "/random",
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -169,7 +177,7 @@
      */
     async function evaluate(genomes) {
         return apiFetch(
-            _apiUrl + "/evaluate",
+            getBase() + "/evaluate",
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

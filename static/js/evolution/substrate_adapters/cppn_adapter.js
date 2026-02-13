@@ -45,7 +45,10 @@
             );
         }
 
-        ["time", "visual"].forEach(function (cppnType) {
+        (config && config.NETWORK_TYPES
+            ? config.NETWORK_TYPES
+            : ["time", "visual"]
+        ).forEach(function (cppnType) {
             const inputs =
                 config &&
                 config.SIGNAL_TOGGLES &&
@@ -76,7 +79,7 @@
     /**
      * Create a config-driven CPPN adapter (dual_cppn or single_cppn).
      * @param {Object} spec - { id, outputType, isGenomeFormat, hasSignalControls? }
-     * @returns {Object} adapter with id, outputType, isGenomeFormat, hasSignalControls, render
+     * @returns {Object} adapter with id, outputType, isGenomeFormat, hasSignalControls, render, getMetaLabel
      */
     function createCppnAdapter(spec) {
         return {
@@ -85,6 +88,13 @@
             isGenomeFormat: spec.isGenomeFormat,
             hasSignalControls: spec.hasSignalControls !== false,
             render: renderCppn,
+            getMetaLabel: function (pattern) {
+                var n = pattern && (pattern.nodes !== undefined ? pattern.nodes : 0);
+                var c =
+                    pattern &&
+                    (pattern.connections !== undefined ? pattern.connections : 0);
+                return "Nodes: " + n + " | Connections: " + c;
+            },
         };
     }
 

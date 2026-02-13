@@ -94,7 +94,7 @@
 
     /**
      * Build uniform-name-keyed values from signal-id-keyed values using EvolutionConfig.SIGNAL_TOGGLES.
-     * Call this in the animation loop or before renderPattern so adding signals only requires config change.
+     * Used for shader/CPPN substrates only; grid adapters do not use uniforms.
      * @param {Object} signalValues - Keys: signal ids (raw_time, mouse_speed, mouse_dist, activity)
      * @returns {Object} Keys: uniform names (u_raw_time, u_mouse_speed, ...)
      */
@@ -155,7 +155,11 @@
      * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
      */
     function renderPattern(patternData, uniformValues, signalState) {
-        var substrateId = window.PopulationState.getState().substrateId;
+        var state =
+            window.PopulationState &&
+            window.PopulationState.getState &&
+            window.PopulationState.getState();
+        var substrateId = state ? state.substrateId : null;
         var SubstrateAdapters = window.SubstrateAdapters;
         var adapter = SubstrateAdapters.getAdapter(substrateId);
         if (!adapter && patternData.caRule != null) {
@@ -164,11 +168,11 @@
             });
         }
         if (!adapter) {
-            adapter = SubstrateAdapters.getAdapter(
-                (window.EvolutionConfig &&
-                    window.EvolutionConfig.DEFAULT_SUBSTRATE_ID) ||
-                    "dual_cppn"
-            );
+            var defRes =
+                window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
+                    ? window.EvolutionConfig.getDefaultResolution()
+                    : { substrateId: "dual_cppn" };
+            adapter = SubstrateAdapters.getAdapter(defRes.substrateId);
         }
         if (adapter && typeof adapter.render === "function") {
             adapter.render(patternData, uniformValues, signalState);
@@ -243,15 +247,19 @@
         info.className = "pattern-info";
         const meta = document.createElement("div");
         meta.className = "pattern-meta";
-        meta.textContent =
-            pattern.image != null
-                ? "ID: " + id
-                : "ID: " +
-                  id +
-                  " | Nodes: " +
-                  pattern.nodes +
-                  " | Connections: " +
-                  pattern.connections;
+        if (adapter && typeof adapter.getMetaLabel === "function") {
+            meta.textContent = "ID: " + id + " | " + adapter.getMetaLabel(pattern);
+        } else {
+            meta.textContent =
+                pattern.image != null
+                    ? "ID: " + id
+                    : "ID: " +
+                      id +
+                      " | Nodes: " +
+                      (pattern.nodes ?? 0) +
+                      " | Connections: " +
+                      (pattern.connections ?? 0);
+        }
         const clickCount = document.createElement("div");
         clickCount.className = "click-count" + (clicks === 0 ? " zero" : "");
         clickCount.textContent = String(clicks);

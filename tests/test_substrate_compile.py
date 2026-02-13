@@ -1,4 +1,4 @@
-"""Tests for substrate compile stats (formerly response_builder)."""
+"""Tests for substrate compile stats and compile_to_shader."""
 
 
 def test_get_compile_stats_returns_expected_keys(

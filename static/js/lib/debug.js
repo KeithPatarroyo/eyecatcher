@@ -9,6 +9,7 @@ const EyecatcherDebug = (function () {
     let getPatternsMapFn = null; // Function to get the patterns Map
     let getSignalStateFn = null; // Function to get signal state
     let getGenomeForPatternFn = null; // Async function(patternId) => genome JSON for stateless time-output
+    let getAdapterFn = null; // Function() => current substrate adapter (for capabilities.timeOutput)
 
     // State
     let hoveredPatternId = null;
@@ -160,6 +161,7 @@ const EyecatcherDebug = (function () {
             getSignalStateFn =
                 config.getSignalState || (() => ({ visual: { time: true } }));
             getGenomeForPatternFn = config.getGenomeForPattern || null;
+            getAdapterFn = config.getAdapter || null;
 
             createDOM();
             setupEventListeners();
@@ -187,8 +189,14 @@ const EyecatcherDebug = (function () {
             elements.mousePos.textContent = `${Math.round(mouseX)}, ${Math.round(mouseY)}`;
 
             const timeEl = elements.timeOutput;
+            const adapter = getAdapterFn ? getAdapterFn() : null;
+            const hasTimeOutput =
+                adapter &&
+                adapter.capabilities &&
+                adapter.capabilities.timeOutput === true;
             const signalState = getSignalStateFn();
-            const timeEnabled = signalState.visual.time;
+            const timeEnabled =
+                hasTimeOutput && signalState.visual && signalState.visual.time;
 
             // Hovered pattern info
             const patterns = getPatternsMapFn();
@@ -199,9 +207,11 @@ const EyecatcherDebug = (function () {
                 elements.patternId.textContent = `#${hoveredPatternId}`;
                 elements.mouseDist.textContent = fmt(mouseDist);
 
-                // Time output - either sampled or placeholder
-                if (timeSamplingEnabled && timeEnabled) {
-                    // Trigger sparse sampling if enough time has passed
+                // Time output - only when substrate has timeOutput capability
+                if (!hasTimeOutput) {
+                    timeEl.textContent = "-";
+                    timeEl.classList.remove("disabled", "sampled");
+                } else if (timeSamplingEnabled && timeEnabled) {
                     const now = performance.now();
                     if (
                         !pendingSampleRequest &&
@@ -215,8 +225,6 @@ const EyecatcherDebug = (function () {
                             activity
                         );
                     }
-
-                    // Display last sampled value or loading indicator
                     if (lastSampledTimeOutput !== null) {
                         timeEl.textContent = fmt(lastSampledTimeOutput);
                         timeEl.classList.remove("disabled");
@@ -226,7 +234,6 @@ const EyecatcherDebug = (function () {
                         timeEl.classList.remove("disabled", "sampled");
                     }
                 } else {
-                    // Not sampling - show placeholder
                     timeEl.textContent = timeEnabled ? "unique" : "disabled";
                     timeEl.classList.toggle("disabled", !timeEnabled);
                     timeEl.classList.remove("sampled");

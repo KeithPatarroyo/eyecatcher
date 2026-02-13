@@ -170,7 +170,7 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
 - **examples/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
 - **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). To change which NEAT files are used or population size, edit [src/eyecatcher/algorithm/config.py](src/eyecatcher/algorithm/config.py). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
-- **src/eyecatcher/** – Python package. Top-level: `server.py` (entry point: `eyecatcher.server:app`). **Packages**: `algorithm/` (engine, reproduction, config, operators), `genome/` (DualGenome, serialization), `signals/` (signal registry, activation), `evaluation/` (CPU rendering, query, genome_visualizer, network_data), `glsl/` (genome → GLSL shader), `web/` (Flask app, routes, response_builder), `data/` (genealogy_db, genome_persistence), `lib/` (db_util). Main API: import from `eyecatcher.algorithm`, `eyecatcher.genome`, `eyecatcher.glsl`, `eyecatcher.signals`, `eyecatcher.evaluation`. See [src/eyecatcher/README.md](src/eyecatcher/README.md) for the full layout.
+- **src/eyecatcher/** – Python package. Top-level: `server.py` (entry point: `eyecatcher.server:app`). **Packages**: `algorithm/` (engine, reproduction, config, operators), `genome/` (generic NEAT serialization), `substrate/` (substrates, DualGenome, dual serialization), `signals/` (signal registry, activation), `evaluation/` (genome_visualizer, network_data), `glsl/` (genome → GLSL shader), `web/` (Flask app, routes, stateless_api), `data/` (genealogy_db), `lib/` (db_util). Main API: import from `eyecatcher.algorithm`, `eyecatcher.genome`, `eyecatcher.substrate`, `eyecatcher.glsl`, `eyecatcher.signals`, `eyecatcher.evaluation`. See [src/eyecatcher/README.md](src/eyecatcher/README.md) for the full layout.
 - **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `package.json`, `package-lock.json`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml` (run with **`make docker-up`**). **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
@@ -201,7 +201,7 @@ The server does not hold population state. The client (web UI) stores genomes (e
 
 ### Core components
 
-- **CPPN Engine** – `CPPNEngine`, reproduction, mutation/crossover in `algorithm/` (and re-exported via `evolution/`); genome and serialization in `genome/`.
+- **Evolution** – Config and reproduction in `algorithm/`; generic genome in `genome/`, dual-genome and substrates in `substrate/` (get_configured_substrate, get_substrate).
 - **Shader Compiler** (`src/eyecatcher/glsl/`) – CPPN → GLSL; `ShaderCompiler` and `compile_dual_to_glsl()` for the web renderer.
 - **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API in `web/` (compile, random, evolve, save, time-output), reproduction logic in `algorithm/reproduction.py`, community and genealogy routes, static serving.
 
@@ -212,22 +212,22 @@ Researchers: see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for where to change 
 Main API for programmatic use is via direct imports from submodules.
 
 ```python
-from eyecatcher.algorithm import CPPNEngine
-from eyecatcher.genome import create_random_dual_genome
+from eyecatcher.algorithm.config import get_configured_substrate
+from eyecatcher.substrate import create_random_dual_genome
 
-engine = CPPNEngine()
-engine.create_population()
+substrate = get_configured_substrate()
 dual_genome = create_random_dual_genome(
-    engine.config, engine.time_config, genome_id=0
+    substrate.config, substrate.time_config, genome_id=0
 )
 
-# Query
-r, g, b = engine.query_dual_cppn(
-    dual_genome, {"x": 0.5, "y": 0.5, "raw_time": 0.5}
-)
+# Render image, compile to GLSL, mutate, crossover
+substrate.render_to_image(dual_genome, resolution=(256, 256), extra_inputs={"raw_time": 0.5})
+substrate.compile_to_shader(dual_genome)
+child = substrate.mutate(dual_genome, key=1)
+offspring = substrate.crossover(dual_genome, child, key=2)
 ```
 
-Compile to shader: `from eyecatcher.glsl import compile_dual_to_glsl()`. Evolution: `engine.mutate_dual_genome()`, `engine.crossover_dual_genomes()`.
+See [examples/api_usage.py](examples/api_usage.py) for a full programmatic example.
 
 ## Creating videos
 
