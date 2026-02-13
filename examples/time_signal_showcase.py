@@ -6,7 +6,7 @@ Requires matplotlib: pip install matplotlib
 
 import os
 
-from eyecatcher.substrate import get_substrate
+from eyecatcher.representation import get_representation
 
 
 def main():
@@ -16,15 +16,15 @@ def main():
         print("Install matplotlib to run this demo: pip install matplotlib")
         return
 
-    substrate = get_substrate("dual_cppn")
+    representation = get_representation("dual_cppn")
     n_curves = 3
-    individuals = [substrate.create_random(key=i) for i in range(n_curves)]
+    individuals = [representation.create_random(key=i) for i in range(n_curves)]
     raw_times = [(-1.0 + i / 50.0) for i in range(101)]
     plt.figure(figsize=(8, 5))
     for idx, ind in enumerate(individuals):
         modified = []
         for rt in raw_times:
-            result = substrate.query_time_output(
+            result = representation.query_time_output(
                 ind,
                 {
                     "raw_time": rt,

@@ -15,7 +15,7 @@ from ..evolution import (
 )
 from ..evolution.reproduction import produce_next_generation
 from .api_helpers import ERR_PARENTS_ARRAY_REQUIRED, api_error, api_try_except
-from .stateless_api import get_current_substrate
+from .stateless_api import get_current_representation
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +51,11 @@ def evolve():
     """
     Produce next generation (stateless). Selection, crossover, mutation.
     Body: {
-        "parents": [...],
+        "parents": [ { "individual": {...}, "fitness"?: N } ],
         "population_size": 12,  (optional, default from config)
         "elitism": false  (optional; if true, best parent is copied unchanged)
     }
-    Returns { "children": [genome JSONs] }.
+    Returns { "children": [individual JSONs] }.
     """
     data = request.json or {}
     if "parents" not in data:
@@ -73,13 +73,16 @@ def evolve():
     generation_num = data.get("generation_num", 0)
     branch_name = data.get("branch_name", "main")
 
+    representation = get_current_representation()
     parents_for_evolution = [
-        {"genome": p.get("genome", p), "fitness": p.get("fitness", p.get("clicks", 0))}
+        {
+            "genome": p.get("individual", p.get("genome", p)),
+            "fitness": p.get("fitness", p.get("clicks", 0)),
+        }
         for p in parents_data
     ]
-    substrate = get_current_substrate()
     children = produce_next_generation(
-        substrate,
+        representation,
         parents_for_evolution,
         population_size=population_size,
         elitism=elitism,
@@ -90,7 +93,7 @@ def evolve():
     if parent_population_id is not None:
         experiment_metadata = {
             "experiment_config": {
-                "substrate_id": substrate.id,
+                "representation_id": representation.id,
                 "population_size": population_size,
                 "crossover_probability": crossover_probability,
             }
@@ -105,8 +108,8 @@ def evolve():
 
     payload = {
         "children": children,
-        "output_type": substrate.output_type,
-        "substrate_id": substrate.id,
+        "output_type": representation.output_type,
+        "representation_id": representation.id,
     }
     if new_pop_id is not None:
         payload["population_id"] = new_pop_id

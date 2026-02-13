@@ -22,11 +22,11 @@ from ..data.genealogy_db import (
     save_population,
 )
 from ..evolution import (
-    get_configured_substrate,
+    get_configured_representation,
     get_crossover_probability,
     get_population_size,
 )
-from .api_helpers import ERR_GENOMES_ARRAY_REQUIRED, api_error, api_try_except
+from .api_helpers import ERR_INDIVIDUALS_ARRAY_REQUIRED, api_error, api_try_except
 
 # Create blueprint
 genealogy_bp = Blueprint("genealogy", __name__)
@@ -43,9 +43,9 @@ init_genealogy_db()
 @genealogy_bp.route("/api/genealogy/save-population", methods=["POST"])
 @api_try_except
 def save_population_route():
-    """POST save-population: body genomes, parent_id, gen_num, branch; returns ids."""
+    """POST save-population: body individuals, parent_id, gen_num, branch; returns ids."""  # noqa: E501
     data = request.json or {}
-    genomes = data.get("genomes", [])
+    individuals = data.get("individuals", [])
     parent_id = data.get("parent_id")
     generation_num = data.get("generation_num", 0)
     branch_name = data.get("branch_name", "main")
@@ -53,23 +53,23 @@ def save_population_route():
     user_id = data.get("user_id", "anonymous")
     fitness_data = data.get("fitness_data", [])
     metadata = data.get("metadata") or {}
-    if data.get("substrate_id") is not None:
-        metadata = dict(metadata, substrate_id=data.get("substrate_id"))
-    substrate = get_configured_substrate()
+    if data.get("representation_id") is not None:
+        metadata = dict(metadata, representation_id=data.get("representation_id"))
+    representation = get_configured_representation()
     metadata = dict(
         metadata,
         experiment_config={
-            "substrate_id": substrate.id,
+            "representation_id": representation.id,
             "population_size": get_population_size(),
             "crossover_probability": get_crossover_probability(),
         },
     )
 
-    if not genomes:
-        return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
+    if not individuals:
+        return api_error(ERR_INDIVIDUALS_ARRAY_REQUIRED, 400)
 
     result = save_population(
-        genomes=genomes,
+        genomes=individuals,
         parent_id=parent_id,
         generation_num=generation_num,
         branch_name=branch_name,
@@ -120,7 +120,7 @@ def experiment_log_route():
                 "branch_name",
                 "generation_num",
                 "population_size",
-                "substrate_id",
+                "representation_id",
                 "crossover_probability",
             ]
         )
@@ -133,7 +133,7 @@ def experiment_log_route():
                     row.get("branch_name"),
                     row.get("generation_num"),
                     row.get("population_size"),
-                    exp.get("substrate_id", ""),
+                    exp.get("representation_id", exp.get("substrate_id", "")),
                     exp.get("crossover_probability", ""),
                 ]
             )
@@ -150,11 +150,13 @@ def experiment_log_route():
 )
 @api_try_except
 def load_population(population_id):
-    """GET load-population/<id>: returns population metadata and genomes list."""
+    """GET load-population/<id>: returns population metadata and individuals list."""
     result = get_population(population_id)
     if result is None:
         return api_error("Population not found", 404)
-    return jsonify(result)
+    payload = {k: v for k, v in result.items() if k != "genomes"}
+    payload["individuals"] = result.get("genomes", [])
+    return jsonify(payload)
 
 
 @genealogy_bp.route("/api/genealogy/tree", methods=["GET"])
@@ -216,11 +218,12 @@ def get_stats_route():
 )
 @api_try_except
 def get_population_thumbnail_route(population_id):
-    """GET population-thumbnail/<id>: fittest genome and fitness for thumbnail."""
+    """GET population-thumbnail/<id>: fittest individual and fitness for thumbnail."""
     result = get_population_thumbnail(population_id)
     if result is None:
         return (
             jsonify({"error": "No individuals found in this population"}),
             404,
         )
-    return jsonify(result)
+    payload = {"individual": result["genome"], "fitness": result["fitness"]}
+    return jsonify(payload)

@@ -3,7 +3,7 @@ Interactive Evolution Server.
 
 Serves population and handles evolution (stateless API). Population state lives
 on the client; server provides compile, random, evolve, save. Save returns file
-contents for client-side download (Railway / no server filesystem). Substrate
+contents for client-side download (Railway / no server filesystem). Representation
 (dual_cppn, single_cppn, ca, etc.) is configured via experiments.json.
 """
 
@@ -15,9 +15,9 @@ from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 
 from .. import get_root_dir
-from ..evolution import get_configured_substrate, warn_if_neat_pop_size_mismatch
+from ..evolution import get_configured_representation, warn_if_neat_pop_size_mismatch
 from .api_helpers import (
-    ERR_GENOME_REQUIRED_BODY,
+    ERR_INDIVIDUAL_REQUIRED_BODY,
     api_error,
     api_try_except,
     build_save_zip_response,
@@ -26,7 +26,7 @@ from .api_helpers import (
 from .community_routes import community_bp
 from .evolve_api import evolve_bp
 from .genealogy_routes import genealogy_bp
-from .stateless_api import init_stateless_api, stateless_bp
+from .stateless_api import stateless_bp
 
 _log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -49,12 +49,12 @@ if _cors_origins == "*":
 else:
     CORS(app, origins=[o.strip() for o in _cors_origins.split(",")])
 
-# Substrate from experiment preset (config/experiments.json, EXPERIMENT_CONFIG)
-substrate = get_configured_substrate()
-warn_if_neat_pop_size_mismatch(substrate)
+# Representation from experiment preset (config/experiments.json, EXPERIMENT_CONFIG)
+representation = get_configured_representation()
+warn_if_neat_pop_size_mismatch(representation)
+app.config["EYECATCHER_REPRESENTATION"] = representation
 
-# Initialize and register API blueprints
-init_stateless_api(substrate)
+# Register API blueprints
 app.register_blueprint(stateless_bp)
 app.register_blueprint(community_bp)
 app.register_blueprint(evolve_bp)
@@ -83,32 +83,36 @@ def genealogy():
 @api_try_except
 def save_individual():
     """
-    Save an individual (stateless). Supported for any substrate with save capability.
-    Body: { "genome": { ... }, "id": 123 (optional), "visualize": true (optional) }
+    Save an individual (stateless). Supported for any representation with
+    save capability.
+    Body: { "individual": { ... }, "id": 123 (optional), "visualize": true (optional) }
     """
-    from ..substrate.protocol import get_substrate_capabilities
+    from ..representation.protocol import get_representation_capabilities
 
-    caps = get_substrate_capabilities(substrate)
+    representation = app.config.get("EYECATCHER_REPRESENTATION")
+    if representation is None:
+        return api_error("No representation configured.", 503)
+    caps = get_representation_capabilities(representation)
     if not caps.get("save", False):
-        return api_error("Save is not supported for this substrate.", 501)
+        return api_error("Save is not supported for this representation.", 501)
     data = request.json or {}
-    genome_json = data.get("genome")
+    individual_json = data.get("individual")
     individual_id = data.get("id")
     visualize = data.get("visualize", True)
-    if not genome_json:
-        return api_error(ERR_GENOME_REQUIRED_BODY, 400)
-    ind = substrate.from_json(genome_json)
+    if not individual_json:
+        return api_error(ERR_INDIVIDUAL_REQUIRED_BODY, 400)
+    ind = representation.from_json(individual_json)
     ind_id = individual_id if individual_id is not None else getattr(ind, "key", 0)
 
     def to_png_bytes(arr):
         return base64.b64decode(numpy_to_png_base64(arr))
 
-    assets = substrate.build_save_assets(
+    assets = representation.build_save_assets(
         ind, ind_id, to_png_bytes=to_png_bytes, visualize=visualize
     )
     if not assets:
-        return api_error("Save not implemented for this substrate.", 501)
-    names = substrate.get_save_filenames(ind_id)
+        return api_error("Save not implemented for this representation.", 501)
+    names = representation.get_save_filenames(ind_id)
     if os.environ.get("SAVE_TO_DISK", "").strip() in ("1", "true", "yes"):
         saved_dir = os.path.join(ROOT_DIR, "output", "saved")
         os.makedirs(saved_dir, exist_ok=True)
@@ -120,7 +124,8 @@ def save_individual():
 
 def _serve_saved_asset(individual_id: int, asset_key: str, mimetype: str):
     """Serve a saved asset by key (e.g. png, network_pdf) from output/saved."""
-    names = substrate.get_save_filenames(individual_id)
+    representation = app.config["EYECATCHER_REPRESENTATION"]
+    names = representation.get_save_filenames(individual_id)
     if asset_key not in names:
         return api_error("Asset not found", 404)
     path = os.path.join(ROOT_DIR, "output", "saved", names[asset_key])
@@ -151,7 +156,7 @@ if __name__ == "__main__":
     debug = os.environ.get("FLASK_ENV") == "development"
     logger.info("=" * 60)
     logger.info("EYECATCHER - Interactive Evolution Server")
-    logger.info("Substrate: %s", substrate.id)
+    logger.info("Representation: %s", representation.id)
     logger.info("=" * 60)
     logger.info("Starting server... Open http://localhost:%s in your browser", port)
     logger.info("Press Ctrl+C to stop")

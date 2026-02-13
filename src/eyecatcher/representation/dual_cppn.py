@@ -1,5 +1,5 @@
 """
-Dual-CPPN substrate: visual + time signal networks (current default).
+Dual-CPPN representation: visual + time signal networks (current default).
 """
 
 from __future__ import annotations
@@ -12,9 +12,17 @@ from typing import Any, Callable
 import neat
 import numpy as np
 
-from ..inspection import extract_network_data, parse_network_node_id
-from ..evolution import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
+from ..experiment import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
+from ..genome.dual import (
+    DualGenome,
+    create_random_dual_genome,
+    crossover_dual_genomes,
+    dual_genome_from_json,
+    dual_genome_to_json,
+    mutate_dual_genome,
+)
 from ..glsl import ShaderCompiler
+from ..inspection import extract_network_data, parse_network_node_id
 from ..signals.registry import (
     TIME_INPUTS,
     TIME_OUTPUTS,
@@ -26,26 +34,18 @@ from ..signals.registry import (
     parse_time_inputs,
 )
 from .cppn_base import (
-    CPPNSubstrateBase,
+    CPPNRepresentationBase,
     _clamp_rgb,
     _compute_network_stats,
     _load_neat_config,
     query_neat_network,
 )
-from .dual_genome import (
-    DualGenome,
-    create_random_dual_genome,
-    crossover_dual_genomes,
-    dual_genome_from_json,
-    dual_genome_to_json,
-    mutate_dual_genome,
-)
 from .protocol import OutputType
 
 
-class DualCPPNSubstrate(CPPNSubstrateBase):
+class DualCPPNRepresentation(CPPNRepresentationBase):
     """
-    Substrate that wraps the current dual-CPPN (visual + time) setup.
+    Representation that wraps the current dual-CPPN (visual + time) setup.
     Individual = DualGenome; output = shader.
     """
 
@@ -55,12 +55,6 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
     frontend_metadata = {
         "hasSignalControls": True,
         "genomeKeys": ["visual", "time_signal"],
-        "capabilities": {
-            "save": True,
-            "network": True,
-            "timeOutput": True,
-            "adjustWeight": True,
-        },
     }
 
     def __init__(
@@ -202,14 +196,6 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
             assets[names["network_pdf"]] = pdf_buffer.getvalue()
         return assets
 
-    def get_capabilities(self) -> dict[str, bool]:
-        return {
-            "save": True,
-            "network": True,
-            "time_output": True,
-            "adjust_weight": True,
-        }
-
     def query_time_output(
         self, ind: DualGenome, inputs: dict[str, float]
     ) -> dict[str, Any] | None:
@@ -254,4 +240,4 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
             return None
         genome.connections[conn_key].weight = weight
         shader_code = self.compile_to_shader(ind) or ""
-        return {"shader": shader_code, "genome": self.to_json(ind)}
+        return {"shader": shader_code, "individual": self.to_json(ind)}

@@ -17,7 +17,7 @@ from .activation_registry import get_glsl_block
 from .compiler_topology import get_enabled_connections, topological_sort
 
 if TYPE_CHECKING:
-    from ..substrate import DualGenome
+    from ..representation import DualGenome
 from .node_code_generator import generate_node_code, generate_time_signal_code
 
 
@@ -92,8 +92,8 @@ class ShaderCompiler:
         Returns:
             Complete GLSL fragment shader code as string
         """
-        # Lazy import to avoid circular import: substrate -> dual_cppn -> glsl
-        from ..substrate import DualGenome
+        # Lazy import to avoid circular import: representation -> dual_cppn -> glsl
+        from ..representation import DualGenome
 
         if time_config is not None and isinstance(genome_or_dual, DualGenome):
             time_code = generate_time_signal_code(

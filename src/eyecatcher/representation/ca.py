@@ -1,5 +1,5 @@
 """
-Conway's Game of Life (2D) substrate.
+Conway's Game of Life (2D) representation.
 
 Individual = initial 2D grid (alive/dead). Evolution mutates/crosses the initial
 configuration. Output = grid (H×W×3 RGB). Click-to-kill zeroes cells in the
@@ -14,11 +14,11 @@ from typing import Any, Callable
 
 import numpy as np
 
-from .protocol import OutputType, SubstrateOutput
+from .protocol import OutputType, RepresentationOutput
 
 # Default grid size for genome and simulation (same size).
 DEFAULT_GRID_SIZE = 64
-DEFAULT_GOL_STEPS = 48  # for evaluate() final frame (lower = faster load)
+DEFAULT_GOL_STEPS = 48  # for express() final frame (lower = faster load)
 
 
 class ConwayGenome:
@@ -78,9 +78,9 @@ def _nested_list_to_grid(data: list[list[int]] | list[list[float]]) -> np.ndarra
     return (arr > 0.5).astype(np.uint8)
 
 
-class ElementaryCASubstrate:
+class ConwayRepresentation:
     """
-    Substrate for Conway's Game of Life (2D).
+    Representation for Conway's Game of Life (2D).
     Individual = ConwayGenome (initial grid); output = grid (H×W×3 RGB).
     """
 
@@ -90,12 +90,6 @@ class ElementaryCASubstrate:
     frontend_metadata = {
         "hasSignalControls": False,
         "genomeKeys": ["grid", "key"],
-        "capabilities": {
-            "save": True,
-            "network": False,
-            "timeOutput": False,
-            "adjustWeight": False,
-        },
     }
 
     def __init__(
@@ -127,13 +121,13 @@ class ElementaryCASubstrate:
         grid = np.where(mask, ga, gb)
         return ConwayGenome(grid=grid, key=key)
 
-    def evaluate(
+    def express(
         self, ind: ConwayGenome, inputs: dict[str, float], **kwargs: Any
-    ) -> SubstrateOutput:
+    ) -> RepresentationOutput:
         steps = kwargs.get("gol_steps", self.gol_steps)
         grid = _run_gol(ind.grid, steps)
         rgb = _grid_to_rgb(grid)
-        return SubstrateOutput("grid", rgb)
+        return RepresentationOutput("grid", rgb)
 
     def compile_to_shader(
         self, ind: ConwayGenome, color_mode: str | None = None
@@ -169,7 +163,7 @@ class ElementaryCASubstrate:
         to_png_bytes: Callable[[np.ndarray], bytes] = kwargs.get("to_png_bytes")
         if not callable(to_png_bytes):
             return {}
-        out = self.evaluate(ind, {})
+        out = self.express(ind, {})
         if out.output_type != "grid" or not hasattr(out.data, "shape"):
             return {}
         arr = np.asarray(out.data)

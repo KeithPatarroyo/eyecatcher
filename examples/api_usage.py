@@ -6,20 +6,20 @@ Run from repo root: python examples/api_usage.py
 import os
 
 from eyecatcher.evolution import PREVIEW_RENDER_RESOLUTION
-from eyecatcher.substrate import get_substrate
+from eyecatcher.representation import get_representation
 from PIL import Image
 
 
 def main():
     os.makedirs("output", exist_ok=True)
-    substrate = get_substrate("dual_cppn")
+    representation = get_representation("dual_cppn")
 
     # Create random individual
-    ind = substrate.create_random(key=0)
+    ind = representation.create_random(key=0)
     print("Created random dual genome (visual + time signal)")
 
     # Render one image
-    img = substrate.render_to_image(
+    img = representation.render_to_image(
         ind,
         resolution=PREVIEW_RENDER_RESOLUTION,
         extra_inputs={"raw_time": 0.5},
@@ -29,14 +29,14 @@ def main():
         print("Saved: output/dual_pattern.png")
 
     # Compile to GLSL
-    shader_code = substrate.compile_to_shader(ind)
+    shader_code = representation.compile_to_shader(ind)
     with open("output/dual_pattern.glsl", "w") as f:
         f.write(shader_code or "")
     print("Saved: output/dual_pattern.glsl")
 
     # Mutate once
-    child = substrate.mutate(ind, key=1)
-    img_child = substrate.render_to_image(
+    child = representation.mutate(ind, key=1)
+    img_child = representation.render_to_image(
         child,
         resolution=PREVIEW_RENDER_RESOLUTION,
         extra_inputs={"raw_time": 0.5},
@@ -46,9 +46,9 @@ def main():
         print("Saved: output/dual_mutant.png (one mutation)")
 
     # Crossover: two parents -> one offspring
-    parent2 = substrate.create_random(key=2)
-    offspring = substrate.crossover(ind, parent2, key=3)
-    img_off = substrate.render_to_image(
+    parent2 = representation.create_random(key=2)
+    offspring = representation.crossover(ind, parent2, key=3)
+    img_off = representation.render_to_image(
         offspring,
         resolution=PREVIEW_RENDER_RESOLUTION,
         extra_inputs={"raw_time": 0.5},

@@ -1,8 +1,8 @@
 """
-Evolution parameters: population size, crossover, elitism.
+Experiment parameters: population size, crossover, elitism, render defaults.
 
 Loaded from config/evolution_defaults.json; run `make generate` to sync
-frontend fallbacks. Preset overrides applied via experiment.apply_preset().
+frontend fallbacks. Preset overrides applied via experiment.preset.apply_preset().
 Runtime overlay (PATCH /api/config) allows in-memory updates without restart.
 """
 
@@ -48,8 +48,14 @@ MIN_POPULATION_SIZE = _evolution_defaults["min_population_size"]
 CROSSOVER_PROBABILITY = _evolution_defaults["crossover_probability"]
 ELITISM_DEFAULT = _evolution_defaults["elitism_default"]
 
+# Render constants (save/export and preview)
+DEFAULT_RENDER_RESOLUTION = 512
+DEFAULT_RENDER_TIME = 0.5
+PREVIEW_RENDER_RESOLUTION = 256
+DEFAULT_NUM_FRAMES = 30
+
 # -----------------------------------------------------------------------------
-# Preset overlay (applied by experiment module when preset is loaded)
+# Preset overlay (applied by preset module when preset is loaded)
 # -----------------------------------------------------------------------------
 _PRESET_OVERLAY: dict = {}
 
@@ -57,7 +63,7 @@ _PRESET_OVERLAY: dict = {}
 def apply_preset(preset: dict | None) -> None:
     """
     Override evolution defaults from an experiment preset.
-    Called by experiment module when loading config/experiments.json.
+    Called by preset module when loading config/experiments.json.
     """
     global DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE  # noqa: PLW0603
     global CROSSOVER_PROBABILITY, ELITISM_DEFAULT  # noqa: PLW0603
@@ -68,7 +74,10 @@ def apply_preset(preset: dict | None) -> None:
         DEFAULT_POPULATION_SIZE = preset["population_size"]  # noqa: PLW0603
     if "max_population_size" in preset and preset["max_population_size"] is not None:
         MAX_POPULATION_SIZE = preset["max_population_size"]  # noqa: PLW0603
-    if "crossover_probability" in preset and preset["crossover_probability"] is not None:
+    if (
+        "crossover_probability" in preset
+        and preset["crossover_probability"] is not None
+    ):
         CROSSOVER_PROBABILITY = preset["crossover_probability"]  # noqa: PLW0603
     if "elitism_default" in preset and preset["elitism_default"] is not None:
         ELITISM_DEFAULT = preset["elitism_default"]  # noqa: PLW0603

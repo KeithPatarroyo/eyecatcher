@@ -1,5 +1,18 @@
 """Central registry of network input and output signals.
 
+**Scope: dual-CPPN-centric.** The names VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS,
+TIME_OUTPUTS reflect the dual-CPPN architecture (one visual network, one time-signal
+network). Single-CPPN and CA representations use only a subset (e.g. VISUAL_* for
+single CPPN; CA uses neither). Other representations (e.g. NCA, different topologies)
+may reuse these as building blocks or ignore them and define their own signal sets.
+
+**Extending for new representations:** If you add a representation that needs
+different inputs/outputs, either (1) compose from existing lists where it makes
+sense, or (2) define representation-specific signal lists in your module and use
+them in your representation's config/query/GLSL logic. The registry here remains
+the single source for dual-CPPN and for any shared signals; representations can
+declare additional signals locally.
+
 Defines VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS so that
 query, glsl (shader compiler), serialization, and genome_visualizer consume one
 source of truth. Run scripts/generate_signal_config.py to emit JS config and

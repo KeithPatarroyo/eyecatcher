@@ -1,5 +1,5 @@
 """
-Single-CPPN substrate: visual network only (no time signal CPPN).
+Single-CPPN representation: visual network only (no time signal CPPN).
 
 Individual = neat.DefaultGenome. Output = shader.
 """
@@ -10,7 +10,7 @@ from typing import Any
 
 import neat
 
-from ..evolution import NEAT_CONFIG_PATH
+from ..experiment import NEAT_CONFIG_PATH
 from ..genome import create_random_genome
 from ..genome.operators import crossover_genomes, mutate_genome
 from ..genome.serialization import genome_from_json, genome_to_json
@@ -23,7 +23,7 @@ from ..signals.registry import (
     default_inputs,
 )
 from .cppn_base import (
-    CPPNSubstrateBase,
+    CPPNRepresentationBase,
     _clamp_rgb,
     _compute_network_stats,
     _load_neat_config,
@@ -33,9 +33,9 @@ from .cppn_base import (
 from .protocol import OutputType
 
 
-class SingleCPPNSubstrate(CPPNSubstrateBase):
+class SingleCPPNRepresentation(CPPNRepresentationBase):
     """
-    Substrate with a single visual CPPN (no time signal network).
+    Representation with a single visual CPPN (no time signal network).
     Individual = neat.DefaultGenome; output = shader.
     """
 
@@ -46,12 +46,6 @@ class SingleCPPNSubstrate(CPPNSubstrateBase):
         "hasSignalControls": False,
         "genomeKeys": ["visual"],
         "excludeKeys": ["time_signal"],
-        "capabilities": {
-            "save": True,
-            "network": False,
-            "timeOutput": False,
-            "adjustWeight": False,
-        },
     }
 
     def __init__(

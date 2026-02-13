@@ -1,7 +1,8 @@
 """
-Shared CPPN substrate helpers: NEAT config loading, query, render, and evaluate.
+Shared CPPN representation helpers: NEAT config loading, query, render, and evaluate.
 
-CPPNSubstrateBase implements shared logic for SingleCPPNSubstrate and DualCPPNSubstrate.
+CPPNRepresentationBase implements shared logic for SingleCPPNRepresentation
+and DualCPPNRepresentation.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ import neat
 import numpy as np
 
 from .. import get_root_dir
-from ..evolution import DEFAULT_RENDER_RESOLUTION
+from ..experiment.config import DEFAULT_RENDER_RESOLUTION
 from ..genome.activation import register_custom_activations
 from ..signals.registry import (
     apply_derived_inputs,
@@ -24,7 +25,7 @@ from ..signals.registry import (
     inputs_array,
 )
 from ..signals.validation import validate_neat_config
-from .protocol import SubstrateOutput
+from .protocol import RepresentationOutput
 
 
 def normalize_to_bipolar(val: float) -> float:
@@ -103,10 +104,10 @@ def render_pixel_grid(
     return img
 
 
-def base_evaluate(compile_fn: Cb[[Any], str | None], ind: Any) -> SubstrateOutput:
-    """Wrap compile_to_shader result in SubstrateOutput."""
+def base_express(compile_fn: Cb[[Any], str | None], ind: Any) -> RepresentationOutput:
+    """Wrap compile_to_shader result in RepresentationOutput."""
     glsl = compile_fn(ind)
-    return SubstrateOutput("shader", glsl if glsl else "")
+    return RepresentationOutput("shader", glsl if glsl else "")
 
 
 def compile_with_color_mode(
@@ -138,9 +139,9 @@ def _compute_network_stats(
     return result
 
 
-class CPPNSubstrateBase(ABC):
+class CPPNRepresentationBase(ABC):
     """
-    Shared base for single and dual CPPN substrates.
+    Shared base for single and dual CPPN representations.
     Subclasses implement query_rgb, _sample_inputs, get_base_inputs_for_render,
     compile_to_shader, to_json, from_json, create_random, mutate, crossover.
     """
@@ -185,11 +186,11 @@ class CPPNSubstrateBase(ABC):
         """Deserialize individual from dict."""
         ...
 
-    def evaluate(
+    def express(
         self, ind: Any, inputs: dict[str, float], **kwargs: Any
-    ) -> SubstrateOutput:
-        """Wrap compile_to_shader in SubstrateOutput."""
-        return base_evaluate(lambda i: self.compile_to_shader(i), ind)
+    ) -> RepresentationOutput:
+        """Wrap compile_to_shader in RepresentationOutput."""
+        return base_express(lambda i: self.compile_to_shader(i), ind)
 
     def sample_rgb(
         self,

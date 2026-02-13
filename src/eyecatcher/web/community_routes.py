@@ -63,7 +63,7 @@ def _rows_to_dicts(rows, extra_keys):
             genome = json.loads(row_dict["genome_json"])
         except (json.JSONDecodeError, TypeError, KeyError):
             continue
-        item = {"genome": genome}
+        item = {"individual": genome}
         for k in extra_keys:
             if k in row_dict:
                 item[k] = row_dict[k]
@@ -131,14 +131,14 @@ def require_admin(f):
 @community_bp.route("/api/community/submit", methods=["POST"])
 @api_try_except
 def api_community_submit():
-    """POST /api/community/submit: body genome, name, creator; returns id, status."""
+    """POST /api/community/submit: body individual, name, creator; returns id, status."""  # noqa: E501
     data = request.json or {}
-    genome = data.get("genome")
+    individual = data.get("individual")
     name = (data.get("name") or "").strip() or "Unnamed"
     creator = (data.get("creator") or "").strip() or "Anonymous"
-    if not genome or not isinstance(genome, dict):
+    if not individual or not isinstance(individual, dict):
         return api_error(ERR_GENOME_OBJECT_REQUIRED, 400)
-    genome_json = json.dumps(genome)
+    genome_json = json.dumps(individual)
     with with_db_connection(DATABASE_PATH) as conn:
         cur = conn.execute(
             """INSERT INTO submissions

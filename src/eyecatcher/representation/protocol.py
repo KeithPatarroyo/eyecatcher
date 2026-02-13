@@ -1,10 +1,10 @@
 """
-Substrate protocol: common interface for evolvable substrates.
+Representation protocol: common interface for evolvable representations.
 
-Substrates (e.g. dual/single CPPN, NCAs, CAs, generic neural nets) implement
-this protocol so evolution and API stay substrate-agnostic.
+Representations (e.g. dual/single CPPN, NCAs, CAs, generic neural nets) implement
+this protocol so evolution and API stay representation-agnostic.
 
-Which API endpoints require which substrate capabilities is documented in
+Which API endpoints require which representation capabilities is documented in
 API_REQUIREMENTS.md (e.g. /api/compile requires compile_to_shader;
 save/time-output/network require capabilities such as network, time_output).
 """
@@ -20,32 +20,32 @@ IndividualT = TypeVar("IndividualT")
 OutputType = Literal["shader", "image", "grid", "audio"]
 
 # Data for each output type: shader=str, image/grid/audio=ndarray
-SubstrateOutputData = Union[str, np.ndarray]
+RepresentationOutputData = Union[str, np.ndarray]
 
 
-class SubstrateOutput:
+class RepresentationOutput:
     """Tagged union for display payload; frontend uses output_type for renderer."""
 
     __slots__ = ("output_type", "data")
 
-    def __init__(self, output_type: OutputType, data: SubstrateOutputData) -> None:
+    def __init__(self, output_type: OutputType, data: RepresentationOutputData) -> None:
         self.output_type = output_type
         self.data = data
 
 
 # Frontend metadata: hasSignalControls, genomeKeys, excludeKeys, capabilities.
-SubstrateFrontendMetadata = dict[str, object]
+RepresentationFrontendMetadata = dict[str, object]
 
 
-class Substrate(Protocol[IndividualT]):
+class Representation(Protocol[IndividualT]):
     """
-    Protocol for pluggable substrates.
+    Protocol for pluggable representations.
 
     All evolvable models (CPPN, NCA, CA, neural net) implement this interface.
 
     Optional class attribute: frontend_metadata (dict). When set, it is the single
     source for codegen (hasSignalControls, genomeKeys, capabilities, optional
-    excludeKeys). See export.export_substrates_for_frontend().
+    excludeKeys). See export.export_representations_for_frontend().
     """
 
     id: str
@@ -63,9 +63,9 @@ class Substrate(Protocol[IndividualT]):
         """Return offspring from a and b with the given key."""
         ...
 
-    def evaluate(
+    def express(
         self, ind: IndividualT, inputs: dict[str, float], **kwargs: Any
-    ) -> SubstrateOutput:
+    ) -> RepresentationOutput:
         """Produce displayable output (image, grid, etc.)."""
         ...
 
@@ -83,7 +83,7 @@ class Substrate(Protocol[IndividualT]):
     ) -> list[list[float]]:
         """
         Optional: return [r,g,b] per coordinate for fitness/sampling.
-        Default returns [] (e.g. CA uses evaluate instead).
+        Default returns [] (e.g. CA uses express instead).
         """
         return []
 
@@ -107,7 +107,7 @@ class Substrate(Protocol[IndividualT]):
         """
         Return per-network node/connection stats for compile response, or None.
 
-        Substrates with network visualization (e.g. dual_cppn) return a dict
+        Representations with network visualization (e.g. dual_cppn) return a dict
         like { visual_nodes, visual_connections, time_nodes, time_connections }.
         """
         return None
@@ -138,7 +138,7 @@ class Substrate(Protocol[IndividualT]):
         """
         Build filename -> raw bytes for all assets to include in the save zip.
 
-        Substrates override to add shader, genome JSON, network PDF, etc.
+        Representations override to add shader, genome JSON, network PDF, etc.
         Default returns empty dict (caller may treat as unsupported).
         """
         return {}
@@ -169,22 +169,53 @@ class Substrate(Protocol[IndividualT]):
     ) -> dict[str, Any] | None:
         """
         Optional: adjust a connection weight and return updated shader and genome.
-        Returns {"shader": str, "genome": dict} or None if unsupported.
+        Returns {"shader": str, "individual": dict} or None if unsupported.
         """
         return None
 
 
-def get_substrate_capabilities(substrate: Any) -> dict[str, bool]:
+_CAPABILITIES_CACHE: dict[str, dict[str, bool]] = {}
+
+
+def get_representation_capabilities(representation: Any) -> dict[str, bool]:
     """
-    Return capability flags for a substrate.
-    Substrates may implement get_capabilities(); else returns defaults.
+    Derive capability flags from optional protocol methods.
+
+    Creates a random individual once (cached by representation.id) and checks
+    which optional methods return non-None / non-empty. Eliminates the need
+    for manual get_capabilities() or capabilities in frontend_metadata.
     """
-    meth = getattr(substrate, "get_capabilities", None)
-    if callable(meth):
-        return meth()
-    return {
-        "save": True,
-        "network": False,
-        "time_output": False,
-        "adjust_weight": False,
+    rid = getattr(representation, "id", None)
+    if rid and rid in _CAPABILITIES_CACHE:
+        return _CAPABILITIES_CACHE[rid].copy()
+
+    ind = representation.create_random(0)
+    save = bool(representation.build_save_assets(ind, 0, to_png_bytes=lambda a: b""))
+    get_network = getattr(representation, "get_network_data", None)
+    network_data = get_network(ind) if callable(get_network) else None
+    network = network_data is not None
+    query_time = getattr(representation, "query_time_output", None)
+    time_output = query_time(ind, {}) is not None if callable(query_time) else False
+    adjust_weight = False
+    if network_data and network_data.get("connections"):
+        adj_meth = getattr(representation, "adjust_weight", None)
+        if callable(adj_meth):
+            conn = network_data["connections"][0]
+            adj = adj_meth(
+                ind,
+                conn.get("network", "visual"),
+                str(conn.get("source", "")),
+                str(conn.get("target", "")),
+                0.5,
+            )
+            adjust_weight = adj is not None
+
+    caps = {
+        "save": save,
+        "network": network,
+        "time_output": time_output,
+        "adjust_weight": adjust_weight,
     }
+    if rid:
+        _CAPABILITIES_CACHE[rid] = caps.copy()
+    return caps

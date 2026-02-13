@@ -16,12 +16,17 @@ import numpy as np
 from flask import Response, jsonify
 
 # Shared API error messages (validation / required fields)
-ERR_GENOME_REQUIRED = "genome required"
-ERR_GENOME_REQUIRED_BODY = "genome required in request body"
-ERR_GENOME_OBJECT_REQUIRED = "genome object required"
-ERR_GENOMES_ARRAY_REQUIRED = "genomes array required"
+# Individual = genome + metadata (key, fitness); the unit of evolution in the API.
+ERR_INDIVIDUAL_REQUIRED = "individual required"
+ERR_INDIVIDUAL_REQUIRED_BODY = "individual required in request body"
+ERR_INDIVIDUALS_ARRAY_REQUIRED = "individuals array required"
 ERR_PARENTS_ARRAY_REQUIRED = "parents array required"
 ERR_ID_REQUIRED = "id required"
+# Legacy names for code that still references them (e.g. error message substrings)
+ERR_GENOME_REQUIRED = ERR_INDIVIDUAL_REQUIRED
+ERR_GENOME_REQUIRED_BODY = ERR_INDIVIDUAL_REQUIRED_BODY
+ERR_GENOME_OBJECT_REQUIRED = "individual object required"
+ERR_GENOMES_ARRAY_REQUIRED = ERR_INDIVIDUALS_ARRAY_REQUIRED
 
 
 def api_error(message: str, status: int = 400):

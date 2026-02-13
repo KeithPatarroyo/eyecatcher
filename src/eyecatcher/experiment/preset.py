@@ -1,10 +1,11 @@
 """
-Experiment presets and substrate selection.
+Experiment presets and representation selection.
 
 Loads config/experiments.json (keyed by EXPERIMENT_CONFIG env).
-Provides get_configured_substrate() and NEAT config paths for CPPN substrates.
+Provides get_configured_representation() and NEAT config paths for CPPN representations.
 """
 
+import json
 import logging
 import os
 
@@ -13,7 +14,7 @@ from . import config
 logger = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
-# NEAT config paths (CPPN substrates only) – may be overridden by preset
+# NEAT config paths (CPPN representations only) – may be overridden by preset
 # -----------------------------------------------------------------------------
 NEAT_CONFIG_PATH = "config/neat/neat_config_experimental.txt"
 NEAT_TIME_CONFIG_PATH = "config/neat/neat_config_time_experimental.txt"
@@ -35,8 +36,6 @@ def _load_experiment_preset() -> dict | None:
     if not os.path.isfile(path):
         return None
     try:
-        import json
-
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
     except (Exception, OSError):
@@ -45,7 +44,7 @@ def _load_experiment_preset() -> dict | None:
 
 
 def _apply_experiment_preset() -> None:
-    """Apply preset: override evolution config and NEAT paths."""
+    """Apply preset: override experiment config and NEAT paths."""
     global NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH  # noqa: PLW0603
 
     preset = _load_experiment_preset()
@@ -61,29 +60,31 @@ def _apply_experiment_preset() -> None:
 _apply_experiment_preset()
 
 
-def get_configured_substrate():
+def get_configured_representation():
     """
-    Return the substrate instance for the current experiment preset.
+    Return the representation instance for the current experiment preset.
 
-    Uses EXPERIMENT_CONFIG / config/experiments.json; preset may set "substrate"
-    (e.g. "dual_cppn") and pass through kwargs (neat_config_path, etc.).
-    Defaults to "dual_cppn" if no preset or substrate key.
+    Uses EXPERIMENT_CONFIG / config/experiments.json; preset may set "representation"
+    or "substrate" (e.g. "dual_cppn") and pass through kwargs (neat_config_path, etc.).
+    Defaults to "dual_cppn" if no preset or representation key.
     """
-    from ..substrate import get_substrate
+    from ..representation import get_representation
 
     preset = _load_experiment_preset()
     if preset and isinstance(preset, dict):
-        substrate_id = preset.get("substrate", "dual_cppn")
-        return get_substrate(substrate_id, **preset)
-    return get_substrate("dual_cppn")
+        representation_id = preset.get(
+            "representation", preset.get("substrate", "dual_cppn")
+        )
+        return get_representation(representation_id, **preset)
+    return get_representation("dual_cppn")
 
 
-def warn_if_neat_pop_size_mismatch(substrate) -> None:
+def warn_if_neat_pop_size_mismatch(representation) -> None:
     """
-    At startup/deployment: log a warning if the substrate uses NEAT and
+    At startup/deployment: log a warning if the representation uses NEAT and
     NEAT pop_size differs from our effective population_size.
     """
-    neat_config = getattr(substrate, "config", None)
+    neat_config = getattr(representation, "config", None)
     if neat_config is None:
         return
     neat_pop = getattr(neat_config, "pop_size", None)

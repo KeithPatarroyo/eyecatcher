@@ -2,13 +2,13 @@
 Stateless API Blueprint for Eyecatcher.
 
 Provides endpoints that don't depend on server-side population state.
-Blueprint is registered in server; substrate is injected via init_stateless_api.
+Representation is stored on Flask app.config["EYECATCHER_REPRESENTATION"].
 Endpoints: /api/compile, /api/random, /api/evaluate,
 /api/time-output, /api/network, /api/adjust-weight.
 """
 
 import numpy as np
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 
 from ..evolution import (
     get_crossover_probability,
@@ -16,12 +16,12 @@ from ..evolution import (
     get_population_size,
     update_runtime_config,
 )
+from ..representation import get_representation
+from ..representation.registry import REPRESENTATIONS
 from ..signals import NETWORK_SIGNALS, parse_time_inputs
-from ..substrate import get_substrate
-from ..substrate.registry import SUBSTRATES
 from .api_helpers import (
-    ERR_GENOME_REQUIRED,
-    ERR_GENOMES_ARRAY_REQUIRED,
+    ERR_INDIVIDUAL_REQUIRED,
+    ERR_INDIVIDUALS_ARRAY_REQUIRED,
     api_error,
     api_try_except,
     numpy_to_png_base64,
@@ -30,38 +30,29 @@ from .api_helpers import (
 # Create blueprint
 stateless_bp = Blueprint("stateless", __name__)
 
-# Module-level reference (set by init_stateless_api)
-_substrate = None
+# Config key for app-scoped representation
+_REPRESENTATION_CONFIG_KEY = "EYECATCHER_REPRESENTATION"
 
 
-def init_stateless_api(substrate):
-    """
-    Initialize the stateless API with the active substrate.
-
-    Substrate is the active evolvable (dual_cppn, single_cppn, ca, etc.).
-    """
-    global _substrate
-    _substrate = substrate
-
-
-def get_current_substrate():
-    """Current substrate (updated by PATCH /api/config). Used by evolve etc."""
-    return _substrate
+def get_current_representation():
+    """Current representation (from app config; updated by PATCH /api/config)."""
+    return current_app.config.get(_REPRESENTATION_CONFIG_KEY)
 
 
 def _config_response():
-    """Build JSON config payload (substrate, limits, capabilities)."""
-    from ..substrate.protocol import get_substrate_capabilities
+    """Build JSON config payload (representation, limits, capabilities)."""
+    from ..representation.protocol import get_representation_capabilities
 
-    capabilities = get_substrate_capabilities(_substrate)
+    representation = get_current_representation()
+    capabilities = get_representation_capabilities(representation)
     payload = {
-        "substrate_id": _substrate.id,
-        "output_type": _substrate.output_type,
+        "representation_id": representation.id,
+        "output_type": representation.output_type,
         "population_size": get_population_size(),
         "max_population_size": get_max_population_size(),
         "crossover_probability": get_crossover_probability(),
         "capabilities": capabilities,
-        "available_substrate_ids": list(SUBSTRATES.keys()),
+        "available_representation_ids": list(REPRESENTATIONS.keys()),
     }
     return jsonify(payload)
 
@@ -71,85 +62,85 @@ def api_config():
     """
     GET: current experiment config (respects runtime overlay).
     PATCH: update at runtime. Body: population_size?, max_population_size?,
-        crossover_probability?, substrate_id?. Same shape as GET.
-    Changing substrate_id clears server substrate; client should clear grid.
+        crossover_probability?, representation_id?. Same shape as GET.
+    Changing representation_id updates app.config; client should clear grid.
     """
-    global _substrate
-    if _substrate is None:
-        return api_error("No substrate configured.", 503)
+    if get_current_representation() is None:
+        return api_error("No representation configured.", 503)
     if request.method == "PATCH":
         data = request.get_json(silent=True) or {}
-        new_id = data.get("substrate_id")
+        new_id = data.get("representation_id")
         if new_id is not None:
-            if new_id not in SUBSTRATES:
+            if new_id not in REPRESENTATIONS:
                 return api_error(
-                    f"Unknown substrate: {new_id}. Available: {list(SUBSTRATES)}",
+                    f"Unknown representation: {new_id}. "
+                    f"Available: {list(REPRESENTATIONS)}",
                     400,
                 )
-            _substrate = get_substrate(new_id)
+            current_app.config[_REPRESENTATION_CONFIG_KEY] = get_representation(new_id)
         update_runtime_config(data)
     return _config_response()
 
 
 def _require_capability(cap: str):
-    """Error if substrate does not have the given capability."""
-    from ..substrate.protocol import get_substrate_capabilities
+    """Error if representation does not have the given capability."""
+    from ..representation.protocol import get_representation_capabilities
 
-    caps = get_substrate_capabilities(_substrate)
+    caps = get_representation_capabilities(get_current_representation())
     if not caps.get(cap, False):
         return api_error(
-            f"This endpoint requires a substrate with '{cap}' capability.",
+            f"This endpoint requires a representation with '{cap}' capability.",
             501,
         )
     return None
 
 
-def _require_genome_from_request(cap: str):
+def _require_individual_from_request(cap: str):
     """
-    Require capability, parse JSON, require genome, deserialize via substrate.
+    Require capability, parse JSON, require individual, deserialize via representation.
     Returns (ind, individual_id, clicks, err). If err is not None, return it.
     """
     err = _require_capability(cap)
     if err is not None:
         return None, None, None, err
     data = request.json or {}
-    genome_data = data.get("genome")
-    if not genome_data:
-        return None, None, None, api_error(ERR_GENOME_REQUIRED, 400)
+    individual_data = data.get("individual")
+    if not individual_data:
+        return None, None, None, api_error(ERR_INDIVIDUAL_REQUIRED, 400)
     try:
-        ind, individual_id, clicks = _parse_one_genome(genome_data, 0)
+        ind, individual_id, clicks = _parse_one_individual(individual_data, 0)
     except Exception:
-        return None, None, None, api_error("Invalid genome payload.", 400)
+        return None, None, None, api_error("Invalid individual payload.", 400)
     return ind, individual_id, clicks, None
 
 
-def _extract_genome_id_clicks(g_data, default_key):
-    """Return (individual_id, clicks) from genome JSON and default key."""
-    return (g_data.get("key", default_key), g_data.get("clicks", 0))
+def _extract_individual_id_clicks(payload: dict, default_key: int):
+    """Return (individual_id, clicks) from individual JSON and default key."""
+    return (payload.get("key", default_key), payload.get("clicks", 0))
 
 
-def _parse_one_genome(g_data: dict, index: int):
-    """Deserialize one genome payload; return (ind, individual_id, clicks)."""
-    ind = _substrate.from_json(g_data)
-    individual_id, clicks = _extract_genome_id_clicks(
-        g_data, getattr(ind, "key", index)
+def _parse_one_individual(payload: dict, index: int):
+    """Deserialize one individual payload; return (ind, individual_id, clicks)."""
+    ind = get_current_representation().from_json(payload)
+    individual_id, clicks = _extract_individual_id_clicks(
+        payload, getattr(ind, "key", index)
     )
     return ind, individual_id, clicks
 
 
-def _compile_genomes(genomes_data, color_mode):
-    """Compile genome JSONs to shader response dicts via the substrate protocol."""
+def _compile_individuals(individuals_data, color_mode):
+    """Compile individual JSONs to shader response dicts via representation protocol."""
     mode = (color_mode or "").strip().lower() or None
     shaders = []
-    for i, g_data in enumerate(genomes_data):
-        ind, individual_id, clicks = _parse_one_genome(g_data, i)
-        glsl = _substrate.compile_to_shader(ind, color_mode=mode)
+    for i, item_data in enumerate(individuals_data):
+        ind, individual_id, clicks = _parse_one_individual(item_data, i)
+        glsl = get_current_representation().compile_to_shader(ind, color_mode=mode)
         resp = {
             "id": individual_id,
             "shader": glsl or "",
             "clicks": clicks,
         }
-        stats = _substrate.get_compile_stats(ind)
+        stats = get_current_representation().get_compile_stats(ind)
         if stats:
             resp.update(stats)
             resp["nodes"] = sum(v for k, v in stats.items() if k.endswith("_nodes"))
@@ -170,10 +161,11 @@ def _compile_genomes(genomes_data, color_mode):
 
 
 def _require_can_compile():
-    """Error if substrate cannot compile genomes to shaders."""
-    if not callable(getattr(_substrate, "compile_to_shader", None)):
+    """Error if representation cannot compile genomes to shaders."""
+    if not callable(getattr(get_current_representation(), "compile_to_shader", None)):
         return api_error(
-            "This endpoint requires a substrate that implements compile_to_shader.",
+            "This endpoint requires a representation that implements "
+            "compile_to_shader.",
             501,
         )
     return None
@@ -183,22 +175,22 @@ def _require_can_compile():
 @api_try_except
 def api_compile():
     """
-    Stateless: compile genomes to shaders.
-    Body: { "genomes": [ ... ], "color_mode": "hsv"|"rgb" (optional) }
+    Stateless: compile individuals to shaders.
+    Body: { "individuals": [ ... ], "color_mode": "hsv"|"rgb" (optional) }
     Returns: { "shaders": [ { "id", "shader", "clicks", "nodes", ... }, ... ] }
-    Works for any substrate with compile_to_shader (dual_cppn, single_cppn, ca).
+    Works for any representation with compile_to_shader (dual_cppn, single_cppn, ca).
     """
     err = _require_can_compile()
     if err is not None:
         return err
     data = request.json or {}
-    genomes_data = data.get("genomes", [])
-    if not genomes_data:
-        return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
+    individuals_data = data.get("individuals", [])
+    if not individuals_data:
+        return api_error(ERR_INDIVIDUALS_ARRAY_REQUIRED, 400)
     color_mode = (data.get("color_mode") or "").strip().lower()
     if color_mode and color_mode not in ("hsv", "rgb"):
         color_mode = "hsv"
-    shaders = _compile_genomes(genomes_data, color_mode)
+    shaders = _compile_individuals(individuals_data, color_mode)
     return jsonify({"shaders": shaders})
 
 
@@ -209,43 +201,46 @@ def api_random():
     Stateless: create a new random population.
 
     Body: { "size": N } (default from config)
-    Returns: { "genomes": [ ... ], "output_type": "shader"|"grid"|... }
-    Genome shape depends on substrate (dual_cppn: visual/time_signal; ca: grid, key).
+    Returns: { "individuals": [ ... ], "output_type": "shader"|"grid"|... }
+    Individual shape depends on representation (dual_cppn: visual/time_signal;
+    ca: grid, key).
     """
     data = request.json or {}
     size = data.get("size", get_population_size())
     size = max(1, min(int(size), get_max_population_size()))
-    genomes = []
+    individuals = []
+    rep = get_current_representation()
     for i in range(size):
-        ind = _substrate.create_random(key=i)
-        genomes.append(_substrate.to_json(ind))
+        ind = rep.create_random(key=i)
+        individuals.append(rep.to_json(ind))
     return jsonify(
         {
-            "genomes": genomes,
-            "output_type": _substrate.output_type,
-            "substrate_id": _substrate.id,
+            "individuals": individuals,
+            "output_type": rep.output_type,
+            "representation_id": rep.id,
         }
     )
 
 
 @stateless_bp.route("/api/evaluate", methods=["POST"])
+@stateless_bp.route("/api/express", methods=["POST"])
 @api_try_except
 def api_evaluate():
     """
-    Evaluate genomes with the current substrate and return displayable output.
+    Express individuals with the current representation and return displayable output.
 
-    Body: { "genomes": [ ... ] } (each item is substrate-specific genome JSON).
+    Body: { "individuals": [ ... ] } (each item is representation-specific JSON).
     Returns: { "results": [ { "id", "output_type", "image"?, "shader"? } ],
         "output_type" }. Grid has "image"; shader has "shader".
     """
     data = request.json or {}
-    genomes_data = data.get("genomes", [])
-    if not genomes_data:
-        return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
+    individuals_data = data.get("individuals", [])
+    if not individuals_data:
+        return api_error(ERR_INDIVIDUALS_ARRAY_REQUIRED, 400)
     results = []
-    for i, g_data in enumerate(genomes_data):
-        ind, individual_id, _ = _parse_one_genome(g_data, i)
-        out = _substrate.evaluate(ind, {})
+    for i, item_data in enumerate(individuals_data):
+        ind, individual_id, _ = _parse_one_individual(item_data, i)
+        out = get_current_representation().express(ind, {})
         item = {"id": individual_id, "output_type": out.output_type}
         if out.output_type == "grid" and hasattr(out.data, "shape"):
             arr = np.asarray(out.data)
@@ -253,17 +248,19 @@ def api_evaluate():
             item["image"] = "data:image/png;base64," + b64
         elif out.output_type == "shader" and isinstance(out.data, str):
             item["shader"] = out.data
-        glsl = _substrate.compile_to_shader(ind)
+        rep = get_current_representation()
+        glsl = rep.compile_to_shader(ind)
         if glsl:
             item["shader"] = glsl
-        extra = getattr(_substrate, "serialize_individual_extra", lambda i: {})(ind)
+        extra = getattr(rep, "serialize_individual_extra", lambda i: {})(ind)
         item.update(extra)
         results.append(item)
+    rep = get_current_representation()
     return jsonify(
         {
             "results": results,
-            "output_type": _substrate.output_type,
-            "substrate_id": _substrate.id,
+            "output_type": rep.output_type,
+            "representation_id": rep.id,
         }
     )
 
@@ -272,18 +269,19 @@ def api_evaluate():
 @api_try_except
 def api_time_output():
     """
-    Stateless: query time/signal output for a genome with given inputs (debug panel).
-    Body: { "genome": <substrate-specific JSON>, <signal_id>: value ... }.
+    Stateless: query time/signal output for an individual with given inputs
+    (debug panel).
+    Body: { "individual": <representation-specific JSON>, <signal_id>: value ... }.
     Returns: { "timeOutput": float, "inputs": { <id>: value ... } }.
     """
-    ind, _, _, err = _require_genome_from_request("time_output")
+    ind, _, _, err = _require_individual_from_request("time_output")
     if err is not None:
         return err
     data = request.json or {}
     inputs = parse_time_inputs(data, bipolar=False)
-    result = _substrate.query_time_output(ind, inputs)
+    result = get_current_representation().query_time_output(ind, inputs)
     if result is None:
-        return api_error("Time output not supported by this substrate.", 501)
+        return api_error("Time output not supported by this representation.", 501)
     return jsonify(result)
 
 
@@ -291,16 +289,18 @@ def api_time_output():
 @api_try_except
 def api_network():
     """
-    Stateless: get network visualization data for a genome.
-    Body: { "genome": <substrate-specific JSON> }
+    Stateless: get network visualization data for an individual.
+    Body: { "individual": <representation-specific JSON> }
     Returns: { "id": key, "nodes": [...], "connections": [...] }
     """
-    ind, individual_id, _, err = _require_genome_from_request("network")
+    ind, individual_id, _, err = _require_individual_from_request("network")
     if err is not None:
         return err
-    result = _substrate.get_network_data(ind)
+    result = get_current_representation().get_network_data(ind)
     if result is None:
-        return api_error("Network visualization not supported by this substrate.", 501)
+        return api_error(
+            "Network visualization not supported by this representation.", 501
+        )
     return jsonify(
         {
             "id": individual_id,
@@ -315,11 +315,12 @@ def api_network():
 @api_try_except
 def api_adjust_weight():
     """
-    Stateless: adjust a connection weight in a genome and return updated shader.
-    Body: { "genome": {...}, "network": <from registry>, "source", "target", "weight" }
-    Returns: { "status": "success", "shader": "...", "genome": {...} }
+    Stateless: adjust a connection weight in an individual and return updated shader.
+    Body: { "individual": {...}, "network": <from registry>, "source",
+    "target", "weight" }
+    Returns: { "status": "success", "shader": "...", "individual": {...} }
     """
-    ind, _, _, err = _require_genome_from_request("adjust_weight")
+    ind, _, _, err = _require_individual_from_request("adjust_weight")
     if err is not None:
         return err
     data = request.json or {}
@@ -329,7 +330,7 @@ def api_adjust_weight():
     source_node = data.get("source")
     target_node = data.get("target")
     new_weight = float(data.get("weight", 0))
-    result = _substrate.adjust_weight(
+    result = get_current_representation().adjust_weight(
         ind, network_type, source_node, target_node, new_weight
     )
     if result is None:
@@ -338,7 +339,7 @@ def api_adjust_weight():
         {
             "status": "success",
             "shader": result["shader"],
-            "genome": result["genome"],
+            "individual": result.get("individual", result.get("genome")),
             "network": network_type,
             "source": source_node,
             "target": target_node,
