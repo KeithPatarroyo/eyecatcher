@@ -16,12 +16,12 @@ import json
 import os
 
 import numpy as np
-from eyecatcher.evaluation.fitness import get_fitness, list_fitness
+from eyecatcher.evolution.fitness import get_fitness, list_fitness
 from eyecatcher.evolution import (
     CROSSOVER_PROBABILITY,
     DEFAULT_POPULATION_SIZE,
     PREVIEW_RENDER_RESOLUTION,
-    config,
+    get_configured_substrate,
 )
 from eyecatcher.evolution.reproduction import produce_next_generation
 from PIL import Image
@@ -49,7 +49,7 @@ def run_evolution(
     output_dir: str = "output/evolution",
     fitness_name: str = "combined",
 ):
-    substrate = config.get_configured_substrate()
+    substrate = get_configured_substrate()
     fitness_fn = get_fitness(fitness_name)
     if fitness_fn is None:
         raise ValueError(

@@ -1,7 +1,5 @@
 """
 Signal definitions and utilities for CPPN inputs/outputs.
-
-Activation functions and custom registrations for NEAT.
 """
 
 from .registry import (

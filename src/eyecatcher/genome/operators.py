@@ -7,7 +7,7 @@ substrate.dual_genome (used by DualCPPNSubstrate only).
 
 import neat
 
-from ..genome.serialization import _update_node_indexer_from_genome
+from .serialization import _update_node_indexer_from_genome
 
 
 def mutate_genome(

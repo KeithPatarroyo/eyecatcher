@@ -12,8 +12,8 @@ from typing import Any, Callable
 import neat
 import numpy as np
 
-from ..evaluation import extract_network_data, parse_network_node_id
-from ..evolution import config
+from ..inspection import extract_network_data, parse_network_node_id
+from ..evolution import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
 from ..glsl import ShaderCompiler
 from ..signals.registry import (
     TIME_INPUTS,
@@ -72,14 +72,14 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
     ) -> None:
         self.config = _load_neat_config(
             neat_config_path,
-            config.NEAT_CONFIG_PATH,
+            NEAT_CONFIG_PATH,
             VISUAL_INPUTS,
             VISUAL_OUTPUTS,
             "visual",
         )
         self.time_config = _load_neat_config(
             time_config_path,
-            config.NEAT_TIME_CONFIG_PATH,
+            NEAT_TIME_CONFIG_PATH,
             TIME_INPUTS,
             TIME_OUTPUTS,
             "time",
@@ -195,7 +195,7 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
         assets[names["bundle_json"]] = json.dumps(bundle, indent=2).encode("utf-8")
         assets[names["pkl"]] = pkl_buffer.getvalue()
         if visualize:
-            from ..evaluation.genome_visualizer import render_genome_network_pdf
+            from ..inspection.genome_visualizer import render_genome_network_pdf
 
             pdf_buffer = io.BytesIO()
             render_genome_network_pdf(ind.visual, self.config, pdf_buffer)

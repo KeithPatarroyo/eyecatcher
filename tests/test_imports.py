@@ -22,7 +22,7 @@ def test_canonical_package_imports():
 
 def test_new_submodule_imports():
     """Test that new submodules are importable directly."""
-    from eyecatcher.evaluation import render_genome_network_pdf
+    from eyecatcher.inspection import render_genome_network_pdf
     from eyecatcher.signals import VISUAL_INPUTS
     from eyecatcher.substrate import DualCPPNSubstrate, DualGenome
 

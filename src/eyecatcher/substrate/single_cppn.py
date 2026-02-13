@@ -10,9 +10,9 @@ from typing import Any
 
 import neat
 
-from ..evolution import config
-from ..evolution.operators import crossover_genomes, mutate_genome
+from ..evolution import NEAT_CONFIG_PATH
 from ..genome import create_random_genome
+from ..genome.operators import crossover_genomes, mutate_genome
 from ..genome.serialization import genome_from_json, genome_to_json
 from ..glsl import ShaderCompiler
 from ..signals.registry import (
@@ -62,7 +62,7 @@ class SingleCPPNSubstrate(CPPNSubstrateBase):
     ) -> None:
         self.config = _load_neat_config(
             neat_config_path,
-            config.NEAT_CONFIG_PATH,
+            NEAT_CONFIG_PATH,
             VISUAL_INPUTS,
             VISUAL_OUTPUTS,
             "visual",

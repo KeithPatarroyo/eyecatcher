@@ -111,7 +111,7 @@ def mutate_dual_genome(
     new_key: int,
 ) -> DualGenome:
     """Create a mutated copy of a dual genome (both visual and time signal)."""
-    from ..evolution.operators import mutate_genome
+    from ..genome.operators import mutate_genome
 
     visual_child = mutate_genome(dual_genome.visual, visual_config)
     time_child = mutate_genome(dual_genome.time_signal, time_config)
@@ -126,7 +126,7 @@ def crossover_dual_genomes(
     new_key: int,
 ) -> DualGenome:
     """Create offspring from two dual genomes."""
-    from ..evolution.operators import crossover_genomes
+    from ..genome.operators import crossover_genomes
 
     visual_child = crossover_genomes(dual1.visual, dual2.visual, visual_config)
     time_child = crossover_genomes(dual1.time_signal, dual2.time_signal, time_config)

@@ -2,7 +2,7 @@
 Eyecatcher: evolutionary time-varying CPPN patterns with shader generation.
 
 Main API: import from eyecatcher.evolution (config, operators), eyecatcher.genome
-(DualGenome, serialization), eyecatcher.signals, eyecatcher.evaluation,
+(DualGenome, serialization), eyecatcher.signals, eyecatcher.inspection,
 eyecatcher.glsl (ShaderCompiler). Entrypoint for the web app: eyecatcher.server:app.
 """
 

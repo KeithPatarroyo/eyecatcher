@@ -66,7 +66,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 ## Testing
 
 **Framework:** pytest (`testpaths = ["tests"]` in [pyproject.toml](../pyproject.toml)).
-**Test modules:** `test_cppn_engine.py`, `test_substrate_compile.py`, `test_shader_compiler.py`, `test_genome_serialization.py`, `test_api.py`, `test_visualization.py`, `test_community_routes.py`, `test_genealogy_routes.py`, `test_signal_registry.py`. These tests target behavior in `evolution/`, `genome/`, `substrate/`, `glsl/`, `signals/`, `evaluation/` and server/API/genealogy/community routes.
+**Test modules:** `test_cppn_engine.py`, `test_substrate_compile.py`, `test_shader_compiler.py`, `test_genome_serialization.py`, `test_api.py`, `test_visualization.py`, `test_community_routes.py`, `test_genealogy_routes.py`, `test_signal_registry.py`. These tests target behavior in `evolution/`, `genome/`, `substrate/`, `glsl/`, `signals/`, `inspection/` and server/API/genealogy/community routes.
 **API tests:** Flask test client — `from eyecatcher.server import app` then `app.test_client()`.
 **Engine API:** `mutate_dual_genome(dual, new_key)` and `crossover_dual_genomes(dual1, dual2, new_key)` **require** the `new_key` argument.
 

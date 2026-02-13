@@ -21,8 +21,8 @@ from ..data.genealogy_db import (
     reset_genealogy,
     save_population,
 )
-from ..evolution import config as evolution_config
-from ..evolution.config import (
+from ..evolution import (
+    get_configured_substrate,
     get_crossover_probability,
     get_population_size,
 )
@@ -55,7 +55,7 @@ def save_population_route():
     metadata = data.get("metadata") or {}
     if data.get("substrate_id") is not None:
         metadata = dict(metadata, substrate_id=data.get("substrate_id"))
-    substrate = evolution_config.get_configured_substrate()
+    substrate = get_configured_substrate()
     metadata = dict(
         metadata,
         experiment_config={

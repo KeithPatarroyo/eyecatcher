@@ -13,11 +13,11 @@
 | **evolution/** | Evolution config, coordinator, viewer controls (signals, zoom). | `evolution/`, `signals/` |
 | **community/** | Community browse, submit, admin UI. | `web/community_routes` |
 | **genealogy/** | Genealogy viewer, export, thumbnails, sync. | `data/`, `web/genealogy_routes` |
-| **evaluation/** | Network visualizer, weight sliders, CPPN evaluator. | `evaluation/` |
+| **inspection/** | Network visualizer, weight sliders, CPPN evaluator. | `inspection/` |
 | **app/** | Application shell — state, grid, animation loop, toolbar, population UI. | — |
 | **lib/** | API client, utils, toast, storage, debug. | `web/` (API) |
 
-Script load order in the HTML: lib → evolution (config) → community → substrate → evolution (viewer) → evaluation / app (app loads last and wires everything).
+Script load order in the HTML: lib → evolution (config) → community → substrate → evolution (viewer) → inspection / app (app loads last and wires everything).
 
 ---
 
@@ -69,7 +69,7 @@ Script load order in the HTML: lib → evolution (config) → community → subs
 
 ---
 
-## evaluation/ — Network and CPPN evaluation
+## inspection/ — Network and genome inspection
 
 **Edit when you change network visualization or weight sliders.**
 

@@ -15,7 +15,13 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from .. import get_root_dir
-from ..evolution import config
+from ..evolution import (
+    get_configured_substrate,
+    get_crossover_probability,
+    get_elitism_default,
+    get_population_size,
+    warn_if_neat_pop_size_mismatch,
+)
 from ..evolution.reproduction import produce_next_generation
 from .api_helpers import (
     ERR_GENOME_REQUIRED_BODY,
@@ -51,32 +57,14 @@ else:
     CORS(app, origins=[o.strip() for o in _cors_origins.split(",")])
 
 # Substrate from experiment preset (config/experiments.json, EXPERIMENT_CONFIG)
-substrate = config.get_configured_substrate()
-config.warn_if_neat_pop_size_mismatch(substrate)
+substrate = get_configured_substrate()
+warn_if_neat_pop_size_mismatch(substrate)
 
 # Initialize and register API blueprints
 init_stateless_api(substrate)
 app.register_blueprint(stateless_bp)
 app.register_blueprint(community_bp)
 app.register_blueprint(genealogy_bp)
-
-
-@app.route("/health")
-def health():
-    """Lightweight health check for Railway/deploy (no app state)."""
-    return "", 200
-
-
-@app.route("/")
-def index():
-    """Serve the viewer HTML."""
-    return send_from_directory(STATIC_DIR, "interactive_viewer.html")
-
-
-@app.route("/genealogy")
-def genealogy():
-    """Serve the genealogy tree viewer."""
-    return send_from_directory(STATIC_DIR, "genealogy_viewer.html")
 
 
 def _save_generation_to_genealogy(
@@ -120,12 +108,6 @@ def evolve():
     parents_data = data.get("parents", [])
     if not parents_data:
         return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
-
-    from ..evolution.config import (
-        get_crossover_probability,
-        get_elitism_default,
-        get_population_size,
-    )
 
     population_size = data.get("population_size", get_population_size())
     crossover_probability = data.get(
@@ -174,6 +156,24 @@ def evolve():
     if new_pop_id is not None:
         payload["population_id"] = new_pop_id
     return jsonify(payload)
+
+
+@app.route("/health")
+def health():
+    """Lightweight health check for Railway/deploy (no app state)."""
+    return "", 200
+
+
+@app.route("/")
+def index():
+    """Serve the viewer HTML."""
+    return send_from_directory(STATIC_DIR, "interactive_viewer.html")
+
+
+@app.route("/genealogy")
+def genealogy():
+    """Serve the genealogy tree viewer."""
+    return send_from_directory(STATIC_DIR, "genealogy_viewer.html")
 
 
 @app.route("/api/save", methods=["POST"])

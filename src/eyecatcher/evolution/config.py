@@ -1,35 +1,14 @@
 """
-Evolution constants and NEAT config paths.
+Evolution parameters: population size, crossover, elitism.
 
-Substrate-agnostic evolution params (population_size, crossover_probability, etc.)
-are loaded from config/evolution_defaults.json; run `make generate` to sync
-frontend fallbacks. Preset overrides come from config/experiments.json.
-Render resolution and NEAT config paths stay here (separate concerns).
+Loaded from config/evolution_defaults.json; run `make generate` to sync
+frontend fallbacks. Preset overrides applied via experiment.apply_preset().
+Runtime overlay (PATCH /api/config) allows in-memory updates without restart.
 """
 
 import json
-import logging
 import os
 
-logger = logging.getLogger(__name__)
-
-# -----------------------------------------------------------------------------
-# Render config (not evolution; used for save/export)
-# -----------------------------------------------------------------------------
-DEFAULT_RENDER_RESOLUTION = 512
-DEFAULT_RENDER_TIME = 0.5
-PREVIEW_RENDER_RESOLUTION = 256
-DEFAULT_NUM_FRAMES = 30
-
-# -----------------------------------------------------------------------------
-# NEAT config paths (CPPN substrates only)
-# -----------------------------------------------------------------------------
-NEAT_CONFIG_PATH = "config/neat/neat_config_experimental.txt"
-NEAT_TIME_CONFIG_PATH = "config/neat/neat_config_time_experimental.txt"
-
-# -----------------------------------------------------------------------------
-# Evolution defaults (reproduction/selection) — loaded from evolution_defaults.json
-# -----------------------------------------------------------------------------
 _REQUIRED_EVOLUTION_KEYS = (
     "population_size",
     "max_population_size",
@@ -61,46 +40,7 @@ def _load_evolution_defaults() -> dict:
     return {k: data[k] for k in _REQUIRED_EVOLUTION_KEYS}
 
 
-def _load_experiment_preset() -> dict | None:
-    """Load preset from config/experiments.json. Returns None if not found."""
-    preset_name = os.environ.get("EXPERIMENT_CONFIG", "default").strip()
-    if not preset_name:
-        return None
-    root = _get_root_dir()
-    path = os.path.join(root, "config", "experiments.json")
-    if not os.path.isfile(path):
-        return None
-    try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return None
-    return data.get(preset_name) if isinstance(data, dict) else None
-
-
-def _apply_experiment_preset() -> None:
-    """Override module constants from config/experiments.json if preset exists."""
-    global DEFAULT_POPULATION_SIZE, CROSSOVER_PROBABILITY, MAX_POPULATION_SIZE
-    global ELITISM_DEFAULT, NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
-
-    preset = _load_experiment_preset()
-    if not preset:
-        return
-    if "neat_config_path" in preset:
-        NEAT_CONFIG_PATH = preset["neat_config_path"]  # noqa: PLW0603
-    if "neat_time_config_path" in preset:
-        NEAT_TIME_CONFIG_PATH = preset["neat_time_config_path"]  # noqa: PLW0603
-    if "population_size" in preset:
-        DEFAULT_POPULATION_SIZE = preset["population_size"]  # noqa: PLW0603
-    if "max_population_size" in preset:
-        MAX_POPULATION_SIZE = preset["max_population_size"]  # noqa: PLW0603
-    if "crossover_probability" in preset:
-        CROSSOVER_PROBABILITY = preset["crossover_probability"]  # noqa: PLW0603
-    if "elitism_default" in preset:
-        ELITISM_DEFAULT = preset["elitism_default"]  # noqa: PLW0603
-
-
-# Load evolution defaults from JSON, then apply preset overrides
+# Load evolution defaults from JSON
 _evolution_defaults = _load_evolution_defaults()
 DEFAULT_POPULATION_SIZE = _evolution_defaults["population_size"]
 MAX_POPULATION_SIZE = _evolution_defaults["max_population_size"]
@@ -108,7 +48,31 @@ MIN_POPULATION_SIZE = _evolution_defaults["min_population_size"]
 CROSSOVER_PROBABILITY = _evolution_defaults["crossover_probability"]
 ELITISM_DEFAULT = _evolution_defaults["elitism_default"]
 
-_apply_experiment_preset()
+# -----------------------------------------------------------------------------
+# Preset overlay (applied by experiment module when preset is loaded)
+# -----------------------------------------------------------------------------
+_PRESET_OVERLAY: dict = {}
+
+
+def apply_preset(preset: dict | None) -> None:
+    """
+    Override evolution defaults from an experiment preset.
+    Called by experiment module when loading config/experiments.json.
+    """
+    global DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE  # noqa: PLW0603
+    global CROSSOVER_PROBABILITY, ELITISM_DEFAULT  # noqa: PLW0603
+
+    if not preset or not isinstance(preset, dict):
+        return
+    if "population_size" in preset and preset["population_size"] is not None:
+        DEFAULT_POPULATION_SIZE = preset["population_size"]  # noqa: PLW0603
+    if "max_population_size" in preset and preset["max_population_size"] is not None:
+        MAX_POPULATION_SIZE = preset["max_population_size"]  # noqa: PLW0603
+    if "crossover_probability" in preset and preset["crossover_probability"] is not None:
+        CROSSOVER_PROBABILITY = preset["crossover_probability"]  # noqa: PLW0603
+    if "elitism_default" in preset and preset["elitism_default"] is not None:
+        ELITISM_DEFAULT = preset["elitism_default"]  # noqa: PLW0603
+
 
 # -----------------------------------------------------------------------------
 # Runtime overlay (PATCH /api/config) – no server restart
@@ -153,41 +117,3 @@ def update_runtime_config(updates: dict) -> None:
         elif key in ("population_size", "max_population_size"):
             if isinstance(value, int) and value >= 1:
                 _RUNTIME_OVERLAY[key] = value
-
-
-def get_configured_substrate():
-    """
-    Return the substrate instance for the current experiment preset.
-
-    Uses EXPERIMENT_CONFIG / config/experiments.json; preset may set "substrate"
-    (e.g. "dual_cppn") and pass through kwargs (neat_config_path, etc.).
-    Defaults to "dual_cppn" if no preset or substrate key.
-    """
-    from ..substrate import get_substrate
-
-    preset = _load_experiment_preset()
-    if preset:
-        substrate_id = preset.get("substrate", "dual_cppn")
-        return get_substrate(substrate_id, **preset)
-    return get_substrate("dual_cppn")
-
-
-def warn_if_neat_pop_size_mismatch(substrate) -> None:
-    """
-    At startup/deployment: log a warning if the substrate uses NEAT and
-    NEAT pop_size differs from our effective population_size.
-    """
-    neat_config = getattr(substrate, "config", None)
-    if neat_config is None:
-        return
-    neat_pop = getattr(neat_config, "pop_size", None)
-    if neat_pop is None:
-        return
-    our_pop = get_population_size()
-    if neat_pop != our_pop:
-        logger.warning(
-            "NEAT pop_size (%s) != evolution population_size (%s); "
-            "population size is controlled by evolution_defaults.json / preset / UI.",
-            neat_pop,
-            our_pop,
-        )

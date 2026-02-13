@@ -9,7 +9,7 @@ from pathlib import Path
 
 import neat
 import pytest
-from eyecatcher.evaluation import render_genome_network_pdf
+from eyecatcher.inspection import render_genome_network_pdf
 from eyecatcher.evolution import mutate_genome
 from eyecatcher.genome import create_random_genome
 from eyecatcher.substrate import SingleCPPNSubstrate

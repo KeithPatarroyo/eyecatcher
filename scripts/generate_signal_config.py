@@ -78,12 +78,12 @@ def main() -> None:
     root = _repo_root()
     sys.path.insert(0, os.path.join(root, "src"))
 
-    from eyecatcher.evolution import config
+    from eyecatcher.evolution import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
     from eyecatcher.signals import export_for_frontend
 
-    # Use NEAT paths from config (respects EXPERIMENT_CONFIG and experiments.json)
-    visual_path = config.NEAT_CONFIG_PATH
-    time_path = config.NEAT_TIME_CONFIG_PATH
+    # Use NEAT paths from experiment (respects EXPERIMENT_CONFIG and experiments.json)
+    visual_path = NEAT_CONFIG_PATH
+    time_path = NEAT_TIME_CONFIG_PATH
     print(f"Validating NEAT: visual={visual_path}, time={time_path}", file=sys.stderr)
     validate_neat(root, visual_path, time_path)
 
@@ -123,7 +123,7 @@ def validate_activations_js(root: str) -> None:
     spec.loader.exec_module(mod)
     get_activation_names = mod.get_activation_names
 
-    js_path = os.path.join(root, "static", "js", "evaluation", "cppn_evaluator.js")
+    js_path = os.path.join(root, "static", "js", "inspection", "cppn_evaluator.js")
     with open(js_path, encoding="utf-8") as f:
         content = f.read()
     keys = re.findall(r"(\w+):\s*function\s*\(", content)
