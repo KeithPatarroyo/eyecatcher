@@ -5,11 +5,9 @@ Used by ShaderCompiler. Input ordering and variable names come from signals.py.
 Activation names come from glsl.activation_registry (single source of truth).
 """
 
-from typing import Optional
-
 import neat
 
-from ..signals import TIME_INPUTS, VISUAL_INPUTS, build_glsl_input_map
+from ..signals.spec import build_glsl_input_map
 from .activation_registry import get_activation_names
 from .compiler_topology import get_enabled_connections, topological_sort
 
@@ -21,7 +19,7 @@ def generate_node_code(
     connections: list[tuple[int, int, float]],
     nodes: list[int],
     config: neat.Config,
-    input_names: Optional[dict] = None,
+    input_names: dict,
     prefix: str = "",
 ) -> str:
     """Generate GLSL code for all node computations (excluding input nodes)."""
@@ -32,9 +30,6 @@ def generate_node_code(
         node_inputs[dst].append((src, weight))
 
     code_lines: list[str] = []
-    if input_names is None:
-        input_names = build_glsl_input_map(VISUAL_INPUTS)
-
     node_vars = dict(input_names)
 
     num_outputs = config.genome_config.num_outputs
@@ -91,10 +86,9 @@ def generate_node_code(
 def generate_time_signal_code(
     time_genome: neat.DefaultGenome,
     time_config: neat.Config,
-    time_inputs: Optional[list] = None,
+    time_inputs: list,
 ) -> str:
     """Generate GLSL code for the time signal network."""
-    time_inputs = time_inputs or TIME_INPUTS
     connections = get_enabled_connections(time_genome)
     nodes = topological_sort(time_genome, connections, time_config)
     time_input_names = build_glsl_input_map(time_inputs)
