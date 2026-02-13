@@ -27,7 +27,9 @@
                 console.warn("Genealogy load parse failed:", e);
             }
         }
-        if (genealogyLoad && genealogyLoad.genomes && genealogyLoad.genomes.length) {
+        var loadGenomes =
+            genealogyLoad && (genealogyLoad.individuals || genealogyLoad.genomes);
+        if (loadGenomes && loadGenomes.length) {
             setGenealogyState(
                 genealogyLoad.population_id != null
                     ? genealogyLoad.population_id
@@ -40,15 +42,17 @@
             var resolved =
                 SA && SA.safeResolve
                     ? SA.safeResolve({
-                          substrateId: genealogyLoad.substrate_id,
-                          genomes: genealogyLoad.genomes,
+                          substrateId:
+                              genealogyLoad.representation_id ||
+                              genealogyLoad.substrate_id,
+                          genomes: loadGenomes,
                       })
                     : window.__eyecatcherDefaultResolution || {
                           outputType: "shader",
                           substrateId: "dual_cppn",
                       };
             window.GridRenderer.loadFromStatelessGenomes(
-                genealogyLoad.genomes,
+                loadGenomes,
                 genNum,
                 false,
                 resolved.outputType,

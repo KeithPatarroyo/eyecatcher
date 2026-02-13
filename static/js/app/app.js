@@ -352,12 +352,12 @@
                 population: [],
                 genomes: null,
                 generationNum: 0,
-                substrateId: config.substrate_id,
+                substrateId: config.representation_id,
                 outputType: config.output_type || "shader",
             },
         });
         if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
-            window.ViewerControls.updateForSubstrate(config.substrate_id);
+            window.ViewerControls.updateForSubstrate(config.representation_id);
         }
         if (window.GridTopology && window.GridTopology.rebuild) {
             window.GridTopology.rebuild(null);
@@ -366,7 +366,7 @@
             window.Toast.show(
                 "Substrate changed",
                 "Use Start Fresh to get a population for " +
-                    (config.substrate_id || "the new substrate") +
+                    (config.representation_id || "the new substrate") +
                     ".",
                 "info"
             );

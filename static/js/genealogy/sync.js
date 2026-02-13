@@ -78,7 +78,7 @@
     ) {
         var url = apiUrl + "/genealogy/save-population";
         var body = {
-            genomes: genomes,
+            individuals: genomes,
             parent_id: parentId,
             generation_num: generationNum,
             branch_name: branchName,
@@ -89,7 +89,7 @@
             user_id: "user",
             fitness_data: fitnessData || [],
         };
-        if (substrateId != null) body.substrate_id = substrateId;
+        if (substrateId != null) body.representation_id = substrateId;
         return apiFetch(
             url,
             {

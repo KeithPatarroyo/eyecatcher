@@ -47,7 +47,7 @@
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ genome, name, creator }),
+                    body: JSON.stringify({ individual: genome, name, creator }),
                 },
                 "Submit failed"
             );

@@ -8,9 +8,10 @@ The Python package is under `src/eyecatcher/`. Main packages:
 
 | Area | What it is | When you look here |
 |------|------------|---------------------|
-| **evolution/** | Config, get_configured_substrate, reproduction, operators. | Changing the evolution algorithm or NEAT config. |
-| **genome/** | Generic NEAT genome (create_random_genome, JSON, copy). | Changing generic genome or wire serialization. |
-| **substrate/** | Substrates (Single/Dual CPPN, CA), DualGenome, dual serialization. | Changing substrate types or dual-genome. |
+| **evolution/** | Reproduction, fitness; config and get_configured_representation from experiment/. | Changing the evolution algorithm or NEAT config. |
+| **experiment/** | Config, presets, get_configured_representation. | Changing experiment preset or population config. |
+| **genome/** | Generic NEAT genome and DualGenome (create_random_genome, JSON, copy). | Changing generic genome or wire serialization. |
+| **representation/** | Representations (Single/Dual CPPN, CA), protocol, dual serialization. | Changing representation types or dual-genome. |
 | **signals/** | Input/output definitions. | Adding/changing signals. |
 | **inspection/** | genome_visualizer, network_data (graph/stats for UI/API). | Changing network export, genome visualization, or graph/stats. |
 | **glsl/** | Display pipeline: genome → GLSL. | Changing how genomes become shader code. |
@@ -21,16 +22,16 @@ Exact file tree and file-by-file roles: **[src/eyecatcher/README.md](src/eyecatc
 
 ## Where evolution logic lives
 
-- **Public API:** Import from **eyecatcher.evolution** (config, get_configured_substrate, produce_next_generation), **eyecatcher.genome** (generic serialization), **eyecatcher.substrate** (DualGenome, get_substrate, substrates, dual serialization), **eyecatcher.signals**, **eyecatcher.inspection**, **eyecatcher.glsl** (ShaderCompiler).
-- **Evolution** (config, reproduction, operators): **src/eyecatcher/evolution/**.
-- **Genome (generic)** and **substrate (dual-genome, substrates):** **src/eyecatcher/genome/**, **src/eyecatcher/substrate/**; network graph/stats: **src/eyecatcher/inspection/network_data.py**.
+- **Public API:** Import from **eyecatcher.evolution** (reproduction, fitness, produce_next_generation), **eyecatcher.experiment** (config, get_configured_representation), **eyecatcher.genome** (generic and dual serialization), **eyecatcher.representation** (get_representation, representations), **eyecatcher.signals**, **eyecatcher.inspection**, **eyecatcher.glsl** (ShaderCompiler).
+- **Evolution** (reproduction, operators): **src/eyecatcher/evolution/**. **Experiment** (config, presets): **src/eyecatcher/experiment/**.
+- **Genome (generic and dual)** and **representation (protocol, dual/single CPPN, CA):** **src/eyecatcher/genome/**, **src/eyecatcher/representation/**; network graph/stats: **src/eyecatcher/inspection/network_data.py**.
 - **Signals:** **src/eyecatcher/signals/**. **NEAT activation (e.g. cos):** **src/eyecatcher/genome/activation.py**.
 - **Visualization and fitness:** **src/eyecatcher/inspection/** (genome_visualizer, network_data). **Fitness (batch):** **src/eyecatcher/evolution/fitness.py**.
 - **Shader pipeline** (genome to GLSL): **src/eyecatcher/glsl/** (display only).
-- **Genome bundle save/load:** substrate `build_save_assets` (e.g. dual_cppn); genealogy: **src/eyecatcher/data/genealogy_db.py**.
-- **Entry point:** **server.py** at package root; uses evolution, substrate, glsl, etc. for compile, evolve, save, and query.
+- **Genome bundle save/load:** representation `build_save_assets` (e.g. dual_cppn); genealogy: **src/eyecatcher/data/genealogy_db.py**.
+- **Entry point:** **server.py** at package root; uses evolution, representation, glsl, etc. for compile, evolve, save, and query.
 
-**API and genome format:** In the HTTP API (compile, evolve, save, genealogy), “genome” means the **substrate-specific individual JSON**: the shape depends on the active substrate (e.g. dual_cppn sends `{ "visual": {...}, "time_signal": {...} }`; CA sends `{ "rule": ..., "state": ... }`). The backend does not expose a single universal genome type; each substrate defines its own.
+**API and individual format:** In the HTTP API (compile, evolve, save, genealogy), “genome” means the **representation-specific JSON**: the shape depends on the active representation (e.g. dual_cppn sends `{ "visual": {...}, "time_signal": {...} }`; CA sends `{ "rule": ..., "state": ... }`). The backend does not expose a single universal type; each representation defines its own.
 
 ### Architecture map (data flow)
 
@@ -38,19 +39,19 @@ Exact file tree and file-by-file roles: **[src/eyecatcher/README.md](src/eyecatc
 flowchart LR
     subgraph python [Python Backend]
         Signals[registry.py] --> ShaderCompiler[shader_compiler.py]
-        Substrate[substrate]
-        Substrate --> ShaderCompiler
+        Rep[representation]
+        Rep --> ShaderCompiler
         ShaderCompiler --> API[stateless_api.py]
     end
 
     subgraph codegen [Code Generation]
         Signals --> GenSignals[generate_signal_config.py]
-        SubExport[substrate/export.py] --> GenSub[generate_substrate_config.py]
+        RepExport[representation/export.py] --> GenRep[generate_representation_config.py]
     end
 
     subgraph frontend [Frontend]
         GenSignals --> EvConfig[evolution_config_signals.generated.js]
-        GenSub --> SubConfig[substrate_adapters.generated.js]
+        GenRep --> SubConfig[config.generated.js]
         EvConfig --> ViewerControls[viewer_controls.js]
         SubConfig --> AdapterRegistry[substrate_adapters/index.js]
         AdapterRegistry --> PatternRenderer[pattern_renderer.js]
@@ -205,7 +206,7 @@ Each frame (animation_loop.js):
 
 ### Substrate adapter interface
 
-Custom substrates register a JS adapter (see [static/js/evolution/substrate_adapters/](static/js/evolution/substrate_adapters/)). The adapter interface (all methods except `render` are optional):
+Custom representations register a JS adapter (see [static/js/evolution/substrate_adapters/](static/js/evolution/substrate_adapters/)). The adapter interface (all methods except `render` are optional):
 
 | Method | Required | Purpose |
 |--------|----------|---------|
@@ -252,32 +253,32 @@ What the rendering pipeline supports today and where to add missing capabilities
 
 ## Keeping frontend in sync
 
-Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). **Evolution defaults** (population size, max, crossover, etc.): single source is [config/evolution_defaults.json](config/evolution_defaults.json); backend loads it, and `make generate-evolution-config` (or `make generate`) produces [evolution_config_defaults.generated.js](static/js/evolution/evolution_config_defaults.generated.js) for frontend fallbacks. Population size and max are bootstrapped from `GET /api/config` at load time. **Signal toggles and outputs** come from the Python registry: run `make generate-signals` after changing [signals/registry.py](src/eyecatcher/signals/registry.py). **Substrate adapter config** (ids, genome format) is generated from [substrate/export.py](src/eyecatcher/substrate/export.py): run `make generate-substrates` after adding or changing substrates. Run `make generate` to run all codegen. test_signal_registry checks that the generated signals file matches the registry.
+Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). **Evolution defaults** (population size, max, crossover, etc.): single source is [config/evolution_defaults.json](config/evolution_defaults.json); backend loads it, and `make generate-evolution-config` (or `make generate`) produces [evolution_config_defaults.generated.js](static/js/evolution/evolution_config_defaults.generated.js) for frontend fallbacks. Population size and max are bootstrapped from `GET /api/config` at load time. **Signal toggles and outputs** come from the Python registry: run `make generate-signals` after changing [signals/registry.py](src/eyecatcher/signals/registry.py). **Representation adapter config** (ids, genome format) is generated from [representation/export.py](src/eyecatcher/representation/export.py): run `make generate-substrates` after adding or changing substrates. Run `make generate` to run all codegen. test_signal_registry checks that the generated signals file matches the registry.
 
-**Evolution config vs NEAT:** Substrate-agnostic evolution params (population_size, crossover_probability, elitism_default) live in [config/evolution_defaults.json](config/evolution_defaults.json); presets in [config/experiments.json](config/experiments.json) override them. NEAT config paths and NEAT .txt file contents (mutation rates, pop_size in .txt, etc.) stay in [evolution/config.py](src/eyecatcher/evolution/config.py) and config/neat/; population size for interactive evolution is controlled by our config, not by NEAT `pop_size`. At startup, a warning is logged if NEAT `pop_size` differs from our effective population_size.
+**Evolution config vs NEAT:** Substrate-agnostic evolution params (population_size, crossover_probability, elitism_default) live in [config/evolution_defaults.json](config/evolution_defaults.json); presets in [config/experiments.json](config/experiments.json) override them. NEAT config paths and NEAT .txt file contents (mutation rates, pop_size in .txt, etc.) stay in [experiment/config.py](src/eyecatcher/experiment/config.py) and config/neat/; population size for interactive evolution is controlled by our config, not by NEAT `pop_size`. At startup, a warning is logged if NEAT `pop_size` differs from our effective population_size.
 
-## Add a new substrate
+## Add a new representation
 
-Substrates (dual_cppn, ca, future NCA/single_cppn) share a common protocol. **Single source of truth:** the substrate class defines its own `frontend_metadata`; the registry is the only other place you add the new substrate. No separate metadata file.
+Representations (dual_cppn, ca, future NCA/single_cppn) share a common protocol. **Single source of truth:** the representation class defines its own `frontend_metadata`; the registry is the only other place you add the new representation. No separate metadata file.
 
-1. **Python – substrate class:** Add a new module under `src/eyecatcher/substrate/` (e.g. `ca.py`, `dual_cppn.py`) implementing the `Substrate` protocol: `id`, `output_type`, `create_random`, `mutate`, `crossover`, `evaluate`, `compile_to_shader`, `to_json`, `from_json`. **On the class, set `frontend_metadata`** (dict with `hasSignalControls`, `genomeKeys`, `capabilities`, and optionally `excludeKeys`). See [substrate/protocol.py](src/eyecatcher/substrate/protocol.py) and [substrate/ca.py](src/eyecatcher/substrate/ca.py) or [substrate/dual_cppn.py](src/eyecatcher/substrate/dual_cppn.py) for examples.
-2. **Python – register:** In [substrate/__init__.py](src/eyecatcher/substrate/__init__.py), export the new class. In [substrate/registry.py](src/eyecatcher/substrate/registry.py), add one line to the `SUBSTRATES` dict. [substrate/export.py](src/eyecatcher/substrate/export.py) reads metadata from each class (`frontend_metadata`); you do not edit export.py. Then run `make generate-substrates`.
-3. **Config – preset:** In [config/experiments.json](config/experiments.json), add a preset with `"substrate": "<id>"` and any substrate-specific kwargs (e.g. `width`, `generations` for CA).
-4. **Frontend – display:** If the substrate needs custom rendering (e.g. special uniforms like CA’s `uRule`, `uGeneration`), update [static/js/evolution/pattern_renderer.js](static/js/evolution/pattern_renderer.js) to branch on the pattern shape or `output_type` (e.g. `pattern.rule`, `patternData.caRule`). For CPPN variants, rendering is driven by SIGNAL_TOGGLES; no new branch needed.
-5. **Frontend – load/add:** [app.js](static/js/app/app.js) `loadFromStatelessGenomes` branches on `outputType` (grid → evaluate, shader → compile). Ensure `addToGrid` and load-from-saved flows receive `output_type`/`substrate_id` so they use evaluate for grid substrates and compile for shader substrates.
-6. **Frontend – import:** [population_ui.js](static/js/features/population_ui.js) `handleImportFile` must recognise the new genome format (e.g. `genome.visual && genome.time_signal` for dual_cppn, `genome.rule` for CA). Add a branch or use a substrate adapter so imported genomes are accepted and the correct `output_type` is used.
-7. **API:** See [substrate/API_REQUIREMENTS.md](src/eyecatcher/substrate/API_REQUIREMENTS.md) for which endpoints require which substrate capabilities. Compile and save work for dual_cppn, single_cppn, and ca; network and time-output are dual_cppn-only. Implement `get_capabilities()` on your substrate to declare which features are supported.
+1. **Python – representation class:** Add a new module under `src/eyecatcher/representation/` (e.g. `ca.py`, `dual_cppn.py`) implementing the `Representation` protocol: `id`, `output_type`, `create_random`, `mutate`, `crossover`, `express`, `compile_to_shader`, `to_json`, `from_json`. **On the class, set `frontend_metadata`** (dict with `hasSignalControls`, `genomeKeys`, optionally `excludeKeys`). Capabilities are derived from protocol methods. See [representation/protocol.py](src/eyecatcher/representation/protocol.py) and [representation/ca.py](src/eyecatcher/representation/ca.py) or [representation/dual_cppn.py](src/eyecatcher/representation/dual_cppn.py) for examples.
+2. **Python – register:** In [representation/__init__.py](src/eyecatcher/representation/__init__.py), export the new class. In [representation/registry.py](src/eyecatcher/representation/registry.py), add one line to the `REPRESENTATIONS` dict. Run `make generate-substrates` to regenerate frontend config.
+3. **Config – preset:** In [config/experiments.json](config/experiments.json), add a preset with `"representation": "<id>"` (or legacy `"substrate"`) and any representation-specific kwargs (e.g. `width`, `generations` for CA).
+4. **Frontend – display:** If the representation needs custom rendering (e.g. special uniforms like CA’s `uRule`, `uGeneration`), update [static/js/evolution/pattern_renderer.js](static/js/evolution/pattern_renderer.js) to branch on the pattern shape or `output_type` (e.g. `pattern.rule`, `patternData.caRule`). For CPPN variants, rendering is driven by SIGNAL_TOGGLES; no new branch needed.
+5. **Frontend – load/add:** [app.js](static/js/app/app.js) `loadFromStatelessGenomes` branches on `outputType` (grid → express, shader → compile). Ensure `addToGrid` and load-from-saved flows receive `output_type`/`representation_id` so they use express for grid and compile for shader.
+6. **Frontend – import:** [population_ui.js](static/js/features/population_ui.js) `handleImportFile` must recognise the new individual format (e.g. `genome.visual && genome.time_signal` for dual_cppn, `genome.rule` for CA). Add a branch or use an adapter so imported individuals are accepted and the correct `output_type` is used.
+7. **API:** See [representation/API_REQUIREMENTS.md](src/eyecatcher/representation/API_REQUIREMENTS.md) for which endpoints require which capabilities. Compile and save work for dual_cppn, single_cppn, and ca; network and time-output are dual_cppn-only. Capabilities are derived from protocol method overrides.
 
 **Adapter split (config-driven vs custom):**
 
-- **Config-driven substrates** (dual_cppn, single_cppn): No custom JS render code. They are registered from `SubstrateAdapterConfig` (generated from each substrate’s `frontend_metadata` via [substrate/export.py](src/eyecatcher/substrate/export.py)) using the shared [cppn_adapter.js](static/js/evolution/substrate_adapters/cppn_adapter.js). Adding a new CPPN variant = add a substrate class with `frontend_metadata`, register in registry.py; run `make generate-substrates`; no new adapter file.
-- **Custom substrates** (ca, future NCA): Need a JS adapter file under [static/js/evolution/substrate_adapters/](static/js/evolution/substrate_adapters/) (e.g. [ca.js](static/js/evolution/substrate_adapters/ca.js)) that implements at least `id`, `outputType`, `isGenomeFormat`, `preparePatternData` (if the pattern needs extra fields for WebGL), and `render`. Put tunables (e.g. animation speed, grid size) at the top of the file. Register the adapter in that file with `SubstrateAdapters.register(adapter)`. The adapter is loaded after [index.js](static/js/evolution/substrate_adapters/index.js); config-driven adapters are registered from generated config, then ca.js registers the CA adapter (overwriting the config-driven CA entry if both exist). For a new custom substrate, add a new file (e.g. `nca.js`) and load it in [interactive_viewer.html](static/interactive_viewer.html) after the other adapter scripts.
+- **Config-driven representations** (dual_cppn, single_cppn): No custom JS render code. They are registered from `SubstrateAdapterConfig` (generated from each substrate’s `frontend_metadata` via [substrate/export.py](src/eyecatcher/substrate/export.py)) using the shared [cppn_adapter.js](static/js/evolution/substrate_adapters/cppn_adapter.js). Adding a new CPPN variant = add a representation class with `frontend_metadata`, register in registry.py; run `make generate-substrates`; no new adapter file.
+- **Custom representations** (ca, future NCA): Need a JS adapter file under [static/js/evolution/substrate_adapters/](static/js/evolution/substrate_adapters/) (e.g. [ca.js](static/js/evolution/substrate_adapters/ca.js)) that implements at least `id`, `outputType`, `isGenomeFormat`, `preparePatternData` (if the pattern needs extra fields for WebGL), and `render`. Put tunables (e.g. animation speed, grid size) at the top of the file. Register the adapter in that file with `SubstrateAdapters.register(adapter)`. The adapter is loaded after [index.js](static/js/evolution/substrate_adapters/index.js); config-driven adapters are registered from generated config, then ca.js registers the CA adapter (overwriting the config-driven CA entry if both exist). For a new custom representation, add a new file (e.g. `nca.js`) and load it in [interactive_viewer.html](static/interactive_viewer.html) after the other adapter scripts.
 
-Once substrate frontend adapters are in place, adding a new substrate will mostly be: Python substrate + registry + preset + one frontend adapter file (or config for CPPN variants).
+Once representation frontend adapters are in place, adding a new representation will mostly be: Python representation + registry + preset + one frontend adapter file (or config for CPPN variants).
 
-## Batch evolution (substrate-agnostic)
+## Batch evolution (representation-agnostic)
 
-The batch example uses the configured substrate from `EXPERIMENT_CONFIG` and supports pluggable fitness:
+The batch example uses the configured representation from `EXPERIMENT_CONFIG` and supports pluggable fitness:
 
 ```bash
 python examples/evolution_batch.py --fitness combined
@@ -286,7 +287,7 @@ EXPERIMENT_CONFIG=single python examples/evolution_batch.py --fitness color_vari
 ```
 
 - **Fitness registry:** [evolution/fitness.py](src/eyecatcher/evolution/fitness.py) – `register_fitness`, `get_fitness`, `list_fitness`. Built-in: `color_variance`, `temporal_variance`, `combined`, `ca_symmetry`.
-- **Add a fitness:** Use `@register_fitness("name")` decorator; function receives `(individual, substrate)` and returns float.
+- **Add a fitness:** Use `@register_fitness("name")` decorator; function receives `(individual, representation)` and returns float.
 
 ## Quick reference
 
@@ -295,16 +296,16 @@ EXPERIMENT_CONFIG=single python examples/evolution_batch.py --fitness color_vari
 | Add a new substrate | substrate/ (new module with frontend_metadata, protocol), substrate/registry.py, config/experiments.json; make generate-substrates; frontend adapter if custom (see “Add a new substrate” above) |
 | Add/rename a signal | signals/registry.py, then make generate-signals; update NEAT num_inputs/num_outputs if counts changed |
 | Change population size or crossover (evolution defaults) | config/evolution_defaults.json, then `make generate`; preset overrides in config/experiments.json |
-| Change NEAT config paths or render resolution | [evolution/config.py](src/eyecatcher/evolution/config.py) |
+| Change NEAT config paths or render resolution | [experiment/config.py](src/eyecatcher/experiment/config.py) |
 | Change reproduction/selection | evolution/reproduction.py, evolution/operators.py |
-| Change CPU rendering or substrate query | substrate (e.g. cppn_base.evaluate, dual_cppn, ca) |
+| Change CPU rendering or representation query | representation (e.g. cppn_base.express, dual_cppn, ca) |
 | Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl/glsl_fragments.py, glsl/node_code_generator.py, glsl/compiler_topology.py |
-| Change compile/save/export response shape | web/stateless_api.py, substrate get_compile_stats / build_save_assets |
+| Change compile/save/export response shape | web/stateless_api.py, representation get_compile_stats / build_save_assets |
 | Change genealogy storage or export | data/genealogy_db.py |
-| Change wire serialization | genome/serialization.py, substrate to_json/from_json |
+| Change wire serialization | genome/serialization.py, representation to_json/from_json |
 | Change network graph/stats for API or viz | inspection/network_data.py |
-| Change genome file save/load (bundle pickle etc.) | substrate build_save_assets (e.g. dual_cppn) |
+| Change genome file save/load (bundle pickle etc.) | representation build_save_assets (e.g. dual_cppn) |
 | Add/extend batch fitness | evolution/fitness.py |
-| Run batch evolution with substrate | examples/evolution_batch.py (uses EXPERIMENT_CONFIG) |
+| Run batch evolution with representation | examples/evolution_batch.py (uses EXPERIMENT_CONFIG) |
 
 For full project layout and running the app, see [README.md](README.md). For contributing (tests, style), see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).

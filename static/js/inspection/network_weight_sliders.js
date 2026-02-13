@@ -30,7 +30,7 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        genome: genome,
+                        individual: genome,
                         network: networkType,
                         source: connection.source,
                         target: connection.target,
@@ -44,9 +44,11 @@
                         if (typeof _deps.updatePatternShader === "function") {
                             _deps.updatePatternShader(individualId, data.shader);
                         }
+                        var updatedGenome =
+                            data.individual != null ? data.individual : data.genome;
                         if (
                             typeof _deps.onGenomeUpdated === "function" &&
-                            data.genome &&
+                            updatedGenome &&
                             typeof _deps.getCurrentPopulation === "function"
                         ) {
                             const pop = _deps.getCurrentPopulation();
@@ -58,7 +60,7 @@
                                     _deps.onGenomeUpdated(
                                         individualId,
                                         idx,
-                                        data.genome
+                                        updatedGenome
                                     );
                                 }
                             }

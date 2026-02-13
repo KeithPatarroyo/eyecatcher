@@ -99,7 +99,7 @@
                 if (deselectAllBtn) deselectAllBtn.classList.remove("hidden");
                 const displayByKey = await Browse.fetchDisplayDataForList(
                     _communityPatternsList,
-                    (pat) => ({ ...pat.genome, key: pat.id }),
+                    (pat) => ({ ...(pat.individual || pat.genome), key: pat.id }),
                     (pat) => pat.id
                 );
                 Browse.renderListWithPreviews(
@@ -155,7 +155,7 @@
             const li = cb.closest(".community-item");
             const idx = parseInt(li.dataset.idx, 10);
             const pat = _communityPatternsList[idx];
-            if (pat) genomes.push({ ...pat.genome, key: pat.id });
+            if (pat) genomes.push({ ...(pat.individual || pat.genome), key: pat.id });
         });
         return genomes;
     }
@@ -177,7 +177,7 @@
             12;
         const first12 = _communityPatternsList
             .slice(0, n)
-            .map((p) => ({ ...p.genome, key: p.id }));
+            .map((p) => ({ ...(p.individual || p.genome), key: p.id }));
         document.getElementById("community-list-modal").classList.remove("show");
         if (_addToGrid) _addToGrid(first12);
     }

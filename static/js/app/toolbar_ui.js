@@ -185,7 +185,7 @@
                 crossover_probability: crossover_probability,
             };
             if (substrateSelect && substrateSelect.value) {
-                updates.substrate_id = substrateSelect.value;
+                updates.representation_id = substrateSelect.value;
             }
             var previousSubstrateId =
                 (window.PopulationState &&
@@ -207,8 +207,8 @@
                         window.ToolbarUI.syncToolbarPopulationSizeFromConfig();
                     }
                     if (
-                        updates.substrate_id &&
-                        config.substrate_id !== previousSubstrateId &&
+                        updates.representation_id &&
+                        config.representation_id !== previousSubstrateId &&
                         typeof window.onSubstrateSwitched === "function"
                     ) {
                         window.onSubstrateSwitched(config);

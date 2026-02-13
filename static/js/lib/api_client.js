@@ -1,8 +1,8 @@
 /**
  * API client for Eyecatcher backend. Raw fetch calls; no UI.
  * Sets window.API_URL and window.DEFAULT_DEV_PORT. Exposes: ApiClient.init(apiUrl),
- * ApiClient.compile(genomes), ApiClient.evolve(parents, populationSize),
- * ApiClient.save(id, genome), ApiClient.randomPopulation(size)
+ * ApiClient.compile(individuals), ApiClient.evolve(parents, populationSize),
+ * ApiClient.save(id, individual), ApiClient.randomPopulation(size)
  */
 (function () {
     "use strict";
@@ -42,17 +42,17 @@
     }
 
     /**
-     * Compile genomes to shaders. Returns { shaders } or throws.
-     * @param {Array} genomes - Array of genome objects (with optional clicks; will be normalized to 0 for compile)
+     * Compile individuals to shaders. Returns { shaders } or throws.
+     * @param {Array} individuals - Array of individual objects (with optional clicks; normalized to 0 for compile)
      * @param {string} [colorMode] - 'hsv' (Picbreeder-style) or 'rgb'; omitted = server default
      */
-    async function compile(genomes, colorMode) {
-        const payload = genomes.map(function (g) {
+    async function compile(individuals, colorMode) {
+        const payload = individuals.map(function (g) {
             const copy = Object.assign({}, g);
             copy.clicks = 0;
             return copy;
         });
-        const body = { genomes: payload };
+        const body = { individuals: payload };
         if (colorMode === "hsv" || colorMode === "rgb") body.color_mode = colorMode;
         return apiFetch(
             getBase() + "/compile",
@@ -68,12 +68,18 @@
     /**
      * Evolve next generation (selection, crossover, mutation). Returns { children, population_id? } or throws.
      * When genealogy is provided, the backend auto-saves to the genealogy tree; do not call save-population after evolve.
-     * @param {Array} parents - Array of { genome, clicks }
+     * @param {Array} parents - Array of { genome, clicks } (genome sent as 'individual' to API)
      * @param {number} populationSize - Desired population size
      * @param {Object} [genealogy] - Optional { parentPopulationId, generationNum, branchName } for genealogy tree
      */
     async function evolve(parents, populationSize, genealogy) {
-        const body = { parents: parents, population_size: populationSize };
+        const parentsPayload = (parents || []).map(function (p) {
+            return {
+                individual: p.genome || p,
+                fitness: p.fitness != null ? p.fitness : p.clicks || 0,
+            };
+        });
+        const body = { parents: parentsPayload, population_size: populationSize };
         if (genealogy) {
             if (genealogy.parentPopulationId != null)
                 body.parent_population_id = genealogy.parentPopulationId;
@@ -99,15 +105,15 @@
     /**
      * Save a single pattern (compile + zip). Returns { downloads } or throws.
      * @param {number} id - Pattern id
-     * @param {Object} genome - Genome object
+     * @param {Object} individual - Individual object (genome + metadata)
      */
-    async function save(id, genome) {
+    async function save(id, individual) {
         return apiFetch(
             getBase() + "/save",
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: id, genome: genome }),
+                body: JSON.stringify({ id: id, individual: individual }),
             },
             "Save failed"
         );
@@ -175,7 +181,7 @@
     }
 
     /**
-     * Get a new random population. Returns { genomes, output_type } or throws.
+     * Get a new random population. Returns { individuals, output_type, representation_id } or throws.
      * @param {number} size - Population size
      */
     async function randomPopulation(size) {
@@ -191,18 +197,18 @@
     }
 
     /**
-     * Evaluate genomes with the current substrate. Returns displayable output for the grid.
+     * Evaluate individuals with the current representation. Returns displayable output for the grid.
      * Returns { results: [ { id, output_type, image?|shader? } ], output_type } or throws.
      * Use when output_type is "grid" (e.g. CA) to get images; or "shader" to get shader strings.
-     * @param {Array} genomes - Array of genome objects
+     * @param {Array} individuals - Array of individual objects
      */
-    async function evaluate(genomes) {
+    async function evaluate(individuals) {
         return apiFetch(
             getBase() + "/evaluate",
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ genomes: genomes }),
+                body: JSON.stringify({ individuals: individuals }),
             },
             "Evaluate failed"
         );

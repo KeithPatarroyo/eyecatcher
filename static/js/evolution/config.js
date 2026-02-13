@@ -29,9 +29,9 @@
         MIN_POPULATION_SIZE: defaults.min_population_size,
         CROSSOVER_PROBABILITY: defaults.crossover_probability,
 
-        // Substrate (backend default; overridden by mergeFromServer when /api/config provides substrate_id)
+        // Representation (backend returns representation_id; we expose as substrateId for UI)
         DEFAULT_SUBSTRATE_ID: "dual_cppn",
-        /** Available substrate ids from GET /api/config (e.g. ["dual_cppn", "single_cppn", "ca"]). */
+        /** Available representation ids from GET /api/config (e.g. ["dual_cppn", "single_cppn", "ca"]). */
         available_substrate_ids: [],
 
         /** Single source of truth for default resolution when adapter cannot be determined. */
@@ -104,11 +104,11 @@
         if (config.crossover_probability != null) {
             this.CROSSOVER_PROBABILITY = config.crossover_probability;
         }
-        if (config.substrate_id) {
-            this.DEFAULT_SUBSTRATE_ID = config.substrate_id;
+        if (config.representation_id != null) {
+            this.DEFAULT_SUBSTRATE_ID = config.representation_id;
         }
-        if (Array.isArray(config.available_substrate_ids)) {
-            this.available_substrate_ids = config.available_substrate_ids;
+        if (Array.isArray(config.available_representation_ids)) {
+            this.available_substrate_ids = config.available_representation_ids;
         }
     };
 

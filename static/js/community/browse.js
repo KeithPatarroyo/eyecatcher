@@ -20,7 +20,12 @@
         const promises = list.map(async (item) => {
             const payload = toItem(item);
             const genome =
-                payload && (payload.genome !== undefined ? payload.genome : payload);
+                payload &&
+                (payload.individual !== undefined
+                    ? payload.individual
+                    : payload.genome !== undefined
+                      ? payload.genome
+                      : payload);
             const key = getKey(item);
             const adapter = SubstrateAdapters.findAdapterByGenome(genome);
             if (!adapter) return;

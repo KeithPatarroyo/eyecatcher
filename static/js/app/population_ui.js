@@ -60,11 +60,11 @@
             const d = await window.ApiClient.randomPopulation(size);
             if (_loadFromStatelessGenomes) {
                 await _loadFromStatelessGenomes(
-                    d.genomes || [],
+                    d.individuals || [],
                     0,
                     true,
                     d.output_type,
-                    d.substrate_id
+                    d.representation_id
                 );
             }
         } catch (error) {
@@ -219,7 +219,7 @@
                 }
             } else {
                 const json = JSON.parse(await file.text());
-                genomes = json.genomes || [];
+                genomes = json.individuals || json.genomes || [];
                 if (genomes.length && typeof EyecatcherStorage !== "undefined") {
                     await EyecatcherStorage.init();
                     var SA = window.SubstrateAdapters;

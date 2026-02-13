@@ -113,7 +113,7 @@ const EyecatcherDebug = (function () {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                            genome,
+                            individual: genome,
                             time,
                             mouseSpeed: mouseSpd,
                             mouseDist,

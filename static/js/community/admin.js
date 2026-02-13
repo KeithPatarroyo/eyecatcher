@@ -89,7 +89,7 @@
         }
         const displayByKey = await Browse.fetchDisplayDataForList(
             submissions,
-            (s) => ({ ...s.genome, key: s.id }),
+            (s) => ({ ...(s.individual || s.genome), key: s.id }),
             (sub) => sub.id
         );
         Browse.renderListWithPreviews(

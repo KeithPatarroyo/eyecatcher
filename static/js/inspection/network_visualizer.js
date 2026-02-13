@@ -263,7 +263,7 @@
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ genome: genome }),
+                    body: JSON.stringify({ individual: genome }),
                 },
                 "Network error"
             );

@@ -333,13 +333,20 @@ async function loadPopulation(populationId) {
         // Store in localStorage for cross-tab communication (this tab -> main viewer)
         // localStorage is shared across tabs, enabling genealogy tree -> main viewer handoff
         var payload = {
-            genomes: data.genomes,
+            genomes: data.individuals || data.genomes,
             generation_num: data.generation_num,
             population_id: data.population_id,
             branch_name: data.branch_name,
         };
-        if (data.metadata && data.metadata.substrate_id != null) {
-            payload.substrate_id = data.metadata.substrate_id;
+        if (
+            data.metadata &&
+            (data.metadata.representation_id != null ||
+                data.metadata.substrate_id != null)
+        ) {
+            payload.representation_id =
+                data.metadata.representation_id != null
+                    ? data.metadata.representation_id
+                    : data.metadata.substrate_id;
         }
         Utils.safeSetItem(localStorage, "genealogy_load", JSON.stringify(payload));
 

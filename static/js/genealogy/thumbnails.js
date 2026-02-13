@@ -32,14 +32,15 @@
                 {},
                 "No thumbnail"
             );
-            if (!data.genome) return null;
+            const genome = data.individual != null ? data.individual : data.genome;
+            if (!genome) return null;
 
-            const adapter = SubstrateAdapters.findAdapterByGenome(data.genome);
+            const adapter = SubstrateAdapters.findAdapterByGenome(genome);
             if (!adapter) return null;
 
             const result = await SubstrateAdapters.getDisplayData(
                 adapter,
-                [data.genome],
+                [genome],
                 {}
             );
             const pop = result && result.population && result.population[0];
@@ -69,8 +70,8 @@
             } else if (pop.shader && window.PatternRenderer) {
                 const patternData = PatternRenderer.setupPattern(canvas, pop.shader);
                 if (!patternData || patternData.error) return null;
-                if (data.genome && typeof data.genome.rule === "number") {
-                    patternData.caRule = data.genome.rule;
+                if (genome && typeof genome.rule === "number") {
+                    patternData.caRule = genome.rule;
                 }
                 const signalState =
                     window.EvolutionConfig &&
