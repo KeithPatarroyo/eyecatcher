@@ -158,8 +158,7 @@ const EyecatcherDebug = (function () {
             apiUrl = config.apiUrl || "";
             getMouseDistanceFn = config.getMouseDistance || (() => 0);
             getPatternsMapFn = config.getPatterns || (() => new Map());
-            getSignalStateFn =
-                config.getSignalState || (() => ({ visual: { time: true } }));
+            getSignalStateFn = config.getSignalState || (() => ({ time: true }));
             getGenomeForPatternFn = config.getGenomeForPattern || null;
             getAdapterFn = config.getAdapter || null;
 
@@ -195,8 +194,7 @@ const EyecatcherDebug = (function () {
                 adapter.capabilities &&
                 adapter.capabilities.timeOutput === true;
             const signalState = getSignalStateFn();
-            const timeEnabled =
-                hasTimeOutput && signalState.visual && signalState.visual.time;
+            const timeEnabled = hasTimeOutput && signalState && signalState.time;
 
             // Hovered pattern info
             const patterns = getPatternsMapFn();

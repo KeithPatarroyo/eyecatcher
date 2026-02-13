@@ -1,32 +1,27 @@
 /**
  * Shared CPPN adapter: render logic for dual_cppn and single_cppn (config-driven).
- * No per-substrate render code; uses EvolutionConfig.SIGNAL_TOGGLES for uniforms and enable flags.
+ * Uses EvolutionConfig.TOGGLEABLE_SIGNALS for uniforms and flat signalState for enable toggles.
  * Exposes: createCppnAdapter(spec) for use by substrate_adapters/index.js
  */
 (function () {
     "use strict";
 
     /**
-     * Build uniform-name-keyed values from signal-id-keyed values using EvolutionConfig.SIGNAL_TOGGLES.
+     * Build uniform-name-keyed values from signal-id-keyed values using TOGGLEABLE_SIGNALS.
      * @param {Object} signalValues - Keys: signal ids (raw_time, mouse_speed, mouse_dist, activity, ...)
      * @param {Object} [_context] - Optional RenderContext (ignored by CPPN adapter)
      * @returns {Object} Keys: uniform names (u_raw_time, u_mouse_speed, ...)
      */
     function buildUniforms(signalValues, _context) {
         const out = {};
-        const config = window.EvolutionConfig;
-        const toggles = config && config.SIGNAL_TOGGLES;
-        if (!toggles || !signalValues) return out;
-        (config.NETWORK_TYPES || ["time", "visual"]).forEach(function (networkType) {
-            const inputs =
-                toggles[networkType] && toggles[networkType].toggleableInputs;
-            if (!inputs) return;
-            inputs.forEach(function (s) {
-                if (s.uniform && !s.derived) {
-                    out[s.uniform] =
-                        signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
-                }
-            });
+        const list =
+            window.EvolutionConfig && window.EvolutionConfig.TOGGLEABLE_SIGNALS;
+        if (!list || !signalValues) return out;
+        list.forEach(function (s) {
+            if (s.uniform && !s.derived) {
+                out[s.uniform] =
+                    signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
+            }
         });
         return out;
     }
@@ -35,67 +30,41 @@
      * Draw one frame for a CPPN shader: set uniforms from uniformValues and signalState, then draw.
      * @param {Object} patternData - { gl, program, positionBuffer, canvas? }
      * @param {Object} uniformValues - Keys: uniform names (u_raw_time, u_mouse_speed, ...)
-     * @param {Object} signalState - { time: { id: bool }, visual: { id: bool } }
+     * @param {Object} signalState - Flat { signal_id: boolean } for enable toggles
      */
     function renderCppn(patternData, uniformValues, signalState) {
         const { gl, program, positionBuffer } = patternData;
         gl.useProgram(program);
 
-        const sig = signalState || { time: {}, visual: {} };
-        const config = window.EvolutionConfig;
-        const toggles = config && config.SIGNAL_TOGGLES;
+        const sig = signalState || {};
+        const list =
+            window.EvolutionConfig && window.EvolutionConfig.TOGGLEABLE_SIGNALS;
         const values = uniformValues || {};
 
         const baseUniforms = new Set();
-        if (toggles) {
-            (window.EvolutionConfig.NETWORK_TYPES || ["time", "visual"]).forEach(
-                function (networkType) {
-                    const inputs =
-                        toggles[networkType] && toggles[networkType].toggleableInputs;
-                    if (!inputs) return;
-                    inputs.forEach(function (s) {
-                        if (s.uniform && !baseUniforms.has(s.uniform)) {
-                            const loc = gl.getUniformLocation(program, s.uniform);
-                            if (loc !== null) {
-                                const val =
-                                    values[s.uniform] !== undefined
-                                        ? values[s.uniform]
-                                        : 0;
-                                gl.uniform1f(loc, val);
-                            }
-                            baseUniforms.add(s.uniform);
-                        }
-                    });
-                }
-            );
-        }
-
-        (config && config.NETWORK_TYPES
-            ? config.NETWORK_TYPES
-            : ["time", "visual"]
-        ).forEach(function (networkType) {
-            const inputs =
-                config &&
-                config.SIGNAL_TOGGLES &&
-                config.SIGNAL_TOGGLES[networkType] &&
-                config.SIGNAL_TOGGLES[networkType].toggleableInputs;
-            if (!inputs) return;
-            const prefix =
-                "u" +
-                networkType.charAt(0).toUpperCase() +
-                networkType.slice(1) +
-                "Enable_";
-            inputs.forEach(function (s) {
-                const uniformName = prefix + s.id;
-                const loc = gl.getUniformLocation(program, uniformName);
-                if (loc !== null) {
-                    gl.uniform1f(
-                        loc,
-                        sig[networkType] && sig[networkType][s.id] ? 1.0 : 0.0
-                    );
+        if (list) {
+            list.forEach(function (s) {
+                if (s.uniform && !baseUniforms.has(s.uniform)) {
+                    const loc = gl.getUniformLocation(program, s.uniform);
+                    if (loc !== null) {
+                        const val =
+                            values[s.uniform] !== undefined ? values[s.uniform] : 0;
+                        gl.uniform1f(loc, val);
+                    }
+                    baseUniforms.add(s.uniform);
                 }
             });
-        });
+        }
+
+        if (list) {
+            list.forEach(function (s) {
+                const uniformName = "uEnable_" + s.id;
+                const loc = gl.getUniformLocation(program, uniformName);
+                if (loc !== null) {
+                    gl.uniform1f(loc, sig[s.id] ? 1.0 : 0.0);
+                }
+            });
+        }
 
         const positionLocation = gl.getAttribLocation(program, "position");
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);

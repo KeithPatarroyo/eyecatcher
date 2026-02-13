@@ -51,39 +51,21 @@
         DEFAULT_DEV_PORT: 5001,
 
         // From generated config (Python registry) or fallback for dev without codegen
-        SIGNAL_TOGGLES: signals
-            ? signals.SIGNAL_TOGGLES
-            : {
-                  time: { toggleableInputs: [] },
-                  visual: { toggleableInputs: [] },
-              },
-        OUTPUTS: signals ? signals.OUTPUTS : { visual: [], time: [] },
-        NETWORK_TYPES:
-            signals && signals.SIGNAL_TOGGLES
-                ? Object.keys(signals.SIGNAL_TOGGLES)
-                : ["time", "visual"],
+        SIGNAL_GROUPS: signals ? signals.SIGNAL_GROUPS : [],
+        TOGGLEABLE_SIGNALS: signals ? signals.TOGGLEABLE_SIGNALS : [],
+        OUTPUTS: signals ? signals.OUTPUTS : [],
+        SIGNAL_IDS: signals ? signals.SIGNAL_IDS : [],
     };
 
     /**
-     * Default signal state: all toggleable inputs enabled (true).
-     * Built from registry (SIGNAL_TOGGLES / NETWORK_TYPES). If config missing, returns empty state per network type.
-     * @returns {Object<string, Object<string, boolean>>}
+     * Default signal state: all toggleable inputs enabled (true). Flat { signal_id: boolean }.
+     * @returns {Object<string, boolean>}
      */
     EvolutionConfig.getDefaultSignalState = function () {
-        var toggles = this.SIGNAL_TOGGLES;
-        var types = this.NETWORK_TYPES || [];
+        var list = this.TOGGLEABLE_SIGNALS || [];
         var state = {};
-        types.forEach(function (networkType) {
-            state[networkType] = {};
-            if (
-                toggles &&
-                toggles[networkType] &&
-                toggles[networkType].toggleableInputs
-            ) {
-                toggles[networkType].toggleableInputs.forEach(function (s) {
-                    state[networkType][s.id] = true;
-                });
-            }
+        list.forEach(function (s) {
+            state[s.id] = true;
         });
         return state;
     };

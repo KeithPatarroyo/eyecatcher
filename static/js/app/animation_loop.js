@@ -98,7 +98,12 @@
         if (source && typeof source.getValues === "function") {
             return source.getValues({ canvas: canvas || undefined });
         }
-        return { raw_time: 0.5 };
+        const ids = (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_IDS) || [];
+        const out = {};
+        ids.forEach(function (id) {
+            out[id] = id === "raw_time" ? 0.5 : 0;
+        });
+        return Object.keys(out).length ? out : { raw_time: 0.5 };
     }
 
     function animate() {

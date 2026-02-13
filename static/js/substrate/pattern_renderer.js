@@ -120,7 +120,7 @@
      * Use this from animation loop, community preview, and genealogy thumbnails to avoid duplicating the pipeline.
      * @param {Object} patternData - From setupPattern
      * @param {Object} patternRenderer - Module with buildUniformValues and renderPattern (usually PatternRenderer)
-     * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
+     * @param {Object} signalState - Flat { signal_id: boolean } for CPPN enable toggles
      * @param {HTMLCanvasElement} [contextCanvas] - Optional canvas for per-pattern signal context (e.g. mouse_dist)
      * @param {Object} [context] - Optional RenderContext (gridPosition, neighbors, patternId) passed to getValues and buildUniformValues
      */
@@ -137,9 +137,17 @@
             : contextCanvas != null
               ? { canvas: contextCanvas }
               : {};
-        const signalValues = (getSource &&
-            getSource().getValues &&
-            getSource().getValues(signalContext)) || { raw_time: 0.5 };
+        let signalValues =
+            getSource && getSource().getValues && getSource().getValues(signalContext);
+        if (!signalValues || !Object.keys(signalValues).length) {
+            const ids =
+                (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_IDS) || [];
+            signalValues = {};
+            ids.forEach(function (id) {
+                signalValues[id] = id === "raw_time" ? 0.5 : 0;
+            });
+            if (!Object.keys(signalValues).length) signalValues = { raw_time: 0.5 };
+        }
         const uniformValues =
             patternRenderer.buildUniformValues &&
             patternRenderer.buildUniformValues(signalValues, context);
@@ -154,7 +162,7 @@
      * Uses SubstrateAdapters (substrateId then findAdapterByGenome from patternData).
      * @param {Object} patternData - From setupPattern
      * @param {Object} uniformValues - Keys match uniform names (u_raw_time, u_mouse_speed, ...); use buildUniformValues(signalValues) to build from signal ids
-     * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
+     * @param {Object} signalState - Flat { signal_id: boolean } for CPPN enable toggles
      */
     function renderPattern(patternData, uniformValues, signalState) {
         var state =

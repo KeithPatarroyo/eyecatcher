@@ -108,7 +108,6 @@
         if (!sliderDiv) return;
         sliderDiv.setAttribute("data-network-type", networkType);
         sliderDiv.classList.add("network-" + networkType);
-        if (networkType === "time") sliderDiv.classList.add("time-network");
         const sourceLabel =
             (labelMap && labelMap[connection.source]) ||
             (extractNodeLabel && extractNodeLabel(connection.source)) ||

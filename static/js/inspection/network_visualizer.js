@@ -47,7 +47,7 @@
                 if (c.network) types.add(c.network);
             });
         }
-        return types.size ? Array.from(types) : ["visual"];
+        return types.size ? Array.from(types) : ["main"];
     }
 
     function colorForNetwork(networkType, isPositive) {
@@ -97,7 +97,7 @@
             const nodes = new vis.DataSet();
             data.nodes.forEach(function (node) {
                 const color = nodeColors[node.type];
-                const network = node.network || networkTypes[0] || "visual";
+                const network = node.network || networkTypes[0] || "main";
                 const opacity = opacityForNetwork(network);
                 let label = node.label;
                 if (node.type === "hidden") {
@@ -138,7 +138,7 @@
 
             const edges = new vis.DataSet();
             data.connections.forEach(function (conn) {
-                const network = conn.network || networkTypes[0] || "visual";
+                const network = conn.network || networkTypes[0] || "main";
                 const width = Math.max(0.5, Math.abs(conn.weight));
                 const isPositive = conn.weight > 0;
                 const color = colorForNetwork(network, isPositive);

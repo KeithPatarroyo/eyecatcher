@@ -9,50 +9,31 @@
     const ZOOM_MAX = 2.0;
     const ZOOM_STEP = 0.1;
 
-    const NETWORK_TYPE_LABELS = {
-        time: "Time Signal Inputs",
-        visual: "Visual Network Inputs",
-    };
-
-    function titleForNetworkType(networkType) {
-        return (
-            NETWORK_TYPE_LABELS[networkType] ||
-            networkType.charAt(0).toUpperCase() + networkType.slice(1) + " Inputs"
-        );
-    }
-
-    function populateSignalControls(config) {
+    function populateSignalControls(signalGroups) {
         const container = document.getElementById("signal-controls");
-        if (!container || !config) return;
+        if (!container || !signalGroups || !signalGroups.length) return;
         container.innerHTML = "";
-        const networkTypes = window.EvolutionConfig.NETWORK_TYPES || ["time", "visual"];
-        for (var i = 0; i < networkTypes.length; i++) {
-            var networkType = networkTypes[i];
+        for (var i = 0; i < signalGroups.length; i++) {
+            var groupDef = signalGroups[i];
             var group = document.createElement("div");
             group.className = "signal-group";
             var titleEl = document.createElement("div");
             titleEl.className = "signal-group-title";
-            titleEl.textContent = titleForNetworkType(networkType);
+            titleEl.textContent = groupDef.label;
             group.appendChild(titleEl);
             var checkboxesWrap = document.createElement("div");
             checkboxesWrap.className = "signal-checkboxes";
-            config[networkType].toggleableInputs.forEach(function (s) {
+            (groupDef.signals || []).forEach(function (s) {
                 var wrap = document.createElement("div");
                 wrap.className =
                     "signal-checkbox" + (s.derived ? " signal-derived" : "");
                 var input = document.createElement("input");
                 input.type = "checkbox";
-                input.id = networkType + "-" + s.id;
+                input.id = "signal-" + s.id;
                 input.checked = true;
                 var label = document.createElement("label");
                 label.htmlFor = input.id;
-                if (networkType === "time" && s.id === "raw_time") {
-                    label.appendChild(document.createTextNode(s.label + " "));
-                    var hintTime = document.createElement("span");
-                    hintTime.className = "signal-hint";
-                    hintTime.textContent = "(from Time Mode above)";
-                    label.appendChild(hintTime);
-                } else if (s.derived) {
+                if (s.derived) {
                     label.appendChild(document.createTextNode(s.label + " "));
                     var hintDerived = document.createElement("span");
                     hintDerived.className = "signal-hint";
@@ -67,8 +48,7 @@
             });
             group.appendChild(checkboxesWrap);
             container.appendChild(group);
-            /* One separator between each pair of groups (N groups → N-1 gaps). */
-            if (i + 1 < networkTypes.length) {
+            if (i + 1 < signalGroups.length) {
                 var flow = document.createElement("div");
                 flow.className = "signal-flow";
                 flow.textContent = "→";
@@ -80,14 +60,10 @@
     const ViewerControls = {
         patternZoom: 1.0,
         signalState: (function () {
-            var s = {};
-            var types = window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES;
-            if (types && types.length) {
-                types.forEach(function (t) {
-                    s[t] = {};
-                });
-            }
-            return s;
+            var config = window.EvolutionConfig;
+            return config && config.getDefaultSignalState
+                ? config.getDefaultSignalState()
+                : {};
         })(),
         applyZoom: function () {
             document.documentElement.style.setProperty(
@@ -111,32 +87,28 @@
         },
         init: function () {
             const self = this;
-            const types =
-                window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES
-                    ? window.EvolutionConfig.NETWORK_TYPES
-                    : ["time", "visual"];
-            types.forEach(function (t) {
-                if (!self.signalState[t]) self.signalState[t] = {};
-            });
-            const config = window.EvolutionConfig.SIGNAL_TOGGLES;
-            if (config) {
-                populateSignalControls(config);
-                types.forEach(function (networkType) {
-                    if (config[networkType] && config[networkType].toggleableInputs) {
-                        config[networkType].toggleableInputs.forEach(function (s) {
-                            self.signalState[networkType][s.id] = true;
-                            const checkbox = document.getElementById(
-                                networkType + "-" + s.id
-                            );
-                            if (checkbox) {
-                                checkbox.addEventListener("change", function (e) {
-                                    self.signalState[networkType][s.id] =
-                                        e.target.checked;
-                                });
-                            }
-                        });
+            const config = window.EvolutionConfig;
+            const signalGroups = config && config.SIGNAL_GROUPS;
+            const toggleableSignals = config && config.TOGGLEABLE_SIGNALS;
+            if (toggleableSignals && toggleableSignals.length) {
+                toggleableSignals.forEach(function (s) {
+                    if (self.signalState[s.id] === undefined) {
+                        self.signalState[s.id] = true;
                     }
                 });
+            }
+            if (signalGroups && signalGroups.length) {
+                populateSignalControls(signalGroups);
+                if (toggleableSignals) {
+                    toggleableSignals.forEach(function (s) {
+                        const checkbox = document.getElementById("signal-" + s.id);
+                        if (checkbox) {
+                            checkbox.addEventListener("change", function (e) {
+                                self.signalState[s.id] = e.target.checked;
+                            });
+                        }
+                    });
+                }
             }
             const zoomIn = document.getElementById("zoom-in");
             const zoomOut = document.getElementById("zoom-out");
