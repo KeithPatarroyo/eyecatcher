@@ -2,39 +2,10 @@
 (function () {
     "use strict";
     window.EvolutionConfigSignals = {
-        SIGNAL_TOGGLES: {
-            time: {
-                toggleableInputs: [
-                    {
-                        id: "raw_time",
-                        label: "Raw Time",
-                        uniform: "u_raw_time",
-                    },
-                    {
-                        id: "mouse_speed",
-                        label: "Mouse Speed",
-                        uniform: "u_mouse_speed",
-                    },
-                    {
-                        id: "mouse_dist",
-                        label: "Mouse Dist",
-                        uniform: "u_mouse_dist",
-                    },
-                    {
-                        id: "activity",
-                        label: "Activity",
-                        uniform: "u_activity",
-                    },
-                ],
-            },
-            visual: {
-                toggleableInputs: [
-                    {
-                        id: "time",
-                        label: "Time",
-                        uniform: "u_time",
-                        derived: true,
-                    },
+        SIGNAL_GROUPS: [
+            {
+                label: "Interaction",
+                signals: [
                     {
                         id: "mouse_speed",
                         label: "Mouse Speed",
@@ -62,29 +33,61 @@
                     },
                 ],
             },
-        },
-        OUTPUTS: {
-            visual: [
-                {
-                    id: "red",
-                    label: "Red",
-                },
-                {
-                    id: "green",
-                    label: "Green",
-                },
-                {
-                    id: "blue",
-                    label: "Blue",
-                },
-            ],
-            time: [
-                {
-                    id: "output",
-                    label: "Modified Time",
-                },
-            ],
-        },
+            {
+                label: "Temporal",
+                signals: [
+                    {
+                        id: "time",
+                        label: "Time",
+                        uniform: "u_time",
+                        derived: true,
+                    },
+                    {
+                        id: "raw_time",
+                        label: "Raw Time",
+                        uniform: "u_raw_time",
+                    },
+                ],
+            },
+        ],
+        TOGGLEABLE_SIGNALS: [
+            {
+                id: "time",
+                label: "Time",
+                uniform: "u_time",
+                derived: true,
+            },
+            {
+                id: "mouse_speed",
+                label: "Mouse Speed",
+                uniform: "u_mouse_speed",
+            },
+            {
+                id: "mouse_dist",
+                label: "Mouse Dist",
+                uniform: "u_mouse_dist",
+            },
+            {
+                id: "activity",
+                label: "Activity",
+                uniform: "u_activity",
+            },
+            {
+                id: "mouse_x",
+                label: "Mouse X",
+                uniform: "u_mouse_x",
+            },
+            {
+                id: "mouse_y",
+                label: "Mouse Y",
+                uniform: "u_mouse_y",
+            },
+            {
+                id: "raw_time",
+                label: "Raw Time",
+                uniform: "u_raw_time",
+            },
+        ],
         SIGNAL_IDS: [
             "activity",
             "mouse_dist",
@@ -92,6 +95,20 @@
             "mouse_x",
             "mouse_y",
             "raw_time",
+        ],
+        OUTPUTS: [
+            {
+                id: "red",
+                label: "Red",
+            },
+            {
+                id: "green",
+                label: "Green",
+            },
+            {
+                id: "blue",
+                label: "Blue",
+            },
         ],
     };
 })();
