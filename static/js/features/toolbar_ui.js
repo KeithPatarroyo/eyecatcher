@@ -81,6 +81,162 @@
         }
     }
 
+    /**
+     * Sync the toolbar "Next generation size" input to EvolutionConfig default.
+     * Call after fetchConfig/mergeFromServer and after Settings Apply so both stay in sync.
+     */
+    function syncToolbarPopulationSizeFromConfig() {
+        var input = document.getElementById("population-size-input");
+        if (!input) return;
+        var cfg = window.EvolutionConfig || {};
+        var minP = cfg.MIN_POPULATION_SIZE !== undefined ? cfg.MIN_POPULATION_SIZE : 2;
+        var maxP = cfg.MAX_POPULATION_SIZE !== undefined ? cfg.MAX_POPULATION_SIZE : 50;
+        var defaultP =
+            cfg.DEFAULT_POPULATION_SIZE !== undefined
+                ? cfg.DEFAULT_POPULATION_SIZE
+                : 12;
+        var v = Math.max(minP, Math.min(maxP, defaultP));
+        input.value = String(v);
+        input.min = String(minP);
+        input.max = String(maxP);
+    }
+
+    function initExperimentParamsPanel() {
+        const popInput = document.getElementById("param-population-size");
+        const maxPopInput = document.getElementById("param-max-population-size");
+        const crossoverInput = document.getElementById("param-crossover-probability");
+        const substrateSelect = document.getElementById("param-substrate-id");
+        const applyBtn = document.getElementById("experiment-params-apply");
+        if (!popInput || !maxPopInput || !crossoverInput || !applyBtn) return;
+        const cfg = window.EvolutionConfig || {};
+
+        function refreshFromConfig() {
+            var toolbarEl = document.getElementById("population-size-input");
+            var toolbarVal = toolbarEl ? parseInt(toolbarEl.value, 10) : NaN;
+            var minP =
+                cfg.MIN_POPULATION_SIZE !== undefined ? cfg.MIN_POPULATION_SIZE : 2;
+            var maxP =
+                cfg.MAX_POPULATION_SIZE !== undefined ? cfg.MAX_POPULATION_SIZE : 50;
+            var defaultP =
+                cfg.DEFAULT_POPULATION_SIZE !== undefined
+                    ? cfg.DEFAULT_POPULATION_SIZE
+                    : 12;
+            if (!isNaN(toolbarVal) && toolbarVal >= minP && toolbarVal <= maxP) {
+                popInput.value = String(toolbarVal);
+            } else {
+                popInput.value = String(defaultP);
+            }
+            maxPopInput.value = String(
+                cfg.MAX_POPULATION_SIZE !== undefined ? cfg.MAX_POPULATION_SIZE : 50
+            );
+            crossoverInput.value = String(
+                cfg.CROSSOVER_PROBABILITY !== undefined
+                    ? cfg.CROSSOVER_PROBABILITY
+                    : 0.3
+            );
+            if (substrateSelect) {
+                var current =
+                    (window.PopulationState &&
+                        window.PopulationState.getState &&
+                        window.PopulationState.getState().substrateId) ||
+                    cfg.DEFAULT_SUBSTRATE_ID ||
+                    "dual_cppn";
+                if (
+                    Array.isArray(cfg.available_substrate_ids) &&
+                    cfg.available_substrate_ids.length > 0
+                ) {
+                    substrateSelect.innerHTML = "";
+                    cfg.available_substrate_ids.forEach(function (id) {
+                        var opt = document.createElement("option");
+                        opt.value = id;
+                        opt.textContent = id;
+                        substrateSelect.appendChild(opt);
+                    });
+                }
+                if (
+                    current &&
+                    [].some.call(substrateSelect.options, function (o) {
+                        return o.value === current;
+                    })
+                ) {
+                    substrateSelect.value = current;
+                }
+            }
+        }
+
+        function apply() {
+            var population_size = parseInt(popInput.value, 10);
+            var max_population_size = parseInt(maxPopInput.value, 10);
+            var crossover_probability = parseFloat(crossoverInput.value);
+            if (
+                isNaN(population_size) ||
+                population_size < 1 ||
+                isNaN(max_population_size) ||
+                max_population_size < 1 ||
+                isNaN(crossover_probability) ||
+                crossover_probability < 0 ||
+                crossover_probability > 1
+            ) {
+                return;
+            }
+            var updates = {
+                population_size: population_size,
+                max_population_size: max_population_size,
+                crossover_probability: crossover_probability,
+            };
+            if (substrateSelect && substrateSelect.value) {
+                updates.substrate_id = substrateSelect.value;
+            }
+            var previousSubstrateId =
+                (window.PopulationState &&
+                    window.PopulationState.getState &&
+                    window.PopulationState.getState().substrateId) ||
+                null;
+            window.ApiClient.patchConfig(updates).then(
+                function (config) {
+                    if (
+                        window.EvolutionConfig &&
+                        window.EvolutionConfig.mergeFromServer
+                    ) {
+                        window.EvolutionConfig.mergeFromServer(config);
+                    }
+                    if (
+                        window.ToolbarUI &&
+                        window.ToolbarUI.syncToolbarPopulationSizeFromConfig
+                    ) {
+                        window.ToolbarUI.syncToolbarPopulationSizeFromConfig();
+                    }
+                    if (
+                        updates.substrate_id &&
+                        config.substrate_id !== previousSubstrateId &&
+                        typeof window.onSubstrateSwitched === "function"
+                    ) {
+                        window.onSubstrateSwitched(config);
+                    }
+                },
+                function () {
+                    refreshFromConfig();
+                }
+            );
+        }
+
+        refreshFromConfig();
+        applyBtn.addEventListener("click", apply);
+        if (window.Utils && window.Utils.onRoleButtonKeydown) {
+            window.Utils.onRoleButtonKeydown(applyBtn, apply);
+        }
+        applyBtn.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                apply();
+            }
+        });
+        window.ToolbarUI = window.ToolbarUI || {};
+        window.ToolbarUI.refreshExperimentParamsFromConfig = refreshFromConfig;
+        window.ToolbarUI.syncToolbarPopulationSizeFromConfig =
+            syncToolbarPopulationSizeFromConfig;
+    }
+
     function initSettingsPanel() {
         const btn = document.getElementById("settings-btn");
         const panel = document.getElementById("settings-panel");
@@ -90,6 +246,13 @@
             const open = !panel.hidden;
             btn.setAttribute("aria-expanded", String(open));
             btn.setAttribute("title", open ? "Close settings" : "Settings");
+            if (
+                open &&
+                window.ToolbarUI &&
+                window.ToolbarUI.refreshExperimentParamsFromConfig
+            ) {
+                window.ToolbarUI.refreshExperimentParamsFromConfig();
+            }
         }
         btn.addEventListener("click", function (e) {
             e.stopPropagation();
@@ -113,6 +276,7 @@
                 window.CommunityUI.openAdminModal();
             });
         }
+        initExperimentParamsPanel();
     }
 
     function initPopulationSizeControls() {
@@ -134,6 +298,7 @@
         function update(val) {
             input.value = clamp(Number(val));
         }
+        syncToolbarPopulationSizeFromConfig();
         function stepDown() {
             update(Number(input.value) - 1);
         }

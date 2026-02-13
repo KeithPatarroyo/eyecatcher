@@ -344,9 +344,44 @@
         updateStats: updateStats,
     });
 
+    window.onSubstrateSwitched = function (config) {
+        window.GridRenderer.clearGrid(IDS);
+        window.PopulationState.dispatch({
+            type: "LOAD_POPULATION",
+            payload: {
+                population: [],
+                genomes: null,
+                generationNum: 0,
+                substrateId: config.substrate_id,
+                outputType: config.output_type || "shader",
+            },
+        });
+        if (window.ViewerControls && window.ViewerControls.updateForSubstrate) {
+            window.ViewerControls.updateForSubstrate(config.substrate_id);
+        }
+        if (window.GridTopology && window.GridTopology.rebuild) {
+            window.GridTopology.rebuild(null);
+        }
+        if (window.Toast && window.Toast.show) {
+            window.Toast.show(
+                "Substrate changed",
+                "Use Start Fresh to get a population for " +
+                    (config.substrate_id || "the new substrate") +
+                    ".",
+                "info"
+            );
+        }
+    };
+
     window.ApiClient.fetchConfig()
         .then(function (c) {
             window.EvolutionConfig.mergeFromServer(c);
+            if (
+                window.ToolbarUI &&
+                window.ToolbarUI.syncToolbarPopulationSizeFromConfig
+            ) {
+                window.ToolbarUI.syncToolbarPopulationSizeFromConfig();
+            }
         })
         .catch(function () {
             /* fallback to hardcoded EvolutionConfig */

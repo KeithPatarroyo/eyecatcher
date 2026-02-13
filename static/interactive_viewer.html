@@ -100,7 +100,7 @@
                 <span class="toolbar-sep" aria-hidden="true">|</span>
                 <span
                     class="population-size-controls"
-                    title="Number of individuals per generation"
+                    title="Number of offspring when you click Evolve; synced with Settings → Experiment parameters"
                 >
                     <span class="population-size-label">Next generation size</span>
                     <span
@@ -180,6 +180,65 @@
         </div>
 
         <div id="settings-panel" class="settings-panel" hidden>
+            <div id="experiment-params" class="signal-group">
+                <div class="signal-group-title">Experiment parameters</div>
+                <p class="signal-hint">
+                    Apply updates the server and the toolbar “Next generation size”;
+                    used on next evolve. No restart.
+                </p>
+                <div class="experiment-params-row">
+                    <label for="param-substrate-id">Substrate</label>
+                    <select
+                        id="param-substrate-id"
+                        title="Evolvable model type; switch then Start Fresh to get a population for the new substrate"
+                    >
+                        <option value="dual_cppn">dual_cppn</option>
+                        <option value="single_cppn">single_cppn</option>
+                        <option value="ca">ca</option>
+                    </select>
+                </div>
+                <div class="experiment-params-row">
+                    <label for="param-population-size">Default population size</label>
+                    <input
+                        type="number"
+                        id="param-population-size"
+                        min="2"
+                        step="1"
+                        title="Same as toolbar “Next generation size”; Apply syncs both"
+                    />
+                </div>
+                <div class="experiment-params-row">
+                    <label for="param-max-population-size">Max population size</label>
+                    <input
+                        type="number"
+                        id="param-max-population-size"
+                        min="2"
+                        step="1"
+                        title="Upper limit for “Next generation size”; prevents accidentally requesting very large populations"
+                    />
+                </div>
+                <p class="signal-hint experiment-params-max-hint">
+                    Max only caps the “Next generation size” control (e.g. so you can’t
+                    set 500). Each generation is exactly the size you choose in the
+                    toolbar.
+                </p>
+                <div class="experiment-params-row">
+                    <label for="param-crossover-probability"
+                        >Crossover probability</label
+                    >
+                    <input
+                        type="number"
+                        id="param-crossover-probability"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        title="Probability of crossover vs mutate-one-parent (0–1)"
+                    />
+                </div>
+                <button type="button" id="experiment-params-apply" class="pop-btn">
+                    Apply
+                </button>
+            </div>
             <div id="time-mode-controls">
                 <div class="signal-group-title">
                     Time input
@@ -252,6 +311,16 @@
                         >
                     </div>
                 </div>
+            </div>
+            <div id="settings-researcher-links" class="signal-group">
+                <div class="signal-group-title">For researchers</div>
+                <p class="signal-hint">
+                    <a href="substrate_playground.html" target="_blank" rel="noopener"
+                        >Substrate playground</a
+                    >
+                    — edit fragment shaders and test uniforms (time, mouse) without the
+                    full evolution UI.
+                </p>
             </div>
             <div class="settings-panel-actions">
                 <button
@@ -475,9 +544,7 @@
                 <span class="debug-value" id="dbg-mouseDist">-</span>
             </div>
             <div id="debug-time-output-section">
-                <h4 class="debug-section debug-section--small">
-                    Time Signal → Visual
-                </h4>
+                <h4 class="debug-section debug-section--small">Time Signal → Visual</h4>
                 <div class="debug-row">
                     <span class="debug-label debug-time-output">Time (output):</span>
                     <span class="debug-value debug-time-output" id="dbg-v-time">-</span>
@@ -523,6 +590,7 @@
         <!-- Load order: lib (support) → evolution (experiment) → features (optional UI) → app (shell). See static/js/README.md. -->
         <script src="js/lib/utils.js"></script>
         <script src="js/evolution/evolution_config_signals.generated.js"></script>
+        <script src="js/evolution/evolution_config_defaults.generated.js"></script>
         <script src="js/evolution/evolution_config.js"></script>
         <script src="js/lib/storage.js"></script>
         <script src="js/features/population_ui.js"></script>

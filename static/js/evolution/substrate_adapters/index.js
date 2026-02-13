@@ -3,6 +3,32 @@
  * an adapter for render, preparePatternData, and import detection (isGenomeFormat).
  * Pattern renderer and app use getAdapter(substrateId) to delegate.
  * Single source for default resolution: use resolve() everywhere.
+ *
+ * ## Adapter interface
+ *
+ * @typedef {Object} SubstrateAdapter
+ * @property {string} id - Substrate identifier (must match Python substrate.id)
+ * @property {string} outputType - "shader" | "grid" | "image"
+ * @property {function(Object): boolean} isGenomeFormat - Return true if a genome object belongs to this substrate
+ * @property {boolean} [hasSignalControls] - Whether to show signal toggle checkboxes (default false)
+ * @property {{ save: boolean, network: boolean, timeOutput: boolean, adjustWeight: boolean }} [capabilities]
+ * @property {function(Object, Object, Object): void} render - Draw one frame. Args: (patternData, uniformValues, signalState)
+ * @property {function(Object, Object?): Object} [buildUniforms] - Convert signal-id-keyed values to uniform-name-keyed values; optional second arg is RenderContext for grid/neighbor uniforms
+ * @property {function(Object, Object): void} [preparePatternData] - Store substrate-specific fields on patternData after setup
+ * @property {function(Object): string} [getMetaLabel] - Return a custom info label for the pattern card
+ * @property {function(Object, WebGL2RenderingContext): void} [onSetup] - Called once after WebGL setup (create FBOs, textures)
+ * @property {function(Object, RenderContext): void} [onBeforeRender] - Called before each frame's render()
+ * @property {function(Object, RenderContext): void} [onAfterRender] - Called after each frame's render()
+ * @property {function(Object, WebGL2RenderingContext): void} [onTeardown] - Called on pattern removal (cleanup)
+ * @property {function(Object, number, number, string): void} [onCellInteraction] - Pixel-level click. Args: (patternData, x, y, type) where x,y are 0-1 normalized and type is "click"|"contextmenu"
+ *
+ * @typedef {Object} RenderContext
+ * @property {WebGL2RenderingContext} gl - The pattern's WebGL context
+ * @property {HTMLCanvasElement} canvas - The pattern's canvas element
+ * @property {{ row: number, col: number }|null} gridPosition - Position in the grid (from GridTopology)
+ * @property {{ top: string|null, bottom: string|null, left: string|null, right: string|null }|null} neighbors - Neighbor pattern IDs (from GridTopology)
+ * @property {number} frameCount - Animation frame counter
+ * @property {number} deltaTime - Seconds since last frame
  */
 (function () {
     "use strict";
@@ -148,7 +174,7 @@
                         id: r.id,
                         image: r.image,
                         shader: r.shader,
-                        rule: r.rule,
+                        grid: r.grid,
                         nodes: 0,
                         connections: 0,
                         clicks: 0,

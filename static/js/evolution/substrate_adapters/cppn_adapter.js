@@ -9,9 +9,10 @@
     /**
      * Build uniform-name-keyed values from signal-id-keyed values using EvolutionConfig.SIGNAL_TOGGLES.
      * @param {Object} signalValues - Keys: signal ids (raw_time, mouse_speed, mouse_dist, activity, ...)
+     * @param {Object} [_context] - Optional RenderContext (ignored by CPPN adapter)
      * @returns {Object} Keys: uniform names (u_raw_time, u_mouse_speed, ...)
      */
-    function buildUniforms(signalValues) {
+    function buildUniforms(signalValues, _context) {
         const out = {};
         const config = window.EvolutionConfig;
         const toggles = config && config.SIGNAL_TOGGLES;

@@ -137,7 +137,7 @@
     }
 
     /**
-     * Fetch server config (substrate_id, output_type, population_size, max_population_size).
+     * Fetch server config (substrate_id, output_type, population_size, max_population_size, crossover_probability).
      * Caches result on window.ServerConfig. Use for bootstrapping EvolutionConfig.
      * @returns {Promise<Object>} Config object or rejects on failure
      */
@@ -146,6 +146,27 @@
             getBase() + "/config",
             { method: "GET" },
             "Config failed"
+        );
+        if (typeof window !== "undefined") {
+            window.ServerConfig = data;
+        }
+        return data;
+    }
+
+    /**
+     * Update experiment parameters at runtime (PATCH /api/config). No server restart.
+     * @param {Object} updates - { population_size?, max_population_size?, crossover_probability? }
+     * @returns {Promise<Object>} Current config (same shape as fetchConfig)
+     */
+    async function patchConfig(updates) {
+        var data = await apiFetch(
+            getBase() + "/config",
+            {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updates || {}),
+            },
+            "Update config failed"
         );
         if (typeof window !== "undefined") {
             window.ServerConfig = data;
@@ -195,6 +216,7 @@
         randomPopulation: randomPopulation,
         evaluate: evaluate,
         fetchConfig: fetchConfig,
+        patchConfig: patchConfig,
         apiFetch: apiFetch,
     };
 })();

@@ -39,7 +39,8 @@
         "outputType": "grid",
         "hasSignalControls": false,
         "genomeKeys": [
-            "rule"
+            "grid",
+            "key"
         ],
         "capabilities": {
             "save": true,

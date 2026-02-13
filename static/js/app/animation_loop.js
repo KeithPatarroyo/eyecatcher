@@ -36,6 +36,9 @@
     /** Default source: viewer mouse + time; created in init(). */
     let _defaultSource = null;
 
+    let _frameCount = 0;
+    let _lastFrameTime = 0;
+
     function getMouseDistanceToCanvas(canvas) {
         const rect = canvas.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
@@ -46,7 +49,7 @@
         return Math.min(1.0, dist / MOUSE_DIST_SCALE);
     }
 
-    /** Build default signal values from viewer state (mouse + time). Used by _defaultSource. Keys from SIGNAL_IDS; values from viewer or 0. */
+    /** Build default signal values from viewer state (mouse + time). Used by _defaultSource. Keys from SIGNAL_IDS; values from viewer or 0. Adds grid_row, grid_col when context.gridPosition exists. */
     function buildDefaultSignalValues(context) {
         const canvas = context && context.canvas;
         const mouse_dist = canvas ? getMouseDistanceToCanvas(canvas) : 0;
@@ -65,6 +68,15 @@
             mouse_x: mouse_x,
             mouse_y: mouse_y,
         };
+        if (context && context.gridPosition) {
+            const pos = context.gridPosition;
+            const GT = window.GridTopology;
+            const cols = (GT && GT.getColumns && GT.getColumns()) || 1;
+            const total = GT && GT.getAll && GT.getAll() ? GT.getAll().size : 1;
+            const rows = cols > 0 ? Math.ceil(total / cols) : 1;
+            computed.grid_row = rows > 1 ? pos.row / (rows - 1) : 0;
+            computed.grid_col = cols > 1 ? pos.col / (cols - 1) : 0;
+        }
         const signalIds =
             (window.EvolutionConfigSignals &&
                 window.EvolutionConfigSignals.SIGNAL_IDS) ||
@@ -114,6 +126,11 @@
             mouseSpeed *= MOUSE_SPEED_DECAY;
             activity *= ACTIVITY_DECAY;
 
+            const now = performance.now();
+            const deltaTime = _lastFrameTime > 0 ? (now - _lastFrameTime) / 1000 : 0;
+            _lastFrameTime = now;
+            _frameCount++;
+
             const patterns = _getPatterns ? _getPatterns() : null;
             if (
                 patterns &&
@@ -122,14 +139,44 @@
                 _viewerControls.signalState != null
             ) {
                 const signalState = _viewerControls.signalState;
+                const SA = window.SubstrateAdapters;
+                const state =
+                    window.PopulationState &&
+                    window.PopulationState.getState &&
+                    window.PopulationState.getState();
+                const substrateId = state ? state.substrateId : null;
+                const resolved =
+                    SA && SA.safeResolve
+                        ? SA.safeResolve({ substrateId: substrateId })
+                        : { adapter: null };
+                const adapter = resolved.adapter;
+                const GT = window.GridTopology;
+
                 patterns.forEach(function (patternData) {
                     if (!patternData.gl) return;
+                    var patternId = patternData.patternId;
+                    var renderContext = {
+                        gl: patternData.gl,
+                        canvas: patternData.canvas,
+                        gridPosition: GT ? GT.getPosition(patternId) : null,
+                        neighbors: GT ? GT.getNeighbors(patternId) : null,
+                        frameCount: _frameCount,
+                        deltaTime: deltaTime,
+                        patternId: patternId,
+                    };
+                    if (adapter && typeof adapter.onBeforeRender === "function") {
+                        adapter.onBeforeRender(patternData, renderContext);
+                    }
                     _patternRenderer.renderWithSignals(
                         patternData,
                         _patternRenderer,
                         signalState,
-                        patternData.canvas
+                        patternData.canvas,
+                        renderContext
                     );
+                    if (adapter && typeof adapter.onAfterRender === "function") {
+                        adapter.onAfterRender(patternData, renderContext);
+                    }
                 });
             }
 
@@ -198,6 +245,7 @@
 
     function start() {
         animating = true;
+        _lastFrameTime = performance.now();
         requestAnimationFrame(animate);
     }
 
@@ -225,6 +273,9 @@
         },
         getTime: function () {
             return animationTime;
+        },
+        getFrameCount: function () {
+            return _frameCount;
         },
     };
 })();

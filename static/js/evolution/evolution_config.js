@@ -1,7 +1,7 @@
 /**
- * Evolution and viewer constants. Single place for frontend defaults that align with the backend.
- * Signal toggles and outputs come from evolution_config_signals.generated.js (generated from Python registry).
- * Load before: api_client, app_core, toolbar_ui. Load after: evolution_config_signals.generated.js.
+ * Evolution and viewer constants. Population defaults from evolution_config_defaults.generated.js
+ * (generated from config/evolution_defaults.json; run make generate). mergeFromServer overwrites from API.
+ * Load before: api_client, app_core, toolbar_ui. Load after: evolution_config_signals.generated.js, evolution_config_defaults.generated.js.
  * Exposes: window.EvolutionConfig
  */
 (function () {
@@ -14,14 +14,25 @@
         );
     }
 
+    var defaults = window.EvolutionConfigDefaults;
+    if (!defaults) {
+        console.error(
+            "EvolutionConfigDefaults not loaded (run make generate-evolution-config)."
+        );
+        defaults = {};
+    }
+
     var EvolutionConfig = {
-        // Population (must match backend evolution/config.py)
-        DEFAULT_POPULATION_SIZE: 12,
-        MAX_POPULATION_SIZE: 50,
-        MIN_POPULATION_SIZE: 2,
+        // Population (from evolution_config_defaults.generated.js; run make generate)
+        DEFAULT_POPULATION_SIZE: defaults.population_size,
+        MAX_POPULATION_SIZE: defaults.max_population_size,
+        MIN_POPULATION_SIZE: defaults.min_population_size,
+        CROSSOVER_PROBABILITY: defaults.crossover_probability,
 
         // Substrate (backend default; overridden by mergeFromServer when /api/config provides substrate_id)
         DEFAULT_SUBSTRATE_ID: "dual_cppn",
+        /** Available substrate ids from GET /api/config (e.g. ["dual_cppn", "single_cppn", "ca"]). */
+        available_substrate_ids: [],
 
         /** Single source of truth for default resolution when adapter cannot be determined. */
         getDefaultResolution: function () {
@@ -90,8 +101,14 @@
         if (config.max_population_size != null) {
             this.MAX_POPULATION_SIZE = config.max_population_size;
         }
+        if (config.crossover_probability != null) {
+            this.CROSSOVER_PROBABILITY = config.crossover_probability;
+        }
         if (config.substrate_id) {
             this.DEFAULT_SUBSTRATE_ID = config.substrate_id;
+        }
+        if (Array.isArray(config.available_substrate_ids)) {
+            this.available_substrate_ids = config.available_substrate_ids;
         }
     };
 
