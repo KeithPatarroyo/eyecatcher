@@ -210,7 +210,7 @@ def api_random():
 
     Body: { "size": N } (default from config)
     Returns: { "genomes": [ ... ], "output_type": "shader"|"grid"|... }
-    Genome shape depends on substrate (dual_cppn: visual/time_signal; ca: rule, key).
+    Genome shape depends on substrate (dual_cppn: visual/time_signal; ca: grid, key).
     """
     data = request.json or {}
     size = data.get("size", get_population_size())

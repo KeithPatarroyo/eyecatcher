@@ -83,7 +83,7 @@ src/eyecatcher/
 
 | I want to… | Look in |
 |------------|---------|
-| Add/rename a signal | signals/registry.py, NEAT config, frontend evolution_config.js |
+| Add/rename a signal | signals/registry.py, NEAT config, frontend evolution/config.js |
 | Change population size or NEAT paths | evolution/config.py |
 | Change reproduction/selection | evolution/reproduction.py, evolution/operators.py |
 | Change genome or wire serialization | genome/__init__.py, genome/serialization.py |

@@ -5,92 +5,108 @@
 - `interactive_viewer.html` – main app (interactive evolution, population grid, evolve/save).
 - `genealogy_viewer.html` – genealogy tree (load/save/export populations).
 
-**JavaScript is grouped by role** so you can see what to edit vs what to leave alone.
+**JavaScript is grouped to mirror the backend** so you can find frontend counterparts of backend packages.
 
-| Folder | Purpose |
-|--------|---------|
-| **evolution/** | Where the experiment lives — signals, evolution, pattern rendering, viewer controls. Edit when you change evolution or viewer behavior. |
-| **app/** | Application shell — app.js, state, grid, fullscreen, genealogy sync, animation loop. Edit when you change app structure or flow. |
-| **lib/** | Shared infrastructure — API client, utils, toast, storage, debug. Only touch for bugs or app-wide support. |
-| **features/** | Optional features — population UI, community, network visualizer, toolbar, genealogy viewer. Edit when you care about that feature. |
+| Folder | Purpose | Backend counterpart |
+|--------|---------|----------------------|
+| **substrate/** | Substrate adapters, registry, config, pattern rendering (WebGL). | `substrate/`, `glsl/` |
+| **evolution/** | Evolution config, coordinator, viewer controls (signals, zoom). | `evolution/`, `signals/` |
+| **community/** | Community browse, submit, admin UI. | `web/community_routes` |
+| **genealogy/** | Genealogy viewer, export, thumbnails, sync. | `data/`, `web/genealogy_routes` |
+| **evaluation/** | Network visualizer, weight sliders, CPPN evaluator. | `evaluation/` |
+| **app/** | Application shell — state, grid, animation loop, toolbar, population UI. | — |
+| **lib/** | API client, utils, toast, storage, debug. | `web/` (API) |
 
-Script load order in the HTML: lib → evolution → features → app (shell loads last and wires everything).
-
----
-
-## JavaScript layout (detailed)
-
-The JS code is grouped into four folders so you can quickly see **what to edit** vs **what to leave alone**.
+Script load order in the HTML: lib → evolution (config) → community → substrate → evolution (viewer) → evaluation / app (app loads last and wires everything).
 
 ---
 
-## **evolution/** — Where the experiment lives
+## substrate/ — Substrates and rendering
 
-**Edit this when you change how evolution, signals, or rendering work.**
+**Edit when you change substrate types or how patterns are drawn.**
 
-- `evolution_config.js` — Population size, signal toggles, canvas limits (align with backend).
-- `evolution_coordinator.js` — Parent selection, evolve API call, population size from UI.
-- `pattern_renderer.js` — WebGL: compile and draw dual-CPPN fragment shaders.
+- `registry.js` — Adapter registry (SubstrateAdapters), resolve, getDisplayData, registers from SubstrateConfig.
+- `cppn_adapter.js` — Shared CPPN adapter (dual_cppn, single_cppn); createCppnAdapter(spec).
+- `ca.js` — CA (Conway GOL) adapter; stateful grid, FBO ping-pong.
+- `config.generated.js` — Generated from Python substrate export (do not edit).
+- `pattern_renderer.js` — WebGL 2 setup, shader compile, renderWithSignals, createPatternCard, FBO helpers.
+
+---
+
+## evolution/ — Config and coordination
+
+**Edit when you change evolution config, evolve flow, or signal/zoom UI.**
+
+- `config.js` — Population size, signal toggles, substrate id, mergeFromServer (align with backend).
+- `config_signals.generated.js` — Generated from Python signal registry (do not edit).
+- `config_defaults.generated.js` — Generated from evolution_defaults.json (do not edit).
+- `coordinator.js` — Parent selection, evolve API call.
 - `viewer_controls.js` — Zoom and CPPN signal checkboxes (time/visual inputs).
-- `cppn_evaluator.js` — CPPN evaluation helpers if used.
-
-Signals, evolution behavior, and how patterns are drawn are defined here. This is the code that defines your experiment.
 
 ---
 
-## **app/** — Application shell
+## community/ — Community feature
 
-**Edit this when you change how the app is wired (state, coordination, or main flow).**
+**Edit when you change community browse, submit, or admin.**
+
+- `index.js` — CommunityUI entry; share, browse, admin modals.
+- `browse.js` — Fetch display data, build list entries, render previews.
+- `submit.js` — Submit modal and form.
+- `admin.js` — Admin modal, pending list, approve/reject.
+
+---
+
+## genealogy/ — Genealogy feature
+
+**Edit when you change genealogy tree, export, or sync.**
+
+- `viewer.js` — Genealogy tree page logic (load stats, branches, tree, load population).
+- `export.js` — Export modal and download.
+- `physics.js` — Physics sliders for tree layout.
+- `network_config.js` — Network options for tree.
+- `thumbnails.js` — Population thumbnails in tree.
+- `sync.js` — Branch counter, sessionStorage, save-to-genealogy API (used by main app).
+
+---
+
+## evaluation/ — Network and CPPN evaluation
+
+**Edit when you change network visualization or weight sliders.**
+
+- `network_visualizer.js` — CPPN network sidebar (POST /api/network).
+- `network_weight_sliders.js` — Weight sliders (POST /api/adjust-weight).
+- `cppn_evaluator.js` — Client-side CPPN evaluator (not loaded in HTML; used by codegen for activation validation).
+
+---
+
+## app/ — Application shell
+
+**Edit when you change app structure or main flow.**
 
 - `app.js` — Entry point: wires DOM, inits modules, passes actions to features.
 - `population_state.js` — Single source of truth for population, genomes, genealogy context.
 - `grid_renderer.js` — Build and clear the pattern grid DOM.
 - `fullscreen_modal.js` — Fullscreen pattern view.
-- `genealogy_sync.js` — Branch counter, sessionStorage, save-to-genealogy API.
 - `animation_loop.js` — Time mode, mouse tracking, per-frame pattern render.
-
-You’ll rarely need to change these unless you’re changing app structure or adding new flows.
+- `pattern_actions.js` — Save, click, unclick handlers.
+- `app_event_bindings.js` — Global event bindings.
+- `app_genealogy_loader.js` — Genealogy load from localStorage.
+- `population_ui.js` — Start fresh, load/save population, import from file.
+- `toolbar_ui.js` — Toolbar dropdowns and controls.
 
 ---
 
-## **lib/** — Shared / infrastructure
+## lib/ — Shared infrastructure
 
-**Only touch when fixing bugs or adding cross‑cutting support.**
+**Only touch when fixing bugs or adding app-wide support.**
 
-- `api_client.js` — Fetch for compile, evolve, save, random, genealogy.
+- `api_client.js` — Fetch for compile, evolve, save, random, genealogy, config.
 - `utils.js` — Formatting, storage helpers, showLoading.
 - `toast.js` — Notifications and download trigger.
 - `storage.js` — IndexedDB wrapper for saved populations.
 - `debug.js` — Debug overlay (optional).
 
-No evolution or experiment logic; just support used by the rest of the app.
-
----
-
-## **features/** — Optional features
-
-**Edit when you care about that specific feature.**
-
-- `population_ui.js` — Start fresh, load/save population, import from file.
-- `community.js` — Share to community, browse, admin.
-- `network_visualizer.js` — CPPN network sidebar, weight sliders.
-- `toolbar_ui.js` — Toolbar dropdowns and controls.
-- `genealogy_viewer.js` — Genealogy tree page (loads in its own HTML).
-
-Each file is a self-contained feature; you can ignore the ones you don’t use.
-
----
-
-## Summary
-
-| Folder      | When you look here |
-|------------|---------------------|
-| **evolution/** | Changing signals, evolution, rendering, or viewer behavior. |
-| **app/**      | Changing how the app is structured or how state/flow works. |
-| **lib/**      | Fixing API, utils, or adding app-wide support. |
-| **features/**  | Changing a specific feature (community, genealogy, network viz, etc.). |
-
-Script load order in the HTML matches this: lib → evolution → features → app (so the shell loads last and can wire everything).
+API request/response bodies use **snake_case** (e.g. `substrate_id`, `output_type`) to match the backend; internal JS uses **camelCase** (e.g. `substrateId`, `outputType`).
 
 ---
 
@@ -110,12 +126,12 @@ adapter.render(patternData, uniforms, signalState)
 gl.uniform1f / gl.drawArrays    →  pixels on canvas
 ```
 
-Each pattern card has its own `<canvas>` with its own WebGL 2 context. The animation loop (`animation_loop.js`) calls `renderWithSignals()` once per pattern per frame via `requestAnimationFrame`.
+Each pattern card has its own `<canvas>` with its own WebGL 2 context. The animation loop (`app/animation_loop.js`) calls `renderWithSignals()` once per pattern per frame via `requestAnimationFrame`.
 
 ### Pattern lifecycle
 
 1. **Setup** — `PatternRenderer.setupPattern(canvas, shaderCode)` creates a WebGL 2 context, compiles the vertex + fragment shader into a program, and creates a fullscreen-quad position buffer. Returns `{ gl, program, positionBuffer }`.
-2. **Prepare** — `adapter.preparePatternData(patternData, pattern)` stores substrate-specific fields (e.g. `patternData.caRule` for CA).
+2. **Prepare** — `adapter.preparePatternData(patternData, pattern)` stores substrate-specific fields (e.g. `patternData.grid` for CA).
 3. **Render loop** — Every frame, the animation loop iterates all patterns and calls `renderWithSignals(patternData, patternRenderer, signalState, canvas)`. This: gets signal values from the active `SignalSource`, builds uniforms via `adapter.buildUniforms()`, and calls `adapter.render()`.
 4. **Teardown** — Currently none; WebGL resources are released when the canvas is removed from the DOM.
 

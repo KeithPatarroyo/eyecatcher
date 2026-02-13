@@ -89,7 +89,7 @@ def main() -> None:
 
     data = export_for_frontend()
     out_path = os.path.join(
-        root, "static", "js", "evolution", "evolution_config_signals.generated.js"
+        root, "static", "js", "evolution", "config_signals.generated.js"
     )
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
@@ -123,7 +123,7 @@ def validate_activations_js(root: str) -> None:
     spec.loader.exec_module(mod)
     get_activation_names = mod.get_activation_names
 
-    js_path = os.path.join(root, "static", "js", "evolution", "cppn_evaluator.js")
+    js_path = os.path.join(root, "static", "js", "evaluation", "cppn_evaluator.js")
     with open(js_path, encoding="utf-8") as f:
         content = f.read()
     keys = re.findall(r"(\w+):\s*function\s*\(", content)

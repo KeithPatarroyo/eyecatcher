@@ -55,10 +55,10 @@
 
     /**
      * Find adapter whose isGenomeFormat(genome) returns true. First match wins.
-     * Order follows SubstrateAdapterConfig so that dual genomes match dual first.
+     * Order follows SubstrateConfig so that dual genomes match dual first.
      */
     function findAdapterByGenome(genome) {
-        var config = window.SubstrateAdapterConfig;
+        var config = window.SubstrateConfig;
         var order =
             config && Array.isArray(config)
                 ? config.map(function (e) {
@@ -254,7 +254,7 @@
         };
     }
 
-    var config = window.SubstrateAdapterConfig;
+    var config = window.SubstrateConfig;
     if (config && Array.isArray(config) && window.createCppnAdapter) {
         config.forEach(function (entry) {
             var isGenomeFormat = buildIsGenomeFormatFromConfig(entry);

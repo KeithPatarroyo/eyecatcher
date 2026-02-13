@@ -44,7 +44,7 @@ def main() -> None:
             sys.exit(1)
 
     out_path = os.path.join(
-        root, "static", "js", "evolution", "evolution_config_defaults.generated.js"
+        root, "static", "js", "evolution", "config_defaults.generated.js"
     )
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     js_content = (

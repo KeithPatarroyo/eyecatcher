@@ -1,6 +1,6 @@
 /**
  * Eyecatcher app entry: init and DOM wiring. State and coordinators live in
- * population_state, grid_renderer, fullscreen_modal, evolution_coordinator, genealogy_sync.
+ * population_state, grid_renderer, fullscreen_modal, evolution_coordinator, genealogy/sync.
  * Load after: those modules, api_client, pattern_renderer, viewer_controls, animation_loop,
  * population_ui, community, network_visualizer, toolbar_ui.
  */

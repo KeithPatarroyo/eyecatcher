@@ -30,7 +30,7 @@ def test_js_activations_match_python_registry():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    js_path = root / "static" / "js" / "evolution" / "cppn_evaluator.js"
+    js_path = root / "static" / "js" / "evaluation" / "cppn_evaluator.js"
     content = js_path.read_text(encoding="utf-8")
     # Extract keys from "var ACTIVATIONS = { key: function ... }"
     keys = re.findall(r"(\w+):\s*function\s*\(", content)
