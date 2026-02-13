@@ -265,7 +265,7 @@ def test_api_error_response_shape(client):
 
 def test_api_adjust_weight(client, substrate):
     """POST /api/adjust-weight with valid payload returns shader and genome."""
-    from conftest import minimal_dual_genome_one_hidden_visual
+    from tests.conftest import minimal_dual_genome_one_hidden_visual
 
     dual = minimal_dual_genome_one_hidden_visual(substrate)
     genome = dual_genome_to_json(dual)
@@ -297,3 +297,65 @@ def test_api_adjust_weight(client, substrate):
     assert data.get("status") == "success"
     assert "shader" in data
     assert "genome" in data
+
+
+def test_api_config_get(client):
+    """GET /api/config returns substrate_id, output_type, available_substrate_ids."""
+    rv = client.get("/api/config")
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert "substrate_id" in data
+    assert "output_type" in data
+    assert "available_substrate_ids" in data
+    assert isinstance(data["available_substrate_ids"], list)
+    assert data["substrate_id"] in data["available_substrate_ids"]
+
+
+def test_api_config_patch_substrate_id(client):
+    """PATCH /api/config substrate_id; next GET and /api/random use it."""
+    rv = client.get("/api/config")
+    assert rv.status_code == 200
+    initial_id = rv.get_json()["substrate_id"]
+
+    rv = client.patch(
+        "/api/config",
+        json={"substrate_id": "ca"},
+        headers={"Content-Type": "application/json"},
+    )
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert data["substrate_id"] == "ca"
+    assert data["output_type"] == "grid"
+
+    rv = client.get("/api/config")
+    assert rv.status_code == 200
+    assert rv.get_json()["substrate_id"] == "ca"
+
+    rv = client.post("/api/random", json={"size": 1})
+    assert rv.status_code == 200
+    assert rv.get_json()["output_type"] == "grid"
+    genomes = rv.get_json()["genomes"]
+    assert len(genomes) == 1
+    assert "grid" in genomes[0]
+
+    # Restore so other tests see default substrate
+    client.patch(
+        "/api/config",
+        json={"substrate_id": initial_id},
+        headers={"Content-Type": "application/json"},
+    )
+
+
+def test_api_config_patch_invalid_substrate_id(client):
+    """PATCH /api/config with unknown substrate_id returns 400."""
+    rv = client.patch(
+        "/api/config",
+        json={"substrate_id": "nonexistent"},
+        headers={"Content-Type": "application/json"},
+    )
+    assert rv.status_code == 400
+    data = rv.get_json()
+    assert "error" in data
+    assert (
+        "nonexistent" in data["error"].lower() or "available" in data["error"].lower()
+    )

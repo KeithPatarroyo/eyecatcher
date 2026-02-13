@@ -237,3 +237,29 @@ def test_save_generation_result(db_path):
     assert pop["generation_num"] == 1
     assert pop["parent_id"] == 1
     assert len(pop["genomes"]) == 2
+
+
+def test_get_experiment_log(db_path):
+    """get_experiment_log returns recent populations with parsed metadata."""
+    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
+        genealogy_db_module.save_population(
+            genomes=[_genome_payload(0)],
+            parent_id=None,
+            generation_num=0,
+            branch_name="main",
+            metadata={
+                "experiment_config": {
+                    "substrate_id": "dual_cppn",
+                    "population_size": 12,
+                }
+            },
+        )
+        log = genealogy_db_module.get_experiment_log(limit=10)
+    assert len(log) == 1
+    assert log[0]["id"] == 1
+    assert log[0]["branch_name"] == "main"
+    assert (
+        log[0]["metadata"].get("experiment_config", {}).get("substrate_id")
+        == "dual_cppn"
+    )
+    assert log[0]["metadata"].get("experiment_config", {}).get("population_size") == 12

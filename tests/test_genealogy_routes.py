@@ -80,6 +80,41 @@ def test_save_and_load_population(client, genealogy_db, substrate):
     assert "visual" in data["genomes"][0] and "time_signal" in data["genomes"][0]
 
 
+def test_experiment_log_empty(client, genealogy_db):
+    """GET experiment-log with no data returns empty entries."""
+    rv = client.get("/api/experiment-log")
+    assert rv.status_code == 200
+    assert rv.get_json()["entries"] == []
+
+
+@pytest.mark.slow
+def test_experiment_log_after_save(client, genealogy_db, substrate):
+    """GET experiment-log after save-population returns entry with experiment_config."""
+    dual = create_random_dual_genome(
+        substrate.config, substrate.time_config, genome_id=0
+    )
+    payload = dual_genome_to_json(dual)
+    payload["key"] = 0
+    client.post(
+        "/api/genealogy/save-population",
+        json={
+            "genomes": [payload],
+            "parent_id": None,
+            "generation_num": 0,
+            "branch_name": "main",
+        },
+    )
+    rv = client.get("/api/experiment-log")
+    assert rv.status_code == 200
+    entries = rv.get_json()["entries"]
+    assert len(entries) == 1
+    assert entries[0]["branch_name"] == "main"
+    exp = entries[0].get("metadata", {}).get("experiment_config", {})
+    assert "substrate_id" in exp
+    assert "population_size" in exp
+    assert "crossover_probability" in exp
+
+
 def test_tree_empty(client, genealogy_db):
     """GET tree with no data returns empty nodes."""
     rv = client.get("/api/genealogy/tree")
