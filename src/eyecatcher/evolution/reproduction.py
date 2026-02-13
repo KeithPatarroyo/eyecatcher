@@ -1,9 +1,10 @@
 """
-Stateless reproduction: produce next generation from parent genome payloads.
+Stateless reproduction: produce next generation from parent payloads.
 
 Selection, crossover, and mutation. Used by the server /api/evolve endpoint.
-Callers pass a representation; this module returns children as list of genome JSON
-dicts. Works with any representation (dual_cppn, ca, etc.).
+Callers pass a representation; this module takes and returns genome (individual) JSON:
+in-memory objects are "individuals"; their serialized form is "genome" JSON.
+Works with any representation (dual_cppn, ca, etc.).
 """
 
 import logging
@@ -31,13 +32,14 @@ def produce_next_generation(
     Args:
         representation: Representation (create_random, mutate, crossover,
             from_json, to_json).
-        parents_data: List of dicts with "genome" (or self) and optional "fitness".
+        parents_data: List of dicts with "genome" (individual JSON) or self,
+            and optional "fitness".
         population_size: Number of children to produce. Default from config.
         elitism: If True, best parent is copied as first child (new key).
         crossover_probability: Crossover (two parents) vs mutate one parent.
 
     Returns:
-        List of genome JSON dicts (representation.to_json per child).
+        List of genome (individual) JSON dicts (representation.to_json per child).
     """
     if population_size is None:
         population_size = config.DEFAULT_POPULATION_SIZE

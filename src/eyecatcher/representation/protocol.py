@@ -1,12 +1,7 @@
-"""
-Representation protocol: common interface for evolvable representations.
+"""Representation protocol: common interface for evolvable representations.
 
-Representations (e.g. dual/single CPPN, NCAs, CAs, generic neural nets) implement
-this protocol so evolution and API stay representation-agnostic.
-
-Which API endpoints require which representation capabilities is documented in
-API_REQUIREMENTS.md (e.g. /api/compile requires compile_to_shader;
-save/time-output/network require capabilities such as network, time_output).
+CPPN, CA, etc. Evolution and API use this interface only. Capability
+requirements per endpoint: see API_REQUIREMENTS.md.
 """
 
 from __future__ import annotations
@@ -184,21 +179,39 @@ def get_representation_capabilities(representation: Any) -> dict[str, bool]:
     """
     Derive capability flags from optional protocol methods.
 
-    Creates a random individual once (cached by representation.id) and checks
-    which optional methods return non-None / non-empty. Eliminates the need
-    for manual get_capabilities() or capabilities in frontend_metadata.
+    Uses declarative hints from signal_spec when present (e.g. socket "time"
+    implies time_output; socket "visual" implies network). Otherwise creates a
+    random individual once (cached by representation.id) and checks which
+    optional methods return non-None / non-empty.
     """
     rid = getattr(representation, "id", None)
     if rid and rid in _CAPABILITIES_CACHE:
         return _CAPABILITIES_CACHE[rid].copy()
 
+    declarative_time = False
+    declarative_network = False
+    spec = getattr(representation, "signal_spec", None)
+    if spec is not None:
+        try:
+            spec.socket("time")
+            declarative_time = True
+        except KeyError:
+            pass
+        try:
+            spec.socket("visual")
+            declarative_network = True
+        except KeyError:
+            pass
+
     ind = representation.create_random(0)
     save = bool(representation.build_save_assets(ind, 0, to_png_bytes=lambda a: b""))
     get_network = getattr(representation, "get_network_data", None)
     network_data = get_network(ind) if callable(get_network) else None
-    network = network_data is not None
+    network = declarative_network or (network_data is not None)
     query_time = getattr(representation, "query_time_output", None)
-    time_output = query_time(ind, {}) is not None if callable(query_time) else False
+    time_output = declarative_time or (
+        query_time(ind, {}) is not None if callable(query_time) else False
+    )
     adjust_weight = False
     if network_data and network_data.get("connections"):
         adj_meth = getattr(representation, "adjust_weight", None)

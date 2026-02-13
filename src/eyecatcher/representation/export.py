@@ -1,12 +1,7 @@
-"""
-Export representation metadata for frontend code generation.
+"""Export representation metadata for frontend codegen.
 
-Used by scripts/generate_representation_config.py to emit
-config.generated.js for the frontend.
-Metadata is defined on each representation class (frontend_metadata); capabilities
-are derived from the protocol (get_representation_capabilities).
-Signal specs are exported per-representation so the frontend can build
-controls and uniforms from the active representation's interface.
+generate_representation_config.py → config.generated.js. Uses
+frontend_metadata and get_representation_capabilities.
 """
 
 from __future__ import annotations
