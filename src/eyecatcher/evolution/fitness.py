@@ -2,8 +2,9 @@
 Pluggable fitness registry for batch evolution.
 
 Researchers register fitness functions by name. Each function receives
-(individual, representation) and returns a float. Representation-specific fitness
-can use representation.express, representation.config/time_config when available.
+(individual, representation) and returns a float. Representation-specific
+fitness can use representation.express and representation.signal_spec to
+adapt behaviour to the active representation's declared capabilities.
 """
 
 from __future__ import annotations
@@ -11,6 +12,8 @@ from __future__ import annotations
 from typing import Any, Callable
 
 import numpy as np
+
+from ..signals.spec import SignalSpec
 
 FITNESS_REGISTRY: dict[str, Callable[..., float]] = {}
 
@@ -45,6 +48,19 @@ def list_fitness() -> list[str]:
     return sorted(FITNESS_REGISTRY.keys())
 
 
+def _get_signal_spec(representation: Any) -> SignalSpec | None:
+    """Return the representation's signal_spec, or None if absent."""
+    return getattr(representation, "signal_spec", None)
+
+
+def _has_temporal_signals(representation: Any) -> bool:
+    """True if the representation declares temporal input signals."""
+    spec = _get_signal_spec(representation)
+    if spec is None:
+        return True  # no spec: assume temporal for backward compatibility
+    return any(s.category == "temporal" for s in spec.inputs)
+
+
 def _sample_rgb_at_coords(
     individual: Any, representation: Any, time: float = 0.0
 ) -> list[list[float]]:
@@ -74,8 +90,10 @@ def fitness_color_variance(individual: Any, representation: Any) -> float:
 def fitness_temporal_variance(individual: Any, representation: Any) -> float:
     """
     Variation over time at center. Non-zero for representations that vary
-    output with time.
+    output with time.  Returns 0 for representations without temporal signals.
     """
+    if not _has_temporal_signals(representation):
+        return 0.0
     samples = []
     for t in TEMPORAL_SAMPLES:
         rgb_list = representation.sample_rgb(individual, [(0.0, 0.0)], time=t)
