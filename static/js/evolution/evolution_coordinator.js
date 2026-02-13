@@ -49,6 +49,7 @@
             return;
         }
 
+        // population and genomes are index-aligned (same order from load / evaluate).
         var parents = population
             .map(function (p, idx) {
                 var pat = patterns.get(p.id);
