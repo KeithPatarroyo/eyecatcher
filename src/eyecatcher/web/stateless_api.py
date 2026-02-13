@@ -10,8 +10,15 @@ Endpoints: /api/compile, /api/random, /api/evaluate,
 import numpy as np
 from flask import Blueprint, jsonify, request
 
-from ..evolution import DEFAULT_POPULATION_SIZE, MAX_POPULATION_SIZE
+from ..evolution import (
+    get_crossover_probability,
+    get_max_population_size,
+    get_population_size,
+    update_runtime_config,
+)
 from ..signals import NETWORK_SIGNALS, parse_time_inputs
+from ..substrate import get_substrate
+from ..substrate.registry import SUBSTRATES
 from .api_helpers import (
     ERR_GENOME_REQUIRED,
     ERR_GENOMES_ARRAY_REQUIRED,
@@ -37,27 +44,51 @@ def init_stateless_api(substrate):
     _substrate = substrate
 
 
-@stateless_bp.route("/api/config", methods=["GET"])
-def api_config():
-    """
-    Return current experiment config for bootstrap (substrate, output type,
-    population limits, capabilities). GET /api/config → substrate_id,
-    output_type, population_size, max_population_size, capabilities.
-    """
-    if _substrate is None:
-        return api_error("No substrate configured.", 503)
+def get_current_substrate():
+    """Current substrate (updated by PATCH /api/config). Used by evolve etc."""
+    return _substrate
+
+
+def _config_response():
+    """Build JSON config payload (substrate, limits, capabilities)."""
     from ..substrate.protocol import get_substrate_capabilities
 
     capabilities = get_substrate_capabilities(_substrate)
-    return jsonify(
-        {
-            "substrate_id": _substrate.id,
-            "output_type": _substrate.output_type,
-            "population_size": DEFAULT_POPULATION_SIZE,
-            "max_population_size": MAX_POPULATION_SIZE,
-            "capabilities": capabilities,
-        }
-    )
+    payload = {
+        "substrate_id": _substrate.id,
+        "output_type": _substrate.output_type,
+        "population_size": get_population_size(),
+        "max_population_size": get_max_population_size(),
+        "crossover_probability": get_crossover_probability(),
+        "capabilities": capabilities,
+        "available_substrate_ids": list(SUBSTRATES.keys()),
+    }
+    return jsonify(payload)
+
+
+@stateless_bp.route("/api/config", methods=["GET", "PATCH"])
+def api_config():
+    """
+    GET: current experiment config (respects runtime overlay).
+    PATCH: update at runtime. Body: population_size?, max_population_size?,
+        crossover_probability?, substrate_id?. Same shape as GET.
+    Changing substrate_id clears server substrate; client should clear grid.
+    """
+    global _substrate
+    if _substrate is None:
+        return api_error("No substrate configured.", 503)
+    if request.method == "PATCH":
+        data = request.get_json(silent=True) or {}
+        new_id = data.get("substrate_id")
+        if new_id is not None:
+            if new_id not in SUBSTRATES:
+                return api_error(
+                    f"Unknown substrate: {new_id}. Available: {list(SUBSTRATES)}",
+                    400,
+                )
+            _substrate = get_substrate(new_id)
+        update_runtime_config(data)
+    return _config_response()
 
 
 def _require_capability(cap: str):
@@ -182,8 +213,8 @@ def api_random():
     Genome shape depends on substrate (dual_cppn: visual/time_signal; ca: rule, key).
     """
     data = request.json or {}
-    size = data.get("size", DEFAULT_POPULATION_SIZE)
-    size = max(1, min(int(size), MAX_POPULATION_SIZE))
+    size = data.get("size", get_population_size())
+    size = max(1, min(int(size), get_max_population_size()))
     genomes = []
     for i in range(size):
         ind = _substrate.create_random(key=i)

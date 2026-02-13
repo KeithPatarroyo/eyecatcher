@@ -2,47 +2,13 @@
 Export substrate metadata for frontend code generation.
 
 Used by scripts/generate_substrate_config.py to emit substrate_adapters.generated.js.
-Frontend metadata lives here so substrate classes stay pure evolution logic.
+Metadata is defined on each substrate class (frontend_metadata) so there is a single
+source of truth; no separate dict to keep in sync.
 """
 
 from __future__ import annotations
 
 from .registry import SUBSTRATES
-
-# Frontend metadata keyed by substrate id. Add new substrates here when registering.
-SUBSTRATE_FRONTEND_METADATA: dict[str, dict] = {
-    "dual_cppn": {
-        "hasSignalControls": True,
-        "genomeKeys": ["visual", "time_signal"],
-        "capabilities": {
-            "save": True,
-            "network": True,
-            "timeOutput": True,
-            "adjustWeight": True,
-        },
-    },
-    "single_cppn": {
-        "hasSignalControls": False,
-        "genomeKeys": ["visual"],
-        "excludeKeys": ["time_signal"],
-        "capabilities": {
-            "save": True,
-            "network": False,
-            "timeOutput": False,
-            "adjustWeight": False,
-        },
-    },
-    "ca": {
-        "hasSignalControls": False,
-        "genomeKeys": ["rule"],
-        "capabilities": {
-            "save": True,
-            "network": False,
-            "timeOutput": False,
-            "adjustWeight": False,
-        },
-    },
-}
 
 
 def export_substrates_for_frontend() -> list[dict]:
@@ -50,11 +16,14 @@ def export_substrates_for_frontend() -> list[dict]:
     Return per-substrate config for the frontend adapter registry.
 
     Each entry has: id, outputType, hasSignalControls, genomeKeys, capabilities.
-    Optional excludeKeys. From SUBSTRATES and SUBSTRATE_FRONTEND_METADATA.
+    Optional excludeKeys. Built from SUBSTRATES; each substrate class should define
+    a class attribute frontend_metadata with those keys.
     """
     result = []
     for sid, cls in SUBSTRATES.items():
-        entry = SUBSTRATE_FRONTEND_METADATA.get(sid, {})
+        entry = getattr(cls, "frontend_metadata", None)
+        if not isinstance(entry, dict):
+            entry = {}
         result.append(
             {
                 "id": sid,

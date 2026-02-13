@@ -6,11 +6,17 @@ Researchers extend: activation in glsl_fragments + node_code_generator;
 output (HSV/RGB) in _get_color_output_code; signals passed at construction.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import neat
 
 from ..signals import build_glsl_input_map
-from ..substrate import DualGenome
 from .compiler_topology import get_enabled_connections, topological_sort
+
+if TYPE_CHECKING:
+    from ..substrate import DualGenome
 from .glsl_fragments import ACTIVATION_GLSL_BLOCK
 from .node_code_generator import generate_node_code, generate_time_signal_code
 
@@ -57,7 +63,7 @@ class ShaderCompiler:
         self.node_code = {}
         self.color_mode = color_mode
 
-    def with_color_mode(self, color_mode: str) -> "ShaderCompiler":
+    def with_color_mode(self, color_mode: str) -> ShaderCompiler:
         """Return a new compiler with the same signals but different color_mode."""
         return ShaderCompiler(
             self.visual_signals,
@@ -86,6 +92,9 @@ class ShaderCompiler:
         Returns:
             Complete GLSL fragment shader code as string
         """
+        # Lazy import to avoid circular import: substrate -> dual_cppn -> glsl
+        from ..substrate import DualGenome
+
         if time_config is not None and isinstance(genome_or_dual, DualGenome):
             time_code = generate_time_signal_code(
                 genome_or_dual.time_signal,

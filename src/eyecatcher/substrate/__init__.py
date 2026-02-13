@@ -6,7 +6,7 @@ evolution and API use the substrate interface only.
 Dual-genome type and helpers (DualGenome, create_random_dual_genome, etc.) are here.
 """
 
-from .ca import CARule, ElementaryCASubstrate
+from .ca import ConwayGenome, ElementaryCASubstrate
 from .dual_cppn import DualCPPNSubstrate
 from .dual_genome import (
     DualGenome,
@@ -21,7 +21,7 @@ from .registry import SUBSTRATES, get_substrate
 from .single_cppn import SingleCPPNSubstrate
 
 __all__ = [
-    "CARule",
+    "ConwayGenome",
     "DualCPPNSubstrate",
     "DualGenome",
     "ElementaryCASubstrate",

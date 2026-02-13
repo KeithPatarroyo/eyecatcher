@@ -15,11 +15,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from .. import get_root_dir
-from ..evolution import (
-    CROSSOVER_PROBABILITY,
-    DEFAULT_POPULATION_SIZE,
-    config,
-)
+from ..evolution import config
 from ..evolution.reproduction import produce_next_generation
 from .api_helpers import (
     ERR_GENOME_REQUIRED_REQUEST_BODY,
@@ -31,7 +27,7 @@ from .api_helpers import (
 )
 from .community_routes import community_bp
 from .genealogy_routes import genealogy_bp
-from .stateless_api import init_stateless_api, stateless_bp
+from .stateless_api import get_current_substrate, init_stateless_api, stateless_bp
 
 _log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -56,6 +52,7 @@ else:
 
 # Substrate from experiment preset (config/experiments.json, EXPERIMENT_CONFIG)
 substrate = config.get_configured_substrate()
+config.warn_if_neat_pop_size_mismatch(substrate)
 
 # Initialize and register API blueprints
 init_stateless_api(substrate)
@@ -87,13 +84,18 @@ def _save_generation_to_genealogy(
     generation_num: int,
     branch_name: str,
     children: list,
+    metadata: dict | None = None,
 ) -> int | None:
     """Save children to genealogy DB; return new population id or None on failure."""
     try:
         from ..data.genealogy_db import save_generation_result
 
         return save_generation_result(
-            parent_population_id, generation_num, branch_name, children
+            parent_population_id,
+            generation_num,
+            branch_name,
+            children,
+            metadata=metadata,
         )
     except Exception as e:
         logger.exception("Failed to save to genealogy: %s", e)
@@ -119,8 +121,17 @@ def evolve():
     if not parents_data:
         return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
 
-    population_size = data.get("population_size", DEFAULT_POPULATION_SIZE)
-    elitism = data.get("elitism", False)
+    from ..evolution.config import (
+        get_crossover_probability,
+        get_elitism_default,
+        get_population_size,
+    )
+
+    population_size = data.get("population_size", get_population_size())
+    crossover_probability = data.get(
+        "crossover_probability", get_crossover_probability()
+    )
+    elitism = data.get("elitism", get_elitism_default())
     parent_population_id = data.get("parent_population_id")
     generation_num = data.get("generation_num", 0)
     branch_name = data.get("branch_name", "main")
@@ -129,18 +140,30 @@ def evolve():
         {"genome": p.get("genome", p), "fitness": p.get("fitness", p.get("clicks", 0))}
         for p in parents_data
     ]
+    substrate = get_current_substrate()
     children = produce_next_generation(
         substrate,
         parents_for_evolution,
         population_size=population_size,
         elitism=elitism,
-        crossover_probability=CROSSOVER_PROBABILITY,
+        crossover_probability=crossover_probability,
     )
 
     new_pop_id = None
     if parent_population_id is not None:
+        experiment_metadata = {
+            "experiment_config": {
+                "substrate_id": substrate.id,
+                "population_size": population_size,
+                "crossover_probability": crossover_probability,
+            }
+        }
         new_pop_id = _save_generation_to_genealogy(
-            parent_population_id, generation_num, branch_name, children
+            parent_population_id,
+            generation_num,
+            branch_name,
+            children,
+            metadata=experiment_metadata,
         )
 
     payload = {

@@ -312,6 +312,43 @@ def get_population(population_id: int) -> dict[str, Any] | None:
         }
 
 
+def get_experiment_log(limit: int = 200) -> list[dict[str, Any]]:
+    """
+    Recent population save events with metadata (for research / experiment log).
+    Returns list of { id, created_at, branch_name, generation_num,
+        population_size, metadata }.
+    """
+    with _genealogy_db() as conn:
+        rows = conn.execute(
+            """SELECT id, created_at, branch_name, generation_num, population_size,
+                      metadata_json
+               FROM populations
+               ORDER BY created_at DESC
+               LIMIT ?""",
+            (max(1, min(limit, 1000)),),
+        ).fetchall()
+        out = []
+        for row in rows:
+            row_dict = dict(row)
+            meta = {}
+            if row_dict.get("metadata_json"):
+                try:
+                    meta = json.loads(row_dict["metadata_json"]) or {}
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            out.append(
+                {
+                    "id": row_dict["id"],
+                    "created_at": row_dict["created_at"],
+                    "branch_name": row_dict["branch_name"],
+                    "generation_num": row_dict["generation_num"],
+                    "population_size": row_dict["population_size"],
+                    "metadata": meta,
+                }
+            )
+        return out
+
+
 def get_tree_nodes() -> list[dict[str, Any]]:
     """All population nodes ordered by created_at for tree view."""
     with _genealogy_db() as conn:

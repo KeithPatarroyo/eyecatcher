@@ -52,6 +52,17 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
     id = "dual_cppn"
     output_type: OutputType = "shader"
 
+    frontend_metadata = {
+        "hasSignalControls": True,
+        "genomeKeys": ["visual", "time_signal"],
+        "capabilities": {
+            "save": True,
+            "network": True,
+            "timeOutput": True,
+            "adjustWeight": True,
+        },
+    }
+
     def __init__(
         self,
         neat_config_path: str | None = None,

@@ -33,11 +33,19 @@ class SubstrateOutput:
         self.data = data
 
 
+# Frontend metadata: hasSignalControls, genomeKeys, excludeKeys, capabilities.
+SubstrateFrontendMetadata = dict[str, object]
+
+
 class Substrate(Protocol[IndividualT]):
     """
     Protocol for pluggable substrates.
 
     All evolvable models (CPPN, NCA, CA, neural net) implement this interface.
+
+    Optional class attribute: frontend_metadata (dict). When set, it is the single
+    source for codegen (hasSignalControls, genomeKeys, capabilities, optional
+    excludeKeys). See export.export_substrates_for_frontend().
     """
 
     id: str

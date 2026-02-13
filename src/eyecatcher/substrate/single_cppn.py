@@ -42,6 +42,18 @@ class SingleCPPNSubstrate(CPPNSubstrateBase):
     id = "single_cppn"
     output_type: OutputType = "shader"
 
+    frontend_metadata = {
+        "hasSignalControls": False,
+        "genomeKeys": ["visual"],
+        "excludeKeys": ["time_signal"],
+        "capabilities": {
+            "save": True,
+            "network": False,
+            "timeOutput": False,
+            "adjustWeight": False,
+        },
+    }
+
     def __init__(
         self,
         neat_config_path: str | None = None,

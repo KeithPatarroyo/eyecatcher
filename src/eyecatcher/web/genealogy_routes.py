@@ -6,12 +6,13 @@ Auto-saves every generation to enable branch exploration and time-travel evoluti
 Data layer: genealogy_db.py. Routes are thin: parse request, call db, jsonify.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 
 from ..data.genealogy_db import (
     export_genealogy_data,
     export_sizes,
     get_branches,
+    get_experiment_log,
     get_population,
     get_population_thumbnail,
     get_stats,
@@ -19,6 +20,11 @@ from ..data.genealogy_db import (
     init_genealogy_db,
     reset_genealogy,
     save_population,
+)
+from ..evolution import config as evolution_config
+from ..evolution.config import (
+    get_crossover_probability,
+    get_population_size,
 )
 from .api_helpers import ERR_GENOMES_ARRAY_REQUIRED, api_error, api_try_except
 
@@ -49,6 +55,15 @@ def save_population_route():
     metadata = data.get("metadata") or {}
     if data.get("substrate_id") is not None:
         metadata = dict(metadata, substrate_id=data.get("substrate_id"))
+    substrate = evolution_config.get_configured_substrate()
+    metadata = dict(
+        metadata,
+        experiment_config={
+            "substrate_id": substrate.id,
+            "population_size": get_population_size(),
+            "crossover_probability": get_crossover_probability(),
+        },
+    )
 
     if not genomes:
         return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
@@ -76,6 +91,58 @@ def save_population_route():
             400,
         )
     return jsonify(result)
+
+
+@genealogy_bp.route("/api/experiment-log", methods=["GET"])
+@api_try_except
+def experiment_log_route():
+    """
+    GET experiment-log: recent population save events with metadata (for research).
+    Query: ?limit=200 (default), ?format=csv for CSV export.
+    """
+    limit = request.args.get("limit", "200", type=str)
+    try:
+        limit = min(1000, max(1, int(limit)))
+    except (TypeError, ValueError):
+        limit = 200
+    fmt = (request.args.get("format") or "").strip().lower()
+    log = get_experiment_log(limit=limit)
+    if fmt == "csv":
+        import csv
+        import io
+
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(
+            [
+                "id",
+                "created_at",
+                "branch_name",
+                "generation_num",
+                "population_size",
+                "substrate_id",
+                "crossover_probability",
+            ]
+        )
+        for row in log:
+            exp = (row.get("metadata") or {}).get("experiment_config") or {}
+            writer.writerow(
+                [
+                    row.get("id"),
+                    row.get("created_at"),
+                    row.get("branch_name"),
+                    row.get("generation_num"),
+                    row.get("population_size"),
+                    exp.get("substrate_id", ""),
+                    exp.get("crossover_probability", ""),
+                ]
+            )
+        return Response(
+            buf.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment; filename=experiment-log.csv"},
+        )
+    return jsonify({"entries": log})
 
 
 @genealogy_bp.route(

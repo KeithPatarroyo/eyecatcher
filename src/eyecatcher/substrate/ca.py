@@ -1,7 +1,9 @@
 """
-Elementary Cellular Automata (1D) substrate for testing the substrate protocol.
+Conway's Game of Life (2D) substrate.
 
-Individual = CARule (8-bit Wolfram rule). Output = grid (generations × width × 3 RGB).
+Individual = initial 2D grid (alive/dead). Evolution mutates/crosses the initial
+configuration. Output = grid (H×W×3 RGB). Click-to-kill zeroes cells in the
+running simulation (frontend applies kill mask before each GOL step).
 """
 
 from __future__ import annotations
@@ -14,53 +16,46 @@ import numpy as np
 
 from .protocol import OutputType, SubstrateOutput
 
+# Default grid size for genome and simulation (same size).
+DEFAULT_GRID_SIZE = 64
+DEFAULT_GOL_STEPS = 48  # for evaluate() final frame (lower = faster load)
 
-class CARule:
+
+class ConwayGenome:
     """
-    Elementary CA rule: 8-bit integer 0–255 (Wolfram rule number).
-    key is used as individual id for evolution/API.
+    Genome for Conway's Game of Life: initial 2D grid (0/1) and key (individual id).
     """
 
-    __slots__ = ("rule", "key")
+    __slots__ = ("grid", "key")
 
-    def __init__(self, rule: int, key: int = 0) -> None:
-        self.rule = rule & 0xFF
+    def __init__(self, grid: np.ndarray, key: int = 0) -> None:
+        self.grid = np.asarray(grid, dtype=np.uint8)
         self.key = key
 
 
-def _step_1d_ca(row: np.ndarray, rule: int) -> np.ndarray:
-    """Next row from current using elementary rule (periodic boundary)."""
-    n = len(row)
-    next_row = np.zeros(n, dtype=np.uint8)
-    for i in range(n):
-        left = row[(i - 1) % n]
-        center = row[i]
-        right = row[(i + 1) % n]
-        idx = (left << 2) | (center << 1) | right
-        next_row[i] = (rule >> idx) & 1
-    return next_row
+def _step_gol(grid: np.ndarray) -> np.ndarray:
+    """One step of Conway's Game of Life (B3/S23). Toroidal boundary."""
+    h, w = grid.shape
+    next_grid = np.zeros((h, w), dtype=np.uint8)
+    for r in range(h):
+        for c in range(w):
+            count = 0
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    if dr == 0 and dc == 0:
+                        continue
+                    nr, nc = (r + dr) % h, (c + dc) % w
+                    count += grid[nr, nc]
+            if count == 3 or (grid[r, c] == 1 and count == 2):
+                next_grid[r, c] = 1
+    return next_grid
 
 
-def _run_ca(
-    rule: int,
-    width: int,
-    generations: int,
-    seed_center: bool = True,
-) -> np.ndarray:
-    """
-    Run 1D CA for `generations` steps; return grid (generations, width) with 0/1.
-    If seed_center, first row has a single 1 in the middle; else random.
-    """
-    row = np.zeros(width, dtype=np.uint8)
-    if seed_center:
-        row[width // 2] = 1
-    else:
-        row[:] = np.random.randint(0, 2, size=width)
-    grid = np.zeros((generations, width), dtype=np.uint8)
-    grid[0] = row
-    for t in range(1, generations):
-        row = _step_1d_ca(row, rule)
-        grid[t] = row
+def _run_gol(initial: np.ndarray, steps: int) -> np.ndarray:
+    """Run GOL for `steps` steps; return final grid (H, W) 0/1."""
+    grid = np.asarray(initial, dtype=np.uint8).copy()
+    for _ in range(steps):
+        grid = _step_gol(grid)
     return grid
 
 
@@ -72,65 +67,94 @@ def _grid_to_rgb(grid: np.ndarray) -> np.ndarray:
     return rgb
 
 
+def _grid_to_nested_list(grid: np.ndarray) -> list[list[int]]:
+    """Convert ndarray to JSON-serializable nested list."""
+    return grid.tolist()
+
+
+def _nested_list_to_grid(data: list[list[int]] | list[list[float]]) -> np.ndarray:
+    """Convert nested list to (H, W) uint8 grid."""
+    arr = np.asarray(data, dtype=np.float64)
+    return (arr > 0.5).astype(np.uint8)
+
+
 class ElementaryCASubstrate:
     """
-    Substrate for elementary 1D cellular automata (Wolfram rules).
-    Individual = CARule; output = grid (H×W×3 RGB).
+    Substrate for Conway's Game of Life (2D).
+    Individual = ConwayGenome (initial grid); output = grid (H×W×3 RGB).
     """
 
     id = "ca"
     output_type: OutputType = "grid"
 
+    frontend_metadata = {
+        "hasSignalControls": False,
+        "genomeKeys": ["grid", "key"],
+        "capabilities": {
+            "save": True,
+            "network": False,
+            "timeOutput": False,
+            "adjustWeight": False,
+        },
+    }
+
     def __init__(
         self,
-        width: int = 256,
-        generations: int = 128,
-        seed_center: bool = True,
+        grid_size: int = DEFAULT_GRID_SIZE,
+        gol_steps: int = DEFAULT_GOL_STEPS,
         **kwargs: Any,
     ) -> None:
-        self.width = width
-        self.generations = generations
-        self.seed_center = seed_center
+        self.grid_size = grid_size
+        self.gol_steps = gol_steps
 
-    def create_random(self, key: int = 0) -> CARule:
-        return CARule(rule=random.randint(0, 255), key=key)
+    def create_random(self, key: int = 0) -> ConwayGenome:
+        n = self.grid_size
+        density = 0.25 + random.random() * 0.15  # 25–40%
+        grid = (np.random.random((n, n)) < density).astype(np.uint8)
+        return ConwayGenome(grid=grid, key=key)
 
-    def mutate(self, ind: CARule, key: int) -> CARule:
-        bit = random.randint(0, 7)
-        new_rule = ind.rule ^ (1 << bit)
-        return CARule(rule=new_rule, key=key)
+    def mutate(self, ind: ConwayGenome, key: int) -> ConwayGenome:
+        grid = ind.grid.copy()
+        n = grid.shape[0]
+        r, c = random.randint(0, n - 1), random.randint(0, n - 1)
+        grid[r, c] = 1 - grid[r, c]
+        return ConwayGenome(grid=grid, key=key)
 
-    def crossover(self, a: CARule, b: CARule, key: int) -> CARule:
-        mask = random.randint(0, 255)
-        new_rule = (a.rule & mask) | (b.rule & (~mask & 0xFF))
-        return CARule(rule=new_rule, key=key)
+    def crossover(self, a: ConwayGenome, b: ConwayGenome, key: int) -> ConwayGenome:
+        ga, gb = a.grid, b.grid
+        h, w = ga.shape
+        mask = np.random.randint(0, 2, (h, w), dtype=np.uint8)
+        grid = np.where(mask, ga, gb)
+        return ConwayGenome(grid=grid, key=key)
 
     def evaluate(
-        self, ind: CARule, inputs: dict[str, float], **kwargs: Any
+        self, ind: ConwayGenome, inputs: dict[str, float], **kwargs: Any
     ) -> SubstrateOutput:
-        width = kwargs.get("width", self.width)
-        generations = kwargs.get("generations", self.generations)
-        seed_center = kwargs.get("seed_center", self.seed_center)
-        grid = _run_ca(ind.rule, width, generations, seed_center=seed_center)
+        steps = kwargs.get("gol_steps", self.gol_steps)
+        grid = _run_gol(ind.grid, steps)
         rgb = _grid_to_rgb(grid)
         return SubstrateOutput("grid", rgb)
 
     def compile_to_shader(
-        self, ind: CARule, color_mode: str | None = None
+        self, ind: ConwayGenome, color_mode: str | None = None
     ) -> str | None:
-        """GLSL shader for 1D CA; uRule, uGeneration. One row per 0.5s."""
-        return _CA_FRAGMENT_SHADER
+        """GLSL for Conway GOL (step + display). Frontend uses two passes with FBOs."""
+        return _GOL_FRAGMENT_SHADER
 
-    def to_json(self, ind: CARule) -> dict[str, Any]:
-        return {"rule": ind.rule, "key": ind.key}
+    def to_json(self, ind: ConwayGenome) -> dict[str, Any]:
+        return {"key": ind.key, "grid": _grid_to_nested_list(ind.grid)}
 
-    def from_json(self, data: dict[str, Any]) -> CARule:
-        rule = int(data.get("rule", 0)) & 0xFF
+    def from_json(self, data: dict[str, Any]) -> ConwayGenome:
         key = int(data.get("key", 0))
-        return CARule(rule=rule, key=key)
+        grid_data = data.get("grid", [])
+        if grid_data:
+            grid = _nested_list_to_grid(grid_data)
+        else:
+            grid = np.zeros((DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE), dtype=np.uint8)
+        return ConwayGenome(grid=grid, key=key)
 
-    def serialize_individual_extra(self, ind: CARule) -> dict[str, Any]:
-        return {"rule": int(ind.rule)}
+    def serialize_individual_extra(self, ind: ConwayGenome) -> dict[str, Any]:
+        return {"grid": _grid_to_nested_list(ind.grid)}
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         return {
@@ -140,7 +164,7 @@ class ElementaryCASubstrate:
         }
 
     def build_save_assets(
-        self, ind: CARule, individual_id: int, **kwargs: Any
+        self, ind: ConwayGenome, individual_id: int, **kwargs: Any
     ) -> dict[str, bytes]:
         to_png_bytes: Callable[[np.ndarray], bytes] = kwargs.get("to_png_bytes")
         if not callable(to_png_bytes):
@@ -158,68 +182,47 @@ class ElementaryCASubstrate:
         }
 
 
-# Grid size for CA display; 36 = chunky, readable cells.
-CA_GRID_SIZE = 36
+# Grid size for display (frontend can use this or match canvas).
+CA_GRID_SIZE = DEFAULT_GRID_SIZE
 
-# GLSL fragment shader for 1D CA. Row 0 = seed; rows grow over time.
-# Uniforms: uRule, uGeneration (0–1), uResolution, uGridSize.
-_CA_FRAGMENT_SHADER = """#version 300 es
+# Fragment shader: Conway GOL step. Reads u_state, outputs next (R = alive).
+# Frontend runs this to a FBO, then displays by sampling that texture.
+_GOL_FRAGMENT_SHADER = """#version 300 es
 precision highp float;
 
-uniform int uRule;
-uniform float uGeneration;
-uniform vec2 uResolution;
-uniform int uGridSize;
+uniform sampler2D u_state;
+uniform vec2 u_texelSize;
 
 in vec2 vUV;
 out vec4 fragColor;
 
-int wrap(int c, int w) {
-    int cw = c % w;
-    if (cw < 0) cw += w;
-    return cw;
+void main() {
+    float c = texture(u_state, vUV).r;
+    float n = 0.0;
+    n += texture(u_state, vUV + vec2(-u_texelSize.x, -u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(-u_texelSize.x, 0.0)).r;
+    n += texture(u_state, vUV + vec2(-u_texelSize.x, u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(0.0, -u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(0.0, u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(u_texelSize.x, -u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(u_texelSize.x, 0.0)).r;
+    n += texture(u_state, vUV + vec2(u_texelSize.x, u_texelSize.y)).r;
+    float next = (n > 2.5 && n < 3.5) || (c > 0.5 && n > 1.5 && n < 3.5) ? 1.0 : 0.0;
+    fragColor = vec4(next, next, next, 1.0);
 }
+"""
 
-float seed_val(int c, int w, int center) {
-    return (wrap(c, w) == center) ? 1.0 : 0.0;
-}
+# Display shader: sample state texture, output white/black.
+_GOL_DISPLAY_SHADER = """#version 300 es
+precision highp float;
 
-float rule_bit(float a, float b, float c) {
-    int ia = int(step(0.5, a));
-    int ib = int(step(0.5, b));
-    int ic = int(step(0.5, c));
-    int idx = ia * 4 + ib * 2 + ic;
-    int bit = (uRule >> idx) & 1;
-    return float(bit);
-}
+uniform sampler2D u_state;
+
+in vec2 vUV;
+out vec4 fragColor;
 
 void main() {
-    int g = max(uGridSize, 1);
-    int col = int(gl_FragCoord.x * float(g) / uResolution.x);
-    int row = g - 1 - int(gl_FragCoord.y * float(g) / uResolution.y);
-    int maxRows = int(uGeneration * float(g));
-    if (row < 0 || row >= maxRows) {
-        fragColor = vec4(0.0, 0.0, 0.0, 1.0);
-        return;
-    }
-    int w = g;
-    int h = g;
-    int center = w / 2;
-    float v0 = seed_val(col - 2, w, center);
-    float v1 = seed_val(col - 1, w, center);
-    float v2 = seed_val(col, w, center);
-    float v3 = seed_val(col + 1, w, center);
-    float v4 = seed_val(col + 2, w, center);
-    for (int r = 1; r <= 256; r++) {
-        if (r > row) break;
-        float n0 = rule_bit(v0, v1, v2);
-        float n1 = rule_bit(v1, v2, v3);
-        float n2 = rule_bit(v2, v3, v4);
-        float n3 = rule_bit(v3, v4, v0);
-        float n4 = rule_bit(v4, v0, v1);
-        v0 = n0; v1 = n1; v2 = n2; v3 = n3; v4 = n4;
-    }
-    float v = v2;
+    float v = texture(u_state, vUV).r;
     fragColor = vec4(v, v, v, 1.0);
 }
 """
