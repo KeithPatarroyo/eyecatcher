@@ -5,10 +5,13 @@ Used by scripts/generate_representation_config.py to emit
 config.generated.js for the frontend.
 Metadata is defined on each representation class (frontend_metadata); capabilities
 are derived from the protocol (get_representation_capabilities).
+Signal specs are exported per-representation so the frontend can build
+controls and uniforms from the active representation's interface.
 """
 
 from __future__ import annotations
 
+from ..signals.spec import SignalSpec, _is_toggleable
 from .protocol import get_representation_capabilities
 from .registry import REPRESENTATIONS, get_representation
 
@@ -23,13 +26,39 @@ def _capabilities_to_frontend(caps: dict[str, bool]) -> dict[str, bool]:
     }
 
 
+def _signal_spec_to_frontend(spec: SignalSpec) -> dict:
+    """Serialize a SignalSpec for the frontend."""
+    inputs = []
+    for s in spec.inputs:
+        entry: dict = {"id": s.id, "label": s.label, "default": s.default}
+        if s.is_spatial:
+            entry["isSpatial"] = True
+        if _is_toggleable(s):
+            entry["uniform"] = s._uniform()
+        if s._is_derived():
+            entry["derived"] = True
+        inputs.append(entry)
+
+    outputs = [{"id": o.id, "label": o.label} for o in spec.outputs]
+
+    derived = []
+    for d in spec.derived_inputs:
+        derived.append({"id": d.id, "deps": list(d.deps), "glsl": d.glsl})
+
+    return {
+        "inputs": inputs,
+        "outputs": outputs,
+        "derivedInputs": derived,
+    }
+
+
 def export_representations_for_frontend() -> list[dict]:
     """
     Return per-representation config for the frontend adapter registry.
 
-    Each entry has: id, outputType, hasSignalControls, genomeKeys, capabilities.
-    Capabilities are derived from optional protocol methods
-    (not stored in frontend_metadata).
+    Each entry has: id, outputType, hasSignalControls, genomeKeys,
+    capabilities, signalSpec.  Signal specs are representation-agnostic
+    declarations of what each representation accepts and produces.
     """
     result = []
     for rid in REPRESENTATIONS:
@@ -38,12 +67,14 @@ def export_representations_for_frontend() -> list[dict]:
         if not isinstance(entry, dict):
             entry = {}
         caps = get_representation_capabilities(rep)
-        result.append(
-            {
-                "id": rid,
-                "outputType": getattr(rep.__class__, "output_type", "shader"),
-                **entry,
-                "capabilities": _capabilities_to_frontend(caps),
-            }
-        )
+        spec = getattr(rep, "signal_spec", None)
+        rep_data: dict = {
+            "id": rid,
+            "outputType": getattr(rep.__class__, "output_type", "shader"),
+            **entry,
+            "capabilities": _capabilities_to_frontend(caps),
+        }
+        if spec is not None:
+            rep_data["signalSpec"] = _signal_spec_to_frontend(spec)
+        result.append(rep_data)
     return result

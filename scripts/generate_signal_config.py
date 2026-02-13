@@ -28,44 +28,44 @@ def _neat_value(path: str, key: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def validate_neat(root: str, visual_path: str, time_path: str) -> None:
-    """Validate NEAT num_inputs/num_outputs match registry. Exit 1 on mismatch."""
-    sys.path.insert(0, os.path.join(root, "src"))
-    from eyecatcher.signals import (
-        TIME_INPUTS,
-        TIME_OUTPUTS,
-        VISUAL_INPUTS,
-        VISUAL_OUTPUTS,
-    )
-
+def validate_neat(
+    root: str,
+    visual_path: str,
+    time_path: str,
+    visual_inputs: list,
+    visual_outputs: list,
+    time_inputs: list,
+    time_outputs: list,
+) -> None:
+    """Validate NEAT num_inputs/num_outputs match the representation's signal lists."""
     visual_full = os.path.join(root, visual_path)
     time_full = os.path.join(root, time_path)
 
     errors = []
     v_in = _neat_value(visual_full, "num_inputs")
     v_out = _neat_value(visual_full, "num_outputs")
-    if v_in is not None and v_in != len(VISUAL_INPUTS):
+    if v_in is not None and v_in != len(visual_inputs):
         errors.append(
             f"NEAT config mismatch: num_inputs in {visual_path} is {v_in}, "
-            f"registry has {len(VISUAL_INPUTS)}. Update the NEAT file."
+            f"representation has {len(visual_inputs)}. Update the NEAT file."
         )
-    if v_out is not None and v_out != len(VISUAL_OUTPUTS):
+    if v_out is not None and v_out != len(visual_outputs):
         errors.append(
             f"NEAT config mismatch: num_outputs in {visual_path} is {v_out}, "
-            f"registry has {len(VISUAL_OUTPUTS)}. Update the NEAT file."
+            f"representation has {len(visual_outputs)}. Update the NEAT file."
         )
 
     t_in = _neat_value(time_full, "num_inputs")
     t_out = _neat_value(time_full, "num_outputs")
-    if t_in is not None and t_in != len(TIME_INPUTS):
+    if t_in is not None and t_in != len(time_inputs):
         errors.append(
             f"NEAT config mismatch: num_inputs in {time_path} is {t_in}, "
-            f"registry has {len(TIME_INPUTS)}. Update the NEAT file."
+            f"representation has {len(time_inputs)}. Update the NEAT file."
         )
-    if t_out is not None and t_out != len(TIME_OUTPUTS):
+    if t_out is not None and t_out != len(time_outputs):
         errors.append(
             f"NEAT config mismatch: num_outputs in {time_path} is {t_out}, "
-            f"registry has {len(TIME_OUTPUTS)}. Update the NEAT file."
+            f"representation has {len(time_outputs)}. Update the NEAT file."
         )
 
     if errors:
@@ -78,16 +78,25 @@ def main() -> None:
     root = _repo_root()
     sys.path.insert(0, os.path.join(root, "src"))
 
-    from eyecatcher.evolution import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
+    from eyecatcher.experiment import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
+    from eyecatcher.representation import DualCPPNRepresentation
     from eyecatcher.signals import export_for_frontend
 
-    # Use NEAT paths from experiment (respects EXPERIMENT_CONFIG and experiments.json)
+    rep = DualCPPNRepresentation()
     visual_path = NEAT_CONFIG_PATH
     time_path = NEAT_TIME_CONFIG_PATH
     print(f"Validating NEAT: visual={visual_path}, time={time_path}", file=sys.stderr)
-    validate_neat(root, visual_path, time_path)
+    validate_neat(
+        root,
+        visual_path,
+        time_path,
+        list(rep.visual.inputs),
+        list(rep.visual.outputs),
+        list(rep.time.inputs),
+        list(rep.time.outputs),
+    )
 
-    data = export_for_frontend()
+    data = export_for_frontend(rep.signal_spec)
     out_path = os.path.join(
         root, "static", "js", "evolution", "config_signals.generated.js"
     )

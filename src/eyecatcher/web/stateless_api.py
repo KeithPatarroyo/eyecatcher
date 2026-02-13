@@ -18,7 +18,7 @@ from ..evolution import (
 )
 from ..representation import get_representation
 from ..representation.registry import REPRESENTATIONS
-from ..signals import NETWORK_SIGNALS, parse_time_inputs
+from ..signals import parse_time_inputs
 from .api_helpers import (
     ERR_INDIVIDUAL_REQUIRED,
     ERR_INDIVIDUALS_ARRAY_REQUIRED,
@@ -278,8 +278,13 @@ def api_time_output():
     if err is not None:
         return err
     data = request.json or {}
-    inputs = parse_time_inputs(data, bipolar=False)
-    result = get_current_representation().query_time_output(ind, inputs)
+    rep = get_current_representation()
+    try:
+        time_socket = rep.signal_spec.socket("time")
+        inputs = parse_time_inputs(data, list(time_socket.inputs), bipolar=False)
+    except KeyError:
+        inputs = {}
+    result = rep.query_time_output(ind, inputs)
     if result is None:
         return api_error("Time output not supported by this representation.", 501)
     return jsonify(result)
@@ -325,7 +330,8 @@ def api_adjust_weight():
         return err
     data = request.json or {}
     network_type = data.get("network")
-    if network_type not in NETWORK_SIGNALS:
+    rep = get_current_representation()
+    if getattr(rep, "network_types", ()) and network_type not in rep.network_types:
         return api_error("Invalid network type.", 400)
     source_node = data.get("source")
     target_node = data.get("target")
