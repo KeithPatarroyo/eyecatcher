@@ -1,7 +1,8 @@
 """
 Single-CPPN representation: visual network only (no time signal CPPN).
 
-Individual = neat.DefaultGenome. Output = shader.
+Expression and signal translation are delegated to a NeatSocket.
+Evolution (population, mutation, crossover) is owned by the representation.
 """
 
 from __future__ import annotations
@@ -15,28 +16,20 @@ from ..genome import create_random_genome
 from ..genome.operators import crossover_genomes, mutate_genome
 from ..genome.serialization import genome_from_json, genome_to_json
 from ..glsl import ShaderCompiler
-from ..signals.registry import (
-    VISUAL_DERIVED_INPUTS,
-    VISUAL_INPUTS,
-    VISUAL_OUTPUTS,
-    VISUAL_TIME_INPUT_NAME,
-    default_inputs,
-)
-from .cppn_base import (
-    CPPNRepresentationBase,
-    _clamp_rgb,
-    _compute_network_stats,
-    _load_neat_config,
-    normalize_to_bipolar,
-    query_neat_network,
-)
+from ..signals import catalog
+from ..signals.spec import SignalSpec
+from .cppn_base import CPPNRepresentationBase, _clamp_rgb, normalize_to_bipolar
 from .protocol import OutputType
+from .sockets import NeatSocket
 
 
 class SingleCPPNRepresentation(CPPNRepresentationBase):
     """
     Representation with a single visual CPPN (no time signal network).
     Individual = neat.DefaultGenome; output = shader.
+
+    Socket handles expression (signal -> network query -> output).
+    Representation handles evolution (population, mutation, crossover).
     """
 
     id = "single_cppn"
@@ -54,17 +47,31 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
         color_mode: str = "hsv",
         **kwargs: Any,
     ) -> None:
-        self.config = _load_neat_config(
-            neat_config_path,
-            NEAT_CONFIG_PATH,
-            VISUAL_INPUTS,
-            VISUAL_OUTPUTS,
+        # -- Socket: expression of a single individual --
+        self.visual = NeatSocket(
             "visual",
+            inputs=catalog.DUAL_CPPN_VISUAL_INPUTS,
+            outputs=catalog.RGB_OUTPUTS,
+            derived=(catalog.DISTANCE,),
+            config_path=neat_config_path or NEAT_CONFIG_PATH,
         )
+
+        # -- Public signal spec (socket-centric) --
+        self.signal_spec = SignalSpec(
+            sockets=(self.visual,),
+            outputs=catalog.RGB_OUTPUTS,
+        )
+
+        # -- Evolution: population owned by the representation --
+        self.config = self.visual.config
         self._population = neat.Population(self.config)
-        self.compiler = ShaderCompiler(
-            VISUAL_INPUTS, None, VISUAL_DERIVED_INPUTS, color_mode=color_mode
+
+        # -- Compiler for shader output --
+        self.compiler = ShaderCompiler.from_spec(
+            self.signal_spec, color_mode=color_mode
         )
+
+    # -- Evolution (representation concern) --
 
     def create_random(self, key: int = 0) -> neat.DefaultGenome:
         return create_random_genome(self.config, genome_id=key)
@@ -81,15 +88,15 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
         child.key = key  # type: ignore[assignment]
         return child
 
+    # -- Expression (delegated to socket) --
+
     def _compile(self, compiler: Any, ind: neat.DefaultGenome) -> str | None:
         return compiler.compile(ind, self.config)
 
     def query_rgb(
         self, ind: neat.DefaultGenome, inputs: dict[str, float]
     ) -> tuple[float, float, float]:
-        out = query_neat_network(
-            ind, self.config, VISUAL_INPUTS, VISUAL_DERIVED_INPUTS, inputs
-        )
+        out = self.visual.query(ind, inputs)
         return _clamp_rgb(out)
 
     def _sample_inputs(
@@ -99,13 +106,15 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
             **base,
             "x": x,
             "y": y,
-            VISUAL_TIME_INPUT_NAME: time * 2.0 - 1.0,
+            catalog.time.id: time * 2.0 - 1.0,
         }
 
     def get_base_inputs_for_render(self) -> dict[str, float]:
-        base = default_inputs(VISUAL_INPUTS)
-        base[VISUAL_TIME_INPUT_NAME] = normalize_to_bipolar(0.0)
+        base = self.visual.default_values()
+        base[catalog.time.id] = normalize_to_bipolar(0.0)
         return base
+
+    # -- Serialization --
 
     def to_json(self, ind: neat.DefaultGenome) -> dict[str, Any]:
         return genome_to_json(ind)
@@ -113,5 +122,7 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
     def from_json(self, data: dict[str, Any]) -> neat.DefaultGenome:
         return genome_from_json(data, self.config)
 
+    # -- Inspection (socket knows the structure) --
+
     def get_compile_stats(self, ind: neat.DefaultGenome) -> dict[str, Any] | None:
-        return _compute_network_stats([("visual", ind, self.config)])
+        return self.visual.network_stats(ind)

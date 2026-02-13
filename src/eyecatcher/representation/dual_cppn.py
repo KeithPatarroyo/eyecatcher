@@ -1,5 +1,8 @@
 """
 Dual-CPPN representation: visual + time signal networks (current default).
+
+Expression and signal translation are delegated to NeatSocket instances.
+Evolution (populations, mutation, crossover) is owned by the representation.
 """
 
 from __future__ import annotations
@@ -22,31 +25,22 @@ from ..genome.dual import (
     mutate_dual_genome,
 )
 from ..glsl import ShaderCompiler
-from ..inspection import extract_network_data, parse_network_node_id
-from ..signals.registry import (
-    TIME_INPUTS,
-    TIME_OUTPUTS,
-    VISUAL_DERIVED_INPUTS,
-    VISUAL_INPUTS,
-    VISUAL_OUTPUTS,
-    VISUAL_TIME_INPUT_NAME,
-    default_inputs,
-    parse_time_inputs,
-)
-from .cppn_base import (
-    CPPNRepresentationBase,
-    _clamp_rgb,
-    _compute_network_stats,
-    _load_neat_config,
-    query_neat_network,
-)
+from ..inspection import parse_network_node_id
+from ..signals import catalog
+from ..signals.registry import parse_time_inputs
+from ..signals.spec import SignalSpec
+from .cppn_base import CPPNRepresentationBase, _clamp_rgb
 from .protocol import OutputType
+from .sockets import NeatSocket
 
 
 class DualCPPNRepresentation(CPPNRepresentationBase):
     """
     Representation that wraps the current dual-CPPN (visual + time) setup.
     Individual = DualGenome; output = shader.
+
+    Sockets handle expression (signal -> network query -> output).
+    Representation handles evolution (populations, mutation, crossover).
     """
 
     id = "dual_cppn"
@@ -64,27 +58,42 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
         color_mode: str = "hsv",
         **kwargs: Any,
     ) -> None:
-        self.config = _load_neat_config(
-            neat_config_path,
-            NEAT_CONFIG_PATH,
-            VISUAL_INPUTS,
-            VISUAL_OUTPUTS,
+        # -- Sockets: expression of a single individual --
+        self.visual = NeatSocket(
             "visual",
+            inputs=catalog.DUAL_CPPN_VISUAL_INPUTS,
+            outputs=catalog.RGB_OUTPUTS,
+            derived=(catalog.DISTANCE,),
+            config_path=neat_config_path or NEAT_CONFIG_PATH,
         )
-        self.time_config = _load_neat_config(
-            time_config_path,
-            NEAT_TIME_CONFIG_PATH,
-            TIME_INPUTS,
-            TIME_OUTPUTS,
+        self.time = NeatSocket(
             "time",
+            inputs=catalog.DUAL_CPPN_TIME_INPUTS,
+            outputs=catalog.TIME_OUTPUT,
+            config_path=time_config_path or NEAT_TIME_CONFIG_PATH,
         )
+
+        # -- Public signal spec (socket-centric) --
+        self.signal_spec = SignalSpec(
+            sockets=(self.visual, self.time),
+            outputs=catalog.RGB_OUTPUTS,
+            substitutions={"time": "timeFromNetwork"},
+        )
+
+        # -- Evolution: populations owned by the representation --
+        self.config = self.visual.config
+        self.time_config = self.time.config
         self._population = neat.Population(self.config)
         self._time_population = neat.Population(self.time_config)
         self.population = self._population
         self.time_population = self._time_population
-        self.compiler = ShaderCompiler(
-            VISUAL_INPUTS, TIME_INPUTS, VISUAL_DERIVED_INPUTS, color_mode=color_mode
+
+        # -- Compiler for shader output --
+        self.compiler = ShaderCompiler.from_spec(
+            self.signal_spec, color_mode=color_mode
         )
+
+    # -- Evolution (representation concern) --
 
     def create_random(self, key: int = 0) -> DualGenome:
         return create_random_dual_genome(self.config, self.time_config, genome_id=key)
@@ -95,25 +104,21 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
     def crossover(self, a: DualGenome, b: DualGenome, key: int) -> DualGenome:
         return crossover_dual_genomes(a, b, self.config, self.time_config, key)
 
+    # -- Expression (delegated to sockets) --
+
     def _compile(self, compiler: Any, ind: DualGenome) -> str | None:
         return compiler.compile(ind, self.config, self.time_config)
 
     def _query_time_signal(
         self, time_genome: neat.DefaultGenome, inputs: dict[str, float]
     ) -> float:
-        out = query_neat_network(time_genome, self.time_config, TIME_INPUTS, [], inputs)
+        out = self.time.query(time_genome, inputs)
         return max(-1.0, min(1.0, out[0]))
 
     def _query_visual_rgb(
         self, ind: DualGenome, inputs: dict[str, float]
     ) -> tuple[float, float, float]:
-        out = query_neat_network(
-            ind.visual,
-            self.config,
-            VISUAL_INPUTS,
-            VISUAL_DERIVED_INPUTS,
-            inputs,
-        )
+        out = self.visual.query(ind.visual, inputs)
         return _clamp_rgb(out)
 
     def query_rgb(
@@ -122,7 +127,7 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
         modified_time = self._query_time_signal(ind.time_signal, inputs)
         visual_inputs = {
             **inputs,
-            VISUAL_TIME_INPUT_NAME: modified_time,
+            catalog.time.id: modified_time,
         }
         return self._query_visual_rgb(ind, visual_inputs)
 
@@ -132,7 +137,9 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
         return {**base, "x": x, "y": y}
 
     def get_base_inputs_for_render(self) -> dict[str, float]:
-        return default_inputs(TIME_INPUTS)
+        return self.time.default_values()
+
+    # -- Serialization --
 
     def to_json(self, ind: DualGenome) -> dict[str, Any]:
         return dual_genome_to_json(ind)
@@ -140,13 +147,13 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
     def from_json(self, data: dict[str, Any]) -> DualGenome:
         return dual_genome_from_json(data, self.config, self.time_config)
 
+    # -- Inspection (sockets know the structure of the individual) --
+
     def get_compile_stats(self, ind: DualGenome) -> dict[str, Any] | None:
-        return _compute_network_stats(
-            [
-                ("visual", ind.visual, self.config),
-                ("time", ind.time_signal, self.time_config),
-            ]
-        )
+        stats = {}
+        stats.update(self.visual.network_stats(ind.visual))
+        stats.update(self.time.network_stats(ind.time_signal))
+        return stats
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         base = super().get_save_filenames(individual_id)
@@ -189,33 +196,30 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
         assets[names["bundle_json"]] = json.dumps(bundle, indent=2).encode("utf-8")
         assets[names["pkl"]] = pkl_buffer.getvalue()
         if visualize:
-            from ..inspection.genome_visualizer import render_genome_network_pdf
-
             pdf_buffer = io.BytesIO()
-            render_genome_network_pdf(ind.visual, self.config, pdf_buffer)
+            self.visual.render_network_pdf(ind.visual, pdf_buffer)
             assets[names["network_pdf"]] = pdf_buffer.getvalue()
         return assets
 
     def query_time_output(
         self, ind: DualGenome, inputs: dict[str, float]
     ) -> dict[str, Any] | None:
-        response_inputs = parse_time_inputs(inputs, bipolar=False)
-        time_inputs = parse_time_inputs(inputs, bipolar=True)
+        time_signals = list(self.time.inputs)
+        response_inputs = parse_time_inputs(inputs, time_signals, bipolar=False)
+        time_inputs = parse_time_inputs(inputs, time_signals, bipolar=True)
         out = self._query_time_signal(ind.time_signal, time_inputs)
         return {"timeOutput": out, "inputs": response_inputs}
 
     def get_network_data(self, ind: DualGenome) -> dict[str, Any] | None:
-        all_nodes = []
-        all_connections = []
+        all_nodes: list[dict[str, Any]] = []
+        all_connections: list[dict[str, Any]] = []
         if ind.visual:
-            nodes, conns = extract_network_data(
-                ind.visual, "visual", self.config, x_offset=0
-            )
+            nodes, conns = self.visual.extract_network_data(ind.visual, x_offset=0)
             all_nodes.extend(nodes)
             all_connections.extend(conns)
         if ind.time_signal:
-            nodes, conns = extract_network_data(
-                ind.time_signal, "time", self.time_config, x_offset=1000
+            nodes, conns = self.time.extract_network_data(
+                ind.time_signal, x_offset=1000
             )
             all_nodes.extend(nodes)
             all_connections.extend(conns)
