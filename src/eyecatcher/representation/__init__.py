@@ -19,12 +19,15 @@ from .export import export_representations_for_frontend
 from .protocol import OutputType, Representation, RepresentationOutput
 from .registry import REPRESENTATIONS, get_representation
 from .single_cppn import SingleCPPNRepresentation
+from .sockets import GridSocket, NeatSocket
 
 __all__ = [
     "ConwayGenome",
+    "ConwayRepresentation",
     "DualCPPNRepresentation",
     "DualGenome",
-    "ConwayRepresentation",
+    "GridSocket",
+    "NeatSocket",
     "OutputType",
     "Representation",
     "RepresentationOutput",
