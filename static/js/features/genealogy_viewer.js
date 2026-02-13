@@ -10,7 +10,7 @@ let treeData = { nodes: [], edges: [] };
 let selectedNodeId = null;
 let hierarchicalLayout = false; // Default to physics layout
 let currentPopulationId = null; // Track which population is currently active
-let thumbnailCache = new Map(); // Cache rendered thumbnails
+let thumbnailCache = new Map();
 let savedPositions = null; // Save positions when switching modes
 
 function updateControlsVisibility() {
@@ -22,15 +22,6 @@ function updateControlsVisibility() {
 
 const TOAST_DURATION_MS = 5000;
 const DEFAULT_NODE_SIZE = 90;
-const THUMBNAIL_CANVAS_SIZE = 128;
-const MAX_THUMBNAIL_CACHE = 200;
-const PHYSICS_DEFAULTS = {
-    repelForce: 5000,
-    centerForce: 0.1,
-    linkDistance: 300,
-    linkForce: 0.05,
-    damping: 0.09,
-};
 
 function showGenealogyToast(title, body, type) {
     type = type || "success";
@@ -206,106 +197,10 @@ function buildVisEdges(nodes) {
 }
 
 function buildNetworkOptions() {
-    return {
-        layout: {
-            hierarchical: hierarchicalLayout
-                ? {
-                      direction: "UD",
-                      sortMethod: "directed",
-                      nodeSpacing: 250,
-                      levelSeparation: 220,
-                      treeSpacing: 300,
-                      blockShifting: true,
-                      edgeMinimization: true,
-                      parentCentralization: true,
-                  }
-                : false,
-        },
-        physics: {
-            enabled: !hierarchicalLayout,
-            stabilization: {
-                enabled: true,
-                iterations: 300,
-                updateInterval: 1,
-                fit: false,
-            },
-            barnesHut: {
-                gravitationalConstant: -parseFloat(
-                    document.getElementById("repel-force")?.value ||
-                        PHYSICS_DEFAULTS.repelForce
-                ),
-                centralGravity: parseFloat(
-                    document.getElementById("center-force")?.value ||
-                        PHYSICS_DEFAULTS.centerForce
-                ),
-                springLength: parseFloat(
-                    document.getElementById("link-distance")?.value ||
-                        PHYSICS_DEFAULTS.linkDistance
-                ),
-                springConstant: parseFloat(
-                    document.getElementById("link-force")?.value ||
-                        PHYSICS_DEFAULTS.linkForce
-                ),
-                damping: parseFloat(
-                    document.getElementById("damping")?.value ||
-                        PHYSICS_DEFAULTS.damping
-                ),
-                avoidOverlap: 0.15,
-            },
-            solver: "barnesHut",
-            adaptiveTimestep: true,
-            timestep: 0.35,
-            maxVelocity: 50,
-            minVelocity: 0.1,
-        },
-        interaction: {
-            hover: true,
-            navigationButtons: true,
-            keyboard: true,
-            tooltipDelay: 200,
-            dragNodes: true,
-            dragView: true,
-            zoomView: true,
-            hideEdgesOnDrag: false,
-            multiselect: false,
-        },
-        nodes: {
-            font: { face: "monospace", size: 11 },
-            chosen: {
-                node: function (values, id, selected, hovering) {
-                    if (hovering) {
-                        values.size += 5;
-                        values.borderWidth += 1;
-                    }
-                    if (selected) {
-                        values.borderWidth += 1;
-                    }
-                },
-                label: false,
-            },
-            shadow: {
-                enabled: true,
-                color: "rgba(0, 0, 0, 0.5)",
-                size: 8,
-                x: 0,
-                y: 3,
-            },
-        },
-        edges: {
-            smooth: {
-                enabled: true,
-                type: "continuous",
-                roundness: 0.2,
-                forceDirection: hierarchicalLayout ? "vertical" : "none",
-            },
-            length: hierarchicalLayout
-                ? undefined
-                : parseFloat(
-                      document.getElementById("link-distance")?.value ||
-                          PHYSICS_DEFAULTS.linkDistance
-                  ),
-        },
-    };
+    return window.GenealogyNetworkConfig &&
+        window.GenealogyNetworkConfig.buildNetworkOptions
+        ? window.GenealogyNetworkConfig.buildNetworkOptions(hierarchicalLayout)
+        : {};
 }
 
 function attachNetworkHandlers(network, _visNodes) {
@@ -377,9 +272,15 @@ function visualizeTree(nodes) {
     }
 
     attachNetworkHandlers(treeNetwork, visNodes);
-    setTimeout(() => {
-        renderAllThumbnails(visNodes);
-    }, 500);
+    const Thumbnails = window.GenealogyThumbnails;
+    if (Thumbnails && Thumbnails.renderAllThumbnails) {
+        setTimeout(() => {
+            Thumbnails.renderAllThumbnails(visNodes, thumbnailCache, {
+                defaultNodeSize: DEFAULT_NODE_SIZE,
+                apiUrl: API_URL,
+            });
+        }, 500);
+    }
 }
 
 // Select a node and show its info
@@ -471,242 +372,9 @@ function getBranchColor(branchName) {
     return `hsl(${hue}, 60%, 30%)`;
 }
 
-// Render a thumbnail for a population using substrate adapter (getDisplayData).
-async function renderThumbnail(populationId) {
-    if (thumbnailCache.has(populationId)) {
-        return thumbnailCache.get(populationId);
-    }
-
-    const SubstrateAdapters = window.SubstrateAdapters;
-    if (
-        !SubstrateAdapters ||
-        !SubstrateAdapters.getDisplayData ||
-        !SubstrateAdapters.findAdapterByGenome
-    ) {
-        return null;
-    }
-
-    try {
-        const data = await ApiClient.apiFetch(
-            `${API_URL}/genealogy/population-thumbnail/${populationId}`,
-            {},
-            "No thumbnail"
-        );
-        if (!data.genome) return null;
-
-        const adapter = SubstrateAdapters.findAdapterByGenome(data.genome);
-        if (!adapter) return null;
-
-        const result = await SubstrateAdapters.getDisplayData(
-            adapter,
-            [data.genome],
-            {}
-        );
-        const pop = result && result.population && result.population[0];
-        if (!pop) return null;
-
-        const canvas = document.createElement("canvas");
-        canvas.width = THUMBNAIL_CANVAS_SIZE;
-        canvas.height = THUMBNAIL_CANVAS_SIZE;
-
-        if (pop.image) {
-            const img = new Image();
-            await new Promise((resolve, reject) => {
-                img.onload = resolve;
-                img.onerror = reject;
-                img.src = pop.image;
-            });
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-                ctx.drawImage(img, 0, 0, THUMBNAIL_CANVAS_SIZE, THUMBNAIL_CANVAS_SIZE);
-            }
-        } else if (pop.shader && window.PatternRenderer) {
-            const patternData = PatternRenderer.setupPattern(canvas, pop.shader);
-            if (!patternData || patternData.error) return null;
-            if (data.genome && typeof data.genome.rule === "number") {
-                patternData.caRule = data.genome.rule;
-            }
-            const signalState =
-                window.EvolutionConfig && window.EvolutionConfig.getDefaultSignalState
-                    ? window.EvolutionConfig.getDefaultSignalState()
-                    : { time: {}, visual: {} };
-            PatternRenderer.renderWithSignals(
-                patternData,
-                PatternRenderer,
-                signalState,
-                canvas
-            );
-        } else {
-            return null;
-        }
-
-        const dataUrl = canvas.toDataURL("image/png");
-        if (thumbnailCache.size >= MAX_THUMBNAIL_CACHE) {
-            const firstKey = thumbnailCache.keys().next().value;
-            if (firstKey !== undefined) thumbnailCache.delete(firstKey);
-        }
-        thumbnailCache.set(populationId, dataUrl);
-        return dataUrl;
-    } catch (error) {
-        console.warn("Thumbnail failed for population " + populationId + ":", error);
-        return null;
-    }
-}
-
-// Render thumbnails for all nodes (batched parallel to avoid sequential delay)
-const THUMBNAIL_BATCH_SIZE = 8;
-async function renderAllThumbnails(visNodes) {
-    const nodes = visNodes.get();
-    const nodeSize = parseInt(
-        document.getElementById("node-size")?.value || DEFAULT_NODE_SIZE,
-        10
-    );
-
-    for (let i = 0; i < nodes.length; i += THUMBNAIL_BATCH_SIZE) {
-        const batch = nodes.slice(i, i + THUMBNAIL_BATCH_SIZE);
-        const results = await Promise.all(
-            batch.map(async (node) => ({
-                id: node.id,
-                color: node.color,
-                thumbnail: await renderThumbnail(node.id),
-            }))
-        );
-        results.forEach((r) => {
-            if (r.thumbnail) {
-                visNodes.update({
-                    id: r.id,
-                    shape: "circularImage",
-                    image: r.thumbnail,
-                    size: nodeSize / 2,
-                    borderWidth: 3,
-                    mass: 2,
-                    color: {
-                        border: r.color.border,
-                        background: "transparent",
-                    },
-                    shapeProperties: {
-                        useBorderWithImage: true,
-                    },
-                });
-            }
-        });
-    }
-}
-
 function bindRefreshEvents() {
     Utils.onId("refresh-btn", (el) => {
         el.onclick = () => loadTree();
-    });
-}
-
-function bindExportModalEvents() {
-    Utils.onId("download-genealogy-btn", (el) => {
-        el.onclick = async () => {
-            const modal = document.getElementById("export-genealogy-modal");
-            try {
-                const sizes = await ApiClient.apiFetch(
-                    `${API_URL}/genealogy/export-sizes`,
-                    {},
-                    "Could not load sizes"
-                );
-                document.getElementById("export-full-size").textContent =
-                    sizes.full.populations +
-                    " populations, " +
-                    sizes.full.individuals +
-                    " individuals (~" +
-                    window.formatBytes(sizes.full.estimated_bytes) +
-                    ")";
-
-                const branchList = document.getElementById("export-branch-list");
-                const branchesGroup = document.getElementById("export-branches-group");
-                branchList.innerHTML = "";
-                const branches = sizes.branches || [];
-                branchesGroup.hidden = branches.length === 0;
-                const tpl = document.getElementById("export-branch-option-tpl");
-                branches.forEach((b) => {
-                    if (!tpl || !tpl.content) return;
-                    const label = tpl.content.cloneNode(true).querySelector("label");
-                    if (!label) return;
-                    const radio = label.querySelector('input[type="radio"]');
-                    const titleSpan = label.querySelector(".export-option-title");
-                    const sizeSpan = label.querySelector(".export-size");
-                    const branchName = b.name || "main";
-                    const safeId = "export-branch-" + branchName.replace(/\W/g, "_");
-                    radio.id = safeId;
-                    radio.value = branchName;
-                    titleSpan.textContent = branchName;
-                    sizeSpan.textContent =
-                        b.populations +
-                        " pop., " +
-                        b.individuals +
-                        " ind. (~" +
-                        window.formatBytes(b.estimated_bytes) +
-                        ")";
-                    branchList.appendChild(label);
-                });
-                modal.hidden = false;
-            } catch (e) {
-                showGenealogyToast(
-                    "Could not load sizes",
-                    Utils.formatApiError(e, "Network error"),
-                    "error"
-                );
-            }
-        };
-    });
-
-    Utils.onId("export-modal-cancel", (el) => {
-        el.onclick = () => {
-            const modal = document.getElementById("export-genealogy-modal");
-            if (modal) modal.hidden = true;
-        };
-    });
-    const backdrop = document.querySelector(".export-modal-backdrop");
-    if (backdrop)
-        backdrop.onclick = () => {
-            const m = document.getElementById("export-genealogy-modal");
-            if (m) m.hidden = true;
-        };
-    document.addEventListener("keydown", (e) => {
-        const modal = document.getElementById("export-genealogy-modal");
-        if (e.key === "Escape" && modal && !modal.hidden) modal.hidden = true;
-    });
-    Utils.onId("export-modal-download", (el) => {
-        el.onclick = async () => {
-            const scope = document.querySelector('input[name="export-scope"]:checked');
-            const branchName = scope && scope.value !== "full" ? scope.value : null;
-            const modal = document.getElementById("export-genealogy-modal");
-            if (modal) modal.hidden = true;
-            try {
-                const url = branchName
-                    ? `${API_URL}/genealogy/export?branch_name=${encodeURIComponent(branchName)}`
-                    : `${API_URL}/genealogy/export`;
-                const data = await ApiClient.apiFetch(url, {}, "Download failed");
-                const blob = new Blob([JSON.stringify(data, null, 2)], {
-                    type: "application/json",
-                });
-                const urlObj = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = urlObj;
-                a.download = branchName
-                    ? `genealogy-${branchName}-${new Date().toISOString().slice(0, 10)}.json`
-                    : `genealogy-export-${new Date().toISOString().slice(0, 10)}.json`;
-                a.click();
-                URL.revokeObjectURL(urlObj);
-                showGenealogyToast(
-                    "Downloaded",
-                    (branchName ? 'Branch "' + branchName + '"' : "Full tree") +
-                        " exported as JSON.",
-                    "success"
-                );
-            } catch (e) {
-                showGenealogyToast(
-                    "Download failed",
-                    Utils.formatApiError(e, "Network error"),
-                    "error"
-                );
-            }
-        };
     });
 }
 
@@ -819,127 +487,22 @@ function bindActionEvents() {
 
 function attachEventListeners() {
     bindRefreshEvents();
-    bindExportModalEvents();
+    if (window.GenealogyExport && window.GenealogyExport.bindExportModalEvents) {
+        window.GenealogyExport.bindExportModalEvents(showGenealogyToast, API_URL);
+    }
     bindResetEvents();
     bindLayoutEvents();
     bindActionEvents();
 }
 
-function bindSliderInput(inputId, valueSpanId, formatter, onValueChange) {
-    const input = document.getElementById(inputId);
-    const valueSpan = document.getElementById(valueSpanId);
-    if (!input || !valueSpan) return;
-    input.addEventListener("input", function (e) {
-        const value = parseFloat(e.target.value);
-        valueSpan.textContent = formatter(value);
-        if (onValueChange) onValueChange(value);
-    });
-}
-
-// Physics slider config: inputId, valueSpanId, formatter, setPhysics key, negate
-const PHYSICS_SLIDERS = [
-    {
-        inputId: "center-force",
-        valueSpanId: "center-force-value",
-        formatter: (v) => v.toFixed(2),
-        key: "centralGravity",
-        negate: false,
-    },
-    {
-        inputId: "repel-force",
-        valueSpanId: "repel-force-value",
-        formatter: (v) => String(v),
-        key: "gravitationalConstant",
-        negate: true,
-    },
-    {
-        inputId: "link-force",
-        valueSpanId: "link-force-value",
-        formatter: (v) => v.toFixed(2),
-        key: "springConstant",
-        negate: false,
-    },
-    {
-        inputId: "link-distance",
-        valueSpanId: "link-distance-value",
-        formatter: (v) => String(v),
-        key: "springLength",
-        negate: false,
-    },
-    {
-        inputId: "damping",
-        valueSpanId: "damping-value",
-        formatter: (v) => v.toFixed(2),
-        key: "damping",
-        negate: false,
-    },
-];
-
 function initPhysicsControls() {
-    const setPhysics = (key, value, negate) => {
-        if (treeNetwork && !hierarchicalLayout) {
-            treeNetwork.setOptions({
-                physics: {
-                    barnesHut: { [key]: negate ? -value : value },
-                },
-            });
-        }
-    };
-    PHYSICS_SLIDERS.forEach((s) => {
-        bindSliderInput(s.inputId, s.valueSpanId, s.formatter, (v) =>
-            setPhysics(s.key, v, s.negate)
-        );
-    });
-
-    Utils.onId("show-arrows", (el) => {
-        el.addEventListener("change", function (e) {
-            if (treeNetwork) {
-                const edges = treeNetwork.body.data.edges;
-                const allEdges = edges.get();
-                allEdges.forEach((edge) => {
-                    edges.update({
-                        id: edge.id,
-                        arrows: {
-                            to: {
-                                enabled: e.target.checked,
-                                scaleFactor: 1.0,
-                            },
-                        },
-                    });
-                });
-            }
-        });
-    });
-
-    bindSliderInput(
-        "node-size",
-        "node-size-value",
-        (v) => String(v),
-        (value) => {
-            if (treeNetwork) {
-                treeNetwork.body.data.nodes.get().forEach((node) => {
-                    treeNetwork.body.data.nodes.update({
-                        id: node.id,
-                        size: value / 2,
-                    });
-                });
-            }
-        }
+    const Physics = window.GenealogyPhysics;
+    if (!Physics || !Physics.initPhysicsControls) return;
+    Physics.initPhysicsControls(
+        () => treeNetwork,
+        () => hierarchicalLayout,
+        updateControlsVisibility
     );
-    bindSliderInput(
-        "link-thickness",
-        "link-thickness-value",
-        (v) => v.toFixed(1),
-        (value) => {
-            if (treeNetwork) {
-                treeNetwork.body.data.edges.get().forEach((edge) => {
-                    treeNetwork.body.data.edges.update({ id: edge.id, width: value });
-                });
-            }
-        }
-    );
-
-    updateControlsVisibility();
 }
 
 // Initialize function

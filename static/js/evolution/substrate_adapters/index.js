@@ -62,6 +62,16 @@
     }
 
     /**
+     * Single entry point to resolve adapter, outputType, and substrateId from options.
+     * Use this instead of duplicating resolveForLoad/getDefaultResolution logic.
+     * @param {{ outputType?: string, substrateId?: string, genomes?: Array }} opts
+     * @returns {{ outputType: string, substrateId: string, adapter: Object|null }}
+     */
+    function resolve(opts) {
+        return resolveForLoad(opts || {});
+    }
+
+    /**
      * Resolve outputType, substrateId, and adapter from a load payload (pop or state).
      * @param {{ outputType?: string, substrateId?: string, genomes?: Array }} pop
      * @returns {{ outputType: string, substrateId: string, adapter: Object|null }}
@@ -147,8 +157,10 @@
         register: register,
         getAdapter: getAdapter,
         findAdapterByGenome: findAdapterByGenome,
+        resolve: resolve,
         resolveFromGenomes: resolveFromGenomes,
         resolveForLoad: resolveForLoad,
+        getDefaultResolution: getDefaultResolution,
         getDisplayData: getDisplayData,
     };
 

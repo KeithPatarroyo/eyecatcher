@@ -93,30 +93,23 @@
     }
 
     /**
-     * Build uniform-name-keyed values from signal-id-keyed values using EvolutionConfig.SIGNAL_TOGGLES.
-     * Used for shader/CPPN substrates only; grid adapters do not use uniforms.
-     * @param {Object} signalValues - Keys: signal ids (raw_time, mouse_speed, mouse_dist, activity)
-     * @returns {Object} Keys: uniform names (u_raw_time, u_mouse_speed, ...)
+     * Build uniform values from signal values. Delegates to adapter.buildUniforms when present (CPPN);
+     * otherwise returns empty object (e.g. grid adapters do not use uniforms).
      */
     function buildUniformValues(signalValues) {
-        const out = {};
-        const config = window.EvolutionConfig;
-        const toggles = config && config.SIGNAL_TOGGLES;
-        if (!toggles || !signalValues) return out;
-        (window.EvolutionConfig.NETWORK_TYPES || ["time", "visual"]).forEach(
-            function (networkType) {
-                const inputs =
-                    toggles[networkType] && toggles[networkType].toggleableInputs;
-                if (!inputs) return;
-                inputs.forEach(function (s) {
-                    if (s.uniform && !s.derived) {
-                        out[s.uniform] =
-                            signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
-                    }
-                });
-            }
-        );
-        return out;
+        var state =
+            window.PopulationState &&
+            window.PopulationState.getState &&
+            window.PopulationState.getState();
+        var substrateId = state ? state.substrateId : null;
+        var resolved =
+            window.SubstrateAdapters && window.SubstrateAdapters.resolve
+                ? window.SubstrateAdapters.resolve({ substrateId: substrateId })
+                : { adapter: null };
+        if (resolved.adapter && typeof resolved.adapter.buildUniforms === "function") {
+            return resolved.adapter.buildUniforms(signalValues);
+        }
+        return {};
     }
 
     /**
@@ -162,19 +155,23 @@
             window.PopulationState.getState();
         var substrateId = state ? state.substrateId : null;
         var SubstrateAdapters = window.SubstrateAdapters;
-        var adapter = SubstrateAdapters.getAdapter(substrateId);
-        if (!adapter && patternData.caRule != null) {
-            adapter = SubstrateAdapters.findAdapterByGenome({
-                rule: patternData.caRule,
-            });
-        }
-        if (!adapter) {
-            var defRes =
-                window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
-                    ? window.EvolutionConfig.getDefaultResolution()
-                    : { substrateId: "dual_cppn" };
-            adapter = SubstrateAdapters.getAdapter(defRes.substrateId);
-        }
+        var genomes =
+            patternData && patternData.caRule != null
+                ? [{ rule: patternData.caRule }]
+                : [];
+        var resolved =
+            SubstrateAdapters && SubstrateAdapters.resolve
+                ? SubstrateAdapters.resolve({
+                      substrateId: substrateId,
+                      genomes: genomes,
+                  })
+                : {
+                      adapter:
+                          SubstrateAdapters && SubstrateAdapters.getAdapter
+                              ? SubstrateAdapters.getAdapter(substrateId)
+                              : null,
+                  };
+        var adapter = resolved.adapter;
         if (adapter && typeof adapter.render === "function") {
             adapter.render(patternData, uniformValues, signalState);
         }
@@ -234,10 +231,18 @@
         const pattern = options.pattern;
         const substrateId = options.substrateId || null;
         const SubstrateAdapters = window.SubstrateAdapters;
-        var adapter = SubstrateAdapters.getAdapter(substrateId);
-        if (!adapter) {
-            adapter = SubstrateAdapters.findAdapterByGenome(pattern);
-        }
+        var resolved =
+            SubstrateAdapters && SubstrateAdapters.resolve
+                ? SubstrateAdapters.resolve({
+                      substrateId: substrateId,
+                      genomes: pattern ? [pattern] : [],
+                  })
+                : {
+                      adapter: SubstrateAdapters
+                          ? SubstrateAdapters.getAdapter(substrateId)
+                          : null,
+                  };
+        var adapter = resolved.adapter;
         const id = pattern.id;
         const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;
         const card = document.createElement("div");

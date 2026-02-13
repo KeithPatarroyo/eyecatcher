@@ -2,7 +2,7 @@
 Node code generation: genome + config + signal map -> GLSL node computations.
 
 Used by ShaderCompiler. Input ordering and variable names come from signals.py.
-Add activations in ACTIVATION_FUNCTIONS and glsl_fragments.ACTIVATION_GLSL_BLOCK.
+Activation names come from glsl.activation_registry (single source of truth).
 """
 
 from typing import Optional
@@ -10,26 +10,10 @@ from typing import Optional
 import neat
 
 from ..signals import TIME_INPUTS, VISUAL_INPUTS, build_glsl_input_map
+from .activation_registry import get_activation_names
 from .compiler_topology import get_enabled_connections, topological_sort
 
-# NEAT activation name -> GLSL name (must exist in glsl_fragments).
-ACTIVATION_FUNCTIONS = {
-    "sigmoid": "sigmoid",
-    "tanh": "tanh",
-    "sin": "sin",
-    "cos": "cos",
-    "gauss": "gauss",
-    "relu": "relu",
-    "abs": "abs",
-    "square": "square",
-    "cube": "cube",
-    "identity": "identity",
-    "clamped": "clamped",
-    "exp": "exp",
-    "hat": "hat",
-    "inv": "inv",
-    "log": "log",
-}
+_VALID_ACTIVATIONS = get_activation_names()
 
 
 def generate_node_code(
@@ -85,7 +69,9 @@ def generate_node_code(
             if bias != 0.0:
                 weighted_sum += f" + {bias:.6f}"
 
-            activation_func = ACTIVATION_FUNCTIONS.get(activation, "identity")
+            activation_func = (
+                activation if activation in _VALID_ACTIVATIONS else "identity"
+            )
 
             if response != 1.0:
                 code_lines.append(
@@ -103,12 +89,15 @@ def generate_node_code(
 
 
 def generate_time_signal_code(
-    time_genome: neat.DefaultGenome, time_config: neat.Config
+    time_genome: neat.DefaultGenome,
+    time_config: neat.Config,
+    time_inputs: Optional[list] = None,
 ) -> str:
-    """Generate GLSL code for the time signal CPPN."""
+    """Generate GLSL code for the time signal network."""
+    time_inputs = time_inputs or TIME_INPUTS
     connections = get_enabled_connections(time_genome)
     nodes = topological_sort(time_genome, connections, time_config)
-    time_input_names = build_glsl_input_map(TIME_INPUTS)
+    time_input_names = build_glsl_input_map(time_inputs)
     return generate_node_code(
         time_genome,
         connections,

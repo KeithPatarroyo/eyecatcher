@@ -86,12 +86,9 @@ def _require_genome_from_request(cap: str):
     if not genome_data:
         return None, None, None, api_error(ERR_GENOME_REQUIRED, 400)
     try:
-        ind = _substrate.from_json(genome_data)
+        ind, individual_id, clicks = _parse_one_genome(genome_data, 0)
     except Exception:
         return None, None, None, api_error("Invalid genome payload.", 400)
-    individual_id, clicks = _extract_genome_id_clicks(
-        genome_data, getattr(ind, "key", 0)
-    )
     return ind, individual_id, clicks, None
 
 
@@ -100,15 +97,21 @@ def _extract_genome_id_clicks(g_data, default_key):
     return (g_data.get("key", default_key), g_data.get("clicks", 0))
 
 
+def _parse_one_genome(g_data: dict, index: int):
+    """Deserialize one genome payload; return (ind, individual_id, clicks)."""
+    ind = _substrate.from_json(g_data)
+    individual_id, clicks = _extract_genome_id_clicks(
+        g_data, getattr(ind, "key", index)
+    )
+    return ind, individual_id, clicks
+
+
 def _compile_genomes(genomes_data, color_mode):
     """Compile genome JSONs to shader response dicts via the substrate protocol."""
     mode = (color_mode or "").strip().lower() or None
     shaders = []
     for i, g_data in enumerate(genomes_data):
-        ind = _substrate.from_json(g_data)
-        individual_id, clicks = _extract_genome_id_clicks(
-            g_data, getattr(ind, "key", i)
-        )
+        ind, individual_id, clicks = _parse_one_genome(g_data, i)
         glsl = _substrate.compile_to_shader(ind, color_mode=mode)
         resp = {
             "id": individual_id,
@@ -210,8 +213,7 @@ def api_evaluate():
         return api_error(ERR_GENOMES_ARRAY_REQUIRED, 400)
     results = []
     for i, g_data in enumerate(genomes_data):
-        ind = _substrate.from_json(g_data)
-        individual_id, _ = _extract_genome_id_clicks(g_data, getattr(ind, "key", i))
+        ind, individual_id, _ = _parse_one_genome(g_data, i)
         out = _substrate.evaluate(ind, {})
         item = {"id": individual_id, "output_type": out.output_type}
         if out.output_type == "grid" and hasattr(out.data, "shape"):

@@ -232,6 +232,50 @@ def save_population(
         }
 
 
+# Column lists used by export and query helpers (single source of truth)
+_POP_COLS = """id, parent_id, generation_num, created_at, branch_name,
+                description, user_id, population_size, metadata_json"""
+_IND_COLS = """id, population_id, genome_key, genome_json, fitness, created_at"""
+
+
+def _fetch_individuals_by_population(
+    conn: Any,
+    population_id: int,
+    order_by: str = "genome_key",
+    limit: int | None = None,
+) -> list[Any]:
+    """Return rows (genome_json, fitness). order_by: 'genome_key' or 'fitness DESC'."""
+    allowed_order = "fitness DESC" if order_by == "fitness DESC" else "genome_key"
+    sql = f"""SELECT genome_json, fitness FROM individuals
+              WHERE population_id = ? ORDER BY {allowed_order}"""
+    if limit is not None:
+        sql += f" LIMIT {int(limit)}"
+    return conn.execute(sql, (population_id,)).fetchall()
+
+
+def _fetch_population_rows(
+    conn: Any, where_clause: str | None = None, where_params: tuple = ()
+) -> list[Any]:
+    """Return population rows (pop columns). Optional WHERE clause."""
+    sql = f"SELECT {_POP_COLS} FROM populations"
+    if where_clause:
+        sql += f" WHERE {where_clause}"
+    sql += " ORDER BY id ASC"
+    return conn.execute(sql, where_params).fetchall()
+
+
+def _fetch_individual_rows_by_pop_ids(conn: Any, pop_ids: list[int]) -> list[Any]:
+    """Return individual rows for the given population ids. Empty pop_ids → []."""
+    if not pop_ids:
+        return []
+    placeholders = ",".join("?" * len(pop_ids))
+    return conn.execute(
+        f"SELECT {_IND_COLS} FROM individuals "
+        f"WHERE population_id IN ({placeholders}) ORDER BY id ASC",
+        pop_ids,
+    ).fetchall()
+
+
 def get_population(population_id: int) -> dict[str, Any] | None:
     """Load one population by id with its individuals (genomes with clicks=fitness)."""
     with _genealogy_db() as conn:
@@ -240,11 +284,7 @@ def get_population(population_id: int) -> dict[str, Any] | None:
         ).fetchone()
         if not pop_row:
             return None
-        individual_rows = conn.execute(
-            """SELECT genome_json, fitness FROM individuals
-               WHERE population_id = ? ORDER BY genome_key""",
-            (population_id,),
-        ).fetchall()
+        individual_rows = _fetch_individuals_by_population(conn, population_id)
         genomes = []
         for row in individual_rows:
             genome = _safe_parse_genome_json(row["genome_json"])
@@ -388,34 +428,15 @@ def export_genealogy_data(branch_name: str | None = None) -> dict[str, Any] | No
     dict with exported_at, version, branch_name, populations, individuals
     (genome_json parsed to Python objects).
     """
-    pop_cols = """id, parent_id, generation_num, created_at, branch_name,
-                  description, user_id, population_size, metadata_json"""
-    ind_cols = """id, population_id, genome_key, genome_json, fitness, created_at"""
     with _genealogy_db() as conn:
         if branch_name:
-            pop_rows = conn.execute(
-                f"SELECT {pop_cols} FROM populations "
-                "WHERE branch_name = ? ORDER BY id ASC",
-                (branch_name,),
-            ).fetchall()
+            pop_rows = _fetch_population_rows(conn, "branch_name = ?", (branch_name,))
         else:
-            pop_rows = conn.execute(
-                f"SELECT {pop_cols} FROM populations " "ORDER BY id ASC"
-            ).fetchall()
+            pop_rows = _fetch_population_rows(conn)
         pop_ids = [r["id"] for r in pop_rows]
         if branch_name and not pop_ids:
             return None
-        if pop_ids:
-            placeholders = ",".join("?" * len(pop_ids))
-            ind_rows = conn.execute(
-                f"SELECT {ind_cols} FROM individuals "
-                f"WHERE population_id IN ({placeholders}) ORDER BY id ASC",
-                pop_ids,
-            ).fetchall()
-        else:
-            ind_rows = conn.execute(
-                f"SELECT {ind_cols} FROM individuals ORDER BY id ASC"
-            ).fetchall()
+        ind_rows = _fetch_individual_rows_by_pop_ids(conn, pop_ids)
 
         populations = [dict(r) for r in pop_rows]
         individuals = []
@@ -461,14 +482,11 @@ def get_population_thumbnail(
 ) -> dict[str, Any] | None:
     """Fittest individual (by fitness DESC); returns { genome, fitness } or None."""
     with _genealogy_db() as conn:
-        row = conn.execute(
-            """SELECT genome_json, fitness FROM individuals
-               WHERE population_id = ?
-               ORDER BY fitness DESC
-               LIMIT 1""",
-            (population_id,),
-        ).fetchone()
-        if not row:
+        rows = _fetch_individuals_by_population(
+            conn, population_id, order_by="fitness DESC", limit=1
+        )
+        if not rows:
             return None
+        row = rows[0]
         genome = _safe_parse_genome_json(row["genome_json"])
         return {"genome": genome, "fitness": row["fitness"]} if genome else None

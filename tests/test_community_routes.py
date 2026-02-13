@@ -14,10 +14,10 @@ def admin_headers():
 
 
 @pytest.mark.slow
-def test_community_submit(client, community_db, cppn_engine):
+def test_community_submit(client, community_db, substrate):
     """POST submit with genome returns id and status pending."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
@@ -66,11 +66,11 @@ def test_admin_submissions_forbidden_without_key(client, community_db):
 
 @pytest.mark.slow
 def test_admin_submit_then_list_and_approve(
-    client, community_db, cppn_engine, admin_headers
+    client, community_db, substrate, admin_headers
 ):
     """Submit, list pending as admin, approve, then list public shows pattern."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0

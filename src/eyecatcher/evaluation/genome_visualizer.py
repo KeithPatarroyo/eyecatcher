@@ -25,6 +25,7 @@ from ..signals.signals import (
     input_names,
     output_labels,
 )
+from .graph_utils import assign_layers, get_nodes_required_for_output
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ class GenomeVisualizer:
             n for n in genome.nodes.keys() if n not in range(self.num_outputs)
         ]
         if hidden_nodes:
-            layers = self._assign_layers(
+            layers = assign_layers(
                 genome, list(range(-self.num_inputs, 0)), list(range(self.num_outputs))
             )
             if layers:
@@ -166,7 +167,7 @@ class GenomeVisualizer:
 
         hidden_nodes = [n for n in genome.nodes.keys() if n not in output_ids]
         if hidden_nodes:
-            layers = self._assign_layers(genome, input_ids, output_ids)
+            layers = assign_layers(genome, input_ids, output_ids)
             if layers:
                 num_layers = max(layers.values()) + 1
                 layer_groups: dict = {}
@@ -180,85 +181,32 @@ class GenomeVisualizer:
                     )
         return positions
 
-    def _assign_layers(
-        self, genome: neat.DefaultGenome, input_ids: list, output_ids: list
-    ) -> dict:
-        """Assign hidden nodes to layers based on connectivity."""
-        layers = {}
-
-        # Get all connections
-        connections = [
-            (c.key[0], c.key[1]) for c in genome.connections.values() if c.enabled
-        ]
-
-        # Build adjacency
-        adjacency = {}
-        for src, dst in connections:
-            if src not in adjacency:
-                adjacency[src] = []
-            adjacency[src].append(dst)
-
-        # BFS from inputs to assign layers
-        visited = set()
-        queue = [(node_id, 0) for node_id in input_ids]
-
-        while queue:
-            node_id, layer = queue.pop(0)
-
-            if node_id in visited:
-                continue
-            visited.add(node_id)
-
-            # Only track hidden nodes
-            if node_id not in input_ids and node_id not in output_ids:
-                layers[node_id] = layer
-
-            # Add neighbors
-            for neighbor in adjacency.get(node_id, []):
-                if neighbor not in visited:
-                    queue.append((neighbor, layer + 1))
-
-        # Normalize layers to 0-based
-        if layers:
-            min_layer = min(layers.values())
-            layers = {k: v - min_layer for k, v in layers.items()}
-
-        return layers
-
-    def _get_nodes_required_for_output(self, genome: neat.DefaultGenome) -> set:
-        """
-        Find nodes required to compute outputs (backward trace from outputs).
-        Returns set of node IDs that contribute to at least one output.
-        """
-        output_ids = list(range(self.num_outputs))
-
-        # Build reverse adjacency (who feeds into each node)
-        reverse_adjacency = {}
-        for conn in genome.connections.values():
-            if conn.enabled:
-                src, dst = conn.key
-                if dst not in reverse_adjacency:
-                    reverse_adjacency[dst] = []
-                reverse_adjacency[dst].append(src)
-
-        # Backward BFS from outputs
-        required = set(output_ids)
-        queue = list(output_ids)
-        visited = set()
-
-        while queue:
-            node_id = queue.pop(0)
-            if node_id in visited:
-                continue
-            visited.add(node_id)
-
-            # Add all nodes that feed into this node
-            for src in reverse_adjacency.get(node_id, []):
-                required.add(src)
-                if src not in visited:
-                    queue.append(src)
-
-        return required
+    def _get_node_label(
+        self,
+        node_id: int,
+        genome: neat.DefaultGenome,
+        input_name_list: list[str],
+        output_name_list: list[str],
+    ) -> tuple[str, str]:
+        """Return (label_text, color_key) for a node."""
+        if node_id < 0:
+            idx = node_id + self.num_inputs
+            label = input_name_list[idx] if idx < len(input_name_list) else str(node_id)
+            return label, "input"
+        if node_id < self.num_outputs:
+            activation = (
+                genome.nodes[node_id].activation
+                if node_id in genome.nodes
+                else "identity"
+            )
+            name = (
+                output_name_list[node_id]
+                if node_id < len(output_name_list)
+                else str(node_id)
+            )
+            return f"{name}\n{activation}", "output"
+        node = genome.nodes[node_id]
+        return f"{node_id}\n{node.activation}", "hidden"
 
     def _draw_connections(self, ax, genome: neat.DefaultGenome, positions: dict):
         """Draw connections between nodes."""
@@ -305,44 +253,14 @@ class GenomeVisualizer:
         input_name_list = input_names(self._signals_in)
         output_name_list = output_labels(self._signals_out)
 
-        # Identify which nodes are connected to outputs (active nodes)
-        active_nodes = self._get_nodes_required_for_output(genome)
+        active_nodes = get_nodes_required_for_output(genome, self.num_outputs)
 
         for node_id, (x, y) in positions.items():
-            # Check if node is active (contributes to output)
             is_active = node_id in active_nodes
-
-            # Determine node type and style
-            if node_id < 0:
-                # Input node
-                color = self.COLORS["input"]
-                idx = node_id + self.num_inputs
-                label = (
-                    input_name_list[idx] if idx < len(input_name_list) else str(node_id)
-                )
-            elif node_id < self.num_outputs:
-                # Output node
-                color = self.COLORS["output"]
-                # Check if output node has custom config or use default
-                if node_id in genome.nodes:
-                    activation = genome.nodes[node_id].activation
-                    label = (
-                        f"{output_name_list[node_id]}\n{activation}"
-                        if node_id < len(output_name_list)
-                        else f"{node_id}\n{activation}"
-                    )
-                else:
-                    # Output node not in genome.nodes, uses default (typically identity)
-                    label = (
-                        f"{output_name_list[node_id]}\nidentity"
-                        if node_id < len(output_name_list)
-                        else f"{node_id}\nidentity"
-                    )
-            else:
-                # Hidden node
-                color = self.COLORS["hidden"]
-                node = genome.nodes[node_id]
-                label = f"{node_id}\n{node.activation}"
+            label, color_key = self._get_node_label(
+                node_id, genome, input_name_list, output_name_list
+            )
+            color = self.COLORS[color_key]
 
             # Set transparency based on whether node is active
             alpha = 0.9 if is_active else 0.2

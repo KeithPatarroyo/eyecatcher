@@ -81,19 +81,6 @@ class ElementaryCASubstrate:
     id = "ca"
     output_type: OutputType = "grid"
 
-    @classmethod
-    def get_frontend_metadata(cls) -> dict:
-        return {
-            "hasSignalControls": False,
-            "genomeKeys": ["rule"],
-            "capabilities": {
-                "save": True,
-                "network": False,
-                "timeOutput": False,
-                "adjustWeight": False,
-            },
-        }
-
     def __init__(
         self,
         width: int = 256,

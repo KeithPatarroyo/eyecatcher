@@ -107,6 +107,42 @@ def main() -> None:
 
     print(f"Wrote {out_path}")
 
+    # Validate JS activations match Python registry (single source of truth)
+    validate_activations_js(root)
+
+
+def validate_activations_js(root: str) -> None:
+    """Ensure cppn_evaluator.js ACTIVATIONS keys match Python activation registry."""
+    import importlib.util
+    import re
+
+    # Load activation_registry without pulling in glsl.__init__ (avoids circular import)
+    reg_path = os.path.join(root, "src", "eyecatcher", "glsl", "activation_registry.py")
+    spec = importlib.util.spec_from_file_location("activation_registry", reg_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    get_activation_names = mod.get_activation_names
+
+    js_path = os.path.join(root, "static", "js", "evolution", "cppn_evaluator.js")
+    with open(js_path, encoding="utf-8") as f:
+        content = f.read()
+    keys = re.findall(r"(\w+):\s*function\s*\(", content)
+    js_set = set(keys)
+    py_set = get_activation_names()
+    if js_set != py_set:
+        only_js = js_set - py_set
+        only_py = py_set - js_set
+        print(
+            "Activation mismatch: JS cppn_evaluator.js ACTIVATIONS must match "
+            "Python glsl.activation_registry.",
+            file=sys.stderr,
+        )
+        if only_js:
+            print(f"  Only in JS: {sorted(only_js)}", file=sys.stderr)
+        if only_py:
+            print(f"  Only in Python: {sorted(only_py)}", file=sys.stderr)
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

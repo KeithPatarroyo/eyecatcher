@@ -17,7 +17,6 @@ import numpy as np
 
 from .. import get_root_dir
 from ..algorithm import DEFAULT_RENDER_RESOLUTION
-from ..lib.math_utils import normalize_to_bipolar
 from ..signals.activation import register_custom_activations
 from ..signals.signals import (
     apply_derived_inputs,
@@ -26,6 +25,11 @@ from ..signals.signals import (
 )
 from ..signals.validation import validate_neat_config
 from .protocol import SubstrateOutput
+
+
+def normalize_to_bipolar(val: float) -> float:
+    """Map value from [0, 1] to [-1, 1]."""
+    return val * 2.0 - 1.0
 
 
 def _clamp_rgb(out: list[float]) -> tuple[float, float, float]:
@@ -114,11 +118,24 @@ def compile_with_color_mode(
 ) -> str | None:
     """Use one-off compiler if color_mode differs; else use given compiler."""
     if color_mode and color_mode != compiler.color_mode:
-        from ..glsl import ShaderCompiler
-
-        alt = ShaderCompiler(color_mode=color_mode)
+        alt = compiler.with_color_mode(color_mode)
         return compile_fn(alt, *compile_args)
     return compile_fn(compiler, *compile_args)
+
+
+def _compute_network_stats(
+    pairs: list[tuple[str, Any, neat.Config]],
+) -> dict[str, Any]:
+    """Return {label_nodes, label_connections, ...} for each (label, genome, config)."""
+    result: dict[str, Any] = {}
+    for label, genome, _config in pairs:
+        nodes = getattr(genome, "nodes", {}) or {}
+        conns = getattr(genome, "connections", {}) or {}
+        result[f"{label}_nodes"] = len(nodes)
+        result[f"{label}_connections"] = sum(
+            1 for c in conns.values() if getattr(c, "enabled", True)
+        )
+    return result
 
 
 class CPPNSubstrateBase(ABC):
@@ -148,9 +165,15 @@ class CPPNSubstrateBase(ABC):
         ...
 
     @abstractmethod
+    def _compile(self, compiler: Any, ind: Any) -> str | None:
+        """Compile individual to GLSL using the given compiler. Subclass-specific."""
+        ...
+
     def compile_to_shader(self, ind: Any, color_mode: str | None = None) -> str | None:
         """Compile individual to GLSL fragment shader string."""
-        ...
+        return compile_with_color_mode(
+            self.compiler, ind, color_mode, self._compile, ind
+        )
 
     @abstractmethod
     def to_json(self, ind: Any) -> dict[str, Any]:

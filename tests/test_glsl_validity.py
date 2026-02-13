@@ -112,20 +112,20 @@ def test_dual_shader_base_variables_only_for_time_inputs(
         )
 
 
-def test_glsl_validity_with_minimal_dual(cppn_engine, minimal_dual):
+def test_glsl_validity_with_minimal_dual(substrate, minimal_dual):
     """Minimal dual genome still produces GLSL with all variables declared."""
-    glsl = cppn_engine.compile_to_shader(minimal_dual)
+    glsl = substrate.compile_to_shader(minimal_dual)
     assert glsl is not None
     _assert_all_used_vars_declared(glsl)
 
 
-def test_glsl_validity_dual_empty_connections(cppn_engine, random_dual_genome):
+def test_glsl_validity_dual_empty_connections(substrate, random_dual_genome):
     """Dual with all connections disabled still has valid variable declarations."""
     dual = random_dual_genome
     for conn in dual.visual.connections.values():
         conn.enabled = False
     for conn in dual.time_signal.connections.values():
         conn.enabled = False
-    glsl = cppn_engine.compile_to_shader(dual)
+    glsl = substrate.compile_to_shader(dual)
     assert glsl is not None
     _assert_all_used_vars_declared(glsl)

@@ -5,10 +5,10 @@ from eyecatcher.substrate import create_random_dual_genome, dual_genome_to_json
 
 
 @pytest.mark.slow
-def test_save_population(client, genealogy_db, cppn_engine):
+def test_save_population(client, genealogy_db, substrate):
     """POST save-population with genomes returns population_id and individual_ids."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     payload = dual_genome_to_json(dual)
     payload["key"] = 0
@@ -49,10 +49,10 @@ def test_load_population_not_found(client, genealogy_db):
 
 
 @pytest.mark.slow
-def test_save_and_load_population(client, genealogy_db, cppn_engine):
+def test_save_and_load_population(client, genealogy_db, substrate):
     """Save a population then load it by id; genomes round-trip."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=7
+        substrate.config, substrate.time_config, genome_id=7
     )
     payload = dual_genome_to_json(dual)
     payload["key"] = 7
@@ -88,10 +88,10 @@ def test_tree_empty(client, genealogy_db):
 
 
 @pytest.mark.slow
-def test_tree_after_save(client, genealogy_db, cppn_engine):
+def test_tree_after_save(client, genealogy_db, substrate):
     """GET tree after save returns one node."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     payload = dual_genome_to_json(dual)
     payload["key"] = 0
@@ -122,13 +122,13 @@ def test_branches_empty(client, genealogy_db):
 
 
 @pytest.mark.slow
-def test_export_genealogy_full(client, genealogy_db, cppn_engine):
+def test_export_genealogy_full(client, genealogy_db, substrate):
     """GET export (no branch): full tree; populations, individuals, exported_at."""
     dual1 = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     dual2 = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=1
+        substrate.config, substrate.time_config, genome_id=1
     )
     p1 = dual_genome_to_json(dual1)
     p2 = dual_genome_to_json(dual2)
@@ -160,10 +160,10 @@ def test_export_genealogy_full(client, genealogy_db, cppn_engine):
 
 
 @pytest.mark.slow
-def test_export_genealogy_branch(client, genealogy_db, cppn_engine):
+def test_export_genealogy_branch(client, genealogy_db, substrate):
     """GET export?branch_name=main returns branch; nonexistent branch returns 404."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     payload = dual_genome_to_json(dual)
     payload["key"] = 0
@@ -196,10 +196,10 @@ def test_export_genealogy_branch(client, genealogy_db, cppn_engine):
 
 
 @pytest.mark.slow
-def test_reset_genealogy(client, genealogy_db, cppn_engine):
+def test_reset_genealogy(client, genealogy_db, substrate):
     """POST reset clears all data; tree and stats are empty after."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     payload = dual_genome_to_json(dual)
     payload["key"] = 0

@@ -82,7 +82,26 @@ def genealogy():
     return send_from_directory(STATIC_DIR, "genealogy_viewer.html")
 
 
+def _save_generation_to_genealogy(
+    parent_population_id: int,
+    generation_num: int,
+    branch_name: str,
+    children: list,
+) -> int | None:
+    """Save children to genealogy DB; return new population id or None on failure."""
+    try:
+        from ..data.genealogy_db import save_generation_result
+
+        return save_generation_result(
+            parent_population_id, generation_num, branch_name, children
+        )
+    except Exception as e:
+        logger.exception("Failed to save to genealogy: %s", e)
+        return None
+
+
 @app.route("/api/evolve", methods=["POST"])
+@api_try_except
 def evolve():
     """
     Produce next generation (stateless). Selection, crossover, mutation.
@@ -96,61 +115,42 @@ def evolve():
     data = request.json or {}
     if "parents" not in data:
         return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
-    return _evolve_stateless(data)
+    parents_data = data.get("parents", [])
+    if not parents_data:
+        return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
 
+    population_size = data.get("population_size", DEFAULT_POPULATION_SIZE)
+    elitism = data.get("elitism", False)
+    parent_population_id = data.get("parent_population_id")
+    generation_num = data.get("generation_num", 0)
+    branch_name = data.get("branch_name", "main")
 
-def _evolve_stateless(data):
-    """Evolve: parents in body, return children as JSONs; may save to genealogy."""
-    try:
-        parents_data = data.get("parents", [])
-        population_size = data.get("population_size", DEFAULT_POPULATION_SIZE)
-        elitism = data.get("elitism", False)
-        parent_population_id = data.get("parent_population_id")
-        generation_num = data.get("generation_num", 0)
-        branch_name = data.get("branch_name", "main")
+    parents_for_evolution = [
+        {"genome": p.get("genome", p), "fitness": p.get("fitness", p.get("clicks", 0))}
+        for p in parents_data
+    ]
+    children = produce_next_generation(
+        substrate,
+        parents_for_evolution,
+        population_size=population_size,
+        elitism=elitism,
+        crossover_probability=CROSSOVER_PROBABILITY,
+    )
 
-        if not parents_data:
-            return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
-
-        children = produce_next_generation(
-            substrate,
-            parents_data,
-            population_size=population_size,
-            elitism=elitism,
-            crossover_probability=CROSSOVER_PROBABILITY,
+    new_pop_id = None
+    if parent_population_id is not None:
+        new_pop_id = _save_generation_to_genealogy(
+            parent_population_id, generation_num, branch_name, children
         )
 
-        if parent_population_id is not None:
-            try:
-                from ..data.genealogy_db import save_generation_result
-
-                new_pop_id = save_generation_result(
-                    parent_population_id, generation_num, branch_name, children
-                )
-                if new_pop_id is not None:
-                    return jsonify(
-                        {
-                            "children": children,
-                            "population_id": new_pop_id,
-                            "output_type": substrate.output_type,
-                            "substrate_id": substrate.id,
-                        }
-                    )
-            except Exception as e:
-                logger.exception("Failed to save to genealogy: %s", e)
-        return jsonify(
-            {
-                "children": children,
-                "output_type": substrate.output_type,
-                "substrate_id": substrate.id,
-            }
-        )
-    except ValueError as e:
-        logger.exception("Breed ValueError: %s", e)
-        return api_error(f"Validation error: {str(e)}", 400)
-    except Exception as e:
-        logger.exception("Breed Exception: %s", e)
-        return api_error(f"Server error: {str(e)}", 500)
+    payload = {
+        "children": children,
+        "output_type": substrate.output_type,
+        "substrate_id": substrate.id,
+    }
+    if new_pop_id is not None:
+        payload["population_id"] = new_pop_id
+    return jsonify(payload)
 
 
 @app.route("/api/save", methods=["POST"])

@@ -3,16 +3,27 @@ Compiles neural networks to GLSL fragment shaders.
 
 Orchestrates compiler_topology, node_code_generator, and glsl_fragments.
 Researchers extend: activation in glsl_fragments + node_code_generator;
-output (HSV/RGB) in _get_color_output_code; signals in signals.py.
+output (HSV/RGB) in _get_color_output_code; signals passed at construction.
 """
 
 import neat
 
-from ..signals import TIME_INPUTS, VISUAL_DERIVED_INPUTS, VISUAL_INPUTS
+from ..signals import build_glsl_input_map
 from ..substrate import DualGenome
 from .compiler_topology import get_enabled_connections, topological_sort
 from .glsl_fragments import ACTIVATION_GLSL_BLOCK
 from .node_code_generator import generate_node_code, generate_time_signal_code
+
+
+def _default_signals():
+    """Lazy import to avoid circular imports; used when constructor gets None."""
+    from ..signals import (
+        TIME_INPUTS,
+        VISUAL_DERIVED_INPUTS,
+        VISUAL_INPUTS,
+    )
+
+    return VISUAL_INPUTS, TIME_INPUTS, VISUAL_DERIVED_INPUTS
 
 
 class ShaderCompiler:
@@ -21,13 +32,39 @@ class ShaderCompiler:
     The shader can then be executed on GPU for real-time rendering.
 
     Args:
+        visual_signals: Input signals for the visual network (default from registry).
+        time_signals: Input signals for the time network, or None for single-CPPN.
+        derived_signals: Derived spatial inputs for visual (default from registry).
         color_mode: 'hsv' (Picbreeder-style) or 'rgb' (direct RGB output)
     """
 
-    def __init__(self, color_mode: str = "hsv"):
-        self.node_order: list = []
-        self.node_code: dict = {}
-        self.color_mode = color_mode  # 'hsv' or 'rgb'
+    def __init__(
+        self,
+        visual_signals=None,
+        time_signals=None,
+        derived_signals=None,
+        color_mode: str = "hsv",
+    ):
+        if visual_signals is None or time_signals is None or derived_signals is None:
+            v, t, d = _default_signals()
+            visual_signals = visual_signals if visual_signals is not None else v
+            time_signals = time_signals if time_signals is not None else t
+            derived_signals = derived_signals if derived_signals is not None else d
+        self.visual_signals = list(visual_signals)
+        self.time_signals = list(time_signals) if time_signals else []
+        self.derived_signals = list(derived_signals)
+        self.node_order = []
+        self.node_code = {}
+        self.color_mode = color_mode
+
+    def with_color_mode(self, color_mode: str) -> "ShaderCompiler":
+        """Return a new compiler with the same signals but different color_mode."""
+        return ShaderCompiler(
+            self.visual_signals,
+            self.time_signals,
+            self.derived_signals,
+            color_mode=color_mode,
+        )
 
     def compile_to_glsl(
         self, genome: neat.DefaultGenome, visual_config: neat.Config
@@ -45,17 +82,24 @@ class ShaderCompiler:
         connections = get_enabled_connections(genome)
         nodes = topological_sort(genome, connections, visual_config)
         node_computations = generate_node_code(
-            genome, connections, nodes, visual_config
+            genome,
+            connections,
+            nodes,
+            visual_config,
+            input_names=build_glsl_input_map(self.visual_signals),
         )
         return self._build_shader_template(node_computations, visual_config)
 
-    def _get_color_output_code(self) -> str:
+    def _get_color_output_code(self, num_outputs: int = 3) -> str:
         """Get GLSL code for converting network outputs to RGB based on color_mode."""
         if self.color_mode == "rgb":
-            return """    // Output RGB directly (clamp to 0-1)
-    float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
-    float g = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);
-    float b = clamp((output_2 + 1.0) * 0.5, 0.0, 1.0);
+            r = "clamp((output_0 + 1.0) * 0.5, 0.0, 1.0)" if num_outputs >= 1 else "0.0"
+            g = "clamp((output_1 + 1.0) * 0.5, 0.0, 1.0)" if num_outputs >= 2 else "0.0"
+            b = "clamp((output_2 + 1.0) * 0.5, 0.0, 1.0)" if num_outputs >= 3 else "0.0"
+            return f"""    // Output RGB directly (clamp to 0-1)
+    float r = {r};
+    float g = {g};
+    float b = {b};
 
     fragColor = vec4(r, g, b, 1.0);"""
         else:  # hsv
@@ -76,7 +120,7 @@ class ShaderCompiler:
         """Generate uniform float declarations for shared signal uniforms (u_{id})."""
         seen = set()
         lines = []
-        for sig_list in (TIME_INPUTS, VISUAL_INPUTS):
+        for sig_list in (self.time_signals, self.visual_signals):
             for s in sig_list:
                 u = s._uniform()
                 if u and u not in seen:
@@ -87,32 +131,42 @@ class ShaderCompiler:
     def _glsl_enable_declarations(self) -> str:
         """Generate enable toggle uniforms (uTimeEnable_{id}, uVisualEnable_{id})."""
         lines = []
-        for cppn_type, sig_list in (("Time", TIME_INPUTS), ("Visual", VISUAL_INPUTS)):
+        for prefix, sig_list in (
+            ("Time", self.time_signals),
+            ("Visual", self.visual_signals),
+        ):
             for s in sig_list:
                 if not s.is_spatial and s.id != "bias":
-                    lines.append(f"uniform float u{cppn_type}Enable_{s.id};")
+                    lines.append(f"uniform float u{prefix}Enable_{s.id};")
+        return "\n".join(lines)
+
+    def _glsl_enable_gating(
+        self, signals: list, prefix: str, base_vars: bool = True
+    ) -> str:
+        """Generate gated input assignments for a signal list (time or visual)."""
+        lines = []
+        for s in signals:
+            if not s.is_spatial and s.id != "bias":
+                val = f"{s.id}_base" if base_vars else f"({s._uniform()} * 2.0 - 1.0)"
+                lines.append(
+                    f"    float {s._glsl_var()} = {val} * u{prefix}Enable_{s.id};"
+                )
+            elif s.id == "bias":
+                lines.append("    float v_bias = 1.0;")
         return "\n".join(lines)
 
     def _glsl_base_scaling(self) -> str:
         """Generate base scaled vars (raw_time_base = u_raw_time*2-1 etc) for time."""
         lines = []
-        for s in TIME_INPUTS:
+        for s in self.time_signals:
             u = s._uniform()
             if u:
                 lines.append(f"    float {s.id}_base = {u} * 2.0 - 1.0;")
         return "\n".join(lines)
 
     def _glsl_time_enable_gating(self) -> str:
-        """Generate time CPPN gated input assignments."""
-        lines = []
-        for s in TIME_INPUTS:
-            if not s.is_spatial and s.id != "bias":
-                lines.append(
-                    f"    float {s._glsl_var()} = {s.id}_base * uTimeEnable_{s.id};"
-                )
-            elif s.id == "bias":
-                lines.append("    float v_bias = 1.0;")
-        return "\n".join(lines)
+        """Generate time network gated input assignments."""
+        return self._glsl_enable_gating(self.time_signals, "Time", base_vars=True)
 
     def _glsl_header(self) -> str:
         """Shared GLSL header: version, precision, in/out, uniforms, enable decls."""
@@ -138,30 +192,31 @@ out vec4 fragColor;
             "    float v_x = vUV.x * 2.0 - 1.0;",
             "    float v_y = vUV.y * 2.0 - 1.0;",
         ]
-        for d in VISUAL_DERIVED_INPUTS:
+        for d in self.derived_signals:
             lines.append(f"    {d.glsl}")
         return "\n".join(lines)
 
-    def _build_shader(self, main_body: str) -> str:
+    def _build_shader(self, main_body: str, num_outputs: int = 3) -> str:
         """Build complete GLSL shader from header, main body, and color output."""
         return f"""{self._glsl_header()}
 
 void main() {{
 {main_body}
 
-{self._get_color_output_code()}
+{self._get_color_output_code(num_outputs)}
 }}
 """
 
     def _glsl_visual_enable_gating(self, use_time_from_network: bool) -> str:
-        """Generate visual CPPN gated input assignments.
+        """Generate visual network gated input assignments.
 
         If use_time_from_network True, time uses timeFromNetwork and others use _base
-        (reassign without 'float' since time section already declared them).
+        (reassign without 'float' where already declared in time section).
         Else all use inline (uniform*2-1) for single-CPPN mode.
         """
         lines = []
-        for s in VISUAL_INPUTS:
+        time_ids = {t.id for t in self.time_signals}
+        for s in self.visual_signals:
             if s.is_spatial or s.id == "bias":
                 if s.id == "bias":
                     if use_time_from_network:
@@ -171,16 +226,13 @@ void main() {{
                 continue
             if use_time_from_network:
                 if s.id == "time":
-                    src = "timeFromNetwork"
                     lines.append(
-                        f"    float {s._glsl_var()} = {src} * uVisualEnable_{s.id};"
+                        f"    float {s._glsl_var()} = "
+                        f"timeFromNetwork * uVisualEnable_{s.id};"
                     )
                 else:
-                    # Visual non-time inputs: use uniform inline. If already declared in
-                    # time gating (shared signal: mouse_speed, mouse_dist, activity),
-                    # assign only; otherwise declare.
                     u = s._uniform()
-                    already_declared = s.id in {t.id for t in TIME_INPUTS}
+                    already_declared = s.id in time_ids
                     expr = f"({u} * 2.0 - 1.0) * uVisualEnable_{s.id}"
                     if already_declared:
                         lines.append(f"    {s._glsl_var()} = {expr};")
@@ -188,14 +240,16 @@ void main() {{
                         lines.append(f"    float {s._glsl_var()} = {expr};")
             else:
                 u = s._uniform()
-                gvar = s._glsl_var()
-                enab = f"uVisualEnable_{s.id}"
-                lines.append(f"    float {gvar} = ({u} * 2.0 - 1.0) * {enab};")
+                lines.append(
+                    f"    float {s._glsl_var()} = "
+                    f"({u} * 2.0 - 1.0) * uVisualEnable_{s.id};"
+                )
         return "\n".join(lines)
 
     def _build_shader_template(self, node_code: str, visual_config: neat.Config) -> str:
         """Build the complete GLSL shader with node computations (single CPPN)."""
         visual_gating = self._glsl_visual_enable_gating(use_time_from_network=False)
+        num_outputs = visual_config.genome_config.num_outputs
         main_body = f"""    // Convert UV to coordinate space (-1 to 1)
 {self._glsl_uv_to_coord()}
 
@@ -204,7 +258,7 @@ void main() {{
 
     // Network computations
 {node_code}"""
-        return self._build_shader(main_body)
+        return self._build_shader(main_body, num_outputs)
 
     def compile_dual_to_glsl(
         self,
@@ -226,17 +280,25 @@ void main() {{
         Returns:
             Complete GLSL fragment shader code as string
         """
-        time_code = generate_time_signal_code(dual_genome.time_signal, time_config)
+        time_code = generate_time_signal_code(
+            dual_genome.time_signal, time_config, time_inputs=self.time_signals
+        )
         visual_connections = get_enabled_connections(dual_genome.visual)
         visual_nodes = topological_sort(
             dual_genome.visual, visual_connections, visual_config
         )
         visual_code = generate_node_code(
-            dual_genome.visual, visual_connections, visual_nodes, visual_config
+            dual_genome.visual,
+            visual_connections,
+            visual_nodes,
+            visual_config,
+            input_names=build_glsl_input_map(self.visual_signals),
         )
-        return self._build_dual_shader_template(time_code, visual_code)
+        return self._build_dual_shader_template(time_code, visual_code, visual_config)
 
-    def _build_dual_shader_template(self, time_code: str, visual_code: str) -> str:
+    def _build_dual_shader_template(
+        self, time_code: str, visual_code: str, visual_config: neat.Config
+    ) -> str:
         """Build the complete GLSL shader for dual network (time signal + visual)."""
         base_scaling = self._glsl_base_scaling()
         time_gating = self._glsl_time_enable_gating()
@@ -263,4 +325,4 @@ void main() {{
 
     // Visual network computations (using modified time)
 {visual_code}"""
-        return self._build_shader(main_body)
+        return self._build_shader(main_body, visual_config.genome_config.num_outputs)

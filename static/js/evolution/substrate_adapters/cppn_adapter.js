@@ -7,6 +7,30 @@
     "use strict";
 
     /**
+     * Build uniform-name-keyed values from signal-id-keyed values using EvolutionConfig.SIGNAL_TOGGLES.
+     * @param {Object} signalValues - Keys: signal ids (raw_time, mouse_speed, mouse_dist, activity, ...)
+     * @returns {Object} Keys: uniform names (u_raw_time, u_mouse_speed, ...)
+     */
+    function buildUniforms(signalValues) {
+        const out = {};
+        const config = window.EvolutionConfig;
+        const toggles = config && config.SIGNAL_TOGGLES;
+        if (!toggles || !signalValues) return out;
+        (config.NETWORK_TYPES || ["time", "visual"]).forEach(function (networkType) {
+            const inputs =
+                toggles[networkType] && toggles[networkType].toggleableInputs;
+            if (!inputs) return;
+            inputs.forEach(function (s) {
+                if (s.uniform && !s.derived) {
+                    out[s.uniform] =
+                        signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
+                }
+            });
+        });
+        return out;
+    }
+
+    /**
      * Draw one frame for a CPPN shader: set uniforms from uniformValues and signalState, then draw.
      * @param {Object} patternData - { gl, program, positionBuffer, canvas? }
      * @param {Object} uniformValues - Keys: uniform names (u_raw_time, u_mouse_speed, ...)
@@ -94,6 +118,7 @@
             isGenomeFormat: spec.isGenomeFormat,
             hasSignalControls: spec.hasSignalControls !== false,
             render: renderCppn,
+            buildUniforms: buildUniforms,
             getMetaLabel: function (pattern) {
                 var n = pattern && (pattern.nodes !== undefined ? pattern.nodes : 0);
                 var c =

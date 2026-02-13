@@ -1,8 +1,8 @@
 """
 Substrate protocol: common interface for evolvable substrates.
 
-CPPNs (dual, single), NCAs, CAs, and generic neural nets implement this
-protocol so evolution and API stay substrate-agnostic.
+Substrates (e.g. dual/single CPPN, NCAs, CAs, generic neural nets) implement
+this protocol so evolution and API stay substrate-agnostic.
 
 Which API endpoints require which substrate capabilities is documented in
 API_REQUIREMENTS.md (e.g. /api/compile requires compile_to_shader;

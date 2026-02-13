@@ -2,12 +2,47 @@
 Export substrate metadata for frontend code generation.
 
 Used by scripts/generate_substrate_config.py to emit substrate_adapters.generated.js.
-Builds list from SUBSTRATES registry and each substrate's get_frontend_metadata().
+Frontend metadata lives here so substrate classes stay pure evolution logic.
 """
 
 from __future__ import annotations
 
 from .registry import SUBSTRATES
+
+# Frontend metadata keyed by substrate id. Add new substrates here when registering.
+SUBSTRATE_FRONTEND_METADATA: dict[str, dict] = {
+    "dual_cppn": {
+        "hasSignalControls": True,
+        "genomeKeys": ["visual", "time_signal"],
+        "capabilities": {
+            "save": True,
+            "network": True,
+            "timeOutput": True,
+            "adjustWeight": True,
+        },
+    },
+    "single_cppn": {
+        "hasSignalControls": False,
+        "genomeKeys": ["visual"],
+        "excludeKeys": ["time_signal"],
+        "capabilities": {
+            "save": True,
+            "network": False,
+            "timeOutput": False,
+            "adjustWeight": False,
+        },
+    },
+    "ca": {
+        "hasSignalControls": False,
+        "genomeKeys": ["rule"],
+        "capabilities": {
+            "save": True,
+            "network": False,
+            "timeOutput": False,
+            "adjustWeight": False,
+        },
+    },
+}
 
 
 def export_substrates_for_frontend() -> list[dict]:
@@ -15,15 +50,11 @@ def export_substrates_for_frontend() -> list[dict]:
     Return per-substrate config for the frontend adapter registry.
 
     Each entry has: id, outputType, hasSignalControls, genomeKeys, capabilities.
-    Optional excludeKeys. From SUBSTRATES and each class's get_frontend_metadata().
+    Optional excludeKeys. From SUBSTRATES and SUBSTRATE_FRONTEND_METADATA.
     """
     result = []
     for sid, cls in SUBSTRATES.items():
-        meta = getattr(cls, "get_frontend_metadata", None)
-        if callable(meta):
-            entry = meta()
-        else:
-            entry = {}
+        entry = SUBSTRATE_FRONTEND_METADATA.get(sid, {})
         result.append(
             {
                 "id": sid,

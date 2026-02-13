@@ -51,13 +51,6 @@
         if (el) fn(el);
     }
 
-    function onRoleButtonKeydown(e, onClick) {
-        if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClick();
-        }
-    }
-
     function getColorMode() {
         var el = document.querySelector('input[name="colorMode"]:checked');
         return el && el.value === "rgb" ? "rgb" : "hsv";
@@ -147,10 +140,14 @@
             onNetwork: function (id, card) {
                 window.NetworkVisualizer.toggle(id, card);
             },
-            onSave: savePattern,
+            onSave: window.PatternActions.savePattern,
             onFullscreen: openFullscreen,
-            onClick: clickPattern,
-            onUnclick: unclickPattern,
+            onClick: function (id, card) {
+                window.PatternActions.clickPattern(id, card, updateStats);
+            },
+            onUnclick: function (id, card) {
+                window.PatternActions.unclickPattern(id, card, updateStats);
+            },
             onMouseEnter: function (id) {
                 if (typeof window.EyecatcherDebug !== "undefined") {
                     window.EyecatcherDebug.setHoveredPatternId(id);
@@ -167,68 +164,6 @@
         };
     }
 
-    function savePattern(id, buttonEl) {
-        var state = window.PopulationState.getState();
-        if (!state.currentGenomes || !state.currentGenomes.length) {
-            window.Toast.show(
-                "Cannot save",
-                "No pattern data. Start with New random population or Load population.",
-                "error"
-            );
-            return;
-        }
-        var idx = state.currentPopulation.findIndex(function (p) {
-            return p.id === id;
-        });
-        var genome =
-            idx >= 0 && state.currentGenomes[idx] ? state.currentGenomes[idx] : null;
-        if (!genome) {
-            window.Toast.show("Cannot save", "Could not get pattern data.", "error");
-            return;
-        }
-        var originalText = buttonEl ? buttonEl.textContent : null;
-        if (buttonEl) {
-            buttonEl.textContent = "Compiling...";
-            buttonEl.classList.add("saving");
-        }
-        window.ApiClient.save(id, genome)
-            .then(function (data) {
-                if (Array.isArray(data.downloads) && data.downloads.length) {
-                    var file = data.downloads[0];
-                    var blob = file.content_base64
-                        ? window.Toast.base64ToBlob(file.content_base64, file.mime)
-                        : new Blob([file.content], { type: file.mime });
-                    window.Toast.triggerDownload(blob, file.filename);
-                    window.Toast.show(
-                        "Pattern saved!",
-                        "Zip downloaded to your computer.",
-                        "success",
-                        { duration: 5000 }
-                    );
-                } else {
-                    window.Toast.show(
-                        "Pattern saved!",
-                        "No download in response.",
-                        "success"
-                    );
-                }
-            })
-            .catch(function (error) {
-                console.error("Error saving:", error);
-                window.Toast.show(
-                    "Save failed",
-                    error.message || "Network error",
-                    "error"
-                );
-            })
-            .then(function () {
-                if (buttonEl) {
-                    buttonEl.textContent = originalText;
-                    buttonEl.classList.remove("saving");
-                }
-            });
-    }
-
     function openFullscreen(id) {
         var state = window.PopulationState.getState();
         window.FullscreenModal.openFullscreen(id, state.currentPopulation, IDS);
@@ -238,60 +173,22 @@
         window.FullscreenModal.closeFullscreen(IDS);
     }
 
-    function clickPattern(id, card) {
-        var state = window.PopulationState.getState();
-        var pattern = state.patterns.get(id);
-        if (pattern) {
-            var clicks = (pattern.clicks || 0) + 1;
-            window.PopulationState.dispatch({
-                type: "SET_PATTERN_CLICKS",
-                payload: { id: id, clicks: clicks },
-            });
-            var clickCount = card.querySelector(".click-count");
-            if (clickCount) {
-                clickCount.textContent = clicks;
-                clickCount.classList.remove("zero");
-            }
-            card.classList.add("selected");
-            updateStats();
-        }
-    }
-
-    function unclickPattern(id, card) {
-        var state = window.PopulationState.getState();
-        var pattern = state.patterns.get(id);
-        if (pattern && (pattern.clicks || 0) > 0) {
-            var clicks = pattern.clicks - 1;
-            window.PopulationState.dispatch({
-                type: "SET_PATTERN_CLICKS",
-                payload: { id: id, clicks: clicks },
-            });
-            var clickCount = card.querySelector(".click-count");
-            if (clickCount) {
-                clickCount.textContent = clicks;
-                if (clicks === 0) {
-                    clickCount.classList.add("zero");
-                    card.classList.remove("selected");
-                }
-            }
-            updateStats();
-        }
-    }
-
     function resolveAdapterAndOutput(outputType, substrateId, genomes) {
-        var SubstrateAdapters = window.SubstrateAdapters;
-        if (!SubstrateAdapters || !SubstrateAdapters.resolveForLoad) {
-            var def =
-                window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
-                    ? window.EvolutionConfig.getDefaultResolution()
-                    : { outputType: "shader", substrateId: "dual_cppn" };
+        var SA = window.SubstrateAdapters;
+        if (!SA || !SA.resolve) {
+            var def = (window.EvolutionConfig &&
+                window.EvolutionConfig.getDefaultResolution &&
+                window.EvolutionConfig.getDefaultResolution()) || {
+                outputType: "shader",
+                substrateId: "dual_cppn",
+            };
             return {
                 adapter: null,
                 outputType: outputType || def.outputType,
                 substrateId: substrateId || def.substrateId,
             };
         }
-        return SubstrateAdapters.resolveForLoad({
+        return SA.resolve({
             outputType: outputType,
             substrateId: substrateId,
             genomes: genomes,
@@ -516,38 +413,27 @@
         var m = document.getElementById(IDS.communityListModal);
         if (m) m.classList.remove("show");
     };
-    var eventBindings = [
-        [IDS.fullscreenClose, closeFullscreen],
-        [IDS.fullscreenBackdrop, closeFullscreen],
-        [IDS.evolveBtn, evolveGeneration, true],
-        [IDS.loadModalClose, closeLoadModal],
-        [IDS.communitySubmitDo, window.CommunityUI.submitCommunityForm],
-        [IDS.communitySubmitCancel, window.CommunityUI.closeSubmitCommunityModal],
-        [IDS.communityListClose, closeCommunityListModal],
-        [IDS.communityLoadSelectedBtn, window.CommunityUI.onCommunityLoadSelected],
-        [IDS.communityLoad12Btn, window.CommunityUI.onCommunityLoad12],
-        [IDS.communitySelectAllBtn, window.CommunityUI.onCommunitySelectAll],
-        [IDS.communityDeselectAllBtn, window.CommunityUI.onCommunityDeselectAll],
-        [IDS.newFromCommunityBtn, window.CommunityUI.onNewFromCommunityClick, true],
-        [IDS.adminKeySubmit, window.CommunityUI.submitAdminKey],
-        [IDS.adminModalCancel, window.CommunityUI.closeAdminModal],
-        [IDS.adminListClose, window.CommunityUI.closeAdminModal],
-        [IDS.saveCurrentBtn, window.PopulationUI.onSaveCurrentClick],
-        [IDS.importBtn, window.PopulationUI.onImportClick],
-    ];
-    eventBindings.forEach(function (b) {
-        var id = b[0];
-        var handler = b[1];
-        var withRoleKeydown = b[2];
-        onId(id, function (el) {
-            el.addEventListener("click", handler);
-            if (withRoleKeydown) {
-                el.addEventListener("keydown", function (e) {
-                    onRoleButtonKeydown(e, handler);
-                });
-            }
-        });
-    });
+    window.AppEventBindings.applyEventBindings(
+        IDS,
+        {
+            closeFullscreen: closeFullscreen,
+            evolveGeneration: evolveGeneration,
+            closeLoadModal: closeLoadModal,
+            closeCommunityListModal: closeCommunityListModal,
+            submitCommunityForm: window.CommunityUI.submitCommunityForm,
+            closeSubmitCommunityModal: window.CommunityUI.closeSubmitCommunityModal,
+            onCommunityLoadSelected: window.CommunityUI.onCommunityLoadSelected,
+            onCommunityLoad12: window.CommunityUI.onCommunityLoad12,
+            onCommunitySelectAll: window.CommunityUI.onCommunitySelectAll,
+            onCommunityDeselectAll: window.CommunityUI.onCommunityDeselectAll,
+            onNewFromCommunityClick: window.CommunityUI.onNewFromCommunityClick,
+            submitAdminKey: window.CommunityUI.submitAdminKey,
+            closeAdminModal: window.CommunityUI.closeAdminModal,
+            onSaveCurrentClick: window.PopulationUI.onSaveCurrentClick,
+            onImportClick: window.PopulationUI.onImportClick,
+        },
+        onId
+    );
     onId(IDS.adminKeyInput, function (el) {
         el.addEventListener("keydown", function (e) {
             if (e.key === "Enter") window.CommunityUI.submitAdminKey();
@@ -585,53 +471,7 @@
         });
     }
 
-    var genealogyLoad = null;
-    var raw = Utils.safeGetItem(localStorage, "genealogy_load", null);
-    if (raw) {
-        try {
-            genealogyLoad = JSON.parse(raw);
-            try {
-                localStorage.removeItem("genealogy_load");
-            } catch (_e) {
-                /* ignore */
-            }
-        } catch (e) {
-            console.warn("Genealogy load parse failed:", e);
-        }
-    }
-    if (genealogyLoad && genealogyLoad.genomes && genealogyLoad.genomes.length) {
-        setGenealogyState(
-            genealogyLoad.population_id != null ? genealogyLoad.population_id : null,
-            genealogyLoad.branch_name || "main"
-        );
-        var genNum =
-            genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
-        var resolved;
-        if (window.SubstrateAdapters && window.SubstrateAdapters.resolveForLoad) {
-            resolved = window.SubstrateAdapters.resolveForLoad({
-                substrateId: genealogyLoad.substrate_id,
-                genomes: genealogyLoad.genomes,
-            });
-        } else {
-            var def =
-                window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
-                    ? window.EvolutionConfig.getDefaultResolution()
-                    : { outputType: "shader", substrateId: "dual_cppn" };
-            resolved = {
-                outputType: def.outputType,
-                substrateId: genealogyLoad.substrate_id || def.substrateId,
-            };
-        }
-        window.GridRenderer.loadFromStatelessGenomes(
-            genealogyLoad.genomes,
-            genNum,
-            false,
-            resolved.outputType,
-            resolved.substrateId
-        );
-    } else {
-        window.PopulationUI.startNewRandomPopulation();
-    }
+    window.AppGenealogyLoader.initGenealogyLoad(setGenealogyState);
     window.AnimationLoop.start();
 
     console.log("Eyecatcher Interactive Evolution ready!");

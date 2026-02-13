@@ -78,10 +78,10 @@ def test_api_evolve(client):
     assert len(data["children"]) == 4
 
 
-def test_api_evolve_without_genealogy(client, cppn_engine):
+def test_api_evolve_without_genealogy(client, substrate):
     """Evolve without parent_population_id returns children only, no population_id."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
@@ -121,10 +121,10 @@ def test_api_evolve_malformed_parents(client):
 
 
 @pytest.mark.slow
-def test_api_evolve_with_genealogy(client, genealogy_db, cppn_engine):
+def test_api_evolve_with_genealogy(client, genealogy_db, substrate):
     """Evolve with parent_population_id saves to genealogy and returns population_id."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     payload = dual_genome_to_json(dual)
     payload["key"] = 0
@@ -158,10 +158,10 @@ def test_api_evolve_with_genealogy(client, genealogy_db, cppn_engine):
 
 
 @pytest.mark.slow
-def test_api_save(client, cppn_engine):
+def test_api_save(client, substrate):
     """POST /api/save with genome returns id, status, and downloads."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
@@ -177,10 +177,10 @@ def test_api_save(client, cppn_engine):
 
 
 @pytest.mark.slow
-def test_save_download_structure(client, cppn_engine):
+def test_save_download_structure(client, substrate):
     """Save returns downloads[0] with .zip filename and non-empty content_base64."""
     dual = create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
@@ -263,11 +263,11 @@ def test_api_error_response_shape(client):
     assert len(data["error"]) > 0
 
 
-def test_api_adjust_weight(client, cppn_engine):
+def test_api_adjust_weight(client, substrate):
     """POST /api/adjust-weight with valid payload returns shader and genome."""
     from conftest import minimal_dual_genome_one_hidden_visual
 
-    dual = minimal_dual_genome_one_hidden_visual(cppn_engine)
+    dual = minimal_dual_genome_one_hidden_visual(substrate)
     genome = dual_genome_to_json(dual)
     genome["key"] = 0
     net_rv = client.post("/api/network", json={"genome": genome})

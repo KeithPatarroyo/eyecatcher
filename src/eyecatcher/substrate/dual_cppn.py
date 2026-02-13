@@ -36,8 +36,8 @@ from ._dual_genome import (
 from .cppn_base import (
     CPPNSubstrateBase,
     _clamp_rgb,
+    _compute_network_stats,
     _load_neat_config,
-    compile_with_color_mode,
     query_neat_network,
 )
 from .protocol import OutputType
@@ -51,19 +51,6 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
 
     id = "dual_cppn"
     output_type: OutputType = "shader"
-
-    @classmethod
-    def get_frontend_metadata(cls) -> dict:
-        return {
-            "hasSignalControls": True,
-            "genomeKeys": ["visual", "time_signal"],
-            "capabilities": {
-                "save": True,
-                "network": True,
-                "timeOutput": True,
-                "adjustWeight": True,
-            },
-        }
 
     def __init__(
         self,
@@ -90,7 +77,9 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
         self._time_population = neat.Population(self.time_config)
         self.population = self._population
         self.time_population = self._time_population
-        self.compiler = ShaderCompiler(color_mode=color_mode)
+        self.compiler = ShaderCompiler(
+            VISUAL_INPUTS, TIME_INPUTS, VISUAL_DERIVED_INPUTS, color_mode=color_mode
+        )
 
     def create_random(self, key: int = 0) -> DualGenome:
         return create_random_dual_genome(self.config, self.time_config, genome_id=key)
@@ -101,18 +90,8 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
     def crossover(self, a: DualGenome, b: DualGenome, key: int) -> DualGenome:
         return crossover_dual_genomes(a, b, self.config, self.time_config, key)
 
-    def compile_to_shader(
-        self, ind: DualGenome, color_mode: str | None = None
-    ) -> str | None:
-        return compile_with_color_mode(
-            self.compiler,
-            ind,
-            color_mode,
-            lambda c, i, cfg, tc: c.compile_dual_to_glsl(i, cfg, tc),
-            ind,
-            self.config,
-            self.time_config,
-        )
+    def _compile(self, compiler: Any, ind: DualGenome) -> str | None:
+        return compiler.compile_dual_to_glsl(ind, self.config, self.time_config)
 
     def _query_time_signal(
         self, time_genome: neat.DefaultGenome, inputs: dict[str, float]
@@ -142,11 +121,6 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
         }
         return self._query_visual_rgb(ind, visual_inputs)
 
-    def _query_dual_cppn(
-        self, ind: DualGenome, inputs: dict[str, float]
-    ) -> tuple[float, float, float]:
-        return self.query_rgb(ind, inputs)
-
     def _sample_inputs(
         self, x: float, y: float, time: float, base: dict[str, float]
     ) -> dict[str, float]:
@@ -162,16 +136,12 @@ class DualCPPNSubstrate(CPPNSubstrateBase):
         return dual_genome_from_json(data, self.config, self.time_config)
 
     def get_compile_stats(self, ind: DualGenome) -> dict[str, Any] | None:
-        v_nodes = len(ind.visual.nodes)
-        v_conns = len([c for c in ind.visual.connections.values() if c.enabled])
-        t_nodes = len(ind.time_signal.nodes)
-        t_conns = len([c for c in ind.time_signal.connections.values() if c.enabled])
-        return {
-            "visual_nodes": v_nodes,
-            "visual_connections": v_conns,
-            "time_nodes": t_nodes,
-            "time_connections": t_conns,
-        }
+        return _compute_network_stats(
+            [
+                ("visual", ind.visual, self.config),
+                ("time", ind.time_signal, self.time_config),
+            ]
+        )
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         base = super().get_save_filenames(individual_id)

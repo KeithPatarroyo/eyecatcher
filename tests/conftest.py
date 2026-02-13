@@ -1,6 +1,6 @@
 """Shared pytest fixtures for Eyecatcher.
 
-Provides client, cppn_engine (DualCPPNSubstrate), random_dual_genome, minimal_dual,
+Provides client, substrate (DualCPPNSubstrate), random_dual_genome, minimal_dual,
 genealogy_db, community_db. DB fixtures use temp paths; no real data modified.
 """
 
@@ -73,22 +73,22 @@ def client():
 
 
 @pytest.fixture
-def cppn_engine():
+def substrate():
     """DualCPPNSubstrate for mutation, crossover, query tests."""
     return DualCPPNSubstrate()
 
 
 @pytest.fixture
-def minimal_dual(cppn_engine):
+def minimal_dual(substrate):
     """Dual genome with one hidden node in visual CPPN (deterministic)."""
-    return minimal_dual_genome_one_hidden_visual(cppn_engine)
+    return minimal_dual_genome_one_hidden_visual(substrate)
 
 
 @pytest.fixture
-def random_dual_genome(cppn_engine):
+def random_dual_genome(substrate):
     """Random dual genome with genome_id=0 (for tests that need one random genome)."""
     return create_random_dual_genome(
-        cppn_engine.config, cppn_engine.time_config, genome_id=0
+        substrate.config, substrate.time_config, genome_id=0
     )
 
 

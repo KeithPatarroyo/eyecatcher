@@ -55,15 +55,15 @@ def _save_genome_as_text(
 
 
 @pytest.mark.slow
-def test_visualization(tmp_path, cppn_engine):
+def test_visualization(tmp_path, substrate):
     """Save pkl, text, optional PDF, and render PNG into tmp_path.
 
     Set EYECATCHER_KEEP_VISUALIZATION_ARTIFACTS=1 to copy outputs to output/test/
     so you can open the PDF (and other files) after the test.
     """
-    genome = create_random_genome(cppn_engine.config, genome_id=42)
+    genome = create_random_genome(substrate.config, genome_id=42)
     for _ in range(5):
-        genome = mutate_genome(genome, cppn_engine.config)
+        genome = mutate_genome(genome, substrate.config)
 
     pkl_path = tmp_path / "test_genome.pkl"
     txt_path = tmp_path / "test_genome.txt"
@@ -72,9 +72,9 @@ def test_visualization(tmp_path, cppn_engine):
     with open(pkl_path, "wb") as f:
         pickle.dump(genome, f)
     render_genome_network_pdf(
-        genome, cppn_engine.config, str(tmp_path / "test_genome_network.pdf")
+        genome, substrate.config, str(tmp_path / "test_genome_network.pdf")
     )
-    _save_genome_as_text(genome, str(txt_path), cppn_engine.config)
+    _save_genome_as_text(genome, str(txt_path), substrate.config)
 
     single_substrate = SingleCPPNSubstrate()
     img = single_substrate.render_to_image(genome, resolution=64)

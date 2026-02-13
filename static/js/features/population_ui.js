@@ -108,10 +108,10 @@
                             .getElementById("load-list-modal")
                             .classList.remove("show");
                         if (_loadFromStatelessGenomes) {
+                            var SA = window.SubstrateAdapters;
                             var r =
-                                window.SubstrateAdapters &&
-                                window.SubstrateAdapters.resolveForLoad
-                                    ? window.SubstrateAdapters.resolveForLoad(pop)
+                                SA && SA.resolve
+                                    ? SA.resolve(pop)
                                     : window.EvolutionConfig &&
                                         window.EvolutionConfig.getDefaultResolution
                                       ? window.EvolutionConfig.getDefaultResolution()
@@ -225,12 +225,10 @@
                 genomes = json.genomes || [];
                 if (genomes.length && typeof EyecatcherStorage !== "undefined") {
                     await EyecatcherStorage.init();
+                    var SA = window.SubstrateAdapters;
                     var r =
-                        window.SubstrateAdapters &&
-                        window.SubstrateAdapters.resolveForLoad
-                            ? window.SubstrateAdapters.resolveForLoad({
-                                  genomes: genomes,
-                              })
+                        SA && SA.resolve
+                            ? SA.resolve({ genomes: genomes })
                             : window.EvolutionConfig &&
                                 window.EvolutionConfig.getDefaultResolution
                               ? window.EvolutionConfig.getDefaultResolution()
@@ -246,9 +244,10 @@
                 Toast.error("No genomes in file");
                 return;
             }
+            var adapters = window.SubstrateAdapters;
             var resolved =
-                window.SubstrateAdapters && window.SubstrateAdapters.resolveForLoad
-                    ? window.SubstrateAdapters.resolveForLoad({ genomes: genomes })
+                adapters && adapters.resolve
+                    ? adapters.resolve({ genomes: genomes })
                     : window.EvolutionConfig &&
                         window.EvolutionConfig.getDefaultResolution
                       ? window.EvolutionConfig.getDefaultResolution()

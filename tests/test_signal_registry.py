@@ -15,12 +15,12 @@ from eyecatcher.signals import (
 from eyecatcher.signals.signals import _is_toggleable
 
 
-def test_neat_config_matches_registry(cppn_engine):
+def test_neat_config_matches_registry(substrate):
     """NEAT config num_inputs/num_outputs match registry (validated at engine init)."""
-    assert cppn_engine.config.genome_config.num_inputs == len(VISUAL_INPUTS)
-    assert cppn_engine.config.genome_config.num_outputs == len(VISUAL_OUTPUTS)
-    assert cppn_engine.time_config.genome_config.num_inputs == len(TIME_INPUTS)
-    assert cppn_engine.time_config.genome_config.num_outputs == len(TIME_OUTPUTS)
+    assert substrate.config.genome_config.num_inputs == len(VISUAL_INPUTS)
+    assert substrate.config.genome_config.num_outputs == len(VISUAL_OUTPUTS)
+    assert substrate.time_config.genome_config.num_inputs == len(TIME_INPUTS)
+    assert substrate.time_config.genome_config.num_outputs == len(TIME_OUTPUTS)
 
 
 def test_signals_export_for_frontend():
