@@ -1,7 +1,6 @@
 """Tests for genome JSON serialization round-trip."""
 
 import pytest
-from eyecatcher.inspection import extract_network_data
 from eyecatcher.representation import (
     create_random_dual_genome,
     dual_genome_from_json,
@@ -52,14 +51,11 @@ def test_dual_genome_round_trip_query_consistency(representation, random_dual_ge
 
 def test_extract_network_data_shape(representation, minimal_dual):
     """extract_network_data returns nodes/conns with id, label, type, network."""
-    config = representation.config
-    time_config = representation.time_config
-
-    visual_nodes, visual_conns = extract_network_data(
-        minimal_dual.visual, "visual", config
+    visual_nodes, visual_conns = representation.visual.extract_network_data(
+        minimal_dual.visual, x_offset=0
     )
-    time_nodes, time_conns = extract_network_data(
-        minimal_dual.time_signal, "time", time_config
+    time_nodes, time_conns = representation.time.extract_network_data(
+        minimal_dual.time_signal, x_offset=0
     )
 
     required_node_keys = {"id", "label", "type", "network"}

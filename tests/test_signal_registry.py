@@ -1,67 +1,65 @@
-"""Tests for signal registry and frontend/backend config alignment."""
+"""Tests for signal spec, catalog, and config alignment."""
 
 import json
 import os
 
 import pytest
 from eyecatcher import get_root_dir
-from eyecatcher.signals import (
-    TIME_INPUTS,
-    TIME_OUTPUTS,
-    VISUAL_INPUTS,
-    VISUAL_OUTPUTS,
-    export_for_frontend,
-)
-from eyecatcher.signals.registry import _is_toggleable
+from eyecatcher.representation import DualCPPNRepresentation
+from eyecatcher.signals import catalog, export_for_frontend
 
 
-def test_neat_config_matches_registry(representation):
-    """NEAT config num_inputs/num_outputs match registry (validated at engine init)."""
-    assert representation.config.genome_config.num_inputs == len(VISUAL_INPUTS)
-    assert representation.config.genome_config.num_outputs == len(VISUAL_OUTPUTS)
-    assert representation.time_config.genome_config.num_inputs == len(TIME_INPUTS)
-    assert representation.time_config.genome_config.num_outputs == len(TIME_OUTPUTS)
+def test_neat_config_matches_representation(representation):
+    """NEAT config num_inputs/num_outputs match socket signal counts."""
+    assert representation.config.genome_config.num_inputs == len(
+        representation.visual.inputs
+    )
+    assert representation.config.genome_config.num_outputs == len(
+        representation.visual.outputs
+    )
+    assert representation.time_config.genome_config.num_inputs == len(
+        representation.time.inputs
+    )
+    assert representation.time_config.genome_config.num_outputs == len(
+        representation.time.outputs
+    )
 
 
 def test_signals_export_for_frontend():
-    """export_for_frontend() returns SIGNAL_TOGGLES, OUTPUTS, SIGNAL_IDS."""
-    data = export_for_frontend()
-    assert "SIGNAL_TOGGLES" in data
+    """export_for_frontend returns expected keys (SIGNAL_GROUPS, OUTPUTS, etc.)."""
+    rep = DualCPPNRepresentation()
+    data = export_for_frontend(rep.signal_spec)
+    assert "SIGNAL_GROUPS" in data
+    assert "TOGGLEABLE_SIGNALS" in data
     assert "OUTPUTS" in data
     assert "SIGNAL_IDS" in data
-    assert list(data["SIGNAL_TOGGLES"].keys()) == ["time", "visual"]
-    for cppn_type in ("time", "visual"):
-        assert "toggleableInputs" in data["SIGNAL_TOGGLES"][cppn_type]
-        for inp in data["SIGNAL_TOGGLES"][cppn_type]["toggleableInputs"]:
-            assert "id" in inp and "label" in inp
-    assert data["OUTPUTS"]["visual"] == [
+    groups = data["SIGNAL_GROUPS"]
+    assert any(g.get("label") in ("Spatial", "Temporal", "Interaction") for g in groups)
+    assert data["OUTPUTS"] == [
         {"id": "red", "label": "Red"},
         {"id": "green", "label": "Green"},
         {"id": "blue", "label": "Blue"},
     ]
-    assert data["OUTPUTS"]["time"] == [{"id": "output", "label": "Modified Time"}]
-    assert set(data["SIGNAL_IDS"]) == {
+    assert set(data["SIGNAL_IDS"]) >= {
         "activity",
         "mouse_dist",
         "mouse_speed",
         "mouse_x",
         "mouse_y",
-        "raw_time",
     }
 
 
 def test_frontend_signals_match_backend():
-    """Generated evolution_config_signals.generated.js matches Python registry."""
+    """Generated config_signals.generated.js matches representation spec export."""
     root = get_root_dir()
     js_path = os.path.join(
-        root, "static", "js", "evolution", "evolution_config_signals.generated.js"
+        root, "static", "js", "evolution", "config_signals.generated.js"
     )
     if not os.path.isfile(js_path):
         pytest.skip("run make generate-signals to create generated file")
     with open(js_path, encoding="utf-8") as f:
         text = f.read()
 
-    # Extract JSON from window.EvolutionConfigSignals = { ... };
     start = text.find("window.EvolutionConfigSignals = ")
     assert start >= 0, "Generated file should assign EvolutionConfigSignals"
     start = text.index("{", start)
@@ -77,32 +75,27 @@ def test_frontend_signals_match_backend():
                 break
     data = json.loads(text[start : end + 1])
 
-    time_toggleable = [s.id for s in TIME_INPUTS if _is_toggleable(s)]
-    visual_toggleable = [s.id for s in VISUAL_INPUTS if _is_toggleable(s)]
-
-    toggles = data["SIGNAL_TOGGLES"]
-    js_time = [t["id"] for t in toggles["time"]["toggleableInputs"]]
-    js_visual = [t["id"] for t in toggles["visual"]["toggleableInputs"]]
-
-    assert js_time == time_toggleable, f"Time: JS {js_time} vs Python {time_toggleable}"
-    assert (
-        js_visual == visual_toggleable
-    ), f"Visual ids: JS {js_visual} vs Python {visual_toggleable}"
+    rep = DualCPPNRepresentation()
+    expected = export_for_frontend(rep.signal_spec)
+    assert set(data["SIGNAL_IDS"]) == set(expected["SIGNAL_IDS"])
+    assert "TOGGLEABLE_SIGNALS" in data
+    assert "SIGNAL_GROUPS" in data
 
 
 def test_generated_signals_file_is_up_to_date():
-    """Generated evolution_config_signals.generated.js matches current registry.
+    """Generated config_signals.generated.js matches current representation spec.
 
     If this fails, run `make generate-signals` and commit the updated file.
     """
     root = get_root_dir()
     js_path = os.path.join(
-        root, "static", "js", "evolution", "evolution_config_signals.generated.js"
+        root, "static", "js", "evolution", "config_signals.generated.js"
     )
     if not os.path.isfile(js_path):
         pytest.skip("run make generate-signals to create generated file")
 
-    data = export_for_frontend()
+    rep = DualCPPNRepresentation()
+    data = export_for_frontend(rep.signal_spec)
     expected_content = (
         "/* Generated by scripts/generate_signal_config.py - do not edit */\n"
         "(function () {\n"
@@ -113,7 +106,81 @@ def test_generated_signals_file_is_up_to_date():
     with open(js_path, encoding="utf-8") as f:
         actual_content = f.read()
 
-    assert actual_content == expected_content, (
-        "evolution_config_signals.generated.js is out of date. "
-        "Run: make generate-signals"
-    )
+    assert (
+        actual_content == expected_content
+    ), "config_signals.generated.js is out of date. Run: make generate-signals"
+
+
+# ---------------------------------------------------------------
+# SignalSpec tests
+# ---------------------------------------------------------------
+
+
+class TestSignalSpec:
+    """Tests for SignalSpec and catalog."""
+
+    def test_dual_cppn_has_signal_spec(self, representation):
+        """DualCPPN declares a signal_spec with inputs and outputs."""
+        spec = representation.signal_spec
+        assert len(spec.inputs) > 0
+        assert len(spec.outputs) > 0
+        ids = spec.input_ids()
+        assert "x" in ids
+        assert "bias" in ids
+
+    def test_dual_cppn_spec_has_categories(self, representation):
+        """DualCPPN signal_spec has spatial and interaction categories."""
+        spec = representation.signal_spec
+        assert spec.has_category("spatial")
+        assert spec.has_category("interaction")
+
+    def test_dual_cppn_spec_has_derived(self, representation):
+        """DualCPPN signal_spec has derived inputs (distance)."""
+        spec = representation.signal_spec
+        assert len(spec.derived_inputs) > 0
+        assert spec.derived_inputs[0].id == "distance"
+
+    def test_conway_has_interaction_signals(self):
+        """Conway representation declares interaction signals."""
+        from eyecatcher.representation.ca import ConwayRepresentation
+
+        ca = ConwayRepresentation()
+        spec = ca.signal_spec
+        assert spec.has_signal("mouse_x")
+        assert spec.has_signal("mouse_y")
+        assert spec.has_category("interaction")
+
+    def test_conway_spec_no_outputs(self):
+        """Conway representation currently declares no output signals."""
+        from eyecatcher.representation.ca import ConwayRepresentation
+
+        ca = ConwayRepresentation()
+        assert len(ca.signal_spec.outputs) == 0
+
+    def test_catalog_presets_consistent(self):
+        """Catalog convenience presets have expected lengths and ids."""
+        assert len(catalog.DUAL_CPPN_VISUAL_INPUTS) == 10
+        assert len(catalog.DUAL_CPPN_TIME_INPUTS) == 5
+        ids = [s.id for s in catalog.DUAL_CPPN_VISUAL_INPUTS]
+        assert "x" in ids and "y" in ids and "bias" in ids
+
+    def test_export_for_frontend_with_spec(self, representation):
+        """export_for_frontend(spec) returns SIGNAL_GROUPS and TOGGLEABLE_SIGNALS."""
+        data = export_for_frontend(representation.signal_spec)
+        assert "SIGNAL_GROUPS" in data
+        assert "TOGGLEABLE_SIGNALS" in data
+        assert "SIGNAL_IDS" in data
+        groups = data["SIGNAL_GROUPS"]
+        assert any(
+            g.get("label") in ("Spatial", "Temporal", "Interaction") for g in groups
+        )
+
+    def test_signal_spec_has_signal(self):
+        """SignalSpec.has_signal works for present and absent signals."""
+        from eyecatcher.signals.socket import Socket
+        from eyecatcher.signals.spec import Signal, SignalSpec
+
+        sock = Socket("test", inputs=(Signal("a", "A"), Signal("b", "B")))
+        spec = SignalSpec(sockets=(sock,), outputs=())
+        assert spec.has_signal("a")
+        assert not spec.has_signal("c")

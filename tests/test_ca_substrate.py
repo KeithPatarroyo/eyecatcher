@@ -113,3 +113,12 @@ def test_serialize_individual_extra_includes_grid(ca_substrate):
     assert "grid" in extra
     assert len(extra["grid"]) == DEFAULT_GRID_SIZE
     assert len(extra["grid"][0]) == DEFAULT_GRID_SIZE
+
+
+def test_ca_has_interaction_signal_spec(ca_substrate):
+    """CA representation declares mouse_x/mouse_y interaction signals."""
+    spec = ca_substrate.signal_spec
+    assert spec.has_signal("mouse_x")
+    assert spec.has_signal("mouse_y")
+    assert spec.has_category("interaction")
+    assert len(spec.outputs) == 0

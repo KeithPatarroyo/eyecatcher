@@ -11,7 +11,6 @@ import neat
 import pytest
 from eyecatcher.evolution import mutate_genome
 from eyecatcher.genome import create_random_genome
-from eyecatcher.inspection import render_genome_network_pdf
 from eyecatcher.representation import SingleCPPNRepresentation
 from PIL import Image
 
@@ -71,8 +70,9 @@ def test_visualization(tmp_path, representation):
 
     with open(pkl_path, "wb") as f:
         pickle.dump(genome, f)
-    render_genome_network_pdf(
-        genome, representation.config, str(tmp_path / "test_genome_network.pdf")
+    representation.visual.render_network_pdf(
+        genome,
+        str(tmp_path / "test_genome_network.pdf"),
     )
     _save_genome_as_text(genome, str(txt_path), representation.config)
 

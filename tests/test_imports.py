@@ -24,14 +24,45 @@ def test_new_submodule_imports():
     """Test that new submodules are importable directly."""
     from eyecatcher.inspection import render_genome_network_pdf
     from eyecatcher.representation import DualCPPNRepresentation, DualGenome
-    from eyecatcher.signals import VISUAL_INPUTS
+    from eyecatcher.signals import SignalSpec, catalog
 
     assert DualCPPNRepresentation is not None
     assert DualGenome is not None
-    assert VISUAL_INPUTS is not None
+    assert catalog.DUAL_CPPN_VISUAL_INPUTS is not None
+    assert SignalSpec is not None
     assert render_genome_network_pdf is not None
     representation = DualCPPNRepresentation()
     assert callable(getattr(representation, "render_to_image", None))
+    assert hasattr(representation, "signal_spec")
+
+
+def test_signal_catalog_imports():
+    """Test that signal catalog and spec are importable."""
+    from eyecatcher.signals import Socket, catalog
+    from eyecatcher.signals.spec import (
+        DerivedInput,
+        Output,
+        Signal,
+        SignalSpec,
+    )
+
+    assert Signal is not None
+    assert Output is not None
+    assert DerivedInput is not None
+    assert SignalSpec is not None
+    assert Socket is not None
+    assert len(catalog.SPATIAL) > 0
+    assert len(catalog.INTERACTION) > 0
+    assert len(catalog.RGB_OUTPUTS) == 3
+
+
+def test_socket_subclass_imports():
+    """Test that Socket subclasses are importable from representation."""
+    from eyecatcher.representation import GridSocket, NeatSocket
+    from eyecatcher.signals import Socket
+
+    assert issubclass(NeatSocket, Socket)
+    assert issubclass(GridSocket, Socket)
 
 
 def test_web_imports():

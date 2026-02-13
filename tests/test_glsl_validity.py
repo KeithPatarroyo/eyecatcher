@@ -8,7 +8,7 @@ import re
 from collections import Counter
 
 from eyecatcher.representation import SingleCPPNRepresentation
-from eyecatcher.signals import TIME_INPUTS
+from eyecatcher.signals import catalog
 
 
 def _declared_v_identifiers(glsl: str) -> set[str]:
@@ -60,8 +60,8 @@ def _assert_all_used_vars_declared(glsl: str) -> None:
 
 
 def _time_input_ids() -> set[str]:
-    """Signal ids that get _base in the dual shader (TIME_INPUTS with uniform)."""
-    return {s.id for s in TIME_INPUTS if s._uniform()}
+    """Time network input ids that get _base in the dual shader."""
+    return {s.id for s in catalog.DUAL_CPPN_TIME_INPUTS if s._uniform()}
 
 
 def test_dual_shader_all_signal_variables_declared(
@@ -95,8 +95,8 @@ def test_dual_shader_base_variables_only_for_time_inputs(
 ):
     """Regression: dual shader must not reference *_base for visual-only signals.
 
-    Only TIME_INPUTS get _base in the dual shader. Visual-only inputs (e.g. mouse_x,
-    mouse_y) must not be referenced as mouse_x_base / mouse_y_base.
+    Only time network inputs get _base in the dual shader. Visual-only inputs
+    (e.g. mouse_x, mouse_y) must not be referenced as mouse_x_base / mouse_y_base.
     """
     glsl = dual_cppn_representation.compile_to_shader(random_dual_genome)
     assert glsl is not None
