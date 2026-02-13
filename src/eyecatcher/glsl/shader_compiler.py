@@ -1,5 +1,5 @@
 """
-Compiles CPPN networks (single or dual visual + time) to GLSL fragment shaders.
+Compiles neural networks to GLSL fragment shaders.
 
 Orchestrates compiler_topology, node_code_generator, and glsl_fragments.
 Researchers extend: activation in glsl_fragments + node_code_generator;
@@ -17,7 +17,7 @@ from .node_code_generator import generate_node_code, generate_time_signal_code
 
 class ShaderCompiler:
     """
-    Compiles CPPN networks into GLSL fragment shader code.
+    Compiles neural networks into GLSL fragment shader code.
     The shader can then be executed on GPU for real-time rendering.
 
     Args:
@@ -33,7 +33,7 @@ class ShaderCompiler:
         self, genome: neat.DefaultGenome, visual_config: neat.Config
     ) -> str:
         """
-        Compile a CPPN genome into GLSL shader code.
+        Compile a genome into GLSL shader code.
 
         Args:
             genome: NEAT genome to compile
@@ -50,7 +50,7 @@ class ShaderCompiler:
         return self._build_shader_template(node_computations, visual_config)
 
     def _get_color_output_code(self) -> str:
-        """Get GLSL code for converting CPPN outputs to RGB based on color_mode."""
+        """Get GLSL code for converting network outputs to RGB based on color_mode."""
         if self.color_mode == "rgb":
             return """    // Output RGB directly (clamp to 0-1)
     float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
@@ -132,7 +132,7 @@ in vec2 vUV;  // UV coordinates (0-1)
 out vec4 fragColor;
 {ACTIVATION_GLSL_BLOCK}"""
 
-    def _glsl_uv_to_cppn(self) -> str:
+    def _glsl_uv_to_coord(self) -> str:
         """UV to coord space (-1..1) and derived spatial inputs from registry."""
         lines = [
             "    float v_x = vUV.x * 2.0 - 1.0;",
@@ -196,8 +196,8 @@ void main() {{
     def _build_shader_template(self, node_code: str, visual_config: neat.Config) -> str:
         """Build the complete GLSL shader with node computations (single CPPN)."""
         visual_gating = self._glsl_visual_enable_gating(use_time_from_network=False)
-        main_body = f"""    // Convert UV to CPPN coordinate space (-1 to 1)
-{self._glsl_uv_to_cppn()}
+        main_body = f"""    // Convert UV to coordinate space (-1 to 1)
+{self._glsl_uv_to_coord()}
 
     // Apply enable gates (disabled = 0.0 neutral)
 {visual_gating}
@@ -213,15 +213,15 @@ void main() {{
         time_config: neat.Config,
     ) -> str:
         """
-        Compile a dual CPPN (time signal + visual) into GLSL shader code.
+        Compile a dual network (time signal + visual) into GLSL shader code.
 
-        The time signal CPPN transforms the raw time based on mouse speed,
-        then the visual CPPN uses this modified time to generate colors.
+        The time signal network transforms the raw time based on mouse speed,
+        then the visual network uses this modified time to generate colors.
 
         Args:
             dual_genome: DualGenome containing visual and time_signal genomes
-            visual_config: NEAT configuration for visual CPPN
-            time_config: NEAT configuration for time signal CPPN
+            visual_config: NEAT configuration for visual network
+            time_config: NEAT configuration for time signal network
 
         Returns:
             Complete GLSL fragment shader code as string
@@ -237,7 +237,7 @@ void main() {{
         return self._build_dual_shader_template(time_code, visual_code)
 
     def _build_dual_shader_template(self, time_code: str, visual_code: str) -> str:
-        """Build the complete GLSL shader for dual CPPN (time signal + visual)."""
+        """Build the complete GLSL shader for dual network (time signal + visual)."""
         base_scaling = self._glsl_base_scaling()
         time_gating = self._glsl_time_enable_gating()
         visual_gating = self._glsl_visual_enable_gating(use_time_from_network=True)
@@ -245,7 +245,7 @@ void main() {{
 {base_scaling}
 
     // === TIME SIGNAL NETWORK ===
-    // Apply enable gates for time CPPN inputs (disabled = 0.0 neutral)
+    // Apply enable gates for time network inputs (disabled = 0.0 neutral)
 {time_gating}
 
     // Time signal network computation
@@ -255,10 +255,10 @@ void main() {{
     float timeFromNetwork = clamp(time_output_0, -1.0, 1.0);
 
     // === VISUAL NETWORK ===
-    // Convert UV to CPPN coordinate space (-1 to 1)
-{self._glsl_uv_to_cppn()}
+    // Convert UV to coordinate space (-1 to 1)
+{self._glsl_uv_to_coord()}
 
-    // Apply enable gates for visual CPPN inputs (disabled = 0.0 neutral)
+    // Apply enable gates for visual network inputs (disabled = 0.0 neutral)
 {visual_gating}
 
     // Visual network computations (using modified time)

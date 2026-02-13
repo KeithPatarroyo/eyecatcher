@@ -17,7 +17,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Callable
 
-# Ids that get their value from another CPPN (e.g. visual "time" from Time CPPN).
+# Ids that get their value from another network (e.g. visual "time" from time net).
 # Used only for export/UI; not a Signal field.
 _DERIVED_IDS: frozenset[str] = frozenset({"time"})
 
@@ -54,7 +54,7 @@ class Output:
     label: str
 
 
-# Visual network: 10 inputs (x, y, distance, time, mouse_*, activity, mouse_x/y, bias)
+# Visual network inputs (x, y, distance, time, mouse_*, activity, mouse_x/y, bias)
 VISUAL_INPUTS: list[Signal] = [
     Signal("x", "x", 0.0, True),
     Signal("y", "y", 0.0, True),
@@ -68,7 +68,7 @@ VISUAL_INPUTS: list[Signal] = [
     Signal("bias", "Bias", 1.0),
 ]
 
-# Time CPPN: 5 inputs (raw_time, mouse_speed, mouse_dist, activity, bias)
+# Time signal network inputs (raw_time, mouse_speed, mouse_dist, activity, bias)
 TIME_INPUTS: list[Signal] = [
     Signal("raw_time", "Raw Time"),
     Signal("mouse_speed", "Mouse Speed"),
@@ -152,7 +152,7 @@ def build_glsl_input_map(signals: Sequence[Signal]) -> dict:
     """
     Build dict mapping NEAT negative node IDs to GLSL variable names.
 
-    First signal gets most-negative ID (e.g. 8 inputs -> -8..-1).
+    First signal gets most-negative ID.
     """
     n = len(signals)
     return {-n + i: signals[i]._glsl_var() for i in range(n)}

@@ -1,5 +1,5 @@
 /**
- * Pattern grid zoom and CPPN signal checkbox state (viewer controls).
+ * Pattern grid zoom and signal checkbox state for substrate input toggles.
  * Exposes: ViewerControls.patternZoom, ViewerControls.signalState, ViewerControls.applyZoom(), ViewerControls.init()
  */
 (function () {
@@ -9,10 +9,16 @@
     const ZOOM_MAX = 2.0;
     const ZOOM_STEP = 0.1;
 
-    function titleForNetworkType(cppnType) {
-        if (cppnType === "time") return "Time Signal Inputs";
-        if (cppnType === "visual") return "Visual Inputs";
-        return cppnType.charAt(0).toUpperCase() + cppnType.slice(1) + " Inputs";
+    const NETWORK_TYPE_LABELS = {
+        time: "Time Signal Inputs",
+        visual: "Visual Network Inputs",
+    };
+
+    function titleForNetworkType(networkType) {
+        return (
+            NETWORK_TYPE_LABELS[networkType] ||
+            networkType.charAt(0).toUpperCase() + networkType.slice(1) + " Inputs"
+        );
     }
 
     function populateSignalControls(config) {
@@ -20,37 +26,38 @@
         if (!container || !config) return;
         container.innerHTML = "";
         const networkTypes = window.EvolutionConfig.NETWORK_TYPES || ["time", "visual"];
-        networkTypes.forEach(function (cppnType) {
-            const group = document.createElement("div");
+        for (var i = 0; i < networkTypes.length; i++) {
+            var networkType = networkTypes[i];
+            var group = document.createElement("div");
             group.className = "signal-group";
-            const titleEl = document.createElement("div");
+            var titleEl = document.createElement("div");
             titleEl.className = "signal-group-title";
-            titleEl.textContent = titleForNetworkType(cppnType);
+            titleEl.textContent = titleForNetworkType(networkType);
             group.appendChild(titleEl);
-            const checkboxesWrap = document.createElement("div");
+            var checkboxesWrap = document.createElement("div");
             checkboxesWrap.className = "signal-checkboxes";
-            config[cppnType].toggleableInputs.forEach(function (s) {
-                const wrap = document.createElement("div");
+            config[networkType].toggleableInputs.forEach(function (s) {
+                var wrap = document.createElement("div");
                 wrap.className =
                     "signal-checkbox" + (s.derived ? " signal-derived" : "");
-                const input = document.createElement("input");
+                var input = document.createElement("input");
                 input.type = "checkbox";
-                input.id = cppnType + "-" + s.id;
+                input.id = networkType + "-" + s.id;
                 input.checked = true;
-                const label = document.createElement("label");
+                var label = document.createElement("label");
                 label.htmlFor = input.id;
-                if (cppnType === "time" && s.id === "raw_time") {
+                if (networkType === "time" && s.id === "raw_time") {
                     label.appendChild(document.createTextNode(s.label + " "));
-                    const hint = document.createElement("span");
-                    hint.className = "signal-hint";
-                    hint.textContent = "(from Time Mode above)";
-                    label.appendChild(hint);
+                    var hintTime = document.createElement("span");
+                    hintTime.className = "signal-hint";
+                    hintTime.textContent = "(from Time Mode above)";
+                    label.appendChild(hintTime);
                 } else if (s.derived) {
                     label.appendChild(document.createTextNode(s.label + " "));
-                    const hint = document.createElement("span");
-                    hint.className = "signal-hint";
-                    hint.textContent = "(from Time Signal)";
-                    label.appendChild(hint);
+                    var hintDerived = document.createElement("span");
+                    hintDerived.className = "signal-hint";
+                    hintDerived.textContent = "(from Time Signal)";
+                    label.appendChild(hintDerived);
                 } else {
                     label.textContent = s.label;
                 }
@@ -60,18 +67,28 @@
             });
             group.appendChild(checkboxesWrap);
             container.appendChild(group);
-            if (cppnType === "time") {
-                const flow = document.createElement("div");
+            /* One separator between each pair of groups (N groups → N-1 gaps). */
+            if (i + 1 < networkTypes.length) {
+                var flow = document.createElement("div");
                 flow.className = "signal-flow";
                 flow.textContent = "→";
                 container.appendChild(flow);
             }
-        });
+        }
     }
 
     const ViewerControls = {
         patternZoom: 1.0,
-        signalState: { time: {}, visual: {} },
+        signalState: (function () {
+            var s = {};
+            var types = window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES;
+            if (types && types.length) {
+                types.forEach(function (t) {
+                    s[t] = {};
+                });
+            }
+            return s;
+        })(),
         applyZoom: function () {
             document.documentElement.style.setProperty(
                 "--pattern-zoom",
@@ -94,24 +111,32 @@
         },
         init: function () {
             const self = this;
+            const types =
+                window.EvolutionConfig && window.EvolutionConfig.NETWORK_TYPES
+                    ? window.EvolutionConfig.NETWORK_TYPES
+                    : ["time", "visual"];
+            types.forEach(function (t) {
+                if (!self.signalState[t]) self.signalState[t] = {};
+            });
             const config = window.EvolutionConfig.SIGNAL_TOGGLES;
             if (config) {
                 populateSignalControls(config);
-                (window.EvolutionConfig.NETWORK_TYPES || ["time", "visual"]).forEach(
-                    function (cppnType) {
-                        config[cppnType].toggleableInputs.forEach(function (s) {
-                            self.signalState[cppnType][s.id] = true;
+                types.forEach(function (networkType) {
+                    if (config[networkType] && config[networkType].toggleableInputs) {
+                        config[networkType].toggleableInputs.forEach(function (s) {
+                            self.signalState[networkType][s.id] = true;
                             const checkbox = document.getElementById(
-                                cppnType + "-" + s.id
+                                networkType + "-" + s.id
                             );
                             if (checkbox) {
                                 checkbox.addEventListener("change", function (e) {
-                                    self.signalState[cppnType][s.id] = e.target.checked;
+                                    self.signalState[networkType][s.id] =
+                                        e.target.checked;
                                 });
                             }
                         });
                     }
-                );
+                });
             }
             const zoomIn = document.getElementById("zoom-in");
             const zoomOut = document.getElementById("zoom-out");

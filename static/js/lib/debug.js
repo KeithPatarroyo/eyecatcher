@@ -1,6 +1,6 @@
 /**
  * Debug overlay module for Eyecatcher
- * Provides real-time signal monitoring and time CPPN output sampling.
+ * Provides real-time signal monitoring and time signal output sampling.
  */
 const EyecatcherDebug = (function () {
     // Configuration

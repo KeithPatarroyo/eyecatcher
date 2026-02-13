@@ -8,6 +8,7 @@ Researchers extend via populations.metadata_json (optional metadata dict).
 
 import json
 import os
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,9 +20,45 @@ GENEALOGY_DB_PATH = os.environ.get("GENEALOGY_DB_PATH") or default_db_path(
 GENEALOGY_PRAGMAS = ("PRAGMA foreign_keys = ON",)
 
 
+@contextmanager
+def _genealogy_db():
+    """Context manager for genealogy DB connection with standard pragmas."""
+    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+        yield conn
+
+
+def _safe_parse_genome_json(value: Any) -> dict[str, Any] | None:
+    """Parse genome_json string to dict; return None on error."""
+    try:
+        if isinstance(value, str):
+            return json.loads(value)
+        return value if isinstance(value, dict) else None
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _validate_parent(
+    conn: Any, parent_id: int | None, generation_num: int
+) -> tuple[bool, dict[str, Any] | None]:
+    """Check parent exists and generation_num is parent+1. Returns (valid, err)."""
+    if parent_id is None:
+        return True, None
+    row = conn.execute(
+        "SELECT generation_num FROM populations WHERE id = ?", (parent_id,)
+    ).fetchone()
+    if not row:
+        return False, {"error": "parent_not_found"}
+    if generation_num != row["generation_num"] + 1:
+        return False, {
+            "error": "generation_mismatch",
+            "parent_generation_num": row["generation_num"],
+        }
+    return True, None
+
+
 def init_genealogy_db() -> None:
     """Create populations and individuals tables and indexes if they do not exist."""
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+    with _genealogy_db() as conn:
         conn.execute("""
         CREATE TABLE IF NOT EXISTS populations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -135,12 +172,9 @@ def save_generation_result(
     Returns new population_id if saved, None if parent invalid or generation
     mismatch. metadata is stored in populations.metadata_json (for research).
     """
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
-        parent_row = conn.execute(
-            "SELECT generation_num FROM populations WHERE id = ?",
-            (parent_population_id,),
-        ).fetchone()
-        if not parent_row or generation_num != parent_row["generation_num"] + 1:
+    with _genealogy_db() as conn:
+        valid, _ = _validate_parent(conn, parent_population_id, generation_num)
+        if not valid:
             return None
         population_id, _ = _insert_population_with_individuals(
             conn,
@@ -174,19 +208,11 @@ def save_population(
     On validation error returns { "error": "parent_not_found" } or
     { "error": "generation_mismatch", "parent_generation_num": int }.
     """
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+    with _genealogy_db() as conn:
         if parent_id is not None:
-            parent_row = conn.execute(
-                "SELECT generation_num FROM populations WHERE id = ?",
-                (parent_id,),
-            ).fetchone()
-            if not parent_row:
-                return {"error": "parent_not_found"}
-            if generation_num != parent_row["generation_num"] + 1:
-                return {
-                    "error": "generation_mismatch",
-                    "parent_generation_num": parent_row["generation_num"],
-                }
+            valid, err = _validate_parent(conn, parent_id, generation_num)
+            if not valid:
+                return err
         population_id, individual_ids = _insert_population_with_individuals(
             conn,
             parent_id,
@@ -206,39 +232,9 @@ def save_population(
         }
 
 
-def _get_population_and_individual_stats(
-    conn, population_ids: list[int] | None
-) -> tuple[int, int, int]:
-    """
-    Return (pop_count, ind_count, total_json_bytes) for the given population
-    IDs, or for all DB if population_ids is None.
-    """
-    if population_ids is None:
-        pop_row = conn.execute("SELECT COUNT(*) as c FROM populations").fetchone()
-        pop_count = pop_row["c"]
-        ind_row = conn.execute(
-            "SELECT COUNT(*) as c, COALESCE(SUM(LENGTH(genome_json)), 0) as total_json "
-            "FROM individuals"
-        ).fetchone()
-        return (pop_count, ind_row["c"], ind_row["total_json"] or 0)
-    pop_count = len(population_ids)
-    if not population_ids:
-        return (0, 0, 0)
-    placeholders = ",".join("?" * len(population_ids))
-    ind_row = conn.execute(
-        f"""SELECT COUNT(*) as c, COALESCE(SUM(LENGTH(genome_json)), 0) as total_json
-            FROM individuals
-            WHERE population_id IN ({placeholders})""",
-        population_ids,
-    ).fetchone()
-    ind_count = ind_row["c"]
-    json_bytes = ind_row["total_json"] or 0
-    return (pop_count, ind_count, json_bytes)
-
-
 def get_population(population_id: int) -> dict[str, Any] | None:
     """Load one population by id with its individuals (genomes with clicks=fitness)."""
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+    with _genealogy_db() as conn:
         pop_row = conn.execute(
             "SELECT * FROM populations WHERE id = ?", (population_id,)
         ).fetchone()
@@ -251,12 +247,10 @@ def get_population(population_id: int) -> dict[str, Any] | None:
         ).fetchall()
         genomes = []
         for row in individual_rows:
-            try:
-                genome = json.loads(row["genome_json"])
+            genome = _safe_parse_genome_json(row["genome_json"])
+            if genome is not None:
                 genome["clicks"] = row["fitness"]
                 genomes.append(genome)
-            except (json.JSONDecodeError, TypeError):
-                continue
         metadata = {}
         row_dict = dict(pop_row)
         meta_raw = row_dict.get("metadata_json")
@@ -280,7 +274,7 @@ def get_population(population_id: int) -> dict[str, Any] | None:
 
 def get_tree_nodes() -> list[dict[str, Any]]:
     """All population nodes ordered by created_at for tree view."""
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+    with _genealogy_db() as conn:
         rows = conn.execute(
             """SELECT id, parent_id, generation_num, created_at, branch_name,
                       description, user_id, population_size
@@ -291,7 +285,7 @@ def get_tree_nodes() -> list[dict[str, Any]]:
 
 def get_branches() -> list[dict[str, Any]]:
     """Per-branch summary: name, latest_generation, latest_population_id, node_count."""
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+    with _genealogy_db() as conn:
         rows = conn.execute(
             """SELECT branch_name,
                       MAX(generation_num) as latest_gen,
@@ -321,7 +315,7 @@ def get_branches() -> list[dict[str, Any]]:
 
 def reset_genealogy() -> None:
     """Delete all individuals and populations."""
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+    with _genealogy_db() as conn:
         conn.execute("DELETE FROM individuals")
         conn.execute("DELETE FROM populations")
         conn.commit()
@@ -329,10 +323,15 @@ def reset_genealogy() -> None:
 
 def export_sizes() -> dict[str, Any]:
     """Full and per-branch counts and estimated export size in bytes."""
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
-        full_pop, full_ind_count, full_json_bytes = (
-            _get_population_and_individual_stats(conn, None)
-        )
+    with _genealogy_db() as conn:
+        pop_row = conn.execute("SELECT COUNT(*) as c FROM populations").fetchone()
+        full_pop = pop_row["c"]
+        ind_row = conn.execute(
+            "SELECT COUNT(*) as c, COALESCE(SUM(LENGTH(genome_json)), 0) as total_json "
+            "FROM individuals"
+        ).fetchone()
+        full_ind_count = ind_row["c"]
+        full_json_bytes = ind_row["total_json"] or 0
         full_estimated = full_pop * 300 + full_ind_count * 80 + full_json_bytes
 
         branch_rows = conn.execute(
@@ -349,9 +348,19 @@ def export_sizes() -> dict[str, Any]:
                     "SELECT id FROM populations WHERE branch_name = ?", (name,)
                 ).fetchall()
             ]
-            pop_count, ind_count, json_bytes = _get_population_and_individual_stats(
-                conn, pop_ids
-            )
+            pop_count = len(pop_ids)
+            if not pop_ids:
+                ind_count = json_bytes = 0
+            else:
+                placeholders = ",".join("?" * len(pop_ids))
+                ind_row = conn.execute(
+                    f"""SELECT COUNT(*) as c,
+                        COALESCE(SUM(LENGTH(genome_json)), 0) as total_json
+                        FROM individuals WHERE population_id IN ({placeholders})""",
+                    pop_ids,
+                ).fetchone()
+                ind_count = ind_row["c"]
+                json_bytes = ind_row["total_json"] or 0
             estimated = pop_count * 300 + ind_count * 80 + json_bytes
             branches.append(
                 {
@@ -382,7 +391,7 @@ def export_genealogy_data(branch_name: str | None = None) -> dict[str, Any] | No
     pop_cols = """id, parent_id, generation_num, created_at, branch_name,
                   description, user_id, population_size, metadata_json"""
     ind_cols = """id, population_id, genome_key, genome_json, fitness, created_at"""
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+    with _genealogy_db() as conn:
         if branch_name:
             pop_rows = conn.execute(
                 f"SELECT {pop_cols} FROM populations "
@@ -412,11 +421,8 @@ def export_genealogy_data(branch_name: str | None = None) -> dict[str, Any] | No
         individuals = []
         for r in ind_rows:
             d = dict(r)
-            d["genome_json"] = (
-                json.loads(d["genome_json"])
-                if isinstance(d["genome_json"], str)
-                else d["genome_json"]
-            )
+            parsed = _safe_parse_genome_json(d["genome_json"])
+            d["genome_json"] = parsed if parsed is not None else d["genome_json"]
             individuals.append(d)
         return {
             "exported_at": datetime.now(timezone.utc)
@@ -431,7 +437,7 @@ def export_genealogy_data(branch_name: str | None = None) -> dict[str, Any] | No
 
 def get_stats() -> dict[str, Any]:
     """Return aggregate counts (populations, individuals, branches, max_gen)."""
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+    with _genealogy_db() as conn:
         stats = conn.execute(
             """SELECT
                 COUNT(DISTINCT id) as total_pops,
@@ -454,7 +460,7 @@ def get_population_thumbnail(
     population_id: int,
 ) -> dict[str, Any] | None:
     """Fittest individual (by fitness DESC); returns { genome, fitness } or None."""
-    with with_db_connection(GENEALOGY_DB_PATH, pragmas=GENEALOGY_PRAGMAS) as conn:
+    with _genealogy_db() as conn:
         row = conn.execute(
             """SELECT genome_json, fitness FROM individuals
                WHERE population_id = ?
@@ -464,5 +470,5 @@ def get_population_thumbnail(
         ).fetchone()
         if not row:
             return None
-        genome = json.loads(row["genome_json"])
-        return {"genome": genome, "fitness": row["fitness"]}
+        genome = _safe_parse_genome_json(row["genome_json"])
+        return {"genome": genome, "fitness": row["fitness"]} if genome else None

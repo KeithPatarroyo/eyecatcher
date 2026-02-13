@@ -46,7 +46,7 @@
         return Math.min(1.0, dist / MOUSE_DIST_SCALE);
     }
 
-    /** Build default signal values from viewer state (mouse + time). Used by _defaultSource. */
+    /** Build default signal values from viewer state (mouse + time). Used by _defaultSource. Keys from SIGNAL_IDS; values from viewer or 0. */
     function buildDefaultSignalValues(context) {
         const canvas = context && context.canvas;
         const mouse_dist = canvas ? getMouseDistanceToCanvas(canvas) : 0;
@@ -57,7 +57,7 @@
         const mouse_y = rect
             ? Math.min(1.0, Math.max(0.0, (mouseY - rect.top) / rect.height))
             : 0.5;
-        return {
+        const computed = {
             raw_time: animationTime,
             mouse_speed: mouseSpeed,
             mouse_dist: mouse_dist,
@@ -65,6 +65,15 @@
             mouse_x: mouse_x,
             mouse_y: mouse_y,
         };
+        const signalIds =
+            (window.EvolutionConfigSignals &&
+                window.EvolutionConfigSignals.SIGNAL_IDS) ||
+            Object.keys(computed);
+        const out = {};
+        signalIds.forEach(function (id) {
+            out[id] = computed[id] !== undefined ? computed[id] : 0.0;
+        });
+        return out;
     }
 
     /** Returns the active signal source (custom or default). Used by getSignalValues and by community/genealogy. */

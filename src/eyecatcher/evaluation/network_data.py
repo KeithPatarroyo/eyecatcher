@@ -56,7 +56,7 @@ def extract_network_data(
     Extract nodes and connections from a genome for network visualization.
 
     Args:
-        genome: NEAT DefaultGenome (visual or time_signal).
+        genome: NEAT DefaultGenome for any network type.
         network_type: Key for NETWORK_SIGNALS (e.g. "visual", "time").
         neat_config: NEAT config for this genome.
         x_offset: X offset for layout (e.g. 0 for first network, 1000 for second).

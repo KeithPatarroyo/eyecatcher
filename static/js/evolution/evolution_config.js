@@ -8,6 +8,11 @@
     "use strict";
 
     var signals = window.EvolutionConfigSignals || null;
+    if (!signals) {
+        console.warn(
+            "EvolutionConfigSignals not loaded (run scripts/generate_signal_config.py). Signal toggles will be empty."
+        );
+    }
 
     var EvolutionConfig = {
         // Population (must match backend evolution/config.py)
@@ -50,37 +55,26 @@
 
     /**
      * Default signal state: all toggleable inputs enabled (true).
-     * Used by genealogy thumbnails and anywhere a default CPPN signal state is needed.
-     * @returns {{ time: Object<string, boolean>, visual: Object<string, boolean> }}
+     * Built from registry (SIGNAL_TOGGLES / NETWORK_TYPES). If config missing, returns empty state per network type.
+     * @returns {Object<string, Object<string, boolean>>}
      */
     EvolutionConfig.getDefaultSignalState = function () {
         var toggles = this.SIGNAL_TOGGLES;
-        var types = this.NETWORK_TYPES;
-        if (toggles && types && types.length) {
-            var state = { time: {}, visual: {} };
-            types.forEach(function (cppnType) {
-                if (toggles[cppnType] && toggles[cppnType].toggleableInputs) {
-                    toggles[cppnType].toggleableInputs.forEach(function (s) {
-                        state[cppnType][s.id] = true;
-                    });
-                }
-            });
-            return state;
-        }
-        return {
-            time: {
-                raw_time: true,
-                mouse_speed: true,
-                mouse_dist: true,
-                activity: true,
-            },
-            visual: {
-                time: true,
-                mouse_speed: true,
-                mouse_dist: true,
-                activity: true,
-            },
-        };
+        var types = this.NETWORK_TYPES || [];
+        var state = {};
+        types.forEach(function (networkType) {
+            state[networkType] = {};
+            if (
+                toggles &&
+                toggles[networkType] &&
+                toggles[networkType].toggleableInputs
+            ) {
+                toggles[networkType].toggleableInputs.forEach(function (s) {
+                    state[networkType][s.id] = true;
+                });
+            }
+        });
+        return state;
     };
 
     /**

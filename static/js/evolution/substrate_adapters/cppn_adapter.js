@@ -24,9 +24,9 @@
         const baseUniforms = new Set();
         if (toggles) {
             (window.EvolutionConfig.NETWORK_TYPES || ["time", "visual"]).forEach(
-                function (cppnType) {
+                function (networkType) {
                     const inputs =
-                        toggles[cppnType] && toggles[cppnType].toggleableInputs;
+                        toggles[networkType] && toggles[networkType].toggleableInputs;
                     if (!inputs) return;
                     inputs.forEach(function (s) {
                         if (s.uniform && !baseUniforms.has(s.uniform)) {
@@ -48,20 +48,26 @@
         (config && config.NETWORK_TYPES
             ? config.NETWORK_TYPES
             : ["time", "visual"]
-        ).forEach(function (cppnType) {
+        ).forEach(function (networkType) {
             const inputs =
                 config &&
                 config.SIGNAL_TOGGLES &&
-                config.SIGNAL_TOGGLES[cppnType] &&
-                config.SIGNAL_TOGGLES[cppnType].toggleableInputs;
+                config.SIGNAL_TOGGLES[networkType] &&
+                config.SIGNAL_TOGGLES[networkType].toggleableInputs;
             if (!inputs) return;
             const prefix =
-                "u" + cppnType.charAt(0).toUpperCase() + cppnType.slice(1) + "Enable_";
+                "u" +
+                networkType.charAt(0).toUpperCase() +
+                networkType.slice(1) +
+                "Enable_";
             inputs.forEach(function (s) {
                 const uniformName = prefix + s.id;
                 const loc = gl.getUniformLocation(program, uniformName);
                 if (loc !== null) {
-                    gl.uniform1f(loc, sig[cppnType] && sig[cppnType][s.id] ? 1.0 : 0.0);
+                    gl.uniform1f(
+                        loc,
+                        sig[networkType] && sig[networkType][s.id] ? 1.0 : 0.0
+                    );
                 }
             });
         });

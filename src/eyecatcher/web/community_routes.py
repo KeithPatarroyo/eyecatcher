@@ -11,6 +11,7 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
+from functools import wraps
 
 from flask import Blueprint, jsonify, request
 
@@ -53,6 +54,23 @@ def _init_community_db():
 _init_community_db()
 
 
+def _rows_to_dicts(rows, extra_keys):
+    """Parse rows: genome=parsed genome_json + extra_keys. Skips invalid JSON."""
+    result = []
+    for row in rows:
+        row_dict = dict(row)
+        try:
+            genome = json.loads(row_dict["genome_json"])
+        except (json.JSONDecodeError, TypeError, KeyError):
+            continue
+        item = {"genome": genome}
+        for k in extra_keys:
+            if k in row_dict:
+                item[k] = row_dict[k]
+        result.append(item)
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Admin key configuration
 # ---------------------------------------------------------------------------
@@ -90,6 +108,19 @@ def _check_admin_key():
             )
         return False, *api_error("Invalid admin key", 403)
     return True, None, None
+
+
+def require_admin(f):
+    """Decorator: return error response if admin key check fails."""
+
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        ok, err_response, status = _check_admin_key()
+        if not ok:
+            return err_response, status
+        return f(*args, **kwargs)
+
+    return wrapped
 
 
 # ---------------------------------------------------------------------------
@@ -130,21 +161,7 @@ def api_community():
                FROM submissions WHERE status = 'approved'
                ORDER BY approved_at DESC"""
         ).fetchall()
-    patterns = []
-    for row in rows:
-        try:
-            genome = json.loads(row["genome_json"])
-            patterns.append(
-                {
-                    "id": row["id"],
-                    "name": row["name"],
-                    "creator": row["creator"],
-                    "genome": genome,
-                    "approved_at": row["approved_at"],
-                }
-            )
-        except (json.JSONDecodeError, TypeError):
-            continue
+    patterns = _rows_to_dicts(rows, ["id", "name", "creator", "approved_at"])
     return jsonify({"patterns": patterns})
 
 
@@ -166,33 +183,18 @@ def api_admin_status():
 
 @community_bp.route("/api/admin/submissions", methods=["GET"])
 @api_try_except
+@require_admin
 def api_admin_submissions():
     """GET /api/admin/submissions: list pending. Admin only; X-Admin-Key."""
-    ok, err_response, status = _check_admin_key()
-    if not ok:
-        return err_response, status
     with with_db_connection(DATABASE_PATH) as conn:
         rows = conn.execute(
             """SELECT id, name, creator, genome_json, status, submitted_at
                FROM submissions WHERE status = 'pending'
                ORDER BY submitted_at ASC"""
         ).fetchall()
-    submissions = []
-    for row in rows:
-        try:
-            genome = json.loads(row["genome_json"])
-            submissions.append(
-                {
-                    "id": row["id"],
-                    "name": row["name"],
-                    "creator": row["creator"],
-                    "genome": genome,
-                    "status": row["status"],
-                    "submitted_at": row["submitted_at"],
-                }
-            )
-        except (json.JSONDecodeError, TypeError):
-            continue
+    submissions = _rows_to_dicts(
+        rows, ["id", "name", "creator", "status", "submitted_at"]
+    )
     return jsonify({"submissions": submissions})
 
 
@@ -224,19 +226,15 @@ def _admin_moderate(action):
 
 @community_bp.route("/api/admin/approve", methods=["POST"])
 @api_try_except
+@require_admin
 def api_admin_approve():
     """POST /api/admin/approve: body id; approve. Admin only; X-Admin-Key."""
-    ok, err_response, status = _check_admin_key()
-    if not ok:
-        return err_response, status
     return _admin_moderate("approve")
 
 
 @community_bp.route("/api/admin/reject", methods=["POST"])
 @api_try_except
+@require_admin
 def api_admin_reject():
     """POST /api/admin/reject: body id; reject. Admin only; X-Admin-Key."""
-    ok, err_response, status = _check_admin_key()
-    if not ok:
-        return err_response, status
     return _admin_moderate("reject")
