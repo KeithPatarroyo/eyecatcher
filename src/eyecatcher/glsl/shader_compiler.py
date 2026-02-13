@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import neat
 
-from ..signals import build_glsl_input_map
+from ..signals.spec import SignalSpec, build_glsl_input_map
 from .activation_registry import get_glsl_block
 from .compiler_topology import get_enabled_connections, topological_sort
 
@@ -21,47 +21,57 @@ if TYPE_CHECKING:
 from .node_code_generator import generate_node_code, generate_time_signal_code
 
 
-def _default_signals():
-    """Lazy import to avoid circular imports; used when constructor gets None."""
-    from ..signals import (
-        TIME_INPUTS,
-        VISUAL_DERIVED_INPUTS,
-        VISUAL_INPUTS,
-    )
-
-    return VISUAL_INPUTS, TIME_INPUTS, VISUAL_DERIVED_INPUTS
-
-
 class ShaderCompiler:
     """
     Compiles neural networks into GLSL fragment shader code.
     The shader can then be executed on GPU for real-time rendering.
 
     Args:
-        visual_signals: Input signals for the visual network (default from registry).
+        visual_signals: Input signals for the visual network (from representation).
         time_signals: Input signals for the time network, or None for single-CPPN.
-        derived_signals: Derived spatial inputs for visual (default from registry).
+        derived_signals: Derived spatial inputs for visual (from representation).
         color_mode: 'hsv' (Picbreeder-style) or 'rgb' (direct RGB output)
     """
 
     def __init__(
         self,
-        visual_signals=None,
-        time_signals=None,
-        derived_signals=None,
+        visual_signals: list,
+        time_signals: list | None,
+        derived_signals: list,
         color_mode: str = "hsv",
+        substitutions: dict[str, str] | None = None,
     ):
-        if visual_signals is None or time_signals is None or derived_signals is None:
-            v, t, d = _default_signals()
-            visual_signals = visual_signals if visual_signals is not None else v
-            time_signals = time_signals if time_signals is not None else t
-            derived_signals = derived_signals if derived_signals is not None else d
         self.visual_signals = list(visual_signals)
         self.time_signals = list(time_signals) if time_signals else []
         self.derived_signals = list(derived_signals)
+        self.substitutions = dict(substitutions) if substitutions else {}
         self.node_order = []
         self.node_code = {}
         self.color_mode = color_mode
+
+    @classmethod
+    def from_spec(cls, spec: SignalSpec, color_mode: str = "hsv") -> ShaderCompiler:
+        """Build a ShaderCompiler from a SignalSpec.
+
+        Reads sockets named "visual" and optionally "time" to extract signal
+        lists. Falls back to the first socket for visual if no "visual" socket
+        exists. Substitutions come from spec.substitutions.
+        """
+        try:
+            visual_sock = spec.socket("visual")
+        except KeyError:
+            visual_sock = spec.sockets[0] if spec.sockets else None
+        try:
+            time_sock = spec.socket("time")
+        except KeyError:
+            time_sock = None
+        return cls(
+            visual_signals=list(visual_sock.inputs) if visual_sock else [],
+            time_signals=list(time_sock.inputs) if time_sock else None,
+            derived_signals=list(visual_sock.derived) if visual_sock else [],
+            color_mode=color_mode,
+            substitutions=spec.substitutions or None,
+        )
 
     def with_color_mode(self, color_mode: str) -> ShaderCompiler:
         """Return a new compiler with the same signals but different color_mode."""
@@ -70,7 +80,19 @@ class ShaderCompiler:
             self.time_signals,
             self.derived_signals,
             color_mode=color_mode,
+            substitutions=self.substitutions,
         )
+
+    def _toggleable_signals(self) -> list:
+        """All signals that get enable toggles (deduped by id across time + visual)."""
+        seen: set[str] = set()
+        out: list = []
+        for sig_list in (self.time_signals, self.visual_signals):
+            for s in sig_list:
+                if not s.is_spatial and not s.is_constant and s.id not in seen:
+                    seen.add(s.id)
+                    out.append(s)
+        return out
 
     def compile(
         self,
@@ -156,30 +178,21 @@ class ShaderCompiler:
         return "\n".join(lines)
 
     def _glsl_enable_declarations(self) -> str:
-        """Generate enable toggle uniforms (uTimeEnable_{id}, uVisualEnable_{id})."""
+        """Generate enable toggle uniforms (uEnable_{id}), one per toggleable signal."""
         lines = []
-        for prefix, sig_list in (
-            ("Time", self.time_signals),
-            ("Visual", self.visual_signals),
-        ):
-            for s in sig_list:
-                if not s.is_spatial and s.id != "bias":
-                    lines.append(f"uniform float u{prefix}Enable_{s.id};")
+        for s in self._toggleable_signals():
+            lines.append(f"uniform float uEnable_{s.id};")
         return "\n".join(lines)
 
-    def _glsl_enable_gating(
-        self, signals: list, prefix: str, base_vars: bool = True
-    ) -> str:
+    def _glsl_enable_gating(self, signals: list, base_vars: bool = True) -> str:
         """Generate gated input assignments for a signal list (time or visual)."""
         lines = []
         for s in signals:
-            if not s.is_spatial and s.id != "bias":
+            if s.is_constant:
+                lines.append(f"    float {s._glsl_var()} = {s.default};")
+            elif not s.is_spatial:
                 val = f"{s.id}_base" if base_vars else f"({s._uniform()} * 2.0 - 1.0)"
-                lines.append(
-                    f"    float {s._glsl_var()} = {val} * u{prefix}Enable_{s.id};"
-                )
-            elif s.id == "bias":
-                lines.append("    float v_bias = 1.0;")
+                lines.append(f"    float {s._glsl_var()} = {val} * uEnable_{s.id};")
         return "\n".join(lines)
 
     def _glsl_base_scaling(self) -> str:
@@ -193,7 +206,7 @@ class ShaderCompiler:
 
     def _glsl_time_enable_gating(self) -> str:
         """Generate time network gated input assignments."""
-        return self._glsl_enable_gating(self.time_signals, "Time", base_vars=True)
+        return self._glsl_enable_gating(self.time_signals, base_vars=True)
 
     def _glsl_header(self) -> str:
         """Shared GLSL header: version, precision, in/out, uniforms, enable decls."""
@@ -237,41 +250,31 @@ void main() {{
     def _glsl_visual_enable_gating(self, use_time_from_network: bool) -> str:
         """Generate visual network gated input assignments.
 
-        When use_time_from_network is True (dual-CPPN build), time uses
-        timeFromNetwork and others use _base (reassign without 'float' where
-        already declared in time section). Otherwise all use inline (uniform*2-1)
-        for single-CPPN mode.
+        When use_time_from_network is True (dual-CPPN), derived signals use
+        substitutions (e.g. time -> timeFromNetwork). Others use _base where
+        already declared in time section, else inline (uniform*2-1).
         """
         lines = []
         time_ids = {t.id for t in self.time_signals}
         for s in self.visual_signals:
-            if s.is_spatial or s.id == "bias":
-                if s.id == "bias":
-                    if use_time_from_network:
-                        lines.append("    v_bias = 1.0;")
-                    else:
-                        lines.append("    float v_bias = 1.0;")
+            if s.is_spatial:
                 continue
-            if use_time_from_network:
-                if s.id == "time":
-                    lines.append(
-                        f"    float {s._glsl_var()} = "
-                        f"timeFromNetwork * uVisualEnable_{s.id};"
-                    )
+            if s.is_constant:
+                if use_time_from_network and s.id in time_ids:
+                    lines.append(f"    {s._glsl_var()} = {s.default};")
                 else:
-                    u = s._uniform()
-                    already_declared = s.id in time_ids
-                    expr = f"({u} * 2.0 - 1.0) * uVisualEnable_{s.id}"
-                    if already_declared:
-                        lines.append(f"    {s._glsl_var()} = {expr};")
-                    else:
-                        lines.append(f"    float {s._glsl_var()} = {expr};")
+                    lines.append(f"    float {s._glsl_var()} = {s.default};")
+                continue
+            if use_time_from_network and s.id in self.substitutions:
+                expr = f"{self.substitutions[s.id]} * uEnable_{s.id}"
+                lines.append(f"    float {s._glsl_var()} = {expr};")
+                continue
+            u = s._uniform()
+            expr = f"({u} * 2.0 - 1.0) * uEnable_{s.id}"
+            if use_time_from_network and s.id in time_ids:
+                lines.append(f"    {s._glsl_var()} = {expr};")
             else:
-                u = s._uniform()
-                lines.append(
-                    f"    float {s._glsl_var()} = "
-                    f"({u} * 2.0 - 1.0) * uVisualEnable_{s.id};"
-                )
+                lines.append(f"    float {s._glsl_var()} = {expr};")
         return "\n".join(lines)
 
     def _build_main_body(
