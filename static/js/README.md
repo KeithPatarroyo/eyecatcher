@@ -5,11 +5,13 @@
 - `interactive_viewer.html` – main app (interactive evolution, population grid, evolve/save).
 - `genealogy_viewer.html` – genealogy tree (load/save/export populations).
 
+**Terminology:** The backend uses the term **representation** for the evolvable model type (e.g. dual_cppn, single_cppn, ca). In the frontend, folder names and many variables still use **substrate** (legacy). API responses use `representation_id`; JS may refer to "substrate" in adapters and config. Treat them as the same concept.
+
 **JavaScript is grouped to mirror the backend** so you can find frontend counterparts of backend packages.
 
 | Folder | Purpose | Backend counterpart |
 |--------|---------|----------------------|
-| **substrate/** | Substrate adapters, registry, config, pattern rendering (WebGL). | `substrate/`, `glsl/` |
+| **substrate/** | Representation adapters, registry, config, pattern rendering (WebGL). | `representation/`, `glsl/` |
 | **evolution/** | Evolution config, coordinator, viewer controls (signals, zoom). | `evolution/`, `signals/` |
 | **community/** | Community browse, submit, admin UI. | `web/community_routes` |
 | **genealogy/** | Genealogy viewer, export, thumbnails, sync. | `data/`, `web/genealogy_routes` |
@@ -21,9 +23,9 @@ Script load order in the HTML: lib → evolution (config) → community → subs
 
 ---
 
-## substrate/ — Substrates and rendering
+## substrate/ — Representations and rendering
 
-**Edit when you change substrate types or how patterns are drawn.**
+**Edit when you change representation types or how patterns are drawn.** (Folder name is legacy; backend concept is "representation".)
 
 - `registry.js` — Adapter registry (SubstrateAdapters), resolve, getDisplayData, registers from SubstrateConfig.
 - `cppn_adapter.js` — Shared CPPN adapter (dual_cppn, single_cppn); createCppnAdapter(spec).
@@ -37,7 +39,7 @@ Script load order in the HTML: lib → evolution (config) → community → subs
 
 **Edit when you change evolution config, evolve flow, or signal/zoom UI.**
 
-- `config.js` — Population size, signal toggles, substrate id, mergeFromServer (align with backend).
+- `config.js` — Population size, signal toggles, representation id (substrateId in JS), mergeFromServer (align with backend).
 - `config_signals.generated.js` — Generated from Python signal registry (do not edit).
 - `config_defaults.generated.js` — Generated from evolution_defaults.json (do not edit).
 - `coordinator.js` — Parent selection, evolve API call.
