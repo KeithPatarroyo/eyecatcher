@@ -1,43 +1,63 @@
 # Signals
 
-The signal system provides a **representation-agnostic** vocabulary for inputs and outputs. A signal is a named value at the boundary of a representation -- it flows into or out of a computation, regardless of whether the computation is a neural network, a cellular automaton, or something else entirely.
+The signal system provides a **representation-agnostic** vocabulary for inputs and outputs. A signal is a named value at the boundary of a representation — it flows into or out of a computation, regardless of whether the computation is a neural network, a cellular automaton, or something else entirely.
 
 ## Architecture
 
 ```
 signals/
-  spec.py      -- Signal, Output, DerivedInput, SignalSpec (the primitives)
+  spec.py      -- Signal, Output, DerivedInput, SignalSpec (primitives + socket-centric spec)
+  socket.py    -- Socket (to_array, default_values, input_ids); representation-agnostic binding
   catalog.py   -- Concrete signal instances by category + convenience presets
   registry.py  -- Parameterized helpers (export_for_frontend, parse_time_inputs, etc.)
 ```
+
+Representation-specific socket implementations live in **representation/sockets.py** (e.g. `NeatSocket`, `GridSocket`). Representations never touch raw signal lists for expression — they use sockets.
 
 ### Self-describing signals
 
 Each `Signal` carries enough metadata that no downstream code needs to branch on its ID:
 
-- **is_spatial** -- value comes from position (e.g. x, y, distance); no uniform.
-- **is_constant** -- fixed value (e.g. bias); no uniform, no enable toggle.
-- **is_derived** -- value from internal computation (e.g. time from time network); no external uniform.
-- **category** -- one of `"spatial"`, `"temporal"`, `"interaction"`, `"structural"` for grouping and temporal detection.
+- **is_spatial** — value comes from position (e.g. x, y, distance); no uniform.
+- **is_constant** — fixed value (e.g. bias); no uniform, no enable toggle.
+- **is_derived** — value from internal computation (e.g. time from time network); no external uniform.
+- **category** — one of `"spatial"`, `"temporal"`, `"interaction"`, `"structural"` for grouping and temporal detection.
 
 Toggleable signals (those that get a value uniform and an enable toggle in the shader) are exactly those where `not is_spatial and not is_constant`. The GLSL compiler emits flat `u_{id}` and `uEnable_{id}` uniforms; the frontend uses a flat `{ signal_id: boolean }` state.
 
-### SignalSpec
+### SignalSpec (socket-centric)
 
-Every representation declares a `signal_spec: SignalSpec` that tells the rest of the system what it accepts and produces:
+Every representation declares a `signal_spec: SignalSpec` that describes what it accepts and produces. The spec is **socket-centric**: sockets bind signals to each input target (e.g. one NEAT network, one grid).
 
 ```python
 @dataclass(frozen=True)
 class SignalSpec:
-    inputs: tuple[Signal, ...]        # what flows in
-    outputs: tuple[Output, ...]       # what flows out
-    derived_inputs: tuple[DerivedInput, ...] = ()  # computed from other inputs
-    groups: dict[str, tuple[str, ...]] = {}        # optional UI grouping; else grouped by category
+    sockets: tuple[Socket, ...] = ()   # one per input target (e.g. visual, time, interaction)
+    outputs: tuple[Output, ...] = ()   # representation-level outputs
+    substitutions: dict[str, str] = {} # e.g. {"time": "timeFromNetwork"}
+
+    # Computed from sockets (deduped union):
+    # .inputs, .derived_inputs, .socket(name), .input_ids(), .has_signal(id), .has_category(cat)
 ```
 
-No network names at the spec level. Internal routing (e.g. which signals go to which network in a dual-CPPN) is the representation's private concern.
+- **inputs** and **derived_inputs** are derived from all sockets (no manual lists at spec level).
+- **groups** are gone: UI grouping uses `Signal.category` only.
+- Representations that use NEAT networks hold `NeatSocket` instances; those that use a grid hold a `GridSocket`. The representation delegates expression (query, stats, PDF, etc.) to sockets and owns evolution (population, mutate, crossover).
 
-### Signal Catalog
+### Socket
+
+A **Socket** binds a set of signals to one input target. Base class is representation-agnostic:
+
+- `to_array(values)` — build ordered input array from id → value dict (with derived applied).
+- `default_values()` — id → default for all inputs.
+- `input_ids()` — ordered list of input ids.
+
+Subclasses add target-specific behaviour:
+
+- **NeatSocket** (in `representation/sockets.py`): `config_path`, `query(genome, values)`, `glsl_input_map()`, `network_stats()`, `extract_network_data()`, `render_network_pdf()`.
+- **GridSocket**: `grid_size`, `map_to_cell(values)` for e.g. CA interaction (mouse_x, mouse_y → cell).
+
+### Signal catalog
 
 `catalog.py` provides composable building blocks:
 
@@ -49,32 +69,30 @@ No network names at the spec level. Internal routing (e.g. which signals go to w
 - **Outputs**: `RGB_OUTPUTS`, `TIME_OUTPUT`
 - **Presets**: `DUAL_CPPN_VISUAL_INPUTS`, `DUAL_CPPN_TIME_INPUTS`, `CA_INTERACTION_INPUTS`
 
-### How representations use the catalog
+Representations build sockets from these presets; the spec is then `SignalSpec(sockets=(...), outputs=..., substitutions=...)`.
 
-**DualCPPN**: Declares all visual inputs as its spec. Internally routes subsets to its visual and time networks.
+### How representations use sockets
 
-**SingleCPPN**: Same visual inputs as dual-CPPN (single network, no time network).
-
-**Conway CA**: Declares `mouse_x`, `mouse_y` as interaction signals. Internal routing maps these to the toggleMask / onCellInteraction mechanism.
+- **DualCPPN**: Two `NeatSocket`s (visual, time). Expression (query_rgb, get_compile_stats, get_network_data, render_network_pdf) delegates to the sockets; evolution (populations, mutate, crossover) stays on the representation.
+- **SingleCPPN**: One `NeatSocket` (visual). Same split.
+- **Conway CA**: One `GridSocket` (interaction) for mouse_x/mouse_y → cell; no NEAT.
 
 ### Consumers
 
-The following parts of the system read from `representation.signal_spec`:
+The following read from `representation.signal_spec` or from sockets:
 
-- **GLSL compiler** -- generates uniforms and enables from spec inputs
-- **Frontend codegen** -- exports per-representation signal config
-- **Viewer controls** -- builds UI from spec groups
-- **Fitness functions** -- introspects spec to decide whether temporal sampling applies
-- **NEAT validation** -- validates config against internal routing signal lists
-- **Debug / inspection panel** -- reads signal labels from the spec
+- **GLSL compiler** — `ShaderCompiler.from_spec(spec, color_mode)`; uniforms and enables from spec inputs.
+- **Frontend codegen** — `export_for_frontend(spec)`; groups by category.
+- **Viewer / API** — time output uses `spec.socket("time")` when present; default values from `socket.default_values()` or `get_default_signal_values(spec)`.
+- **Fitness** — introspects `spec.inputs` for temporal category.
+- **NEAT validation** — validates config against socket input/output counts (e.g. in generate_signal_config).
+- **Debug / inspection** — labels and structure from spec/sockets.
 
 ## Extending for new representations
 
 1. Pick signals from the catalog (or create new `Signal` instances).
-2. Build a `SignalSpec` with your inputs, outputs, derived inputs, and UI groups.
-3. Set `self.signal_spec = ...` in your representation's `__init__`.
-4. Internal routing is your concern -- map spec inputs to your internal computation.
-
-The GLSL compiler, frontend, fitness functions, and all other consumers automatically adapt to your declared spec.
+2. Build one or more sockets (e.g. `NeatSocket(..., inputs=catalog.DUAL_CPPN_VISUAL_INPUTS, ...)` or a custom `Socket` subclass).
+3. Set `self.signal_spec = SignalSpec(sockets=(...), outputs=..., substitutions=...)` in your representation's `__init__`.
+4. Delegate expression to sockets; keep evolution (create_random, mutate, crossover, population) on the representation.
 
 After changing signal lists used by NEAT, run `scripts/generate_signal_config.py` to emit the JS config and validate alignment.
