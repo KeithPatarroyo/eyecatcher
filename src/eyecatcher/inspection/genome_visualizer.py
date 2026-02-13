@@ -17,14 +17,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import neat  # noqa: E402
 from matplotlib.patches import FancyArrowPatch  # noqa: E402
 
-from ..signals.registry import (
-    VISUAL_INPUTS,
-    VISUAL_OUTPUTS,
-    Output,
-    Signal,
-    input_names,
-    output_labels,
-)
+from ..signals.spec import Output, Signal, input_names, output_labels
 from .genome_graph import assign_layers, get_nodes_required_for_output
 
 logger = logging.getLogger(__name__)
@@ -50,17 +43,15 @@ class GenomeVisualizer:
     def __init__(
         self,
         neat_config: neat.Config,
-        signals_in: list[Signal] | None = None,
-        signals_out: list[Output] | None = None,
+        signals_in: list[Signal],
+        signals_out: list[Output],
     ):
-        """Initialize with NEAT config and optional signal labels (default: visual)."""
+        """Initialize with NEAT config and signal lists from the representation."""
         self.config = neat_config
         self.num_inputs = neat_config.genome_config.num_inputs
         self.num_outputs = neat_config.genome_config.num_outputs
-        self._signals_in = signals_in if signals_in is not None else list(VISUAL_INPUTS)
-        self._signals_out = (
-            signals_out if signals_out is not None else list(VISUAL_OUTPUTS)
-        )
+        self._signals_in = list(signals_in)
+        self._signals_out = list(signals_out)
 
     def visualize_genome(
         self,
@@ -329,8 +320,8 @@ def render_genome_network_pdf(
     genome: neat.DefaultGenome,
     neat_config: neat.Config,
     output: Union[str, BinaryIO],
-    signals_in: list[Signal] | None = None,
-    signals_out: list[Output] | None = None,
+    signals_in: list[Signal],
+    signals_out: list[Output],
 ) -> Optional[bytes]:
     """
     Render a genome network to PDF (optional matplotlib).
@@ -338,6 +329,7 @@ def render_genome_network_pdf(
     Handles ImportError and other exceptions; logs and returns None on failure.
     If output is a path (str), writes to file and returns None.
     If output is a file-like (e.g. BytesIO), writes to it and returns its bytes.
+    Caller must pass signal lists (e.g. from a NeatSocket's inputs/outputs).
 
     Returns:
         PDF bytes when output is file-like, else None.
