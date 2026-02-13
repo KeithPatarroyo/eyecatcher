@@ -171,6 +171,7 @@ const OpenEndednessTracker = (function() {
     function toggleTracking() {
         // Availability check bypassed for now
         trackingEnabled = !trackingEnabled;
+        console.log('[OE] Tracking toggled:', trackingEnabled);
         updateToggleState();
 
         if (trackingEnabled) {
