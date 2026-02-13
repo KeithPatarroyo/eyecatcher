@@ -1,8 +1,9 @@
 """
-Shared CPPN representation helpers: NEAT config loading, query, render, and evaluate.
+Shared CPPN representation helpers: render utilities and CPPNRepresentationBase.
 
-CPPNRepresentationBase implements shared logic for SingleCPPNRepresentation
-and DualCPPNRepresentation.
+Expression and signal translation are delegated to NeatSocket instances.
+CPPNRepresentationBase implements shared orchestration logic (compile, render,
+sample, save) for SingleCPPNRepresentation and DualCPPNRepresentation.
 """
 
 from __future__ import annotations
@@ -10,21 +11,12 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Callable as Cb
-from collections.abc import Sequence
 from typing import Any
 
-import neat
 import numpy as np
 
-from .. import get_root_dir
 from ..experiment.config import DEFAULT_RENDER_RESOLUTION
-from ..genome.activation import register_custom_activations
-from ..signals.registry import (
-    apply_derived_inputs,
-    get_default_signal_values,
-    inputs_array,
-)
-from ..signals.validation import validate_neat_config
+from ..signals.registry import get_default_signal_values
 from .protocol import RepresentationOutput
 
 
@@ -39,47 +31,6 @@ def _clamp_rgb(out: list[float]) -> tuple[float, float, float]:
     g = max(0.0, min(1.0, (out[1] + 1.0) / 2.0))
     b = max(0.0, min(1.0, (out[2] + 1.0) / 2.0))
     return r, g, b
-
-
-def _load_neat_config(
-    path: str | None,
-    default_path: str,
-    signals_in: Sequence[Any],
-    signals_out: Sequence[Any],
-    label: str,
-) -> neat.Config:
-    """Load NEAT config; resolve path; register activations; validate."""
-    import os
-
-    root = get_root_dir()
-    resolved = path or default_path
-    if not os.path.isabs(resolved):
-        resolved = os.path.join(root, resolved)
-    config = neat.Config(
-        neat.DefaultGenome,
-        neat.DefaultReproduction,
-        neat.DefaultSpeciesSet,
-        neat.DefaultStagnation,
-        resolved,
-    )
-    register_custom_activations(config)
-    validate_neat_config(config, list(signals_in), list(signals_out), label)
-    return config
-
-
-def query_neat_network(
-    genome: neat.DefaultGenome,
-    config: neat.Config,
-    signals: Sequence[Any],
-    derived: list,
-    values: dict[str, float],
-) -> list[float]:
-    """Run network: fill defaults, apply derived inputs, return raw outputs."""
-    full = {s.id: values.get(s.id, s.default) for s in signals}
-    apply_derived_inputs(full, derived)
-    in_arr = inputs_array(signals, full)
-    net = neat.nn.FeedForwardNetwork.create(genome, config)
-    return net.activate(in_arr)
 
 
 def _rgb_uint8(r: float, g: float, b: float) -> list[int]:
@@ -122,21 +73,6 @@ def compile_with_color_mode(
         alt = compiler.with_color_mode(color_mode)
         return compile_fn(alt, *compile_args)
     return compile_fn(compiler, *compile_args)
-
-
-def _compute_network_stats(
-    pairs: list[tuple[str, Any, neat.Config]],
-) -> dict[str, Any]:
-    """Return {label_nodes, label_connections, ...} for each (label, genome, config)."""
-    result: dict[str, Any] = {}
-    for label, genome, _config in pairs:
-        nodes = getattr(genome, "nodes", {}) or {}
-        conns = getattr(genome, "connections", {}) or {}
-        result[f"{label}_nodes"] = len(nodes)
-        result[f"{label}_connections"] = sum(
-            1 for c in conns.values() if getattr(c, "enabled", True)
-        )
-    return result
 
 
 class CPPNRepresentationBase(ABC):
@@ -199,7 +135,7 @@ class CPPNRepresentationBase(ABC):
         time: float = 0.0,
     ) -> list[list[float]]:
         """Sample RGB at each (x, y) with shared time/signal base."""
-        base = get_default_signal_values(time)
+        base = get_default_signal_values(self.signal_spec, time=time)
         return [
             list(self.query_rgb(ind, self._sample_inputs(x, y, time, base)))
             for x, y in coords
