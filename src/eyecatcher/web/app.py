@@ -18,7 +18,7 @@ from .. import get_root_dir
 from ..evolution import config
 from ..evolution.reproduction import produce_next_generation
 from .api_helpers import (
-    ERR_GENOME_REQUIRED_REQUEST_BODY,
+    ERR_GENOME_REQUIRED_BODY,
     ERR_PARENTS_ARRAY_REQUIRED,
     api_error,
     api_try_except,
@@ -193,7 +193,7 @@ def save_individual():
     individual_id = data.get("id")
     visualize = data.get("visualize", True)
     if not genome_json:
-        return api_error(ERR_GENOME_REQUIRED_REQUEST_BODY, 400)
+        return api_error(ERR_GENOME_REQUIRED_BODY, 400)
     ind = substrate.from_json(genome_json)
     ind_id = individual_id if individual_id is not None else getattr(ind, "key", 0)
 

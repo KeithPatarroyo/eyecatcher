@@ -15,7 +15,7 @@ from functools import wraps
 
 from flask import Blueprint, jsonify, request
 
-from ..lib.db_util import default_db_path, with_db_connection
+from ..data.db_util import default_db_path, with_db_connection
 from .api_helpers import (
     ERR_GENOME_OBJECT_REQUIRED,
     ERR_ID_REQUIRED,

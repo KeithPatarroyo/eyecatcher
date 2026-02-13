@@ -1,7 +1,7 @@
 # Eyecatcher — common development tasks
 # Run `make` or `make help` to list targets.
 
-.PHONY: help install dev test lint format lint-js format-js generate generate-signals generate-substrates generate-evolution-config docker-build docker-up clean
+.PHONY: help install dev test lint format generate generate-signals generate-substrates generate-evolution-config docker-build docker-up clean
 
 help:
 	@echo "Eyecatcher — development targets"
@@ -32,7 +32,7 @@ dev:
 	.venv/bin/python -m eyecatcher.server
 
 test:
-	.venv/bin/python -m pytest --tb=short -v
+	.venv/bin/python -m pytest --tb=short -v --cov=eyecatcher --cov-report=term-missing
 
 lint:
 	ruff check .

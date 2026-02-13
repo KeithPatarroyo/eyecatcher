@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import neat  # noqa: E402
 from matplotlib.patches import FancyArrowPatch  # noqa: E402
 
-from ..signals.signals import (
+from ..signals.registry import (
     VISUAL_INPUTS,
     VISUAL_OUTPUTS,
     Output,
@@ -25,7 +25,7 @@ from ..signals.signals import (
     input_names,
     output_labels,
 )
-from .graph_utils import assign_layers, get_nodes_required_for_output
+from .genome_graph import assign_layers, get_nodes_required_for_output
 
 logger = logging.getLogger(__name__)
 

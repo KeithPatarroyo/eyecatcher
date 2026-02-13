@@ -17,7 +17,7 @@ from flask import Response, jsonify
 
 # Shared API error messages (validation / required fields)
 ERR_GENOME_REQUIRED = "genome required"
-ERR_GENOME_REQUIRED_REQUEST_BODY = "genome required in request body"
+ERR_GENOME_REQUIRED_BODY = "genome required in request body"
 ERR_GENOME_OBJECT_REQUIRED = "genome object required"
 ERR_GENOMES_ARRAY_REQUIRED = "genomes array required"
 ERR_PARENTS_ARRAY_REQUIRED = "parents array required"

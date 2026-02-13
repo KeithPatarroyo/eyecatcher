@@ -182,9 +182,6 @@ class ElementaryCASubstrate:
         }
 
 
-# Grid size for display (frontend can use this or match canvas).
-CA_GRID_SIZE = DEFAULT_GRID_SIZE
-
 # Fragment shader: Conway GOL step. Reads u_state, outputs next (R = alive).
 # Frontend runs this to a FBO, then displays by sampling that texture.
 _GOL_FRAGMENT_SHADER = """#version 300 es
@@ -209,20 +206,5 @@ void main() {
     n += texture(u_state, vUV + vec2(u_texelSize.x, u_texelSize.y)).r;
     float next = (n > 2.5 && n < 3.5) || (c > 0.5 && n > 1.5 && n < 3.5) ? 1.0 : 0.0;
     fragColor = vec4(next, next, next, 1.0);
-}
-"""
-
-# Display shader: sample state texture, output white/black.
-_GOL_DISPLAY_SHADER = """#version 300 es
-precision highp float;
-
-uniform sampler2D u_state;
-
-in vec2 vUV;
-out vec4 fragColor;
-
-void main() {
-    float v = texture(u_state, vUV).r;
-    fragColor = vec4(v, v, v, 1.0);
 }
 """

@@ -48,7 +48,7 @@ def _validate_fragment_shader(glsl: str) -> tuple[bool, str]:
 @pytest.mark.slow
 def test_ca_compiled_shader_valid_glsl():
     """CA substrate compiled shader passes glslangValidator (if available)."""
-    substrate = ElementaryCASubstrate(width=64, generations=32)
+    substrate = ElementaryCASubstrate(grid_size=64, gol_steps=32)
     ind = substrate.create_random(key=0)
     glsl = substrate.compile_to_shader(ind)
     assert glsl is not None and "void main()" in glsl

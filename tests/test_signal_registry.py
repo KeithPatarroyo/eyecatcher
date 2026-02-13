@@ -12,7 +12,7 @@ from eyecatcher.signals import (
     VISUAL_OUTPUTS,
     export_for_frontend,
 )
-from eyecatcher.signals.signals import _is_toggleable
+from eyecatcher.signals.registry import _is_toggleable
 
 
 def test_neat_config_matches_registry(substrate):

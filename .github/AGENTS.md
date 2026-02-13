@@ -35,7 +35,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 
 | Path | Purpose |
 |------|---------|
-| `src/eyecatcher/` | Python package. **Packages**: `algorithm/` (engine, reproduction, config, operators), `genome/`, `signals/`, `evaluation/`, `glsl/`, `web/`, `data/`, `lib/`. Top-level: `server`, etc. |
+| `src/eyecatcher/` | Python package. **Packages**: `evolution/` (engine, reproduction, config, operators), `genome/`, `signals/`, `evaluation/`, `glsl/`, `web/`, `data/` (genealogy_db, db_util). Top-level: `server`, etc. |
 | `static/` | Frontend: HTML, CSS, JS modules; served by Flask from repo root |
 | `config/` | NEAT config files in **config/neat/** (read at runtime via `get_root_dir()`). Also `config/eslint.config.js`, `config/.env.example` (copy to root `.env`). |
 | `tests/` | Pytest test suite |
@@ -47,7 +47,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 ## Architecture notes
 
 - **Researchers and evolution-only changes:** See [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md) for touchpoints (signals, NEAT, reproduction, rendering).
-- **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from ..substrate import get_substrate`). Code outside the package (examples, tests) imports from `eyecatcher.algorithm`, `eyecatcher.genome`, `eyecatcher.substrate`, `eyecatcher.glsl`, etc.
+- **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from ..substrate import get_substrate`). Code outside the package (examples, tests) imports from `eyecatcher.evolution`, `eyecatcher.genome`, `eyecatcher.substrate`, `eyecatcher.glsl`, etc.
 - **Stateless API:** The server does **not** hold population state. Clients send full genome payloads in requests (e.g. `/api/compile`, `/api/evolve`). Do not add server-side population storage.
 - **Dual-CPPN:** Each individual is a `DualGenome`: two NEAT genomes (`visual` and `time_signal`) evolved together. Mutations and crossovers operate on both; keep the pairing consistent.
 - **Paths:** `get_root_dir()` in `src/eyecatcher/__init__.py` returns the repo root. Use it (or paths relative to it) for `config/`, `static/`, `data/`. Flask's `static_folder` is set to that root `static/` directory.
@@ -66,7 +66,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 ## Testing
 
 **Framework:** pytest (`testpaths = ["tests"]` in [pyproject.toml](../pyproject.toml)).
-**Test modules:** `test_cppn_engine.py`, `test_substrate_compile.py`, `test_shader_compiler.py`, `test_genome_serialization.py`, `test_api.py`, `test_visualization.py`, `test_community_routes.py`, `test_genealogy_routes.py`, `test_signal_registry.py`. These tests target behavior in `algorithm/`, `genome/`, `substrate/`, `glsl/`, `signals/`, `evaluation/` and server/API/genealogy/community routes.
+**Test modules:** `test_cppn_engine.py`, `test_substrate_compile.py`, `test_shader_compiler.py`, `test_genome_serialization.py`, `test_api.py`, `test_visualization.py`, `test_community_routes.py`, `test_genealogy_routes.py`, `test_signal_registry.py`. These tests target behavior in `evolution/`, `genome/`, `substrate/`, `glsl/`, `signals/`, `evaluation/` and server/API/genealogy/community routes.
 **API tests:** Flask test client — `from eyecatcher.server import app` then `app.test_client()`.
 **Engine API:** `mutate_dual_genome(dual, new_key)` and `crossover_dual_genomes(dual1, dual2, new_key)` **require** the `new_key` argument.
 

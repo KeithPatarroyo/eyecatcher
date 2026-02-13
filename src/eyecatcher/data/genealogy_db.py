@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from ..lib.db_util import default_db_path, with_db_connection
+from .db_util import default_db_path, with_db_connection
 
 GENEALOGY_DB_PATH = os.environ.get("GENEALOGY_DB_PATH") or default_db_path(
     "genealogy.db"

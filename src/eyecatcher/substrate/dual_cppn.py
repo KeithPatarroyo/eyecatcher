@@ -15,7 +15,7 @@ import numpy as np
 from ..evaluation import extract_network_data, parse_network_node_id
 from ..evolution import config
 from ..glsl import ShaderCompiler
-from ..signals.signals import (
+from ..signals.registry import (
     TIME_INPUTS,
     TIME_OUTPUTS,
     VISUAL_DERIVED_INPUTS,

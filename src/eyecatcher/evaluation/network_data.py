@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 import neat
 
-from ..signals.signals import (
+from ..signals.registry import (
     NETWORK_SIGNALS,
     input_labels,
     output_labels,

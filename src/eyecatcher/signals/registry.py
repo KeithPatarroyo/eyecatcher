@@ -138,11 +138,6 @@ def output_labels(outputs: Sequence[Output]) -> list[str]:
     return [o.label for o in outputs]
 
 
-def output_names(outputs: Sequence[Output]) -> list[str]:
-    """Return id strings for outputs (serialization)."""
-    return [o.id for o in outputs]
-
-
 def input_names(signals: Sequence[Signal]) -> list[str]:
     """Return id strings for inputs (serialization, genome_visualizer)."""
     return [s.id for s in signals]

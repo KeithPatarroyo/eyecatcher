@@ -17,8 +17,8 @@ Then open **http://localhost:5001**. (Runs `docker compose -f docker/docker-comp
 ## Features
 
 - **Dual-CPPN Architecture**: Each individual has two evolved networks (visual + time signal).
-- **Configurable input signals** (e.g. time, mouse speed, distance, activity); see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) and [signals/signals.py](src/eyecatcher/signals/signals.py).
-- **Signal Controls**: Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [signals/signals.py](src/eyecatcher/signals/signals.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
+- **Configurable input signals** (e.g. time, mouse speed, distance, activity); see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) and [signals/registry.py](src/eyecatcher/signals/registry.py).
+- **Signal Controls**: Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [signals/registry.py](src/eyecatcher/signals/registry.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
 - **GPU Rendering**: CPPNs compile to GLSL for real-time WebGL in the browser.
 - **Interactive Evolution**: Web interface for selection, evolution, saving, and community submission.
 - **Genealogical Tree**: Track evolutionary history across generations and branches; explore and continue from any point.
@@ -147,7 +147,7 @@ The web interface lets you:
 4. **Save** – Download patterns as shaders, images, and genome visualizations.
 5. **Population** – New random, from community, or load/save/export from local storage.
 6. **Submit to community** – Share patterns for moderation and inclusion in the community pool.
-8. **Signal controls** – Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [signals/signals.py](src/eyecatcher/signals/signals.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
+8. **Signal controls** – Toggle which inputs feed into each CPPN (see Signal Controls in UI; list is defined in [signals/registry.py](src/eyecatcher/signals/registry.py) and [evolution/evolution_config.js](static/js/evolution/evolution_config.js)).
 8. **Debug overlay** – Real-time signal values; optional time CPPN output sampling.
 9. **Genealogical tree** – View evolutionary history; branch and continue from any generation.
 
@@ -165,12 +165,12 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 
 ## Project layout
 
-- **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). See [static/README.md](static/README.md) for frontend structure and script load order.
+- **static/** – Frontend assets: HTML, CSS, and JavaScript (interactive viewer, debug overlay, population/community UI, pattern renderer). See [static/js/README.md](static/js/README.md) for frontend structure and script load order.
 - **data/** – Runtime data: community DB and genealogy DB (both gitignored; created on first run).
 - **tests/** – Test suite (pytest). Run with `make test` or `pytest` from repo root.
 - **examples/** – Runnable examples: batch evolution (`evolution_batch.py`), programmatic API (`api_usage.py`), time-signal plot (`time_signal_showcase.py`). Use dual-CPPN API; run from repo root.
-- **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). To change which NEAT files are used or population size, edit [src/eyecatcher/algorithm/config.py](src/eyecatcher/algorithm/config.py). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
-- **src/eyecatcher/** – Python package. Top-level: `server.py` (entry point: `eyecatcher.server:app`). **Packages**: `algorithm/` (engine, reproduction, config, operators), `genome/` (generic NEAT serialization), `substrate/` (substrates, DualGenome, dual serialization), `signals/` (signal registry, activation), `evaluation/` (genome_visualizer, network_data), `glsl/` (genome → GLSL shader), `web/` (Flask app, routes, stateless_api), `data/` (genealogy_db), `lib/` (db_util). Main API: import from `eyecatcher.algorithm`, `eyecatcher.genome`, `eyecatcher.substrate`, `eyecatcher.glsl`, `eyecatcher.signals`, `eyecatcher.evaluation`. See [src/eyecatcher/README.md](src/eyecatcher/README.md) for the full layout.
+- **config/** – **config/neat/** holds NEAT config files for visual and time-signal CPPNs (`*_experimental.txt` are default; `neat_config.txt`, `neat_config_time.txt` are alternatives). To change which NEAT files are used or population size, edit [src/eyecatcher/evolution/config.py](src/eyecatcher/evolution/config.py). Also at config root: `eslint.config.js`, `.env.example` (copy to root `.env` for local overrides).
+- **src/eyecatcher/** – Python package. Top-level: `server.py` (entry point: `eyecatcher.server:app`). **Packages**: `evolution/` (engine, reproduction, config, operators), `genome/` (generic NEAT serialization), `substrate/` (substrates, DualGenome, dual serialization), `signals/` (signal registry, activation), `evaluation/` (genome_visualizer, network_data), `glsl/` (genome → GLSL shader), `web/` (Flask app, routes, stateless_api), `data/` (genealogy_db, db_util). Main API: import from `eyecatcher.evolution`, `eyecatcher.genome`, `eyecatcher.substrate`, `eyecatcher.glsl`, `eyecatcher.signals`, `eyecatcher.evaluation`. See [src/eyecatcher/README.md](src/eyecatcher/README.md) for the full layout.
 - **Root** – `Makefile` (install, test, lint, format, dev, docker-up, etc.), `pyproject.toml`, `package.json`, `package-lock.json`, `railway.json`, [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), [LICENSE](LICENSE). **docker/** – `Dockerfile`, `docker-compose.yml` (run with **`make docker-up`**). **scripts/** – `run.sh` (production entrypoint; used by Docker/Railway).
 
 Generated content (saved patterns, network PDFs, frames) goes under `output/` (gitignored).
@@ -187,7 +187,7 @@ Time inputs (see signals.py) → Time Signal CPPN → modifiedTime
 Visual inputs (see signals.py) → Visual CPPN → RGB
 ```
 
-Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. Input/output names and counts are defined in [signals/signals.py](src/eyecatcher/signals/signals.py); NEAT num_inputs/num_outputs must match. See [config/neat/README.md](config/neat/README.md) for default configs (`*_experimental.txt`) and parameters.
+Time Signal has 5 inputs, 1 output; Visual has 8 inputs, 3 outputs. Input/output names and counts are defined in [signals/registry.py](src/eyecatcher/signals/registry.py); NEAT num_inputs/num_outputs must match. See [config/neat/README.md](config/neat/README.md) for default configs (`*_experimental.txt`) and parameters.
 
 ### Stateless API
 
@@ -201,9 +201,9 @@ The server does not hold population state. The client (web UI) stores genomes (e
 
 ### Core components
 
-- **Evolution** – Config and reproduction in `algorithm/`; generic genome in `genome/`, dual-genome and substrates in `substrate/` (get_configured_substrate, get_substrate).
+- **Evolution** – Config and reproduction in `evolution/`; generic genome in `genome/`, dual-genome and substrates in `substrate/` (get_configured_substrate, get_substrate).
 - **Shader Compiler** (`src/eyecatcher/glsl/`) – CPPN → GLSL; `ShaderCompiler.compile()` for the web renderer.
-- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API in `web/` (compile, random, evolve, save, time-output), reproduction logic in `algorithm/reproduction.py`, community and genealogy routes, static serving.
+- **Server** (`src/eyecatcher/server.py`) – Flask app: stateless API in `web/` (compile, random, evolve, save, time-output), reproduction logic in `evolution/reproduction.py`, community and genealogy routes, static serving.
 
 Researchers: see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for where to change signals, NEAT config, reproduction, and rendering.
 
@@ -212,7 +212,7 @@ Researchers: see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for where to change 
 Main API for programmatic use is via direct imports from submodules.
 
 ```python
-from eyecatcher.algorithm.config import get_configured_substrate
+from eyecatcher.evolution import get_configured_substrate
 from eyecatcher.substrate import create_random_dual_genome
 
 substrate = get_configured_substrate()

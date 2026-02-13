@@ -8,35 +8,34 @@ The Python package is under `src/eyecatcher/`. Main packages:
 
 | Area | What it is | When you look here |
 |------|------------|---------------------|
-| **algorithm/** | Config, get_configured_substrate, reproduction, operators. | Changing the evolution algorithm or NEAT config. |
+| **evolution/** | Config, get_configured_substrate, reproduction, operators. | Changing the evolution algorithm or NEAT config. |
 | **genome/** | Generic NEAT genome (create_random_genome, JSON, copy). | Changing generic genome or wire serialization. |
 | **substrate/** | Substrates (Single/Dual CPPN, CA), DualGenome, dual serialization. | Changing substrate types or dual-genome. |
 | **signals/** | Input/output definitions, activation. | Adding/changing signals or activation functions. |
 | **evaluation/** | CPU rendering, query, genome_visualizer, network_data (graph/stats for UI/API). | Changing rendering, CPPN evaluation, or network export. |
 | **glsl/** | Display pipeline: genome → GLSL. | Changing how genomes become shader code. |
 | **web/** | Flask app, routes, stateless_api. | Adding endpoints or changing API. |
-| **lib/** | DB and path utilities. | Fixing infra. |
-| **data/** | Genealogy DB. | Changing genealogy storage or export. |
+| **data/** | Genealogy DB and DB path/connection helpers (db_util). | Changing genealogy storage/export or fixing DB infra. |
 
 Exact file tree and file-by-file roles: **[src/eyecatcher/README.md](src/eyecatcher/README.md)**.
 
 ## Where evolution logic lives
 
-- **Public API:** Import from **eyecatcher.algorithm** (config, get_configured_substrate, produce_next_generation), **eyecatcher.genome** (generic serialization), **eyecatcher.substrate** (DualGenome, get_substrate, substrates, dual serialization), **eyecatcher.signals**, **eyecatcher.evaluation**, **eyecatcher.glsl** (ShaderCompiler).
-- **Algorithm** (config, reproduction, operators): **src/eyecatcher/algorithm/**.
+- **Public API:** Import from **eyecatcher.evolution** (config, get_configured_substrate, produce_next_generation), **eyecatcher.genome** (generic serialization), **eyecatcher.substrate** (DualGenome, get_substrate, substrates, dual serialization), **eyecatcher.signals**, **eyecatcher.evaluation**, **eyecatcher.glsl** (ShaderCompiler).
+- **Evolution** (config, reproduction, operators): **src/eyecatcher/evolution/**.
 - **Genome (generic)** and **substrate (dual-genome, substrates):** **src/eyecatcher/genome/**, **src/eyecatcher/substrate/**; network graph/stats: **src/eyecatcher/evaluation/network_data.py**.
 - **Signals and activation:** **src/eyecatcher/signals/**.
 - **Visualization and fitness:** **src/eyecatcher/evaluation/** (genome_visualizer, network_data, fitness).
 - **Shader pipeline** (genome to GLSL): **src/eyecatcher/glsl/** (display only).
 - **Genome bundle save/load:** substrate `build_save_assets` (e.g. dual_cppn); genealogy: **src/eyecatcher/data/genealogy_db.py**.
-- **Entry point:** **server.py** at package root; uses algorithm, substrate, glsl, etc. for compile, evolve, save, and query.
+- **Entry point:** **server.py** at package root; uses evolution, substrate, glsl, etc. for compile, evolve, save, and query.
 
 ### Architecture map (data flow)
 
 ```mermaid
 flowchart LR
     subgraph python [Python Backend]
-        Signals[signals.py] --> ShaderCompiler[shader_compiler.py]
+        Signals[registry.py] --> ShaderCompiler[shader_compiler.py]
         Substrate[substrate]
         Substrate --> ShaderCompiler
         ShaderCompiler --> API[stateless_api.py]
@@ -62,9 +61,9 @@ flowchart LR
 
 Signals are defined in Python only; the frontend config is generated from the registry.
 
-**Checklist (order matters):** 1) Edit signals.py → 2) Run make generate-signals → 3) Update NEAT num_inputs/num_outputs if counts changed → 4) Restart server and reload app.
+**Checklist (order matters):** 1) Edit signals/registry.py → 2) Run make generate-signals → 3) Update NEAT num_inputs/num_outputs if counts changed → 4) Restart server and reload app.
 
-1. **Edit the registry:** [src/eyecatcher/signals/signals.py](src/eyecatcher/signals/signals.py) – add or change entries in VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS. Use `Signal("id", "Label")` for inputs; use `Signal("id", "Label", is_spatial=True)` for per-pixel inputs (x, y, distance); use `Output("id", "Label")` for outputs.
+1. **Edit the registry:** [src/eyecatcher/signals/registry.py](src/eyecatcher/signals/registry.py) – add or change entries in VISUAL_INPUTS, TIME_INPUTS, VISUAL_OUTPUTS, TIME_OUTPUTS. Use `Signal("id", "Label")` for inputs; use `Signal("id", "Label", is_spatial=True)` for per-pixel inputs (x, y, distance); use `Output("id", "Label")` for outputs.
 2. **Generate frontend config:** Run `make generate-signals` (or `python scripts/generate_signal_config.py` from repo root). This writes [static/js/evolution/evolution_config_signals.generated.js](static/js/evolution/evolution_config_signals.generated.js) and validates NEAT config.
 3. **NEAT counts:** If you added or removed inputs/outputs, update num_inputs/num_outputs in [config/neat/](config/neat/) (neat_config_experimental.txt, neat_config_time_experimental.txt). The generate script will fail with a clear message if they don’t match the registry.
 4. Restart the server and reload the app.
@@ -111,8 +110,8 @@ If `EXPERIMENT_CONFIG` is unset, the `"default"` preset is used (when the file e
 
 ## Breeding and selection
 
-- [src/eyecatcher/algorithm/reproduction.py](src/eyecatcher/algorithm/reproduction.py) – `produce_next_generation()` (parent handling, elitism, mutation vs crossover). Called by the server's evolve endpoint.
-- [src/eyecatcher/algorithm/operators.py](src/eyecatcher/algorithm/operators.py) – `mutate_genome`, `crossover_genomes` (generic NEAT). Dual-genome mutate/crossover: **src/eyecatcher/substrate/_dual_genome.py**. Change selection or add tournament selection by editing reproduction.py and/or operators.
+- [src/eyecatcher/evolution/reproduction.py](src/eyecatcher/evolution/reproduction.py) – `produce_next_generation()` (parent handling, elitism, mutation vs crossover). Called by the server's evolve endpoint.
+- [src/eyecatcher/evolution/operators.py](src/eyecatcher/evolution/operators.py) – `mutate_genome`, `crossover_genomes` (generic NEAT). Dual-genome mutate/crossover: **src/eyecatcher/substrate/_dual_genome.py**. Change selection or add tournament selection by editing reproduction.py and/or operators.
 
 ## Rendering and serialization
 
@@ -126,7 +125,7 @@ Shaders are how we *display* evolved genomes, not part of the evolution algorith
 - **Phases:** Topology → node code → template. Implemented in [glsl/compiler_topology.py](src/eyecatcher/glsl/compiler_topology.py) (enabled connections, evaluation order), [glsl/node_code_generator.py](src/eyecatcher/glsl/node_code_generator.py) (genome → GLSL node computations), [glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) (activation GLSL strings), [glsl/shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py) (orchestrates and builds the full shader).
 - **Add an activation:** See checklist below.
 - **Change output (color mode):** See "Add or change an output mode" below.
-- **Change inputs/signals:** Edit [signals/signals.py](src/eyecatcher/signals/signals.py) (VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map); the compiler uses them automatically.
+- **Change inputs/signals:** Edit [signals/registry.py](src/eyecatcher/signals/registry.py) (VISUAL_INPUTS, TIME_INPUTS, build_glsl_input_map); the compiler uses them automatically.
 
 ### Checklist: Add an activation
 
@@ -245,13 +244,13 @@ What the rendering pipeline supports today and where to add missing capabilities
 
 ## What you can ignore for evolution-only work
 
-- **Server and routes:** server.py, web/ (stateless_api, genealogy_routes, community_routes) – HTTP and DB; they call algorithm (reproduction), genome/substrate (serialization), glsl (compile), and data (genealogy_db).
+- **Server and routes:** server.py, web/ (stateless_api, genealogy_routes, community_routes) – HTTP and DB; they call evolution (reproduction), genome/substrate (serialization), glsl (compile), and data (genealogy_db).
 - **Frontend:** static/ – pattern renderer, viewer controls, and evolution_config.js matter for signals and UI; the rest (community UI, genealogy viewer, storage) is optional for "just evolution."
-- **Data and config:** data/ (DBs), config/neat/ (file contents matter; paths set in algorithm/config.py).
+- **Data and config:** data/ (DBs), config/neat/ (file contents matter; paths set in evolution/config.py).
 
 ## Keeping frontend in sync
 
-Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). **Evolution defaults** (population size, max, crossover, etc.): single source is [config/evolution_defaults.json](config/evolution_defaults.json); backend loads it, and `make generate-evolution-config` (or `make generate`) produces [evolution_config_defaults.generated.js](static/js/evolution/evolution_config_defaults.generated.js) for frontend fallbacks. Population size and max are bootstrapped from `GET /api/config` at load time. **Signal toggles and outputs** come from the Python registry: run `make generate-signals` after changing [signals/signals.py](src/eyecatcher/signals/signals.py). **Substrate adapter config** (ids, genome format) is generated from [substrate/export.py](src/eyecatcher/substrate/export.py): run `make generate-substrates` after adding or changing substrates. Run `make generate` to run all codegen. test_signal_registry checks that the generated signals file matches the registry.
+Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). **Evolution defaults** (population size, max, crossover, etc.): single source is [config/evolution_defaults.json](config/evolution_defaults.json); backend loads it, and `make generate-evolution-config` (or `make generate`) produces [evolution_config_defaults.generated.js](static/js/evolution/evolution_config_defaults.generated.js) for frontend fallbacks. Population size and max are bootstrapped from `GET /api/config` at load time. **Signal toggles and outputs** come from the Python registry: run `make generate-signals` after changing [signals/registry.py](src/eyecatcher/signals/registry.py). **Substrate adapter config** (ids, genome format) is generated from [substrate/export.py](src/eyecatcher/substrate/export.py): run `make generate-substrates` after adding or changing substrates. Run `make generate` to run all codegen. test_signal_registry checks that the generated signals file matches the registry.
 
 **Evolution config vs NEAT:** Substrate-agnostic evolution params (population_size, crossover_probability, elitism_default) live in [config/evolution_defaults.json](config/evolution_defaults.json); presets in [config/experiments.json](config/experiments.json) override them. NEAT config paths and NEAT .txt file contents (mutation rates, pop_size in .txt, etc.) stay in [evolution/config.py](src/eyecatcher/evolution/config.py) and config/neat/; population size for interactive evolution is controlled by our config, not by NEAT `pop_size`. At startup, a warning is logged if NEAT `pop_size` differs from our effective population_size.
 
@@ -292,10 +291,10 @@ EXPERIMENT_CONFIG=single python examples/evolution_batch.py --fitness color_vari
 | I want to… | File(s) |
 |------------|---------|
 | Add a new substrate | substrate/ (new module with frontend_metadata, protocol), substrate/registry.py, config/experiments.json; make generate-substrates; frontend adapter if custom (see “Add a new substrate” above) |
-| Add/rename a signal | signals/signals.py, then make generate-signals; update NEAT num_inputs/num_outputs if counts changed |
+| Add/rename a signal | signals/registry.py, then make generate-signals; update NEAT num_inputs/num_outputs if counts changed |
 | Change population size or crossover (evolution defaults) | config/evolution_defaults.json, then `make generate`; preset overrides in config/experiments.json |
 | Change NEAT config paths or render resolution | [evolution/config.py](src/eyecatcher/evolution/config.py) |
-| Change reproduction/selection | algorithm/reproduction.py, algorithm/operators.py |
+| Change reproduction/selection | evolution/reproduction.py, evolution/operators.py |
 | Change CPU rendering or substrate query | substrate (e.g. cppn_base.evaluate, dual_cppn, ca) |
 | Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl/glsl_fragments.py, glsl/node_code_generator.py, glsl/compiler_topology.py |
 | Change compile/save/export response shape | web/stateless_api.py, substrate get_compile_stats / build_save_assets |

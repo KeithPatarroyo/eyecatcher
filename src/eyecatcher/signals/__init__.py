@@ -4,7 +4,7 @@ Signal definitions and utilities for CPPN inputs/outputs.
 Activation functions and custom registrations for NEAT.
 """
 
-from .signals import (
+from .registry import (
     NETWORK_SIGNALS,
     TIME_CPPN_TIME_INPUT_NAME,
     TIME_INPUTS,
@@ -20,7 +20,6 @@ from .signals import (
     input_labels,
     input_names,
     output_labels,
-    output_names,
     parse_time_inputs,
 )
 
@@ -37,7 +36,6 @@ __all__ = [
     "export_for_frontend",
     "input_labels",
     "output_labels",
-    "output_names",
     "input_names",
     "build_glsl_input_map",
     "default_inputs",

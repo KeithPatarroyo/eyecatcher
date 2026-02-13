@@ -18,7 +18,7 @@ import numpy as np
 from .. import get_root_dir
 from ..evolution import DEFAULT_RENDER_RESOLUTION
 from ..signals.activation import register_custom_activations
-from ..signals.signals import (
+from ..signals.registry import (
     apply_derived_inputs,
     get_default_signal_values,
     inputs_array,
