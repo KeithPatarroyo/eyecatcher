@@ -15,6 +15,11 @@ from .config import (
     NEAT_CONFIG_PATH,
     NEAT_TIME_CONFIG_PATH,
     PREVIEW_RENDER_RESOLUTION,
+    get_crossover_probability,
+    get_elitism_default,
+    get_max_population_size,
+    get_population_size,
+    update_runtime_config,
 )
 from .operators import crossover_genomes, mutate_genome
 from .reproduction import produce_next_generation
@@ -33,4 +38,9 @@ __all__ = [
     "DEFAULT_RENDER_TIME",
     "PREVIEW_RENDER_RESOLUTION",
     "DEFAULT_NUM_FRAMES",
+    "get_population_size",
+    "get_max_population_size",
+    "get_crossover_probability",
+    "get_elitism_default",
+    "update_runtime_config",
 ]

@@ -1,0 +1,7 @@
+{
+  "population_size": 12,
+  "max_population_size": 50,
+  "min_population_size": 2,
+  "crossover_probability": 0.3,
+  "elitism_default": false
+}
