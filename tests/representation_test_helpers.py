@@ -1,14 +1,15 @@
 """Shared test helpers for representation protocol compliance and GLSL validation.
 
-Use assert_representation_protocol_compliance(representation) to verify a representation
-implements the full protocol (create_random, mutate, crossover, express,
-compile_to_shader, to_json/from_json). Optional GLSL variable check when
-compile_to_shader returns a string.
+Use assert_representation_protocol_compliance(representation) to verify a
+representation implements the full protocol (create_random, mutate, crossover,
+express, compile_to_shader, to_json/from_json, signal_spec). Optional GLSL
+variable check when compile_to_shader returns a string.
 """
 
 from __future__ import annotations
 
 from eyecatcher.representation import RepresentationOutput
+from eyecatcher.signals.spec import SignalSpec
 
 # Import GLSL validation from test_glsl_validity so representations can reuse it
 from tests.test_glsl_validity import _assert_all_used_vars_declared
@@ -19,9 +20,10 @@ def assert_representation_protocol_compliance(
 ) -> None:
     """Assert that a representation implements the protocol correctly.
 
-    Checks: create_random, mutate, crossover, express (returns RepresentationOutput),
-    to_json/from_json round-trip, compile_to_shader (if not None, contains void main()
-    and passes GLSL variable declaration checks).
+    Checks: create_random, mutate, crossover, express (returns
+    RepresentationOutput), to_json/from_json round-trip,
+    compile_to_shader (if not None, contains void main() and passes
+    GLSL variable declaration checks), signal_spec (is a SignalSpec).
 
     Args:
         representation: Any object implementing the Representation protocol.
@@ -54,3 +56,8 @@ def assert_representation_protocol_compliance(
             "void main()" in glsl
         ), "compile_to_shader output must contain void main()"
         _assert_all_used_vars_declared(glsl)
+
+    # signal_spec must be present and well-formed
+    spec = getattr(representation, "signal_spec", None)
+    assert spec is not None, "representation must have a signal_spec"
+    assert isinstance(spec, SignalSpec), "signal_spec must be a SignalSpec"

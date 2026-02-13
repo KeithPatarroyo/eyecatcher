@@ -15,6 +15,8 @@ from typing import Any, Literal, Protocol, TypeVar, Union
 
 import numpy as np
 
+from ..signals.spec import SignalSpec
+
 IndividualT = TypeVar("IndividualT")
 
 OutputType = Literal["shader", "image", "grid", "audio"]
@@ -50,6 +52,7 @@ class Representation(Protocol[IndividualT]):
 
     id: str
     output_type: OutputType
+    signal_spec: SignalSpec
 
     def create_random(self, key: int = 0) -> IndividualT:
         """Create a new random individual. key is used as genome/id."""
