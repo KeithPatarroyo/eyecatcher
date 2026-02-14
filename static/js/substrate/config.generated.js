@@ -7,11 +7,103 @@
             outputType: "shader",
             hasSignalControls: true,
             genomeKeys: ["visual", "time_signal"],
+            adapterFactory: "cppn",
             capabilities: {
                 save: true,
                 network: true,
                 timeOutput: true,
                 adjustWeight: true,
+            },
+            signalSpec: {
+                inputs: [
+                    {
+                        id: "x",
+                        label: "X",
+                        default: 0.0,
+                        isSpatial: true,
+                    },
+                    {
+                        id: "y",
+                        label: "Y",
+                        default: 0.0,
+                        isSpatial: true,
+                    },
+                    {
+                        id: "distance",
+                        label: "distance",
+                        default: 0.0,
+                        isSpatial: true,
+                    },
+                    {
+                        id: "time",
+                        label: "Time",
+                        default: 0.0,
+                        uniform: "u_time",
+                        derived: true,
+                    },
+                    {
+                        id: "mouse_speed",
+                        label: "Mouse Speed",
+                        default: 0.0,
+                        uniform: "u_mouse_speed",
+                    },
+                    {
+                        id: "mouse_dist",
+                        label: "Mouse Dist",
+                        default: 0.0,
+                        uniform: "u_mouse_dist",
+                    },
+                    {
+                        id: "activity",
+                        label: "Activity",
+                        default: 0.0,
+                        uniform: "u_activity",
+                    },
+                    {
+                        id: "mouse_x",
+                        label: "Mouse X",
+                        default: 0.0,
+                        uniform: "u_mouse_x",
+                    },
+                    {
+                        id: "mouse_y",
+                        label: "Mouse Y",
+                        default: 0.0,
+                        uniform: "u_mouse_y",
+                    },
+                    {
+                        id: "bias",
+                        label: "Bias",
+                        default: 1.0,
+                    },
+                    {
+                        id: "raw_time",
+                        label: "Raw Time",
+                        default: 0.0,
+                        uniform: "u_raw_time",
+                    },
+                ],
+                outputs: [
+                    {
+                        id: "red",
+                        label: "Red",
+                    },
+                    {
+                        id: "green",
+                        label: "Green",
+                    },
+                    {
+                        id: "blue",
+                        label: "Blue",
+                    },
+                ],
+                derivedInputs: [
+                    {
+                        id: "distance",
+                        deps: ["x", "y"],
+                        glsl: "float v_distance = sqrt(v_x * v_x + v_y * v_y);",
+                    },
+                ],
             },
         },
         {
@@ -20,11 +112,97 @@
             hasSignalControls: false,
             genomeKeys: ["visual"],
             excludeKeys: ["time_signal"],
+            adapterFactory: "cppn",
             capabilities: {
                 save: true,
-                network: false,
+                network: true,
                 timeOutput: false,
-                adjustWeight: false,
+                adjustWeight: true,
+            },
+            signalSpec: {
+                inputs: [
+                    {
+                        id: "x",
+                        label: "X",
+                        default: 0.0,
+                        isSpatial: true,
+                    },
+                    {
+                        id: "y",
+                        label: "Y",
+                        default: 0.0,
+                        isSpatial: true,
+                    },
+                    {
+                        id: "distance",
+                        label: "distance",
+                        default: 0.0,
+                        isSpatial: true,
+                    },
+                    {
+                        id: "time",
+                        label: "Time",
+                        default: 0.0,
+                        uniform: "u_time",
+                        derived: true,
+                    },
+                    {
+                        id: "mouse_speed",
+                        label: "Mouse Speed",
+                        default: 0.0,
+                        uniform: "u_mouse_speed",
+                    },
+                    {
+                        id: "mouse_dist",
+                        label: "Mouse Dist",
+                        default: 0.0,
+                        uniform: "u_mouse_dist",
+                    },
+                    {
+                        id: "activity",
+                        label: "Activity",
+                        default: 0.0,
+                        uniform: "u_activity",
+                    },
+                    {
+                        id: "mouse_x",
+                        label: "Mouse X",
+                        default: 0.0,
+                        uniform: "u_mouse_x",
+                    },
+                    {
+                        id: "mouse_y",
+                        label: "Mouse Y",
+                        default: 0.0,
+                        uniform: "u_mouse_y",
+                    },
+                    {
+                        id: "bias",
+                        label: "Bias",
+                        default: 1.0,
+                    },
+                ],
+                outputs: [
+                    {
+                        id: "red",
+                        label: "Red",
+                    },
+                    {
+                        id: "green",
+                        label: "Green",
+                    },
+                    {
+                        id: "blue",
+                        label: "Blue",
+                    },
+                ],
+                derivedInputs: [
+                    {
+                        id: "distance",
+                        deps: ["x", "y"],
+                        glsl: "float v_distance = sqrt(v_x * v_x + v_y * v_y);",
+                    },
+                ],
             },
         },
         {
@@ -32,11 +210,30 @@
             outputType: "grid",
             hasSignalControls: false,
             genomeKeys: ["grid", "key"],
+            adapterFactory: null,
             capabilities: {
                 save: true,
                 network: false,
                 timeOutput: false,
                 adjustWeight: false,
+            },
+            signalSpec: {
+                inputs: [
+                    {
+                        id: "mouse_x",
+                        label: "Mouse X",
+                        default: 0.0,
+                        uniform: "u_mouse_x",
+                    },
+                    {
+                        id: "mouse_y",
+                        label: "Mouse Y",
+                        default: 0.0,
+                        uniform: "u_mouse_y",
+                    },
+                ],
+                outputs: [],
+                derivedInputs: [],
             },
         },
     ];

@@ -99,19 +99,8 @@
      * @param {Object} [context] - Optional RenderContext (gridPosition, neighbors, patternId) for context-derived uniforms
      */
     function buildUniformValues(signalValues, context) {
-        var state =
-            window.PopulationState &&
-            window.PopulationState.getState &&
-            window.PopulationState.getState();
-        var substrateId = state ? state.substrateId : null;
-        var SA = window.SubstrateAdapters;
-        var resolved =
-            SA && SA.safeResolve
-                ? SA.safeResolve({ substrateId: substrateId })
-                : window.__eyecatcherDefaultResolution || { adapter: null };
-        if (resolved.adapter && typeof resolved.adapter.buildUniforms === "function") {
-            return resolved.adapter.buildUniforms(signalValues, context);
-        }
+        var adapter = window.SubstrateAdapters.currentAdapter();
+        if (adapter) return adapter.buildUniforms(signalValues, context);
         return {};
     }
 
@@ -165,324 +154,8 @@
      * @param {Object} signalState - Flat { signal_id: boolean } for CPPN enable toggles
      */
     function renderPattern(patternData, uniformValues, signalState) {
-        var state =
-            window.PopulationState &&
-            window.PopulationState.getState &&
-            window.PopulationState.getState();
-        var substrateId = state ? state.substrateId : null;
-        var SA = window.SubstrateAdapters;
-        var resolved =
-            SA && SA.safeResolve
-                ? SA.safeResolve({ substrateId: substrateId, genomes: [] })
-                : window.__eyecatcherDefaultResolution || { adapter: null };
-        var adapter = resolved.adapter;
-        if (adapter && typeof adapter.render === "function") {
-            adapter.render(patternData, uniformValues, signalState);
-        }
-    }
-
-    function createErrorFallback(errorMsg) {
-        var fallback = document.createElement("div");
-        fallback.className = "pattern-canvas-fallback";
-        fallback.textContent = errorMsg || "WebGL not available";
-        if (errorMsg && errorMsg.length > 80) {
-            fallback.setAttribute("title", errorMsg);
-            fallback.textContent = "Shader error (hover for details)";
-        }
-        return fallback;
-    }
-
-    function attachCardEvents(card, id, options) {
-        var canvas = card.querySelector("canvas");
-        var SA = window.SubstrateAdapters;
-        var resolved =
-            SA && SA.safeResolve
-                ? SA.safeResolve({ substrateId: options.substrateId })
-                : { adapter: null };
-        var adapter = resolved.adapter;
-        var hasCellInteraction =
-            adapter && typeof adapter.onCellInteraction === "function";
-
-        if (options.onClick) {
-            card.addEventListener("click", function (e) {
-                if (canvas && e.target === canvas && hasCellInteraction) {
-                    _fireCellInteraction(e, canvas, options.substrateId, id, "click");
-                    return;
-                }
-                options.onClick(id, card);
-                _fireCellInteraction(e, canvas, options.substrateId, id, "click");
-            });
-        }
-        if (options.onUnclick) {
-            card.addEventListener("contextmenu", function (e) {
-                e.preventDefault();
-                if (canvas && e.target === canvas && hasCellInteraction) {
-                    _fireCellInteraction(
-                        e,
-                        canvas,
-                        options.substrateId,
-                        id,
-                        "contextmenu"
-                    );
-                    return;
-                }
-                options.onUnclick(id, card);
-                _fireCellInteraction(e, canvas, options.substrateId, id, "contextmenu");
-            });
-        }
-        if (options.onMouseEnter) {
-            card.addEventListener("mouseenter", function () {
-                options.onMouseEnter(id);
-            });
-        }
-        if (options.onMouseLeave) {
-            card.addEventListener("mouseleave", function () {
-                options.onMouseLeave(id);
-            });
-        }
-    }
-
-    /**
-     * Fire onCellInteraction on the adapter if it supports it.
-     * @param {MouseEvent} event
-     * @param {HTMLCanvasElement|null} canvas
-     * @param {string|null} substrateId
-     * @param {number} patternId
-     * @param {string} interactionType - "click" or "contextmenu"
-     */
-    function _fireCellInteraction(
-        event,
-        canvas,
-        substrateId,
-        patternId,
-        interactionType
-    ) {
-        if (!canvas) return;
-        var SA = window.SubstrateAdapters;
-        var resolved =
-            SA && SA.safeResolve
-                ? SA.safeResolve({ substrateId: substrateId })
-                : { adapter: null };
-        var adapter = resolved.adapter;
-        if (adapter && typeof adapter.onCellInteraction === "function") {
-            var coords = getClickCoordinates(event, canvas);
-            var state =
-                window.PopulationState &&
-                window.PopulationState.getState &&
-                window.PopulationState.getState();
-            var patternsMap = state ? state.patterns : null;
-            var patternData = null;
-            if (patternsMap) {
-                patternData = patternsMap.get(patternId);
-                if (
-                    patternData == null &&
-                    typeof patternId === "string" &&
-                    /^\d+$/.test(patternId)
-                ) {
-                    patternData = patternsMap.get(parseInt(patternId, 10));
-                }
-                if (patternData == null && typeof patternId === "number") {
-                    patternData = patternsMap.get(String(patternId));
-                }
-            }
-            adapter.onCellInteraction(patternData, coords.x, coords.y, interactionType);
-        }
-    }
-
-    /**
-     * Create a pattern card DOM element with canvas, info, action buttons, and event binding.
-     * @param {Object} options
-     * @param {Object} options.pattern - { id, shader, nodes, connections, clicks }
-     * @param {function(number)} options.onShare - (id) => {}
-     * @param {function(number, HTMLElement)} options.onNetwork - (id, card) => {}
-     * @param {function(number, HTMLButtonElement)} options.onSave - (id, buttonEl) => {}
-     * @param {function(number, HTMLElement)} options.onClick - (id, card) => {}
-     * @param {function(number, HTMLElement)} options.onUnclick - (id, card) => {}
-     * @param {function(number)} [options.onMouseEnter] - (id) => {}
-     * @param {function(number)} [options.onMouseLeave] - (id) => {}
-     * @param {function(number)} [options.onFullscreen] - (id) => {} open pattern in fullscreen modal
-     * @param {string} [options.substrateId] - current substrate id for adapter.preparePatternData
-     * @returns {{ card: HTMLElement, canvas: HTMLCanvasElement|null, patternData: Object|null }}
-     */
-    function createPatternCard(options) {
-        const pattern = options.pattern;
-        const substrateId = options.substrateId || null;
-        var SA = window.SubstrateAdapters;
-        var resolved =
-            SA && SA.safeResolve
-                ? SA.safeResolve({
-                      substrateId: substrateId,
-                      genomes: pattern ? [pattern] : [],
-                  })
-                : window.__eyecatcherDefaultResolution || { adapter: null };
-        var adapter = resolved.adapter;
-        const id = pattern.id;
-        const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;
-        const hasCellInteraction =
-            adapter && typeof adapter.onCellInteraction === "function";
-        const card = document.createElement("div");
-        card.className =
-            "pattern-card" + (hasCellInteraction ? " pattern-card--interactive" : "");
-        card.dataset.id = id;
-
-        const info = document.createElement("div");
-        info.className = "pattern-info";
-        const meta = document.createElement("div");
-        meta.className = "pattern-meta";
-        if (adapter && typeof adapter.getMetaLabel === "function") {
-            var idPrefix =
-                typeof adapter.getMetaIdPrefix === "function"
-                    ? adapter.getMetaIdPrefix()
-                    : "ID: ";
-            meta.textContent = idPrefix + id + " | " + adapter.getMetaLabel(pattern);
-        } else {
-            meta.textContent =
-                pattern.image != null
-                    ? "ID: " + id
-                    : "ID: " +
-                      id +
-                      " | Nodes: " +
-                      (pattern.nodes ?? 0) +
-                      " | Connections: " +
-                      (pattern.connections ?? 0);
-        }
-        const clickCount = document.createElement("div");
-        clickCount.className = "click-count" + (clicks === 0 ? " zero" : "");
-        clickCount.textContent = String(clicks);
-        info.appendChild(meta);
-        info.appendChild(clickCount);
-
-        const actions = document.createElement("div");
-        actions.className = "pattern-actions";
-
-        const fullscreenBtn = document.createElement("button");
-        fullscreenBtn.className = "fullscreen-btn";
-        fullscreenBtn.textContent = "\u26F6";
-        fullscreenBtn.setAttribute("title", "Expand to fullscreen");
-        fullscreenBtn.setAttribute("aria-label", "Expand to fullscreen");
-        fullscreenBtn.onclick = function (e) {
-            e.stopPropagation();
-            if (options.onFullscreen) options.onFullscreen(id);
-        };
-
-        const submitCommunityBtn = document.createElement("button");
-        submitCommunityBtn.className = "submit-community-btn";
-        submitCommunityBtn.setAttribute("title", "Share to Community");
-        submitCommunityBtn.setAttribute("aria-label", "Share to Community");
-        submitCommunityBtn.textContent = "\u2197";
-        submitCommunityBtn.onclick = function (e) {
-            e.stopPropagation();
-            if (options.onShare) options.onShare(id);
-        };
-
-        var caps = adapter && adapter.capabilities;
-        var showNetwork = !caps || caps.network !== false;
-        var showSave = !caps || caps.save !== false;
-
-        const networkBtn = document.createElement("button");
-        networkBtn.className = "network-btn";
-        networkBtn.textContent = "\uD83E\uDDE0";
-        networkBtn.setAttribute("title", "View network visualization");
-        networkBtn.setAttribute("aria-label", "View network visualization");
-        networkBtn.onclick = function (e) {
-            e.stopPropagation();
-            if (options.onNetwork) options.onNetwork(id, card);
-        };
-
-        const saveBtn = document.createElement("button");
-        saveBtn.className = "save-btn";
-        saveBtn.textContent = "\u2193";
-        saveBtn.setAttribute("title", "Download pattern (compiling may take a moment)");
-        saveBtn.setAttribute(
-            "aria-label",
-            "Download pattern; compiling may take a moment"
-        );
-        saveBtn.onclick = function (e) {
-            e.stopPropagation();
-            if (options.onSave) options.onSave(id, saveBtn);
-        };
-
-        actions.appendChild(fullscreenBtn);
-        actions.appendChild(submitCommunityBtn);
-        if (showNetwork) actions.appendChild(networkBtn);
-        if (showSave) actions.appendChild(saveBtn);
-
-        if (adapter && typeof adapter.createDisplayElement === "function") {
-            var result = adapter.createDisplayElement(pattern, options);
-            var displayEl = result && result.element;
-            if (displayEl) {
-                card.appendChild(displayEl);
-            } else {
-                card.appendChild(
-                    createErrorFallback("Display element creation failed")
-                );
-            }
-            var patternData = result && result.patternData;
-            if (
-                adapter &&
-                typeof adapter.preparePatternData === "function" &&
-                patternData
-            ) {
-                adapter.preparePatternData(patternData, pattern);
-            }
-            card.appendChild(actions);
-            card.appendChild(info);
-            attachCardEvents(card, id, options);
-            var isCanvas = displayEl && displayEl instanceof HTMLCanvasElement;
-            return {
-                card: card,
-                canvas: isCanvas ? displayEl : null,
-                patternData: patternData || null,
-            };
-        }
-
-        /* BACKWARDS_COMPAT: legacy shader/image branches when adapter does not implement createDisplayElement. Remove once all adapters provide createDisplayElement. */
-        if (pattern.shader) {
-            const canvas = document.createElement("canvas");
-            canvas.className = "pattern-canvas";
-            canvas.width = PATTERN_CANVAS_SIZE;
-            canvas.height = PATTERN_CANVAS_SIZE;
-            let patternData = setupPattern(canvas, pattern.shader);
-            if (!patternData || patternData.error) {
-                var fallback = createErrorFallback(
-                    patternData && patternData.error ? patternData.error : null
-                );
-                card.appendChild(fallback);
-                card.appendChild(actions);
-                card.appendChild(info);
-                attachCardEvents(card, id, options);
-                return { card: card, canvas: null, patternData: null };
-            }
-            if (adapter && typeof adapter.preparePatternData === "function") {
-                adapter.preparePatternData(patternData, pattern);
-            }
-            card.appendChild(canvas);
-            card.appendChild(actions);
-            card.appendChild(info);
-            attachCardEvents(card, id, options);
-            return { card: card, canvas: canvas, patternData: patternData };
-        }
-
-        if (pattern.image != null) {
-            const img = document.createElement("img");
-            img.className = "pattern-canvas pattern-image";
-            img.src = pattern.image;
-            img.width = PATTERN_CANVAS_SIZE;
-            img.height = PATTERN_CANVAS_SIZE;
-            img.alt = "Pattern " + id;
-            card.appendChild(img);
-            card.appendChild(actions);
-            card.appendChild(info);
-            attachCardEvents(card, id, options);
-            return { card: card, canvas: null, patternData: null };
-        }
-
-        var fallbackEl = createErrorFallback(null);
-        card.appendChild(fallbackEl);
-        card.appendChild(actions);
-        card.appendChild(info);
-        attachCardEvents(card, id, options);
-        return { card: card, canvas: null, patternData: null };
+        var adapter = window.SubstrateAdapters.currentAdapter();
+        if (adapter) adapter.render(patternData, uniformValues, signalState);
     }
 
     // -- FBO helpers for stateful substrates (NCA, etc.) --
@@ -619,28 +292,29 @@
      * @returns {Object|null} patternData from PopulationState.patterns, or null
      */
     function getNeighborPatternData(patternId) {
-        var state =
-            window.PopulationState &&
-            window.PopulationState.getState &&
-            window.PopulationState.getState();
-        var patterns = state ? state.patterns : null;
+        var patterns = window.PopulationState.patterns;
         return (patterns && patterns.get && patterns.get(patternId)) || null;
     }
 
-    // -- Click coordinate extraction --
-
     /**
-     * Extract normalized (0-1) coordinates from a mouse/click event relative to a canvas.
-     * @param {MouseEvent} event
-     * @param {HTMLCanvasElement} canvas
-     * @returns {{ x: number, y: number }} - Normalized coordinates (0-1 range, origin top-left)
+     * Delegate to PatternCardBuilder so grid and other callers can use PatternRenderer.createPatternCard.
+     * PatternCardBuilder is loaded after this module; the call happens at runtime when population is loaded.
      */
-    function getClickCoordinates(event, canvas) {
-        var rect = canvas.getBoundingClientRect();
-        return {
-            x: Math.min(1.0, Math.max(0.0, (event.clientX - rect.left) / rect.width)),
-            y: Math.min(1.0, Math.max(0.0, (event.clientY - rect.top) / rect.height)),
-        };
+    function createPatternCard(options) {
+        try {
+            if (
+                window.PatternCardBuilder &&
+                typeof window.PatternCardBuilder.createCard === "function"
+            ) {
+                return window.PatternCardBuilder.createCard(options);
+            }
+        } catch (_e) {
+            /* fallback below */
+        }
+        var card = document.createElement("div");
+        card.className = "pattern-card";
+        card.textContent = "Card unavailable";
+        return { card: card, canvas: null, patternData: null };
     }
 
     window.PatternRenderer = {
@@ -654,6 +328,5 @@
         destroyFBO,
         readEdgePixels,
         getNeighborPatternData,
-        getClickCoordinates,
     };
 })();

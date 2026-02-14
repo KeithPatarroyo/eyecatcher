@@ -458,7 +458,5 @@
         }
     };
 
-    if (window.SubstrateAdapters) {
-        window.SubstrateAdapters.register(caAdapter);
-    }
+    window.SubstrateAdapters.register(caAdapter);
 })();
