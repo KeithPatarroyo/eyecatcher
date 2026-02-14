@@ -3,9 +3,8 @@
 CPPN, CA, etc. Evolution and API use this interface only. Capability
 requirements per endpoint: see API_REQUIREMENTS.md.
 
-Concrete implementations typically subclass RepresentationBase (see base.py).
-Optional behaviour when a feature is unsupported lives in
-OptionalRepresentationDefaults; RepresentationBase adds only the abstract contract.
+Concrete implementations subclass RepresentationBase (base.py), which provides
+optional defaults and auto-derived capabilities.
 """
 
 from __future__ import annotations
@@ -52,6 +51,11 @@ class Representation(Protocol[IndividualT]):
     id: str
     output_type: OutputType
     signal_spec: SignalSpec
+
+    @property
+    def capabilities(self) -> dict[str, bool]:
+        """Capability flags (save, network, time_output, adjust_weight, compile)."""
+        ...
 
     def create_random(self, key: int = 0) -> IndividualT:
         """Create a new random individual. key is used as genome/id."""
@@ -206,8 +210,3 @@ class Representation(Protocol[IndividualT]):
         (image, shader, grid, audio_data, etc.).
         """
         ...
-
-
-def get_representation_capabilities(representation: Any) -> dict[str, bool]:
-    """Return capability flags from the representation's declared capabilities dict."""
-    return dict(representation.capabilities)

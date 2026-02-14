@@ -1,9 +1,7 @@
-"""Representation base: optional defaults (mixin) and abstract contract (ABC).
+"""Representation base: required contract and optional defaults.
 
-OptionalRepresentationDefaults provides a single place for "unsupported" behavior
-for optional protocol methods (no network, no time, no save, etc.). Subclass
-RepresentationBase to add a new representation; implement the abstract methods
-and override only what differs from these defaults.
+Subclass RepresentationBase to add a new representation; implement the
+abstract methods and override only what differs from the defaults.
 """
 
 from __future__ import annotations
@@ -16,13 +14,71 @@ import numpy as np
 from .protocol import RepresentationOutput
 
 
-class OptionalRepresentationDefaults:
+class RepresentationBase(ABC):
     """
-    Mixin providing default implementations for optional representation methods
-    when the representation does not support the feature (no network, no time,
-    no RGB sampling, etc.). Keeps "unsupported" behavior in one named place
-    instead of the abstract base.
+    Abstract base for all representations. Defines the required contract
+    (abstract methods) and default implementations for optional features.
+
+    Subclasses must set: id, output_type, signal_spec, frontend_metadata.
+    Capabilities are auto-derived from overridden methods.
     """
+
+    @property
+    def capabilities(self) -> dict[str, bool]:
+        """Derive capability flags from which optional methods are overridden."""
+        base = RepresentationBase
+        cls = type(self)
+        return {
+            "save": cls.build_save_assets is not base.build_save_assets,
+            "network": cls.get_network_data is not base.get_network_data,
+            "time_output": cls.query_time_output is not base.query_time_output,
+            "adjust_weight": cls.adjust_weight is not base.adjust_weight,
+            "compile": cls.compile_to_shader is not base.compile_to_shader,
+        }
+
+    # --- Required (abstract) ---
+
+    @abstractmethod
+    def create_random(self, key: int = 0) -> Any:
+        """Create a new random individual."""
+        ...
+
+    @abstractmethod
+    def mutate(self, ind: Any, key: int) -> Any:
+        """Return a mutated copy of ind."""
+        ...
+
+    @abstractmethod
+    def crossover(self, a: Any, b: Any, key: int) -> Any:
+        """Return offspring from a and b."""
+        ...
+
+    @abstractmethod
+    def express(
+        self, ind: Any, inputs: dict[str, float], **kwargs: Any
+    ) -> RepresentationOutput:
+        """Produce displayable output."""
+        ...
+
+    @abstractmethod
+    def to_json(self, ind: Any) -> dict[str, Any]:
+        """Serialize individual for API/client."""
+        ...
+
+    @abstractmethod
+    def from_json(self, data: dict[str, Any]) -> Any:
+        """Deserialize individual from API/client payload."""
+        ...
+
+    # --- Optional (defaults; override to enable) ---
+
+    def compile_to_shader(self, ind: Any, color_mode: str | None = None) -> str | None:
+        """Return GLSL shader or None if unsupported."""
+        return None
+
+    def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
+        """Serialize express output for API response. Override per output_type."""
+        return {}
 
     def sample_rgb(
         self,
@@ -103,54 +159,3 @@ class OptionalRepresentationDefaults:
     ) -> dict[str, Any] | None:
         """Unsupported."""
         return None
-
-
-class RepresentationBase(OptionalRepresentationDefaults, ABC):
-    """
-    Abstract base for all representations. Defines only the required contract
-    (abstract methods); optional behaviour comes from OptionalRepresentationDefaults.
-
-    Subclasses must set: id, output_type, signal_spec, capabilities, frontend_metadata.
-    """
-
-    @abstractmethod
-    def create_random(self, key: int = 0) -> Any:
-        """Create a new random individual."""
-        ...
-
-    @abstractmethod
-    def mutate(self, ind: Any, key: int) -> Any:
-        """Return a mutated copy of ind."""
-        ...
-
-    @abstractmethod
-    def crossover(self, a: Any, b: Any, key: int) -> Any:
-        """Return offspring from a and b."""
-        ...
-
-    @abstractmethod
-    def express(
-        self, ind: Any, inputs: dict[str, float], **kwargs: Any
-    ) -> RepresentationOutput:
-        """Produce displayable output."""
-        ...
-
-    @abstractmethod
-    def compile_to_shader(self, ind: Any, color_mode: str | None = None) -> str | None:
-        """Return GLSL shader or None."""
-        ...
-
-    @abstractmethod
-    def to_json(self, ind: Any) -> dict[str, Any]:
-        """Serialize individual for API/client."""
-        ...
-
-    @abstractmethod
-    def from_json(self, data: dict[str, Any]) -> Any:
-        """Deserialize individual from API/client payload."""
-        ...
-
-    @abstractmethod
-    def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
-        """Serialize express output for API response."""
-        ...

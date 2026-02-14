@@ -1,13 +1,12 @@
 """Export representation metadata for frontend codegen.
 
 generate_representation_config.py → config.generated.js. Uses
-frontend_metadata and get_representation_capabilities.
+frontend_metadata and representation.capabilities.
 """
 
 from __future__ import annotations
 
 from ..signals.spec import SignalSpec, _is_toggleable
-from .protocol import get_representation_capabilities
 from .registry import REPRESENTATIONS, get_representation
 
 
@@ -61,7 +60,7 @@ def export_representations_for_frontend() -> list[dict]:
         entry = rep.frontend_metadata
         if not isinstance(entry, dict):
             entry = {}
-        caps = get_representation_capabilities(rep)
+        caps = dict(rep.capabilities)
         rep_data: dict = {
             "id": rid,
             "outputType": rep.output_type,
