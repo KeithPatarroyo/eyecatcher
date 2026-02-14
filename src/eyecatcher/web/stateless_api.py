@@ -240,18 +240,24 @@ def api_evaluate():
     results = []
     for i, item_data in enumerate(individuals_data):
         ind, individual_id, _ = _parse_one_individual(item_data, i)
-        out = get_current_representation().express(ind, {})
-        item = {"id": individual_id, "output_type": out.output_type}
-        if out.output_type == "grid" and hasattr(out.data, "shape"):
-            arr = np.asarray(out.data)
-            b64 = numpy_to_png_base64(arr)
-            item["image"] = "data:image/png;base64," + b64
-        elif out.output_type == "shader" and isinstance(out.data, str):
-            item["shader"] = out.data
         rep = get_current_representation()
-        glsl = rep.compile_to_shader(ind)
-        if glsl:
-            item["shader"] = glsl
+        out = rep.express(ind, {})
+        item = {"id": individual_id, "output_type": out.output_type}
+        # Representation can serialize its own output (e.g. audio -> audio_data)
+        custom = getattr(rep, "serialize_express_output", lambda _: None)(out)
+        if custom is not None:
+            item.update(custom)
+        else:
+            # Default serialization for grid/shaders
+            if out.output_type == "grid" and hasattr(out.data, "shape"):
+                arr = np.asarray(out.data)
+                b64 = numpy_to_png_base64(arr)
+                item["image"] = "data:image/png;base64," + b64
+            elif out.output_type == "shader" and isinstance(out.data, str):
+                item["shader"] = out.data
+            glsl = rep.compile_to_shader(ind)
+            if glsl:
+                item["shader"] = glsl
         extra = getattr(rep, "serialize_individual_extra", lambda i: {})(ind)
         item.update(extra)
         results.append(item)

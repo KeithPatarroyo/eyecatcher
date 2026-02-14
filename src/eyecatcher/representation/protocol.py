@@ -171,6 +171,16 @@ class Representation(Protocol[IndividualT]):
         """
         return None
 
+    def serialize_express_output(
+        self, output: RepresentationOutput
+    ) -> dict[str, Any] | None:
+        """
+        Optional: serialize express output for API response (e.g. /api/evaluate).
+        Return None to use default serialization (grid->image, shader->shader).
+        Non-visual representations (e.g. audio) implement this to add their payload.
+        """
+        return None
+
 
 _CAPABILITIES_CACHE: dict[str, dict[str, bool]] = {}
 
