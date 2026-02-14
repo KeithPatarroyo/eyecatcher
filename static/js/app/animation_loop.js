@@ -158,6 +158,7 @@
                 const GT = window.GridTopology;
 
                 patterns.forEach(function (patternData) {
+                    if (adapter && adapter.lifecycle === "self-managed") return;
                     if (!patternData.gl) return;
                     var patternId = patternData.patternId;
                     var renderContext = {

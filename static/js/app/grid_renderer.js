@@ -166,21 +166,24 @@
     }
 
     function _buildPatternMapEntry(pattern, result) {
-        var pd = result.patternData;
+        var pd = result.patternData || {};
         var entry = {
             canvas: result.canvas,
-            gl: pd ? pd.gl : null,
-            program: pd ? pd.program : null,
-            positionBuffer: pd ? pd.positionBuffer : null,
+            gl: pd.gl || null,
+            program: pd.program || null,
+            positionBuffer: pd.positionBuffer || null,
             clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
             patternId: pattern.id,
         };
-        if (pd) {
-            if (pd.caRule !== undefined) entry.caRule = pd.caRule;
-            if (pd.grid !== undefined) entry.grid = pd.grid;
-            if (pd.toggleMask !== undefined) entry.toggleMask = pd.toggleMask;
-        }
+        if (pd.caRule !== undefined) entry.caRule = pd.caRule;
+        if (pd.grid !== undefined) entry.grid = pd.grid;
+        if (pd.toggleMask !== undefined) entry.toggleMask = pd.toggleMask;
         if (pattern.grid !== undefined) entry.grid = pattern.grid;
+        for (var k in pd) {
+            if (Object.prototype.hasOwnProperty.call(pd, k) && entry[k] === undefined) {
+                entry[k] = pd[k];
+            }
+        }
         return entry;
     }
 
@@ -205,18 +208,14 @@
             );
             grid.appendChild(result.card);
             var entry = _buildPatternMapEntry(pattern, result);
-            if (adapter && typeof adapter.onSetup === "function" && entry.gl) {
+            if (adapter && typeof adapter.onSetup === "function") {
                 adapter.onSetup(entry, entry.gl);
             }
             if (pattern.id !== undefined) {
                 patternsMap.set(pattern.id, entry);
             }
         });
-        if (
-            adapter &&
-            adapter.id === "ca" &&
-            typeof adapter.gridOverlap === "function"
-        ) {
+        if (adapter && typeof adapter.gridOverlap === "function") {
             var entries = Array.from(patternsMap.values());
             for (var i = 0; i < entries.length; i++) {
                 var ei = entries[i];
