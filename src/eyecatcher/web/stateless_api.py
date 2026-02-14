@@ -9,7 +9,7 @@ Endpoints: /api/compile, /api/random, /api/evaluate,
 
 from flask import Blueprint, current_app, jsonify, request
 
-from ..evolution import (
+from ..experiment import (
     get_crossover_probability,
     get_max_population_size,
     get_population_size,
@@ -39,10 +39,8 @@ def get_current_representation():
 
 def _config_response():
     """Build JSON config payload (representation, limits, capabilities)."""
-    from ..representation.protocol import get_representation_capabilities
-
     representation = get_current_representation()
-    capabilities = get_representation_capabilities(representation)
+    capabilities = dict(representation.capabilities)
     payload = {
         "representation_id": representation.id,
         "output_type": representation.output_type,
@@ -82,9 +80,7 @@ def api_config():
 
 def _require_capability(cap: str):
     """Error if representation does not have the given capability."""
-    from ..representation.protocol import get_representation_capabilities
-
-    caps = get_representation_capabilities(get_current_representation())
+    caps = get_current_representation().capabilities
     if not caps.get(cap, False):
         return api_error(
             f"This endpoint requires a representation with '{cap}' capability.",
@@ -151,9 +147,7 @@ def _compile_individuals(individuals_data, color_mode):
 
 def _require_can_compile():
     """Error if representation does not have compile capability."""
-    from ..representation.protocol import get_representation_capabilities
-
-    caps = get_representation_capabilities(get_current_representation())
+    caps = get_current_representation().capabilities
     if not caps.get("compile", False):
         return api_error(
             "This endpoint requires a representation with compile capability.",

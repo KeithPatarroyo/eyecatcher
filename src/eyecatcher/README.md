@@ -32,7 +32,7 @@ src/eyecatcher/
 │
 ├── representation/      # Representations (Dual/Single CPPN, CA), protocol, sockets
 │   ├── __init__.py
-│   ├── protocol.py     # Representation protocol, get_representation_capabilities
+│   ├── protocol.py     # Representation protocol, representation.capabilities
 │   ├── registry.py     # REPRESENTATIONS, get_representation
 │   ├── export.py       # export_representations_for_frontend (codegen)
 │   ├── sockets.py      # NeatSocket, GridSocket

@@ -9,11 +9,8 @@ from unittest.mock import patch
 
 import eyecatcher.data.genealogy_db as genealogy_db_module
 import pytest
-from eyecatcher.representation import (
-    DualCPPNRepresentation,
-    create_random_dual_genome,
-    dual_genome_from_json,
-)
+from eyecatcher.genome import create_random_dual_genome, dual_genome_from_json
+from eyecatcher.representation import DualCPPNRepresentation
 from eyecatcher.server import app
 from eyecatcher.web import community_routes
 

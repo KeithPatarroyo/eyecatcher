@@ -16,14 +16,14 @@ import json
 import os
 
 import numpy as np
-from eyecatcher.evolution import (
+from eyecatcher.evolution import produce_next_generation
+from eyecatcher.evolution.fitness import get_fitness, list_fitness
+from eyecatcher.experiment import (
     PREVIEW_RENDER_RESOLUTION,
     get_configured_representation,
     get_crossover_probability,
     get_population_size,
 )
-from eyecatcher.evolution.fitness import get_fitness, list_fitness
-from eyecatcher.evolution.reproduction import produce_next_generation
 from PIL import Image
 
 

@@ -8,12 +8,12 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
-from ..evolution import (
+from ..evolution.reproduction import produce_next_generation
+from ..experiment import (
     get_crossover_probability,
     get_elitism_default,
     get_population_size,
 )
-from ..evolution.reproduction import produce_next_generation
 from .api_helpers import ERR_PARENTS_ARRAY_REQUIRED, api_error, api_try_except
 from .stateless_api import get_current_representation
 

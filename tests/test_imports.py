@@ -4,26 +4,28 @@
 def test_canonical_package_imports():
     """Test that evolution, genome, glsl, representation export the main API."""
     from eyecatcher.evolution import produce_next_generation
-    from eyecatcher.glsl import ShaderCompiler
-    from eyecatcher.representation import (
-        DualCPPNRepresentation,
+    from eyecatcher.genome import (
         DualGenome,
         create_random_dual_genome,
         dual_genome_to_json,
     )
+    from eyecatcher.glsl import ShaderCompiler
+    from eyecatcher.representation import DualCPPNRepresentation, get_representation
 
     assert produce_next_generation is not None
     assert DualCPPNRepresentation is not None
     assert DualGenome is not None
     assert create_random_dual_genome is not None
     assert dual_genome_to_json is not None
+    assert get_representation is not None
     assert ShaderCompiler is not None
 
 
 def test_new_submodule_imports():
     """Test that new submodules are importable directly."""
+    from eyecatcher.genome import DualGenome
     from eyecatcher.inspection import render_genome_network_pdf
-    from eyecatcher.representation import DualCPPNRepresentation, DualGenome
+    from eyecatcher.representation import DualCPPNRepresentation
     from eyecatcher.signals import SignalSpec, catalog
 
     assert DualCPPNRepresentation is not None
@@ -57,8 +59,8 @@ def test_signal_catalog_imports():
 
 
 def test_socket_subclass_imports():
-    """Test that Socket subclasses are importable from representation."""
-    from eyecatcher.representation import GridSocket, NeatSocket
+    """Test that Socket subclasses are importable from representation.sockets."""
+    from eyecatcher.representation.sockets import GridSocket, NeatSocket
     from eyecatcher.signals import Socket
 
     assert issubclass(NeatSocket, Socket)

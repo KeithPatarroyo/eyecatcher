@@ -21,7 +21,7 @@ from ..data.genealogy_db import (
     reset_genealogy,
     save_population,
 )
-from ..evolution import (
+from ..experiment import (
     get_configured_representation,
     get_crossover_probability,
     get_population_size,

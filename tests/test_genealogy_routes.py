@@ -1,7 +1,7 @@
 """Tests for genealogy API (save/load population, tree, branches)."""
 
 import pytest
-from eyecatcher.representation import create_random_dual_genome, dual_genome_to_json
+from eyecatcher.genome import create_random_dual_genome, dual_genome_to_json
 
 
 @pytest.mark.slow

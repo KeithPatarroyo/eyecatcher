@@ -1,8 +1,7 @@
 """Tests for dual-CPPN representation: population, mutation, crossover, query."""
 
-from eyecatcher.evolution import mutate_genome
-from eyecatcher.genome import create_random_genome
-from eyecatcher.representation import DualGenome
+from eyecatcher.genome import DualGenome, create_random_genome
+from eyecatcher.genome.operators import mutate_genome
 
 
 def test_engine_create_population(representation):

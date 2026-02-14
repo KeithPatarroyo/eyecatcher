@@ -9,8 +9,8 @@ from pathlib import Path
 
 import neat
 import pytest
-from eyecatcher.evolution import mutate_genome
 from eyecatcher.genome import create_random_genome
+from eyecatcher.genome.operators import mutate_genome
 from eyecatcher.representation import SingleCPPNRepresentation
 from PIL import Image
 

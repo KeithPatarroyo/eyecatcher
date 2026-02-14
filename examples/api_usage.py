@@ -5,7 +5,7 @@ Run from repo root: python examples/api_usage.py
 
 import os
 
-from eyecatcher.evolution import PREVIEW_RENDER_RESOLUTION
+from eyecatcher.experiment import PREVIEW_RENDER_RESOLUTION
 from eyecatcher.representation import get_representation
 from PIL import Image
 
