@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Update substrate script includes in HTML templates from a single ordered list.
+Update representation script includes in HTML templates from a single ordered list.
 
-Adding a new adapter = add one entry to SUBSTRATE_SCRIPTS below and run:
-  python scripts/generate_substrate_includes.py
-  or: make generate-substrate-includes
+Adding a new adapter = add one entry to REPRESENTATION_SCRIPTS below and run:
+  python scripts/generate_representation_includes.py
+  or: make generate-representation-includes
 
 Run from repo root. Rewrites static/interactive_viewer.html and
-static/genealogy_viewer.html so the contiguous block of js/substrate/*.js
+static/genealogy_viewer.html so the contiguous block of js/representation/*.js
 script tags is exactly this list. Load order matters: registry and
 stateful_adapter before adapters that use them; pattern_renderer last.
 """
@@ -15,9 +15,10 @@ stateful_adapter before adapters that use them; pattern_renderer last.
 import os
 import re
 
-# Single source of truth: substrate script basenames in load order.
-# Add new adapters here (e.g. "nca.js"); do not edit the HTML files by hand.
-SUBSTRATE_SCRIPTS = [
+# Single source of truth: representation script basenames in load order.
+# adapter_base.js first (defines RepresentationAdapter); add new adapters after.
+REPRESENTATION_SCRIPTS = [
+    "adapter_base.js",
     "cppn_adapter.js",
     "config.generated.js",
     "registry.js",
@@ -26,7 +27,7 @@ SUBSTRATE_SCRIPTS = [
     "pattern_renderer.js",
 ]
 
-SCRIPT_PREFIX = "js/substrate/"
+SCRIPT_PREFIX = "js/representation/"
 INDENT = "        "  # 8 spaces to match existing HTML
 
 
@@ -38,15 +39,15 @@ def _repo_root() -> str:
 def _generate_block() -> str:
     lines = [
         f'{INDENT}<script src="{SCRIPT_PREFIX}{name}"></script>'
-        for name in SUBSTRATE_SCRIPTS
+        for name in REPRESENTATION_SCRIPTS
     ]
     return "\n".join(lines)
 
 
-def _replace_substrate_block(content: str) -> str:
-    """Replace contiguous js/substrate/ script tag block with canonical block."""
+def _replace_representation_block(content: str) -> str:
+    """Replace js/substrate/ or js/representation/ script block with canonical block."""
     pattern = re.compile(
-        r"^(\s*)<script src=\"js/substrate/[^\"]+\"></script>\n",
+        r"^(\s*)<script src=\"js/(?:substrate|representation)/[^\"]+\"></script>\n",
         re.MULTILINE,
     )
     first = None
@@ -72,7 +73,7 @@ def main() -> None:
     for path in html_files:
         with open(path, encoding="utf-8") as f:
             content = f.read()
-        new_content = _replace_substrate_block(content)
+        new_content = _replace_representation_block(content)
         if new_content != content:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(new_content)
