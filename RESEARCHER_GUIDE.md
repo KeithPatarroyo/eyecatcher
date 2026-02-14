@@ -194,26 +194,27 @@ Each frame (animation_loop.js):
 ```
 
 ### Adapter interface (frontend: substrate adapter)
-Custom representations register a JS adapter (see [static/js/substrate/](static/js/substrate/) and adapter registry). The adapter interface (all methods except `render` are optional):
+Custom representations register a JS adapter (see [static/js/substrate/](static/js/substrate/) and adapter registry). The framework is representation-agnostic: adapters that implement `getDisplayData` and `createDisplayElement` own their display pipeline (visual, audio, or other). Legacy adapters without these use a fallback.
 
-| Method | Required | Purpose |
-|--------|----------|---------|
-| `id` | Yes | Representation identifier (must match Python `representation.id`; in JS still often called substrate) |
-| `outputType` | Yes | `"shader"` or `"grid"` |
-| `render(patternData, uniformValues, signalState)` | Yes | Draw one frame |
+| Method / property | Required | Purpose |
+|-------------------|----------|---------|
+| `id` | Yes | Representation identifier (must match Python `representation.id`) |
+| `outputType` | Yes | `"shader"`, `"grid"`, `"audio"`, or other |
+| `lifecycle` | No | `"frame"` (default): per-frame render via animation loop; `"self-managed"`: adapter owns updates (e.g. audio playback). Omit or use `"frame"` for visual. |
+| `getDisplayData(genomes, options)` | Preferred | Fetch display-ready data (e.g. `SubstrateAdapters.fetchViaCompile` or `fetchViaEvaluate`). If absent, registry uses a default based on `outputType`. |
+| `createDisplayElement(pattern, options)` | Preferred | Return `{ element: HTMLElement, patternData }` for the card content (canvas, `<audio>`, etc.). If absent, legacy shader/image branch is used. |
+| `render(patternData, uniformValues, signalState)` | Yes for `lifecycle=== "frame"` | Draw one frame |
 | `isGenomeFormat(obj)` | Yes | Return `true` if a genome object matches this representation |
 | `buildUniforms(signalValues)` | No | Convert signal ids to uniform names |
-| `preparePatternData(patternData, pattern)` | No | Store substrate-specific fields on patternData |
+| `preparePatternData(patternData, pattern)` | No | Store substrate-specific fields on patternData after display element is created |
 | `hasSignalControls` | No | Show signal toggle checkboxes (default: `false`) |
 | `capabilities` | No | `{ save, network, timeOutput, adjustWeight }` |
 | `getMetaLabel(pattern)` | No | Custom label for the pattern card info |
-| `onSetup(patternData, gl)` | No | Called once after WebGL setup (create FBOs, textures) |
-| `onBeforeRender(patternData, context)` | No | Called before each frame (read neighbor state) |
-| `onAfterRender(patternData, context)` | No | Called after each frame (write edge state, swap FBOs) |
-| `onTeardown(patternData, gl)` | No | Called on pattern removal (cleanup FBOs, textures) |
-| `onCellInteraction(patternData, x, y, type)` | No | Called on pixel-level click (x, y in 0–1; type is `"click"` or `"contextmenu"`) |
+| `onSetup(entry, gl)` | No | Called once per pattern (create FBOs, wire playback, etc.). `gl` may be null for non-WebGL adapters. |
+| `onBeforeRender`, `onAfterRender`, `onTeardown` | No | Frame lifecycle (only for `lifecycle === "frame"`) |
+| `onCellInteraction(patternData, x, y, type)` | No | Pixel-level or custom interaction |
 
-Examples: [ca.js](static/js/substrate/ca.js) (minimal), [cppn_adapter.js](static/js/substrate/cppn_adapter.js) (config-driven). Shader playground: [substrate_playground.html](static/substrate_playground.html). Full capabilities matrix and extension points: [static/js/README.md](static/js/README.md).
+Examples: [ca.js](static/js/substrate/ca.js) (stateful grid), [cppn_adapter.js](static/js/substrate/cppn_adapter.js) (config-driven shader). For non-visual (e.g. audio), implement `getDisplayData`, `createDisplayElement`, and `lifecycle: "self-managed"`; no changes to shared framework files are needed. Full capabilities matrix: [static/js/README.md](static/js/README.md).
 
 ## What you can ignore for evolution-only work
 
@@ -231,20 +232,52 @@ Some constants exist in both Python and JavaScript; when you change them, update
 
 Representations (dual_cppn, single_cppn, ca, future NCA) share a common protocol. **Single source of truth:** the representation class defines its own `frontend_metadata`; the registry is the only other place you add the new representation. No separate metadata file.
 
-1. **Python – representation class:** Add a new module under `src/eyecatcher/representation/` (e.g. `ca.py`, `dual_cppn.py`) implementing the `Representation` protocol: `id`, `output_type`, `signal_spec`, `create_random`, `mutate`, `crossover`, `express`, `compile_to_shader`, `to_json`, `from_json`. **On the class, set `frontend_metadata`** (dict with `hasSignalControls`, `genomeKeys`, optionally `excludeKeys`). Capabilities are derived from protocol methods. See [representation/protocol.py](src/eyecatcher/representation/protocol.py) and [representation/ca.py](src/eyecatcher/representation/ca.py) or [representation/dual_cppn.py](src/eyecatcher/representation/dual_cppn.py) for examples.
-2. **Python – register:** In [representation/__init__.py](src/eyecatcher/representation/__init__.py), export the new class. In [representation/registry.py](src/eyecatcher/representation/registry.py), add one line to the `REPRESENTATIONS` dict. Run `make generate-substrates` to regenerate frontend config.
-3. **Config – preset:** In [config/experiments.json](config/experiments.json), add a preset with `"representation": "<id>"` (or legacy `"substrate"`) and any representation-specific kwargs (e.g. `width`, `generations` for CA).
-4. **Frontend – display:** If the representation needs custom rendering (e.g. special uniforms like CA’s `uRule`, `uGeneration`), update [static/js/substrate/pattern_renderer.js](static/js/substrate/pattern_renderer.js) to branch on the pattern shape or `output_type` (e.g. `pattern.rule`, `patternData.caRule`). For CPPN variants, rendering is driven by SIGNAL_TOGGLES; no new branch needed.
-5. **Frontend – load/add:** [app.js](static/js/app/app.js) `loadFromStatelessGenomes` branches on `outputType` (grid → express, shader → compile). Ensure `addToGrid` and load-from-saved flows receive `output_type`/`representation_id` so they use express for grid and compile for shader.
-6. **Frontend – import:** [population_ui.js](static/js/app/population_ui.js) (or the import handler) must recognise the new individual format (e.g. `genome.visual && genome.time_signal` for dual_cppn, `genome.rule` for CA). Add a branch or use an adapter so imported individuals are accepted and the correct `output_type` is used.
-7. **API:** See representation protocol and stateless_api for which endpoints require which capabilities. Compile and save work for dual_cppn, single_cppn, and ca; network and time-output are dual_cppn-only. Capabilities are derived from protocol method overrides.
+Use this checklist in order. One line per file or action.
 
-**Adapter split (config-driven vs custom):**
+### Backend (required for every new representation)
 
-- **Config-driven representations** (dual_cppn, single_cppn): No custom JS render code. They are registered from generated config (from each representation’s `frontend_metadata` via [representation/export.py](src/eyecatcher/representation/export.py)) using the shared [cppn_adapter.js](static/js/substrate/cppn_adapter.js). Adding a new CPPN variant = add a representation class with `frontend_metadata`, register in registry.py; run `make generate-substrates`; no new adapter file.
-- **Custom representations** (ca, future NCA): Need a JS adapter file under [static/js/substrate/](static/js/substrate/) (e.g. [ca.js](static/js/substrate/ca.js)) that implements at least `id`, `outputType`, `isGenomeFormat`, `preparePatternData` (if the pattern needs extra fields for WebGL), and `render`. Put tunables (e.g. animation speed, grid size) at the top of the file. Register the adapter so the adapter registry loads it. Config-driven adapters are registered from generated config; then custom adapters (e.g. CA) register. For a new custom representation, add a new file and load it in the viewer HTML after the other adapter scripts.
+| # | File or action | One-line description |
+|---|----------------|----------------------|
+| 1 | [src/eyecatcher/representation/\<new\>.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `signal_spec`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and set `frontend_metadata` (`hasSignalControls`, `genomeKeys`). Implement `compile_to_shader` for visual/shader representations (return `None` for non-visual; `/api/compile` will then return 501 for that representation). Optionally implement `serialize_express_output(output)` to control how `express()` output is serialized in `/api/evaluate` (e.g. audio → base64). See [protocol.py](src/eyecatcher/representation/protocol.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
+| 2 | [src/eyecatcher/representation/__init__.py](src/eyecatcher/representation/__init__.py) | Export the new representation class. |
+| 3 | [src/eyecatcher/representation/registry.py](src/eyecatcher/representation/registry.py) | Add one entry to `REPRESENTATIONS` dict: `"<id>": NewRepresentation`. |
+| 4 | `make generate-substrates` | Regenerate frontend config from `frontend_metadata` (writes [static/js/substrate/config.generated.js](static/js/substrate/config.generated.js) or equivalent). |
 
-Once representation frontend adapters are in place, adding a new representation will mostly be: Python representation + registry + preset + one frontend adapter file (or config for CPPN variants).
+### Config
+
+| # | File or action | One-line description |
+|---|----------------|----------------------|
+| 5 | [config/experiments.json](config/experiments.json) | Add a preset with `"representation": "<id>"` and any representation-specific kwargs. |
+
+### Frontend – config-driven only (CPPN-like stateless shader)
+
+If your representation compiles to a **stateless** per-pixel shader and uses the same uniform/signal model as dual_cppn/single_cppn, you do **not** add a custom adapter. Steps 1–5 plus codegen are enough; the generated config and [cppn_adapter.js](static/js/substrate/cppn_adapter.js) register it.
+
+### Frontend – custom adapter (stateful or special rendering)
+
+If your representation needs **custom rendering** (e.g. FBO ping-pong like CA/NCA, or special uniforms), add and wire a JS adapter:
+
+| # | File or action | One-line description |
+|---|----------------|----------------------|
+| 6 | [static/js/substrate/\<new\>.js](static/js/substrate/) | New adapter: implement `id`, `outputType`, `isGenomeFormat`; prefer `getDisplayData` (e.g. `SubstrateAdapters.fetchViaCompile`/`fetchViaEvaluate`) and `createDisplayElement` (return `{ element, patternData }`). Set `lifecycle: "frame"` for per-frame rendering or `"self-managed"` for audio etc. Use [createStatefulAdapter](static/js/substrate/stateful_adapter.js) for FBO-based representations, or [ca.js](static/js/substrate/ca.js) as a full custom example. |
+| 7 | [scripts/generate_substrate_includes.py](scripts/generate_substrate_includes.py) | Add your script basename (e.g. `nca.js`) to `SUBSTRATE_SCRIPTS` in load order; run `make generate-substrate-includes`. This updates both [interactive_viewer.html](static/interactive_viewer.html) and [genealogy_viewer.html](static/genealogy_viewer.html); do not edit those HTML files by hand for substrate scripts. |
+
+### Frontend – app and import (only if behaviour differs)
+
+| # | File or action | One-line description |
+|---|----------------|----------------------|
+| 8 | [static/js/app/app.js](static/js/app/app.js) | Only if load/add flow must branch on your representation: ensure `output_type`/`representation_id` is passed so grid uses evaluate and shader uses compile. |
+| 9 | [static/js/app/population_ui.js](static/js/app/population_ui.js) | Only if import must recognise your genome shape: ensure adapter’s `isGenomeFormat` is in the resolution order, or add branch so imported individuals get correct `output_type`. |
+
+### Optional
+
+| # | File or action | One-line description |
+|---|----------------|----------------------|
+| 10 | [static/js/substrate/pattern_renderer.js](static/js/substrate/pattern_renderer.js) | Only if you need a representation-specific branch in card creation (e.g. meta label prefix); prefer implementing `getMetaLabel` on the adapter. |
+| 11 | [static/js/app/grid_renderer.js](static/js/app/grid_renderer.js) | Only if you need grid-specific behaviour (e.g. overlap metric); prefer implementing `gridOverlap` on the adapter. |
+| 12 | Tests | Add representation tests (e.g. [tests/test_ca_substrate.py](tests/test_ca_substrate.py), protocol compliance via [tests/representation_test_helpers.py](tests/representation_test_helpers.py)). |
+
+**Summary:** Config-driven (CPPN-like) = steps 1–5. Custom adapter = 1–7, and 8–11 only when the default behaviour is wrong for your representation.
 
 ## Batch evolution (representation-agnostic)
 
