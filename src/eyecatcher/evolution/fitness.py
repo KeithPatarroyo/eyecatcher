@@ -16,6 +16,8 @@ import numpy as np
 from ..signals.spec import SignalSpec
 
 FITNESS_REGISTRY: dict[str, Callable[..., float]] = {}
+# Optional metadata: compatible_output_types for logging mismatches
+FITNESS_METADATA: dict[str, dict[str, Any]] = {}
 
 # Shared constants for built-in fitness
 SAMPLE_COORDS = [(-0.5, -0.5), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0, 0)]
@@ -28,11 +30,44 @@ TEMPORAL_SAMPLES = [0.2, 0.5, 0.8]
 BIT_COUNT_DIVISOR = 8.0
 
 
-def register_fitness(name: str):
-    """Decorator to register a fitness function."""
+def _wrap_fitness_with_compatibility_check(
+    name: str, fn: Callable[..., float]
+) -> Callable[..., float]:
+    """Wrap fn to log a warning when representation.output_type is not compatible."""
+
+    def wrapped(individual: Any, rep: Any) -> float:
+        meta = FITNESS_METADATA.get(name)
+        if meta and "compatible_output_types" in meta:
+            allowed = meta["compatible_output_types"]
+            out_type = getattr(rep.__class__, "output_type", None)
+            if out_type is not None and allowed and out_type not in allowed:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "Fitness %r is designed for output types %s; "
+                    "representation %r has output_type %r.",
+                    name,
+                    allowed,
+                    getattr(rep, "id", rep.__class__.__name__),
+                    out_type,
+                )
+        return fn(individual, rep)
+
+    return wrapped
+
+
+def register_fitness(name: str, compatible_output_types: list[str] | None = None):
+    """Register a fitness function. Optional compatible_output_types for warnings."""
 
     def decorator(fn: Callable[..., float]):
-        FITNESS_REGISTRY[name] = fn
+        if compatible_output_types is not None:
+            FITNESS_METADATA[name] = {
+                "compatible_output_types": compatible_output_types
+            }
+            wrapped = _wrap_fitness_with_compatibility_check(name, fn)
+            FITNESS_REGISTRY[name] = wrapped
+        else:
+            FITNESS_REGISTRY[name] = fn
         return fn
 
     return decorator
@@ -73,7 +108,7 @@ def _sample_rgb_at_coords(
 # ---------------------------------------------------------------------------
 
 
-@register_fitness("color_variance")
+@register_fitness("color_variance", compatible_output_types=["shader", "image"])
 def fitness_color_variance(individual: Any, representation: Any) -> float:
     """
     Color variety across spatial samples. Uses representation.sample_rgb when available.
@@ -86,7 +121,7 @@ def fitness_color_variance(individual: Any, representation: Any) -> float:
     return 0.0
 
 
-@register_fitness("temporal_variance")
+@register_fitness("temporal_variance", compatible_output_types=["shader", "image"])
 def fitness_temporal_variance(individual: Any, representation: Any) -> float:
     """
     Variation over time at center. Non-zero for representations that vary
@@ -104,7 +139,7 @@ def fitness_temporal_variance(individual: Any, representation: Any) -> float:
     return float(np.var(samples)) * TEMPORAL_VARIANCE_MULTIPLIER
 
 
-@register_fitness("combined")
+@register_fitness("combined", compatible_output_types=["shader", "image"])
 def fitness_combined(individual: Any, representation: Any) -> float:
     """
     Color + temporal variance; penalize mean color outside [0.1, 0.9] when sampling RGB.
@@ -120,7 +155,7 @@ def fitness_combined(individual: Any, representation: Any) -> float:
     return fitness
 
 
-@register_fitness("ca_symmetry")
+@register_fitness("ca_symmetry", compatible_output_types=["grid"])
 def fitness_ca_symmetry(individual: Any, representation: Any) -> float:
     """
     For CA: prefer rules that produce symmetric patterns.
