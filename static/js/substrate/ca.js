@@ -2,15 +2,14 @@
  * CA (Conway's Game of Life) substrate adapter.
  * Stateful 2D grid: FBO ping-pong, initial state from pattern.grid.
  * Canvas click toggles cell (black <-> white); toggle mask applied before each GOL step.
+ * Uses createStatefulAdapter for FBO lifecycle and step/display loop.
  */
 (function () {
     "use strict";
 
     const GOL_GRID_SIZE = 64;
     const MAX_TOGGLES_PER_PASS = 64;
-    /** Minimum ms between GOL steps to reduce flicker and screen burn-in risk. */
     const GOL_STEP_INTERVAL_MS = 180;
-    /** Toggle brush radius in cells (0 = single cell, 1 = 3×3, 2 = 5×5). Change this to adjust brush size. */
     const TOGGLE_BRUSH_RADIUS = 1;
 
     var VERTEX_SHADER_SOURCE =
@@ -88,39 +87,6 @@
         return program;
     }
 
-    function createFBOWithRepeat(gl, width, height, initialPixelsRGBA) {
-        var texture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            0,
-            gl.RGBA,
-            width,
-            height,
-            0,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            initialPixelsRGBA || null
-        );
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-
-        var fbo = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-        gl.framebufferTexture2D(
-            gl.FRAMEBUFFER,
-            gl.COLOR_ATTACHMENT0,
-            gl.TEXTURE_2D,
-            texture,
-            0
-        );
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        return { fbo: fbo, texture: texture, width: width, height: height };
-    }
-
     function gridToRgbaPixelArray(grid) {
         var rows = Array.isArray(grid) ? grid.length : 0;
         if (rows === 0) return new Uint8Array(0);
@@ -152,230 +118,87 @@
         return out;
     }
 
-    function onSetup(entry, gl) {
-        var grid = entry.grid;
-        grid = copyGrid(grid) || grid;
-        var w = GOL_GRID_SIZE;
-        var h = GOL_GRID_SIZE;
-        var pixels = null;
-        if (grid && Array.isArray(grid) && grid.length > 0) {
-            var rows = grid.length;
-            var cols = Array.isArray(grid[0]) ? grid[0].length : 0;
-            if (rows === w && cols === h) {
-                pixels = gridToRgbaPixelArray(grid);
+    function countLive(grid) {
+        if (!grid || !Array.isArray(grid)) return 0;
+        var n = 0;
+        for (var r = 0; r < grid.length; r++) {
+            var row = grid[r];
+            if (!Array.isArray(row)) continue;
+            for (var c = 0; c < row.length; c++) {
+                if (row[c] > 0.5 || row[c] === 1) n++;
             }
         }
-        if (!pixels || pixels.length !== w * h * 4) {
-            pixels = new Uint8Array(w * h * 4);
-        }
-
-        var fboRead = createFBOWithRepeat(gl, w, h, pixels);
-        var fboWrite = createFBOWithRepeat(gl, w, h, null);
-
-        var displayProgram = createProgram(
-            gl,
-            VERTEX_SHADER_SOURCE,
-            DISPLAY_FRAGMENT_SOURCE
-        );
-        var toggleProgram = createProgram(
-            gl,
-            VERTEX_SHADER_SOURCE,
-            TOGGLE_FRAGMENT_SOURCE
-        );
-        if (!displayProgram || !toggleProgram) {
-            if (displayProgram) gl.deleteProgram(displayProgram);
-            if (toggleProgram) gl.deleteProgram(toggleProgram);
-            gl.deleteFramebuffer(fboRead.fbo);
-            gl.deleteTexture(fboRead.texture);
-            gl.deleteFramebuffer(fboWrite.fbo);
-            gl.deleteTexture(fboWrite.texture);
-            return;
-        }
-
-        entry.fboRead = fboRead;
-        entry.fboWrite = fboWrite;
-        entry.displayProgram = displayProgram;
-        entry.toggleProgram = toggleProgram;
-        entry.golGridSize = w;
-        if (entry.toggleMask == null) entry.toggleMask = [];
-        entry._liveCount = grid && Array.isArray(grid) ? countLive(grid) : 0;
+        return n;
     }
 
-    function onTeardown(entry, gl) {
-        if (!entry) return;
-        if (entry.fboRead) {
-            gl.deleteFramebuffer(entry.fboRead.fbo);
-            gl.deleteTexture(entry.fboRead.texture);
-            entry.fboRead = null;
-        }
-        if (entry.fboWrite) {
-            gl.deleteFramebuffer(entry.fboWrite.fbo);
-            gl.deleteTexture(entry.fboWrite.texture);
-            entry.fboWrite = null;
-        }
-        if (entry.displayProgram) {
-            gl.deleteProgram(entry.displayProgram);
-            entry.displayProgram = null;
-        }
-        if (entry.toggleProgram) {
-            gl.deleteProgram(entry.toggleProgram);
-            entry.toggleProgram = null;
-        }
-    }
-
-    function renderGol(patternData, _uniformValues, _signalState) {
-        var gl = patternData.gl;
-        var program = patternData.program;
-        var positionBuffer = patternData.positionBuffer;
+    function runTogglePass(patternData, gl) {
+        var toggles = patternData.toggleMask;
+        if (!toggles || toggles.length === 0 || !patternData.toggleProgram) return;
+        var n = Math.min(toggles.length, MAX_TOGGLES_PER_PASS);
         var fboRead = patternData.fboRead;
         var fboWrite = patternData.fboWrite;
-        var displayProgram = patternData.displayProgram;
+        var w = patternData.statefulGridSize || GOL_GRID_SIZE;
         var toggleProgram = patternData.toggleProgram;
-        var canvas = patternData.canvas;
-        var w = patternData.golGridSize || GOL_GRID_SIZE;
-        var h = w;
+        var positionBuffer = patternData.positionBuffer;
 
-        if (!fboRead || !fboWrite || !displayProgram || !canvas) return;
-
-        var now =
-            typeof performance !== "undefined" && performance.now
-                ? performance.now()
-                : Date.now();
-        patternData._lastGolStepTime = patternData._lastGolStepTime || 0;
-        var timeSinceStep = now - patternData._lastGolStepTime;
-        var shouldStep = timeSinceStep >= GOL_STEP_INTERVAL_MS;
-
-        var posLoc = gl.getAttribLocation(program, "position");
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.enableVertexAttribArray(posLoc);
-        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-
-        gl.activeTexture(gl.TEXTURE0);
-
-        var hadToggles = false;
-        var toggles = patternData.toggleMask;
-        if (toggles && toggles.length > 0 && toggleProgram) {
-            var n = Math.min(toggles.length, MAX_TOGGLES_PER_PASS);
-            gl.useProgram(toggleProgram);
-            gl.bindTexture(gl.TEXTURE_2D, fboRead.texture);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, fboWrite.fbo);
-            gl.viewport(0, 0, w, h);
-            gl.uniform1i(gl.getUniformLocation(toggleProgram, "u_state"), 0);
-            gl.uniform2f(gl.getUniformLocation(toggleProgram, "u_gridSize"), w, h);
-            gl.uniform1f(
-                gl.getUniformLocation(toggleProgram, "u_brushRadius"),
-                TOGGLE_BRUSH_RADIUS
-            );
-            gl.uniform1i(gl.getUniformLocation(toggleProgram, "u_toggleCount"), n);
-            for (var t = 0; t < n; t++) {
-                var u = gl.getUniformLocation(toggleProgram, "u_toggles[" + t + "]");
-                if (u) gl.uniform2f(u, toggles[t].x, toggles[t].y);
-            }
-            var posLocT = gl.getAttribLocation(toggleProgram, "position");
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.enableVertexAttribArray(posLocT);
-            gl.vertexAttribPointer(posLocT, 2, gl.FLOAT, false, 0, 0);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            var tmpSwap = fboRead;
-            patternData.fboRead = fboWrite;
-            patternData.fboWrite = tmpSwap;
-            fboRead = patternData.fboRead;
-            fboWrite = patternData.fboWrite;
-            patternData.toggleMask = [];
-            hadToggles = true;
-        }
-
-        if (!hadToggles && shouldStep) {
-            gl.useProgram(program);
-            gl.uniform1i(gl.getUniformLocation(program, "u_state"), 0);
-            gl.uniform2f(gl.getUniformLocation(program, "u_texelSize"), 1 / w, 1 / h);
-            gl.bindTexture(gl.TEXTURE_2D, fboRead.texture);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, fboWrite.fbo);
-            gl.viewport(0, 0, w, h);
-            gl.clearColor(0, 0, 0, 1);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-            var tmp = fboRead;
-            patternData.fboRead = fboWrite;
-            patternData.fboWrite = tmp;
-            patternData._lastGolStepTime = now;
-        }
-
-        var didUpdate = hadToggles || (!hadToggles && shouldStep);
-        if (didUpdate && patternData.fboRead && patternData.fboRead.fbo) {
-            var buf = patternData._readPixelsBuffer;
-            if (!buf || buf.length !== w * h * 4) {
-                buf = new Uint8Array(w * h * 4);
-                patternData._readPixelsBuffer = buf;
-            }
-            gl.bindFramebuffer(gl.FRAMEBUFFER, patternData.fboRead.fbo);
-            gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            var count = 0;
-            for (var i = 0; i < w * h; i++) {
-                if (buf[i * 4] >= 128) count++;
-            }
-            patternData._liveCount = count;
-        }
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, canvas.width, canvas.height);
-        gl.useProgram(displayProgram);
-        gl.uniform1i(gl.getUniformLocation(displayProgram, "u_state"), 0);
-        gl.bindTexture(gl.TEXTURE_2D, patternData.fboRead.texture);
-        var posLocD = gl.getAttribLocation(displayProgram, "position");
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.enableVertexAttribArray(posLocD);
-        gl.vertexAttribPointer(posLocD, 2, gl.FLOAT, false, 0, 0);
-        gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    }
-
-    function preparePatternData(patternData, pattern) {
-        if (pattern && pattern.grid !== undefined) {
-            patternData.grid = pattern.grid;
-        }
-        if (patternData.toggleMask == null) {
-            patternData.toggleMask = [];
-        }
-    }
-
-    function onCellInteraction(patternData, x, y, _type) {
-        if (!patternData) return;
-        if (patternData.toggleMask == null) patternData.toggleMask = [];
-        patternData.toggleMask.push({ x: x, y: y });
-    }
-
-    function onBeforeRender(_patternData, _context) {}
-
-    function onAfterRender(patternData, _context) {
-        if (patternData._liveCount === undefined) return;
-        var card = document.querySelector(
-            '.pattern-card[data-id="' + String(patternData.patternId) + '"]'
+        gl.useProgram(toggleProgram);
+        gl.bindTexture(gl.TEXTURE_2D, fboRead.texture);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fboWrite.fbo);
+        gl.viewport(0, 0, w, w);
+        gl.uniform1i(gl.getUniformLocation(toggleProgram, "u_state"), 0);
+        gl.uniform2f(gl.getUniformLocation(toggleProgram, "u_gridSize"), w, w);
+        gl.uniform1f(
+            gl.getUniformLocation(toggleProgram, "u_brushRadius"),
+            TOGGLE_BRUSH_RADIUS
         );
-        if (!card) return;
-        var meta = card.querySelector(".pattern-meta");
-        if (meta) {
-            var suffix = buildCaMetaSuffix(
-                patternData.grid,
-                patternData._liveCount,
-                patternData._mostSimilarId,
-                patternData._mostSimilarOverlap
-            );
-            meta.textContent = "Pattern " + patternData.patternId + " | " + suffix;
+        gl.uniform1i(gl.getUniformLocation(toggleProgram, "u_toggleCount"), n);
+        for (var t = 0; t < n; t++) {
+            var u = gl.getUniformLocation(toggleProgram, "u_toggles[" + t + "]");
+            if (u) gl.uniform2f(u, toggles[t].x, toggles[t].y);
         }
+        var posLocT = gl.getAttribLocation(toggleProgram, "position");
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.enableVertexAttribArray(posLocT);
+        gl.vertexAttribPointer(posLocT, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        var tmp = patternData.fboRead;
+        patternData.fboRead = patternData.fboWrite;
+        patternData.fboWrite = tmp;
+        patternData.toggleMask = [];
     }
 
-    /** Base-62 alphabet: 0-9, then aA bB cC ... so a and A are adjacent. */
+    function updateLiveCount(patternData) {
+        var w = patternData.statefulGridSize || GOL_GRID_SIZE;
+        var buf = patternData._readPixelsBuffer;
+        if (!buf || buf.length !== w * w * 4) {
+            buf = new Uint8Array(w * w * 4);
+            patternData._readPixelsBuffer = buf;
+        }
+        patternData.gl.bindFramebuffer(
+            patternData.gl.FRAMEBUFFER,
+            patternData.fboRead.fbo
+        );
+        patternData.gl.readPixels(
+            0,
+            0,
+            w,
+            w,
+            patternData.gl.RGBA,
+            patternData.gl.UNSIGNED_BYTE,
+            buf
+        );
+        patternData.gl.bindFramebuffer(patternData.gl.FRAMEBUFFER, null);
+        var count = 0;
+        for (var i = 0; i < w * w; i++) {
+            if (buf[i * 4] >= 128) count++;
+        }
+        patternData._liveCount = count;
+    }
+
     var FINGERPRINT_ALPHABET =
         "0123456789aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ";
 
-    /**
-     * Deterministic fingerprint: 8×8 downsampled grid as base-62 (0-9, a-z, A-Z).
-     * Alphabet orders a,A,b,B,... so small changes flip between nearby chars. 64 bits → 11 chars.
-     */
     function gridFingerprint(grid) {
         if (!grid || !Array.isArray(grid) || grid.length === 0) return "0".repeat(11);
         var rows = grid.length;
@@ -415,8 +238,7 @@
         if (cols === 0) return "0%";
         var total = rows * cols;
         var live = countLive(grid);
-        var pct = Math.round((live / total) * 100);
-        return pct + "%";
+        return Math.round((live / total) * 100) + "%";
     }
 
     function gridOverlap(gridA, gridB) {
@@ -439,19 +261,6 @@
         return total > 0 ? match / total : 0;
     }
 
-    function countLive(grid) {
-        if (!grid || !Array.isArray(grid)) return 0;
-        var n = 0;
-        for (var r = 0; r < grid.length; r++) {
-            var row = grid[r];
-            if (!Array.isArray(row)) continue;
-            for (var c = 0; c < row.length; c++) {
-                if (row[c] > 0.5 || row[c] === 1) n++;
-            }
-        }
-        return n;
-    }
-
     function buildCaMetaSuffix(grid, liveCount, mostSimilarId, mostSimilarOverlap) {
         var fp = gridFingerprint(grid);
         var density = initialDensity(grid);
@@ -468,9 +277,100 @@
         return s;
     }
 
-    var caAdapter = {
+    var caAdapter = window.createStatefulAdapter({
         id: "ca",
         outputType: "grid",
+        gridSize: GOL_GRID_SIZE,
+        stepIntervalMs: GOL_STEP_INTERVAL_MS,
+        texFormat: "RGBA",
+        wrap: "REPEAT",
+
+        initState: function (width, height, patternData) {
+            var grid = patternData && patternData.grid;
+            grid = copyGrid(grid) || grid;
+            if (
+                grid &&
+                Array.isArray(grid) &&
+                grid.length === width &&
+                Array.isArray(grid[0]) &&
+                grid[0].length === height
+            ) {
+                return gridToRgbaPixelArray(grid);
+            }
+            return new Uint8Array(width * height * 4);
+        },
+
+        stepUniforms: function () {
+            return {};
+        },
+
+        displayShaderSource: DISPLAY_FRAGMENT_SOURCE,
+
+        beforeStep: function (patternData, gl) {
+            if (patternData.toggleMask && patternData.toggleMask.length > 0) {
+                runTogglePass(patternData, gl);
+            }
+        },
+
+        createExtraPrograms: function (gl) {
+            var toggleProgram = createProgram(
+                gl,
+                VERTEX_SHADER_SOURCE,
+                TOGGLE_FRAGMENT_SOURCE
+            );
+            return toggleProgram ? { toggleProgram: toggleProgram } : {};
+        },
+
+        teardownExtra: function (entry, gl) {
+            if (entry.toggleProgram) {
+                gl.deleteProgram(entry.toggleProgram);
+                entry.toggleProgram = null;
+            }
+        },
+
+        onInteraction: function (patternData, x, y) {
+            if (patternData.toggleMask == null) patternData.toggleMask = [];
+            patternData.toggleMask.push({ x: x, y: y });
+        },
+
+        preparePatternData: function (patternData, pattern) {
+            if (pattern && pattern.grid !== undefined) {
+                patternData.grid = pattern.grid;
+            }
+            if (patternData.toggleMask == null) patternData.toggleMask = [];
+            patternData._liveCount =
+                patternData.grid && Array.isArray(patternData.grid)
+                    ? countLive(patternData.grid)
+                    : 0;
+        },
+
+        getMetaLabel: function (pattern) {
+            if (!pattern) return "? \u00B7 0% \u00B7 0 alive";
+            return buildCaMetaSuffix(pattern.grid, countLive(pattern.grid));
+        },
+
+        getMetaIdPrefix: function () {
+            return "Pattern ";
+        },
+
+        onAfterRender: function (patternData) {
+            if (patternData._liveCount === undefined) return;
+            var card = document.querySelector(
+                '.pattern-card[data-id="' + String(patternData.patternId) + '"]'
+            );
+            if (!card) return;
+            var meta = card.querySelector(".pattern-meta");
+            if (meta) {
+                var suffix = buildCaMetaSuffix(
+                    patternData.grid,
+                    patternData._liveCount,
+                    patternData._mostSimilarId,
+                    patternData._mostSimilarOverlap
+                );
+                meta.textContent = "Pattern " + patternData.patternId + " | " + suffix;
+            }
+        },
+
         isGenomeFormat: function (obj) {
             return (
                 obj &&
@@ -479,25 +379,83 @@
                 Array.isArray(obj.grid[0])
             );
         },
-        hasSignalControls: false,
+
         capabilities: {
             save: true,
             network: false,
             timeOutput: false,
             adjustWeight: false,
         },
-        preparePatternData: preparePatternData,
-        render: renderGol,
-        getMetaLabel: function (pattern) {
-            if (!pattern) return "? \u00B7 0% \u00B7 0 alive";
-            return buildCaMetaSuffix(pattern.grid, countLive(pattern.grid));
-        },
+
         gridOverlap: gridOverlap,
-        onSetup: onSetup,
-        onTeardown: onTeardown,
-        onCellInteraction: onCellInteraction,
-        onBeforeRender: onBeforeRender,
-        onAfterRender: onAfterRender,
+    });
+
+    caAdapter.lifecycle = "frame";
+    caAdapter.getDisplayData = function (genomes, options) {
+        var SA = window.SubstrateAdapters;
+        return SA && SA.fetchViaEvaluate
+            ? SA.fetchViaEvaluate(genomes, options)
+            : Promise.reject(
+                  new Error("SubstrateAdapters.fetchViaEvaluate not available")
+              );
+    };
+    caAdapter.createDisplayElement = function (pattern, _options) {
+        var PatternRenderer = window.PatternRenderer;
+        if (!PatternRenderer || !pattern) {
+            var fallback = document.createElement("div");
+            fallback.className = "pattern-canvas-fallback";
+            fallback.textContent = "Display not available";
+            return { element: fallback, patternData: null };
+        }
+        var shader = pattern.shader;
+        if (!shader) {
+            if (pattern.image) {
+                var img = document.createElement("img");
+                img.className = "pattern-canvas pattern-image";
+                img.src = pattern.image;
+                img.width = 256;
+                img.height = 256;
+                img.alt = "Pattern " + (pattern.id != null ? pattern.id : "");
+                return { element: img, patternData: null };
+            }
+            var noShader = document.createElement("div");
+            noShader.className = "pattern-canvas-fallback";
+            noShader.textContent = "No shader";
+            return { element: noShader, patternData: null };
+        }
+        var canvas = document.createElement("canvas");
+        canvas.className = "pattern-canvas";
+        canvas.width = 256;
+        canvas.height = 256;
+        var patternData = PatternRenderer.setupPattern(canvas, shader);
+        if (!patternData || patternData.error) {
+            var errEl = document.createElement("div");
+            errEl.className = "pattern-canvas-fallback";
+            errEl.textContent =
+                patternData && patternData.error ? patternData.error : "Shader error";
+            return { element: errEl, patternData: null };
+        }
+        return { element: canvas, patternData: patternData };
+    };
+
+    caAdapter.onAfterRender = function (patternData) {
+        if (patternData.fboRead && patternData.fboRead.fbo) {
+            updateLiveCount(patternData);
+        }
+        var card = document.querySelector(
+            '.pattern-card[data-id="' + String(patternData.patternId) + '"]'
+        );
+        if (!card) return;
+        var meta = card.querySelector(".pattern-meta");
+        if (meta) {
+            var suffix = buildCaMetaSuffix(
+                patternData.grid,
+                patternData._liveCount,
+                patternData._mostSimilarId,
+                patternData._mostSimilarOverlap
+            );
+            meta.textContent = "Pattern " + patternData.patternId + " | " + suffix;
+        }
     };
 
     if (window.SubstrateAdapters) {

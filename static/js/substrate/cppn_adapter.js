@@ -76,17 +76,58 @@
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
 
+    var PATTERN_CANVAS_SIZE = 256;
+
+    /**
+     * Create the display element for one CPPN pattern (canvas + WebGL program).
+     * @param {Object} pattern - { id, shader, nodes, connections, ... }
+     * @param {Object} [_options] - Optional card options
+     * @returns {{ element: HTMLElement, patternData: Object|null }}
+     */
+    function createDisplayElement(pattern, _options) {
+        var PatternRenderer = window.PatternRenderer;
+        if (!PatternRenderer || !pattern || !pattern.shader) {
+            var fallback = document.createElement("div");
+            fallback.className = "pattern-canvas-fallback";
+            fallback.textContent = "WebGL not available";
+            return { element: fallback, patternData: null };
+        }
+        var canvas = document.createElement("canvas");
+        canvas.className = "pattern-canvas";
+        canvas.width = PATTERN_CANVAS_SIZE;
+        canvas.height = PATTERN_CANVAS_SIZE;
+        var patternData = PatternRenderer.setupPattern(canvas, pattern.shader);
+        if (!patternData || patternData.error) {
+            var errEl = document.createElement("div");
+            errEl.className = "pattern-canvas-fallback";
+            errEl.textContent =
+                patternData && patternData.error ? patternData.error : "Shader error";
+            return { element: errEl, patternData: null };
+        }
+        return { element: canvas, patternData: patternData };
+    }
+
     /**
      * Create a config-driven CPPN adapter (dual_cppn or single_cppn).
      * @param {Object} spec - { id, outputType, isGenomeFormat, hasSignalControls? }
-     * @returns {Object} adapter with id, outputType, isGenomeFormat, hasSignalControls, render, getMetaLabel
+     * @returns {Object} adapter with id, outputType, lifecycle, getDisplayData, createDisplayElement, render, getMetaLabel
      */
     function createCppnAdapter(spec) {
         return {
             id: spec.id,
             outputType: spec.outputType || "shader",
+            lifecycle: "frame",
             isGenomeFormat: spec.isGenomeFormat,
             hasSignalControls: spec.hasSignalControls !== false,
+            getDisplayData: function (genomes, options) {
+                var SA = window.SubstrateAdapters;
+                return SA && SA.fetchViaCompile
+                    ? SA.fetchViaCompile(genomes, options)
+                    : Promise.reject(
+                          new Error("SubstrateAdapters.fetchViaCompile not available")
+                      );
+            },
+            createDisplayElement: createDisplayElement,
             render: renderCppn,
             buildUniforms: buildUniforms,
             getMetaLabel: function (pattern) {
