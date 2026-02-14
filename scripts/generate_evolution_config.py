@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate evolution_config_defaults.generated.js from config/evolution_defaults.json.
+Generate config_defaults.generated.js from config/evolution_defaults.json.
 Frontend fallbacks for population_size, max_population_size, min_population_size,
 crossover_probability. Run from repo root: python scripts/generate_evolution_config.py
 Or: make generate-evolution-config

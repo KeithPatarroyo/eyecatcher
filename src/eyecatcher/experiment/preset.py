@@ -84,10 +84,7 @@ def warn_if_neat_pop_size_mismatch(representation) -> None:
     At startup/deployment: log a warning if the representation uses NEAT and
     NEAT pop_size differs from our effective population_size.
     """
-    neat_config = getattr(representation, "config", None)
-    if neat_config is None:
-        return
-    neat_pop = getattr(neat_config, "pop_size", None)
+    neat_pop = representation.get_neat_pop_size()
     if neat_pop is None:
         return
     our_pop = config.get_population_size()

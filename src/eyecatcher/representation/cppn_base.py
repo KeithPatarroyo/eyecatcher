@@ -9,7 +9,7 @@ sample, save) for SingleCPPNRepresentation and DualCPPNRepresentation.
 from __future__ import annotations
 
 import json
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable as Cb
 from typing import Any
 
@@ -17,6 +17,7 @@ import numpy as np
 
 from ..experiment.config import DEFAULT_RENDER_RESOLUTION
 from ..signals.registry import get_default_signal_values
+from .base import RepresentationBase
 from .protocol import RepresentationOutput
 
 
@@ -75,11 +76,11 @@ def compile_with_color_mode(
     return compile_fn(compiler, *compile_args)
 
 
-class CPPNRepresentationBase(ABC):
+class CPPNRepresentationBase(RepresentationBase):
     """
     Shared base for single and dual CPPN representations.
     Subclasses implement query_rgb, _sample_inputs, get_base_inputs_for_render,
-    compile_to_shader, to_json, from_json, create_random, mutate, crossover.
+    _compile, to_json, from_json, create_random, mutate, crossover.
     """
 
     @abstractmethod
@@ -181,3 +182,12 @@ class CPPNRepresentationBase(ABC):
             names["glsl"]: shader_code.encode("utf-8"),
             names["genome_json"]: json_bytes,
         }
+
+    def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
+        """CPPN output is shader string."""
+        glsl = output.data if isinstance(output.data, str) else ""
+        return {"shader": glsl}
+
+    def has_temporal_signals(self) -> bool:
+        """CPPN representations have time as an input."""
+        return True

@@ -1,24 +1,17 @@
 """
 Compiles neural networks to GLSL fragment shaders.
 
-Orchestrates compiler_topology, node_code_generator, and activation_registry.
-Researchers extend: activation in activation_registry + node_code_generator;
-output (HSV/RGB) in _get_color_output_code; signals passed at construction.
+Orchestrates topology, node code generation, and activation_registry.
+Researchers extend: activation in activation_registry; output (HSV/RGB) in
+_get_color_output_code; signals passed at construction.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import neat
 
 from ..signals.spec import SignalSpec, build_glsl_input_map
-from .activation_registry import get_glsl_block
-from .compiler_topology import get_enabled_connections, topological_sort
-
-if TYPE_CHECKING:
-    from ..representation import DualGenome
-from .node_code_generator import generate_node_code, generate_time_signal_code
+from .activation_registry import get_activation_names, get_glsl_block
 
 
 class ShaderCompiler:
@@ -94,43 +87,192 @@ class ShaderCompiler:
                     out.append(s)
         return out
 
+    @staticmethod
+    def _get_enabled_connections(
+        genome: neat.DefaultGenome,
+    ) -> list[tuple[int, int, float]]:
+        """Return (src_id, dst_id, weight) for all enabled connections."""
+        return [
+            (c.key[0], c.key[1], c.weight)
+            for c in genome.connections.values()
+            if c.enabled
+        ]
+
+    @staticmethod
+    def _topological_sort(
+        genome: neat.DefaultGenome,
+        connections: list[tuple[int, int, float]],
+        config: neat.Config,
+    ) -> list[int]:
+        """
+        Return node IDs in evaluation order (inputs first, then hidden, then outputs).
+        Uses Kahn's algorithm.
+        """
+        in_degree: dict[int, int] = {}
+        adjacency: dict[int, list[int]] = {}
+        all_nodes: set[int] = set()
+
+        num_inputs = config.genome_config.num_inputs
+        num_outputs = config.genome_config.num_outputs
+        input_nodes = list(range(-num_inputs, 0))
+        output_nodes = list(range(num_outputs))
+
+        all_nodes.update(input_nodes)
+        all_nodes.update(output_nodes)
+        all_nodes.update(genome.nodes.keys())
+
+        for node in all_nodes:
+            in_degree[node] = 0
+            adjacency[node] = []
+
+        for src, dst, _ in connections:
+            adjacency[src].append(dst)
+            in_degree[dst] += 1
+            all_nodes.add(src)
+            all_nodes.add(dst)
+
+        queue = [node for node in all_nodes if in_degree[node] == 0]
+        sorted_nodes: list[int] = []
+
+        while queue:
+            node = queue.pop(0)
+            sorted_nodes.append(node)
+            for neighbor in adjacency.get(node, []):
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+
+        return sorted_nodes
+
+    @staticmethod
+    def _generate_node_code(
+        genome: neat.DefaultGenome,
+        connections: list[tuple[int, int, float]],
+        nodes: list[int],
+        config: neat.Config,
+        input_names: dict,
+        prefix: str = "",
+    ) -> str:
+        """Generate GLSL code for all node computations (excluding input nodes)."""
+        valid_activations = set(get_activation_names())
+        node_inputs: dict[int, list[tuple[int, float]]] = {}
+        for src, dst, weight in connections:
+            if dst not in node_inputs:
+                node_inputs[dst] = []
+            node_inputs[dst].append((src, weight))
+
+        code_lines: list[str] = []
+        node_vars = dict(input_names)
+        num_outputs = config.genome_config.num_outputs
+
+        for node_id in nodes:
+            if node_id in input_names:
+                continue
+
+            if node_id in genome.nodes:
+                node = genome.nodes[node_id]
+                activation = node.activation
+                bias = node.bias
+                response = node.response
+            else:
+                activation = "identity"
+                bias = 0.0
+                response = 1.0
+
+            if node_id >= num_outputs:
+                var_name = f"{prefix}node_{node_id}"
+            else:
+                var_name = f"{prefix}output_{node_id}"
+            node_vars[node_id] = var_name
+
+            if node_id in node_inputs:
+                input_terms = []
+                for src_id, weight in node_inputs[node_id]:
+                    src_var = node_vars.get(src_id, f"{prefix}node_{src_id}")
+                    input_terms.append(f"{src_var} * {weight:.6f}")
+
+                weighted_sum = " + ".join(input_terms)
+                if bias != 0.0:
+                    weighted_sum += f" + {bias:.6f}"
+
+                activation_func = (
+                    activation if activation in valid_activations else "identity"
+                )
+
+                if response != 1.0:
+                    code_lines.append(
+                        f"    float {var_name} = {activation_func}"
+                        f"(({weighted_sum}) * {response:.6f});"
+                    )
+                else:
+                    code_lines.append(
+                        f"    float {var_name} = {activation_func}({weighted_sum});"
+                    )
+            else:
+                code_lines.append(f"    float {var_name} = {bias:.6f};")
+
+        return "\n".join(code_lines)
+
+    @staticmethod
+    def _generate_time_signal_code_impl(
+        time_genome: neat.DefaultGenome,
+        time_config: neat.Config,
+        time_inputs: list,
+    ) -> str:
+        """Generate GLSL code for the time signal network (standalone helper)."""
+        connections = ShaderCompiler._get_enabled_connections(time_genome)
+        nodes = ShaderCompiler._topological_sort(time_genome, connections, time_config)
+        time_input_names = build_glsl_input_map(time_inputs)
+        return ShaderCompiler._generate_node_code(
+            time_genome,
+            connections,
+            nodes,
+            time_config,
+            input_names=time_input_names,
+            prefix="time_",
+        )
+
+    def _generate_time_signal_code(
+        self,
+        time_genome: neat.DefaultGenome,
+        time_config: neat.Config,
+    ) -> str:
+        """Generate GLSL code for the time signal network using self.time_signals."""
+        return ShaderCompiler._generate_time_signal_code_impl(
+            time_genome, time_config, self.time_signals
+        )
+
     def compile(
         self,
-        genome_or_dual: neat.DefaultGenome | DualGenome,
+        visual_genome: neat.DefaultGenome,
         visual_config: neat.Config,
+        time_genome: neat.DefaultGenome | None = None,
         time_config: neat.Config | None = None,
     ) -> str:
         """
-        Compile a genome (or dual genome) into GLSL shader code.
+        Compile visual (and optionally time) genomes into GLSL shader code.
 
-        Single-CPPN: pass a neat.DefaultGenome and time_config=None.
-        Dual-CPPN: pass a DualGenome and time_config for the time signal network.
+        Single-CPPN: pass visual_genome and visual_config only.
+        Dual-CPPN: pass visual_genome, visual_config, time_genome, and time_config.
+        The representation is responsible for passing the correct arguments.
 
         Args:
-            genome_or_dual: NEAT genome (single) or DualGenome (dual)
+            visual_genome: NEAT genome for the visual network
             visual_config: NEAT configuration for the visual network
+            time_genome: Optional genome for the time signal network (dual-CPPN)
             time_config: NEAT config for time network, or None for single-CPPN
 
         Returns:
             Complete GLSL fragment shader code as string
         """
-        # Lazy import to avoid circular import: representation -> dual_cppn -> glsl
-        from ..representation import DualGenome
-
-        if time_config is not None and isinstance(genome_or_dual, DualGenome):
-            time_code = generate_time_signal_code(
-                genome_or_dual.time_signal,
-                time_config,
-                time_inputs=self.time_signals,
-            )
-            visual_genome = genome_or_dual.visual
+        if time_config is not None and time_genome is not None:
+            time_code = self._generate_time_signal_code(time_genome, time_config)
         else:
             time_code = None
-            visual_genome = genome_or_dual  # type: ignore[assignment]
 
-        connections = get_enabled_connections(visual_genome)
-        nodes = topological_sort(visual_genome, connections, visual_config)
-        visual_code = generate_node_code(
+        connections = self._get_enabled_connections(visual_genome)
+        nodes = self._topological_sort(visual_genome, connections, visual_config)
+        visual_code = self._generate_node_code(
             visual_genome,
             connections,
             nodes,

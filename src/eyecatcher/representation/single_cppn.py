@@ -34,11 +34,18 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
 
     id = "single_cppn"
     output_type: OutputType = "shader"
-
+    capabilities = {
+        "save": True,
+        "network": True,
+        "time_output": False,
+        "adjust_weight": True,
+        "compile": True,
+    }
     frontend_metadata = {
         "hasSignalControls": False,
         "genomeKeys": ["visual"],
         "excludeKeys": ["time_signal"],
+        "adapterFactory": "cppn",
     }
 
     def __init__(
@@ -122,7 +129,13 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
     def from_json(self, data: dict[str, Any]) -> neat.DefaultGenome:
         return genome_from_json(data, self.config)
 
+    def get_network_types(self) -> tuple[str, ...]:
+        return ("visual",)
+
+    def get_neat_pop_size(self) -> int | None:
+        return getattr(self.config, "pop_size", None)
+
     # -- Inspection (socket knows the structure) --
 
-    def get_compile_stats(self, ind: neat.DefaultGenome) -> dict[str, Any] | None:
+    def get_compile_stats(self, ind: neat.DefaultGenome) -> dict[str, Any]:
         return self.visual.network_stats(ind)

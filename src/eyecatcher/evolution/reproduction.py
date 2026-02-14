@@ -12,12 +12,13 @@ import random
 from typing import Any, Optional
 
 from ..experiment import config
+from ..representation.protocol import Representation
 
 logger = logging.getLogger(__name__)
 
 
 def produce_next_generation(
-    representation: Any,
+    representation: Representation[Any],
     parents_data: list[dict[str, Any]],
     population_size: Optional[int] = None,
     elitism: bool = False,
@@ -42,9 +43,9 @@ def produce_next_generation(
         List of genome (individual) JSON dicts (representation.to_json per child).
     """
     if population_size is None:
-        population_size = config.DEFAULT_POPULATION_SIZE
+        population_size = config.get_population_size()
     if crossover_probability is None:
-        crossover_probability = config.CROSSOVER_PROBABILITY
+        crossover_probability = config.get_crossover_probability()
 
     parents = []
     for idx, p in enumerate(parents_data):
@@ -59,7 +60,7 @@ def produce_next_generation(
     if not parents:
         raise ValueError("No valid parents")
 
-    max_key = max(getattr(p["genome"], "key", 0) for p in parents)
+    max_key = max(representation.get_individual_id(p["genome"]) for p in parents)
     next_key = max_key + 1
     children = []
 

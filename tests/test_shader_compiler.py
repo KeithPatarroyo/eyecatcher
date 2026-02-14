@@ -15,8 +15,9 @@ def test_compile_dual_to_glsl_returns_string(representation, random_dual_genome)
     """compile returns a non-empty GLSL string for dual genome."""
     compiler = _compiler_from_rep(representation)
     glsl = compiler.compile(
-        random_dual_genome,
+        random_dual_genome.visual,
         representation.config,
+        random_dual_genome.time_signal,
         representation.time_config,
     )
     assert isinstance(glsl, str)
@@ -27,8 +28,9 @@ def test_compile_dual_to_glsl_contains_main(representation, random_dual_genome):
     """Output GLSL contains void main()."""
     compiler = _compiler_from_rep(representation)
     glsl = compiler.compile(
-        random_dual_genome,
+        random_dual_genome.visual,
         representation.config,
+        random_dual_genome.time_signal,
         representation.time_config,
     )
     assert "void main()" in glsl
@@ -38,8 +40,9 @@ def test_compile_dual_to_glsl_rgb_mode(representation, random_dual_genome):
     """Compiler works with color_mode='rgb'."""
     compiler = _compiler_from_rep(representation, color_mode="rgb")
     glsl = compiler.compile(
-        random_dual_genome,
+        random_dual_genome.visual,
         representation.config,
+        random_dual_genome.time_signal,
         representation.time_config,
     )
     assert "void main()" in glsl
@@ -54,7 +57,9 @@ def test_compile_dual_empty_connections(representation, random_dual_genome):
     for conn in dual.time_signal.connections.values():
         conn.enabled = False
     compiler = _compiler_from_rep(representation)
-    glsl = compiler.compile(dual, representation.config, representation.time_config)
+    glsl = compiler.compile(
+        dual.visual, representation.config, dual.time_signal, representation.time_config
+    )
     assert isinstance(glsl, str)
     assert "void main()" in glsl
 
@@ -68,7 +73,9 @@ def test_compile_dual_single_hidden_node(representation):
         len(hidden_visual) == 1
     ), "test fixture must have exactly one hidden node in visual"
     compiler = _compiler_from_rep(representation)
-    glsl = compiler.compile(dual, representation.config, representation.time_config)
+    glsl = compiler.compile(
+        dual.visual, representation.config, dual.time_signal, representation.time_config
+    )
     assert "void main()" in glsl
     assert len(glsl) > 0
 
@@ -79,8 +86,9 @@ def test_compile_dual_activation_functions_in_output(
     """Compiled GLSL contains at least one known activation function call."""
     compiler = _compiler_from_rep(representation)
     glsl = compiler.compile(
-        random_dual_genome,
+        random_dual_genome.visual,
         representation.config,
+        random_dual_genome.time_signal,
         representation.time_config,
     )
     activations_found = [

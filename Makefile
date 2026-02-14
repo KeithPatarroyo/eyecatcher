@@ -1,7 +1,7 @@
 # Eyecatcher — common development tasks
 # Run `make` or `make help` to list targets.
 
-.PHONY: help install dev test lint format generate generate-signals generate-substrates generate-evolution-config docker-build docker-up clean
+.PHONY: help install dev test lint format generate generate-signals generate-substrates generate-substrate-includes generate-evolution-config docker-build docker-up clean
 
 help:
 	@echo "Eyecatcher — development targets"
@@ -10,10 +10,11 @@ help:
 	@echo "  make dev        Run the Flask dev server (python -m eyecatcher.server)"
 	@echo "  make test       Run pytest"
 	@echo "  make lint       Run Ruff check (Python) and ESLint (JS)"
-	@echo "  make generate   Run all codegen (signals + substrates + evolution config)"
-	@echo "  make generate-signals  Generate evolution_config_signals.generated.js from Python registry; validate NEAT"
+	@echo "  make generate   Run all codegen (signals + substrates + evolution config + substrate includes)"
+	@echo "  make generate-signals  Generate config_signals.generated.js from Python signal spec; validate NEAT"
 	@echo "  make generate-substrates  Generate config.generated.js from Python representation export"
-	@echo "  make generate-evolution-config  Generate evolution_config_defaults.generated.js from config/evolution_defaults.json"
+	@echo "  make generate-substrate-includes  Update substrate script tags in HTML from scripts/generate_substrate_includes.py"
+	@echo "  make generate-evolution-config  Generate config_defaults.generated.js from config/evolution_defaults.json"
 	@echo "  make docker-build  Build Docker image"
 	@echo "  make docker-up  Start app with docker compose up"
 	@echo "  make clean      Remove build artifacts, caches, and optional venv/node_modules"
@@ -42,13 +43,16 @@ format:
 	ruff format .
 	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npm run format; fi
 
-generate: generate-signals generate-substrates generate-evolution-config
+generate: generate-signals generate-substrates generate-substrate-includes generate-evolution-config
 
 generate-signals:
 	.venv/bin/python scripts/generate_signal_config.py
 
 generate-substrates:
 	.venv/bin/python scripts/generate_representation_config.py
+
+generate-substrate-includes:
+	.venv/bin/python scripts/generate_substrate_includes.py
 
 generate-evolution-config:
 	.venv/bin/python scripts/generate_evolution_config.py

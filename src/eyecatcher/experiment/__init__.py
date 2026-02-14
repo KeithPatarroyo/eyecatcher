@@ -7,16 +7,12 @@ fitness) stays in evolution/.
 """
 
 from .config import (
-    CROSSOVER_PROBABILITY,
     DEFAULT_NUM_FRAMES,
-    DEFAULT_POPULATION_SIZE,
     DEFAULT_RENDER_RESOLUTION,
     DEFAULT_RENDER_TIME,
-    ELITISM_DEFAULT,
-    MAX_POPULATION_SIZE,
-    MIN_POPULATION_SIZE,
     PREVIEW_RENDER_RESOLUTION,
     apply_preset,
+    config,
     get_crossover_probability,
     get_elitism_default,
     get_max_population_size,
@@ -32,19 +28,15 @@ from .preset import (
 
 __all__ = [
     "apply_preset",
-    "CROSSOVER_PROBABILITY",
+    "config",
     "DEFAULT_NUM_FRAMES",
-    "DEFAULT_POPULATION_SIZE",
     "DEFAULT_RENDER_RESOLUTION",
     "DEFAULT_RENDER_TIME",
-    "ELITISM_DEFAULT",
     "get_configured_representation",
     "get_crossover_probability",
     "get_elitism_default",
     "get_max_population_size",
     "get_population_size",
-    "MAX_POPULATION_SIZE",
-    "MIN_POPULATION_SIZE",
     "NEAT_CONFIG_PATH",
     "NEAT_TIME_CONFIG_PATH",
     "PREVIEW_RENDER_RESOLUTION",

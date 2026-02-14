@@ -6,12 +6,7 @@ Experiment config and preset selection live in experiment/.
 """
 
 from ..experiment import (
-    CROSSOVER_PROBABILITY,
     DEFAULT_NUM_FRAMES,
-    DEFAULT_POPULATION_SIZE,
-    ELITISM_DEFAULT,
-    MAX_POPULATION_SIZE,
-    MIN_POPULATION_SIZE,
     NEAT_CONFIG_PATH,
     NEAT_TIME_CONFIG_PATH,
     PREVIEW_RENDER_RESOLUTION,
@@ -40,11 +35,6 @@ __all__ = [
     "warn_if_neat_pop_size_mismatch",
     "NEAT_CONFIG_PATH",
     "NEAT_TIME_CONFIG_PATH",
-    "DEFAULT_POPULATION_SIZE",
-    "CROSSOVER_PROBABILITY",
-    "MAX_POPULATION_SIZE",
-    "MIN_POPULATION_SIZE",
-    "ELITISM_DEFAULT",
     "DEFAULT_RENDER_RESOLUTION",
     "DEFAULT_RENDER_TIME",
     "PREVIEW_RENDER_RESOLUTION",

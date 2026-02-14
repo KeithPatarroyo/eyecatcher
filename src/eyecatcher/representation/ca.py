@@ -8,6 +8,8 @@ running simulation (frontend applies kill mask before each GOL step).
 
 from __future__ import annotations
 
+import base64
+import io
 import json
 import random
 from typing import Any, Callable
@@ -16,6 +18,7 @@ import numpy as np
 
 from ..signals import catalog
 from ..signals.spec import SignalSpec
+from .base import RepresentationBase
 from .protocol import OutputType, RepresentationOutput
 from .sockets import GridSocket
 
@@ -75,13 +78,27 @@ def _grid_to_nested_list(grid: np.ndarray) -> list[list[int]]:
     return grid.tolist()
 
 
+def _rgb_to_png_base64(arr: np.ndarray) -> str:
+    """Encode (H, W, 3) uint8 RGB array as PNG base64 (no data URL prefix)."""
+    from PIL import Image
+
+    arr = np.asarray(arr)
+    if arr.ndim != 3 or arr.shape[2] != 3:
+        arr = np.stack([arr, arr, arr], axis=-1) if arr.ndim == 2 else arr
+    if arr.dtype != np.uint8:
+        arr = (np.clip(arr, 0, 255)).astype(np.uint8)
+    buf = io.BytesIO()
+    Image.fromarray(arr).save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
 def _nested_list_to_grid(data: list[list[int]] | list[list[float]]) -> np.ndarray:
     """Convert nested list to (H, W) uint8 grid."""
     arr = np.asarray(data, dtype=np.float64)
     return (arr > 0.5).astype(np.uint8)
 
 
-class ConwayRepresentation:
+class ConwayRepresentation(RepresentationBase):
     """
     Representation for Conway's Game of Life (2D).
     Individual = ConwayGenome (initial grid); output = grid (H×W×3 RGB).
@@ -93,10 +110,17 @@ class ConwayRepresentation:
 
     id = "ca"
     output_type: OutputType = "grid"
-
+    capabilities = {
+        "save": True,
+        "network": False,
+        "time_output": False,
+        "adjust_weight": False,
+        "compile": True,
+    }
     frontend_metadata = {
         "hasSignalControls": False,
         "genomeKeys": ["grid", "key"],
+        "adapterFactory": None,
     }
 
     def __init__(
@@ -167,8 +191,29 @@ class ConwayRepresentation:
             grid = np.zeros((DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE), dtype=np.uint8)
         return ConwayGenome(grid=grid, key=key)
 
+    def get_grid_for_symmetry(self, out: RepresentationOutput) -> np.ndarray | None:
+        if out.output_type != "grid" or not hasattr(out.data, "shape"):
+            return None
+        grid = np.asarray(out.data)
+        if grid.ndim == 3:
+            grid = grid[:, :, 0]
+        return grid if grid.ndim >= 2 else None
+
     def serialize_individual_extra(self, ind: ConwayGenome) -> dict[str, Any]:
         return {"grid": _grid_to_nested_list(ind.grid)}
+
+    def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
+        """Return image (base64), shader (GOL), and grid (nested list) for API."""
+        if output.output_type != "grid" or not hasattr(output.data, "shape"):
+            return {"image": "", "shader": _GOL_FRAGMENT_SHADER, "grid": []}
+        arr = np.asarray(output.data)
+        b64 = _rgb_to_png_base64(arr)
+        grid_01 = (arr[:, :, 0] > 127).astype(np.uint8)
+        return {
+            "image": "data:image/png;base64," + b64,
+            "shader": _GOL_FRAGMENT_SHADER,
+            "grid": _grid_to_nested_list(grid_01),
+        }
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         return {

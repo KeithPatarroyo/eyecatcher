@@ -82,7 +82,11 @@ class NeatSocket(Socket):
         return build_glsl_input_map(self.inputs)
 
     def network_stats(self, genome: neat.DefaultGenome) -> dict[str, Any]:
-        """Return {name}_nodes and {name}_connections for this socket."""
+        """Return {name}_nodes and {name}_connections for this socket.
+
+        Expects NEAT-like genome shape: .nodes (dict), .connections (dict),
+        each connection with .enabled. getattr used for NEAT library compatibility.
+        """
         nodes = getattr(genome, "nodes", {}) or {}
         conns = getattr(genome, "connections", {}) or {}
         return {

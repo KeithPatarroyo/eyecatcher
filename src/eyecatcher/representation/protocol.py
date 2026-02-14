@@ -2,6 +2,10 @@
 
 CPPN, CA, etc. Evolution and API use this interface only. Capability
 requirements per endpoint: see API_REQUIREMENTS.md.
+
+Concrete implementations typically subclass RepresentationBase (see base.py).
+Optional behaviour when a feature is unsupported lives in
+OptionalRepresentationDefaults; RepresentationBase adds only the abstract contract.
 """
 
 from __future__ import annotations
@@ -101,14 +105,38 @@ class Representation(Protocol[IndividualT]):
         """Deserialize individual from API/client payload."""
         ...
 
-    def get_compile_stats(self, ind: IndividualT) -> dict[str, Any] | None:
-        """
-        Return per-network node/connection stats for compile response, or None.
+    def get_individual_id(self, ind: IndividualT) -> int:
+        """Return the individual's id (e.g. genome key) for API and evolution."""
+        ...
 
-        Representations with network visualization (e.g. dual_cppn) return a dict
-        like { visual_nodes, visual_connections, time_nodes, time_connections }.
+    def get_network_types(self) -> tuple[str, ...]:
+        """Return allowed network names for adjust_weight; empty if not supported."""
+        return ()
+
+    def has_temporal_signals(self) -> bool:
+        """True if the representation has temporal input signals (e.g. time)."""
+        ...
+
+    def get_grid_for_symmetry(self, out: RepresentationOutput) -> np.ndarray | None:
         """
+        Return a 2D grid for symmetry fitness, or None if not applicable.
+        Used by ca_symmetry fitness; grid representations return out.data as 2D.
+        """
+        ...
+
+    def get_neat_pop_size(self) -> int | None:
+        """Return NEAT pop_size if this representation uses NEAT; None otherwise."""
         return None
+
+    def get_compile_stats(self, ind: IndividualT) -> dict[str, Any]:
+        """
+        Return per-network node/connection stats for compile response.
+
+        Representations with network visualization return a dict like
+        { visual_nodes, visual_connections, time_nodes, time_connections };
+        others return {"nodes": 0, "connections": 0}.
+        """
+        return {"nodes": 0, "connections": 0}
 
     def serialize_individual_extra(self, ind: IndividualT) -> dict[str, Any]:
         """
@@ -171,77 +199,15 @@ class Representation(Protocol[IndividualT]):
         """
         return None
 
-    def serialize_express_output(
-        self, output: RepresentationOutput
-    ) -> dict[str, Any] | None:
+    def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
         """
-        Optional: serialize express output for API response (e.g. /api/evaluate).
-        Return None to use default serialization (grid->image, shader->shader).
-        Non-visual representations (e.g. audio) implement this to add their payload.
+        Serialize express output for API response (e.g. /api/evaluate).
+        Each representation returns the keys it needs
+        (image, shader, grid, audio_data, etc.).
         """
-        return None
-
-
-_CAPABILITIES_CACHE: dict[str, dict[str, bool]] = {}
+        ...
 
 
 def get_representation_capabilities(representation: Any) -> dict[str, bool]:
-    """
-    Derive capability flags from optional protocol methods.
-
-    Uses declarative hints from signal_spec when present (e.g. socket "time"
-    implies time_output; socket "visual" implies network). Otherwise creates a
-    random individual once (cached by representation.id) and checks which
-    optional methods return non-None / non-empty.
-    """
-    rid = getattr(representation, "id", None)
-    if rid and rid in _CAPABILITIES_CACHE:
-        return _CAPABILITIES_CACHE[rid].copy()
-
-    declarative_time = False
-    declarative_network = False
-    spec = getattr(representation, "signal_spec", None)
-    if spec is not None:
-        try:
-            spec.socket("time")
-            declarative_time = True
-        except KeyError:
-            pass
-        try:
-            spec.socket("visual")
-            declarative_network = True
-        except KeyError:
-            pass
-
-    ind = representation.create_random(0)
-    save = bool(representation.build_save_assets(ind, 0, to_png_bytes=lambda a: b""))
-    get_network = getattr(representation, "get_network_data", None)
-    network_data = get_network(ind) if callable(get_network) else None
-    network = declarative_network or (network_data is not None)
-    query_time = getattr(representation, "query_time_output", None)
-    time_output = declarative_time or (
-        query_time(ind, {}) is not None if callable(query_time) else False
-    )
-    adjust_weight = False
-    if network_data and network_data.get("connections"):
-        adj_meth = getattr(representation, "adjust_weight", None)
-        if callable(adj_meth):
-            conn = network_data["connections"][0]
-            adj = adj_meth(
-                ind,
-                conn.get("network", "visual"),
-                str(conn.get("source", "")),
-                str(conn.get("target", "")),
-                0.5,
-            )
-            adjust_weight = adj is not None
-
-    caps = {
-        "save": save,
-        "network": network,
-        "time_output": time_output,
-        "adjust_weight": adjust_weight,
-    }
-    if rid:
-        _CAPABILITIES_CACHE[rid] = caps.copy()
-    return caps
+    """Return capability flags from the representation's declared capabilities dict."""
+    return dict(representation.capabilities)

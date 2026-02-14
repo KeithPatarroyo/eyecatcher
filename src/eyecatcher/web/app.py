@@ -102,7 +102,11 @@ def save_individual():
     if not individual_json:
         return api_error(ERR_INDIVIDUAL_REQUIRED_BODY, 400)
     ind = representation.from_json(individual_json)
-    ind_id = individual_id if individual_id is not None else getattr(ind, "key", 0)
+    ind_id = (
+        individual_id
+        if individual_id is not None
+        else representation.get_individual_id(ind)
+    )
 
     def to_png_bytes(arr):
         return base64.b64decode(numpy_to_png_base64(arr))

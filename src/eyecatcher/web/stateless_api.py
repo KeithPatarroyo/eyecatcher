@@ -7,7 +7,6 @@ Endpoints: /api/compile, /api/random, /api/evaluate,
 /api/time-output, /api/network, /api/adjust-weight.
 """
 
-import numpy as np
 from flask import Blueprint, current_app, jsonify, request
 
 from ..evolution import (
@@ -24,7 +23,6 @@ from .api_helpers import (
     ERR_INDIVIDUALS_ARRAY_REQUIRED,
     api_error,
     api_try_except,
-    numpy_to_png_base64,
 )
 
 # Create blueprint
@@ -121,9 +119,10 @@ def _extract_individual_id_clicks(payload: dict, default_key: int):
 
 def _parse_one_individual(payload: dict, index: int):
     """Deserialize one individual payload; return (ind, individual_id, clicks)."""
-    ind = get_current_representation().from_json(payload)
+    rep = get_current_representation()
+    ind = rep.from_json(payload)
     individual_id, clicks = _extract_individual_id_clicks(
-        payload, getattr(ind, "key", index)
+        payload, rep.get_individual_id(ind)
     )
     return ind, individual_id, clicks
 
@@ -141,31 +140,23 @@ def _compile_individuals(individuals_data, color_mode):
             "clicks": clicks,
         }
         stats = get_current_representation().get_compile_stats(ind)
-        if stats:
-            resp.update(stats)
-            resp["nodes"] = sum(v for k, v in stats.items() if k.endswith("_nodes"))
-            resp["connections"] = sum(
-                v for k, v in stats.items() if k.endswith("_connections")
-            )
-        else:
-            resp["nodes"] = (
-                len(getattr(ind, "nodes", {})) if hasattr(ind, "nodes") else 0
-            )
-            resp["connections"] = (
-                len(getattr(ind, "connections", {}))
-                if hasattr(ind, "connections")
-                else 0
-            )
+        resp.update(stats)
+        resp["nodes"] = sum(v for k, v in stats.items() if k.endswith("_nodes"))
+        resp["connections"] = sum(
+            v for k, v in stats.items() if k.endswith("_connections")
+        )
         shaders.append(resp)
     return shaders
 
 
 def _require_can_compile():
-    """Error if representation cannot compile genomes to shaders."""
-    if not callable(getattr(get_current_representation(), "compile_to_shader", None)):
+    """Error if representation does not have compile capability."""
+    from ..representation.protocol import get_representation_capabilities
+
+    caps = get_representation_capabilities(get_current_representation())
+    if not caps.get("compile", False):
         return api_error(
-            "This endpoint requires a representation that implements "
-            "compile_to_shader.",
+            "This endpoint requires a representation with compile capability.",
             501,
         )
     return None
@@ -243,23 +234,8 @@ def api_evaluate():
         rep = get_current_representation()
         out = rep.express(ind, {})
         item = {"id": individual_id, "output_type": out.output_type}
-        # Representation can serialize its own output (e.g. audio -> audio_data)
-        custom = getattr(rep, "serialize_express_output", lambda _: None)(out)
-        if custom is not None:
-            item.update(custom)
-        else:
-            # Default serialization for grid/shaders
-            if out.output_type == "grid" and hasattr(out.data, "shape"):
-                arr = np.asarray(out.data)
-                b64 = numpy_to_png_base64(arr)
-                item["image"] = "data:image/png;base64," + b64
-            elif out.output_type == "shader" and isinstance(out.data, str):
-                item["shader"] = out.data
-            glsl = rep.compile_to_shader(ind)
-            if glsl:
-                item["shader"] = glsl
-        extra = getattr(rep, "serialize_individual_extra", lambda i: {})(ind)
-        item.update(extra)
+        item.update(rep.serialize_express_output(out))
+        item.update(rep.serialize_individual_extra(ind))
         results.append(item)
     rep = get_current_representation()
     return jsonify(
@@ -337,7 +313,8 @@ def api_adjust_weight():
     data = request.json or {}
     network_type = data.get("network")
     rep = get_current_representation()
-    if getattr(rep, "network_types", ()) and network_type not in rep.network_types:
+    allowed = rep.get_network_types()
+    if allowed and network_type not in allowed:
         return api_error("Invalid network type.", 400)
     source_node = data.get("source")
     target_node = data.get("target")

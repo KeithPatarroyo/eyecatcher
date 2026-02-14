@@ -58,18 +58,17 @@ def export_representations_for_frontend() -> list[dict]:
     result = []
     for rid in REPRESENTATIONS:
         rep = get_representation(rid)
-        entry = getattr(rep.__class__, "frontend_metadata", None)
+        entry = rep.frontend_metadata
         if not isinstance(entry, dict):
             entry = {}
         caps = get_representation_capabilities(rep)
-        spec = getattr(rep, "signal_spec", None)
         rep_data: dict = {
             "id": rid,
-            "outputType": getattr(rep.__class__, "output_type", "shader"),
+            "outputType": rep.output_type,
             **entry,
             "capabilities": _capabilities_to_frontend(caps),
         }
-        if spec is not None:
-            rep_data["signalSpec"] = _signal_spec_to_frontend(spec)
+        spec = rep.signal_spec
+        rep_data["signalSpec"] = _signal_spec_to_frontend(spec)
         result.append(rep_data)
     return result

@@ -17,10 +17,10 @@ import os
 
 import numpy as np
 from eyecatcher.evolution import (
-    CROSSOVER_PROBABILITY,
-    DEFAULT_POPULATION_SIZE,
     PREVIEW_RENDER_RESOLUTION,
     get_configured_representation,
+    get_crossover_probability,
+    get_population_size,
 )
 from eyecatcher.evolution.fitness import get_fitness, list_fitness
 from eyecatcher.evolution.reproduction import produce_next_generation
@@ -44,11 +44,13 @@ def _render_for_save(representation, ind):
 
 
 def run_evolution(
-    population_size: int = DEFAULT_POPULATION_SIZE,
+    population_size: int | None = None,
     num_generations: int = 5,
     output_dir: str = "output/evolution",
     fitness_name: str = "combined",
 ):
+    if population_size is None:
+        population_size = get_population_size()
     representation = get_configured_representation()
     fitness_fn = get_fitness(fitness_name)
     if fitness_fn is None:
@@ -89,7 +91,7 @@ def run_evolution(
             parents_data,
             population_size=population_size,
             elitism=True,
-            crossover_probability=CROSSOVER_PROBABILITY,
+            crossover_probability=get_crossover_probability(),
         )
         population = [representation.from_json(c) for c in children]
 
@@ -126,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", default="output/evolution", help="Output directory")
     args = parser.parse_args()
 
-    pop_size = args.population or DEFAULT_POPULATION_SIZE
+    pop_size = args.population or get_population_size()
     print("Batch evolution – representation from EXPERIMENT_CONFIG, proxy fitness")
     run_evolution(
         population_size=pop_size,

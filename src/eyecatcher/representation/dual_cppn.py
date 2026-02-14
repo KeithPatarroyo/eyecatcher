@@ -45,10 +45,17 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
 
     id = "dual_cppn"
     output_type: OutputType = "shader"
-
+    capabilities = {
+        "save": True,
+        "network": True,
+        "time_output": True,
+        "adjust_weight": True,
+        "compile": True,
+    }
     frontend_metadata = {
         "hasSignalControls": True,
         "genomeKeys": ["visual", "time_signal"],
+        "adapterFactory": "cppn",
     }
 
     def __init__(
@@ -107,7 +114,9 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
     # -- Expression (delegated to sockets) --
 
     def _compile(self, compiler: Any, ind: DualGenome) -> str | None:
-        return compiler.compile(ind, self.config, self.time_config)
+        return compiler.compile(
+            ind.visual, self.config, ind.time_signal, self.time_config
+        )
 
     def _query_time_signal(
         self, time_genome: neat.DefaultGenome, inputs: dict[str, float]
@@ -147,10 +156,16 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
     def from_json(self, data: dict[str, Any]) -> DualGenome:
         return dual_genome_from_json(data, self.config, self.time_config)
 
+    def get_network_types(self) -> tuple[str, ...]:
+        return ("visual", "time_signal")
+
+    def get_neat_pop_size(self) -> int | None:
+        return getattr(self.config, "pop_size", None)
+
     # -- Inspection (sockets know the structure of the individual) --
 
-    def get_compile_stats(self, ind: DualGenome) -> dict[str, Any] | None:
-        stats = {}
+    def get_compile_stats(self, ind: DualGenome) -> dict[str, Any]:
+        stats: dict[str, Any] = {}
         stats.update(self.visual.network_stats(ind.visual))
         stats.update(self.time.network_stats(ind.time_signal))
         return stats
@@ -171,7 +186,7 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
             return {}
         assets = super().build_save_assets(ind, individual_id, **kwargs)
         shader_code = self.compile_to_shader(ind) or ""
-        stats = self.get_compile_stats(ind) or {}
+        stats = self.get_compile_stats(ind)
         bundle = {
             "shader": shader_code,
             "metadata": {
