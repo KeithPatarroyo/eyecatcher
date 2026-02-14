@@ -27,11 +27,27 @@ Script load order in the HTML: lib → evolution (config) → community → subs
 
 **Edit when you change representation types or how patterns are drawn.** (Folder name is legacy; backend concept is "representation".)
 
-- `registry.js` — Adapter registry (SubstrateAdapters), resolve, getDisplayData, registers from SubstrateConfig.
+- `registry.js` — Adapter registry (SubstrateAdapters), resolve, getDisplayData, getDefaultSubstrateId, registers from SubstrateConfig.
 - `cppn_adapter.js` — Shared CPPN adapter (dual_cppn, single_cppn); createCppnAdapter(spec).
-- `ca.js` — CA (Conway GOL) adapter; stateful grid, FBO ping-pong.
+- `stateful_adapter.js` — Factory for stateful (FBO ping-pong) adapters; createStatefulAdapter(spec).
+- `ca.js` — CA (Conway GOL) adapter; uses createStatefulAdapter, stateful grid, FBO ping-pong.
 - `config.generated.js` — Generated from Python substrate export (do not edit).
 - `pattern_renderer.js` — WebGL 2 setup, shader compile, renderWithSignals, createPatternCard, FBO helpers.
+
+### Three rendering strategies (adapter toolkit)
+
+Choose one when adding a new representation so you write minimal WebGL yourself:
+
+1. **Stateless shader** — Backend compiles genome to a complete fragment shader. Frontend sets uniforms per frame and draws a fullscreen quad. No state between frames.
+   - **Use:** `createCppnAdapter(spec)` in `cppn_adapter.js`. No custom adapter file; add representation + run `make generate-substrates`.
+   - **Example:** dual_cppn, single_cppn.
+
+2. **Stateful shader** — Backend compiles genome to a *step* shader. Frontend maintains FBO state, runs step shader per tick, displays result. State persists between frames.
+   - **Use:** `createStatefulAdapter(spec)` in `stateful_adapter.js`. Provide `gridSize`, `stepIntervalMs`, `initState`, `stepUniforms`, optional `beforeStep`, `displayShaderSource`, `onInteraction`, etc. Register the returned adapter.
+   - **Example:** ca.js (Conway GOL). Future NCA, reaction-diffusion, Lenia would use this too.
+
+3. **Pre-rendered image** — Backend evaluates and returns an image. Frontend displays it in an `<img>` tag.
+   - **Use:** Return image from backend `express()`; no custom JS. `pattern_renderer.js` handles the `pattern.image` path.
 
 ---
 

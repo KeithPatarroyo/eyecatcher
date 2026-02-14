@@ -1,7 +1,7 @@
 /**
- * Evolution and viewer constants. Population defaults from evolution_config_defaults.generated.js
+ * Evolution and viewer constants. Population defaults from config_defaults.generated.js
  * (generated from config/evolution_defaults.json; run make generate). mergeFromServer overwrites from API.
- * Load before: api_client, app_core, toolbar_ui. Load after: evolution_config_signals.generated.js, evolution_config_defaults.generated.js.
+ * Load before: api_client, app_core, toolbar_ui. Load after: config_signals.generated.js, config_defaults.generated.js.
  * Exposes: window.EvolutionConfig
  */
 (function () {
@@ -23,22 +23,25 @@
     }
 
     var EvolutionConfig = {
-        // Population (from evolution_config_defaults.generated.js; run make generate)
+        // Population (from config_defaults.generated.js; run make generate)
         DEFAULT_POPULATION_SIZE: defaults.population_size,
         MAX_POPULATION_SIZE: defaults.max_population_size,
         MIN_POPULATION_SIZE: defaults.min_population_size,
         CROSSOVER_PROBABILITY: defaults.crossover_probability,
 
         // Representation (backend returns representation_id; we expose as substrateId for UI)
-        DEFAULT_SUBSTRATE_ID: "dual_cppn",
+        // Initial value; overwritten by mergeFromServer. Canonical default is in substrate/registry.js (safeResolve / getDefaultSubstrateId).
+        DEFAULT_SUBSTRATE_ID: "",
         /** Available representation ids from GET /api/config (e.g. ["dual_cppn", "single_cppn", "ca"]). */
         available_substrate_ids: [],
 
-        /** Single source of truth for default resolution when adapter cannot be determined. */
+        /** Single source of truth for default resolution. Uses __eyecatcherDefaultResolution (set by registry) for fallback; do not call SA.getDefaultResolution to avoid circular recursion. */
         getDefaultResolution: function () {
+            var def = window.__eyecatcherDefaultResolution;
             return {
-                outputType: "shader",
-                substrateId: this.DEFAULT_SUBSTRATE_ID,
+                outputType: (def && def.outputType) || "shader",
+                substrateId:
+                    this.DEFAULT_SUBSTRATE_ID || (def && def.substrateId) || "",
             };
         },
 
