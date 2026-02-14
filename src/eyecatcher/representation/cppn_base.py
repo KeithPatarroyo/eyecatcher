@@ -13,9 +13,11 @@ from abc import abstractmethod
 from collections.abc import Callable as Cb
 from typing import Any
 
+import neat
 import numpy as np
 
 from ..experiment.config import DEFAULT_RENDER_RESOLUTION
+from ..glsl import ShaderCompiler
 from ..signals.registry import get_default_signal_values
 from .base import RepresentationBase
 from .protocol import RepresentationOutput
@@ -79,9 +81,18 @@ def compile_with_color_mode(
 class CPPNRepresentationBase(RepresentationBase):
     """
     Shared base for single and dual CPPN representations.
-    Subclasses implement query_rgb, _sample_inputs, get_base_inputs_for_render,
-    _compile, to_json, from_json, create_random, mutate, crossover.
+    Subclasses set self.visual (and optionally self.time), self.signal_spec,
+    then call super().__init__(color_mode=...). Subclasses implement
+    query_rgb, _sample_inputs, get_base_inputs_for_render, _compile,
+    to_json, from_json, create_random, mutate, crossover.
     """
+
+    def __init__(self, *, color_mode: str = "hsv") -> None:
+        self.config = self.visual.config
+        self._population = neat.Population(self.config)
+        self.compiler = ShaderCompiler.from_spec(
+            self.signal_spec, color_mode=color_mode
+        )
 
     @abstractmethod
     def query_rgb(

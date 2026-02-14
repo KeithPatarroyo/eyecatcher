@@ -15,7 +15,6 @@ from ..experiment import NEAT_CONFIG_PATH
 from ..genome import create_random_genome
 from ..genome.operators import crossover_genomes, mutate_genome
 from ..genome.serialization import genome_from_json, genome_to_json
-from ..glsl import ShaderCompiler
 from ..signals import catalog
 from ..signals.spec import SignalSpec
 from .cppn_base import CPPNRepresentationBase, _clamp_rgb, normalize_to_bipolar
@@ -34,13 +33,6 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
 
     id = "single_cppn"
     output_type: OutputType = "shader"
-    capabilities = {
-        "save": True,
-        "network": True,
-        "time_output": False,
-        "adjust_weight": True,
-        "compile": True,
-    }
     frontend_metadata = {
         "hasSignalControls": False,
         "genomeKeys": ["visual"],
@@ -54,7 +46,6 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
         color_mode: str = "hsv",
         **kwargs: Any,
     ) -> None:
-        # -- Socket: expression of a single individual --
         self.visual = NeatSocket(
             "visual",
             inputs=catalog.DUAL_CPPN_VISUAL_INPUTS,
@@ -62,21 +53,11 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
             derived=(catalog.DISTANCE,),
             config_path=neat_config_path or NEAT_CONFIG_PATH,
         )
-
-        # -- Public signal spec (socket-centric) --
         self.signal_spec = SignalSpec(
             sockets=(self.visual,),
             outputs=catalog.RGB_OUTPUTS,
         )
-
-        # -- Evolution: population owned by the representation --
-        self.config = self.visual.config
-        self._population = neat.Population(self.config)
-
-        # -- Compiler for shader output --
-        self.compiler = ShaderCompiler.from_spec(
-            self.signal_spec, color_mode=color_mode
-        )
+        super().__init__(color_mode=color_mode)
 
     # -- Evolution (representation concern) --
 

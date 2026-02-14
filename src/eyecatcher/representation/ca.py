@@ -110,13 +110,6 @@ class ConwayRepresentation(RepresentationBase):
 
     id = "ca"
     output_type: OutputType = "grid"
-    capabilities = {
-        "save": True,
-        "network": False,
-        "time_output": False,
-        "adjust_weight": False,
-        "compile": True,
-    }
     frontend_metadata = {
         "hasSignalControls": False,
         "genomeKeys": ["grid", "key"],

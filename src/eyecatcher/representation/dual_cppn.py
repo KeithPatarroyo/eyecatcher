@@ -24,7 +24,6 @@ from ..genome.dual import (
     dual_genome_to_json,
     mutate_dual_genome,
 )
-from ..glsl import ShaderCompiler
 from ..inspection import parse_network_node_id
 from ..signals import catalog
 from ..signals.registry import parse_time_inputs
@@ -45,13 +44,6 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
 
     id = "dual_cppn"
     output_type: OutputType = "shader"
-    capabilities = {
-        "save": True,
-        "network": True,
-        "time_output": True,
-        "adjust_weight": True,
-        "compile": True,
-    }
     frontend_metadata = {
         "hasSignalControls": True,
         "genomeKeys": ["visual", "time_signal"],
@@ -65,7 +57,6 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
         color_mode: str = "hsv",
         **kwargs: Any,
     ) -> None:
-        # -- Sockets: expression of a single individual --
         self.visual = NeatSocket(
             "visual",
             inputs=catalog.DUAL_CPPN_VISUAL_INPUTS,
@@ -79,26 +70,16 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
             outputs=catalog.TIME_OUTPUT,
             config_path=time_config_path or NEAT_TIME_CONFIG_PATH,
         )
-
-        # -- Public signal spec (socket-centric) --
         self.signal_spec = SignalSpec(
             sockets=(self.visual, self.time),
             outputs=catalog.RGB_OUTPUTS,
             substitutions={"time": "timeFromNetwork"},
         )
-
-        # -- Evolution: populations owned by the representation --
-        self.config = self.visual.config
+        super().__init__(color_mode=color_mode)
         self.time_config = self.time.config
-        self._population = neat.Population(self.config)
         self._time_population = neat.Population(self.time_config)
         self.population = self._population
         self.time_population = self._time_population
-
-        # -- Compiler for shader output --
-        self.compiler = ShaderCompiler.from_spec(
-            self.signal_spec, color_mode=color_mode
-        )
 
     # -- Evolution (representation concern) --
 
