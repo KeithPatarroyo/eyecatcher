@@ -330,7 +330,10 @@
         const meta = document.createElement("div");
         meta.className = "pattern-meta";
         if (adapter && typeof adapter.getMetaLabel === "function") {
-            var idPrefix = adapter.id === "ca" ? "Pattern " : "ID: ";
+            var idPrefix =
+                typeof adapter.getMetaIdPrefix === "function"
+                    ? adapter.getMetaIdPrefix()
+                    : "ID: ";
             meta.textContent = idPrefix + id + " | " + adapter.getMetaLabel(pattern);
         } else {
             meta.textContent =
@@ -404,6 +407,36 @@
         if (showNetwork) actions.appendChild(networkBtn);
         if (showSave) actions.appendChild(saveBtn);
 
+        if (adapter && typeof adapter.createDisplayElement === "function") {
+            var result = adapter.createDisplayElement(pattern, options);
+            var displayEl = result && result.element;
+            if (displayEl) {
+                card.appendChild(displayEl);
+            } else {
+                card.appendChild(
+                    createErrorFallback("Display element creation failed")
+                );
+            }
+            var patternData = result && result.patternData;
+            if (
+                adapter &&
+                typeof adapter.preparePatternData === "function" &&
+                patternData
+            ) {
+                adapter.preparePatternData(patternData, pattern);
+            }
+            card.appendChild(actions);
+            card.appendChild(info);
+            attachCardEvents(card, id, options);
+            var isCanvas = displayEl && displayEl instanceof HTMLCanvasElement;
+            return {
+                card: card,
+                canvas: isCanvas ? displayEl : null,
+                patternData: patternData || null,
+            };
+        }
+
+        /* BACKWARDS_COMPAT: legacy shader/image branches when adapter does not implement createDisplayElement. Remove once all adapters provide createDisplayElement. */
         if (pattern.shader) {
             const canvas = document.createElement("canvas");
             canvas.className = "pattern-canvas";
