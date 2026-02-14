@@ -271,12 +271,7 @@ const EyecatcherDebug = (function () {
          * @param {string|null} substrateId - current substrate id
          */
         updateForSubstrate: function (substrateId) {
-            const adapter =
-                typeof window !== "undefined" &&
-                window.SubstrateAdapters &&
-                window.SubstrateAdapters.getAdapter
-                    ? window.SubstrateAdapters.getAdapter(substrateId)
-                    : null;
+            const adapter = window.SubstrateAdapters.getAdapter(substrateId);
             const show =
                 adapter &&
                 adapter.capabilities &&

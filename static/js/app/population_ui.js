@@ -12,257 +12,206 @@
  * - addToGrid function (append patterns to current grid)
  * - getCurrentGenomesForSave function (returns client-held genomes + generation, or null)
  */
-
 (function () {
     "use strict";
 
-    // Module state
-    let _apiUrl = "";
-    let _loadFromStatelessGenomes = null;
-    let _addToGrid = null;
-    let _getCurrentGenomesForSave = null;
+    class PopulationUI {
+        constructor() {
+            this._apiUrl = "";
+            this._loadFromStatelessGenomes = null;
+            this._addToGrid = null;
+            this._getCurrentGenomesForSave = null;
+        }
 
-    /**
-     * Initialize the population UI module.
-     * @param {Object} options
-     * @param {string} options.apiUrl - Base API URL
-     * @param {Function} options.loadFromStatelessGenomes - Function to load genomes into the grid (replace)
-     * @param {Function} options.addToGrid - Function to append genomes to the current grid
-     * @param {Function} options.getCurrentGenomesForSave - Function to get current genomes for saving
-     */
-    function init(options) {
-        _apiUrl = options.apiUrl || "";
-        _loadFromStatelessGenomes = options.loadFromStatelessGenomes;
-        _addToGrid = options.addToGrid;
-        _getCurrentGenomesForSave = options.getCurrentGenomesForSave;
-    }
+        init(options) {
+            this._apiUrl = options.apiUrl || "";
+            this._loadFromStatelessGenomes = options.loadFromStatelessGenomes;
+            this._addToGrid = options.addToGrid;
+            this._getCurrentGenomesForSave = options.getCurrentGenomesForSave;
+        }
 
-    /**
-     * Start a new random population from the server.
-     */
-    async function startNewRandomPopulation() {
-        showLoading(true);
-        try {
-            // Clear any existing session data when starting fresh
+        async startNewRandomPopulation() {
+            var self = this;
             try {
-                sessionStorage.removeItem("current_population_data");
-                sessionStorage.removeItem("current_population_id");
-                sessionStorage.removeItem("has_population");
-            } catch (_e) {
-                /* ignore */
-            }
-
-            // Fallback must match EvolutionConfig; see evolution_config.js
-            const size =
-                (window.EvolutionConfig &&
-                    window.EvolutionConfig.DEFAULT_POPULATION_SIZE) ||
-                12;
-            const d = await window.ApiClient.randomPopulation(size);
-            if (_loadFromStatelessGenomes) {
-                await _loadFromStatelessGenomes(
-                    d.individuals || [],
-                    0,
-                    true,
-                    d.output_type,
-                    d.representation_id
-                );
-            }
-        } catch (error) {
-            console.error("Error starting random population:", error);
-            Toast.error("Error: " + (error.message || String(error)));
-        } finally {
-            showLoading(false);
-        }
-    }
-
-    /**
-     * Open the load saved populations modal.
-     */
-    async function onLoadSavedClick() {
-        try {
-            if (typeof EyecatcherStorage === "undefined") {
-                if (window.Toast)
-                    Toast.error("Storage not loaded. Check that storage.js is served.");
-                else alert("Storage not loaded. Check that storage.js is served.");
-                return;
-            }
-            await EyecatcherStorage.init();
-            const list = await EyecatcherStorage.listPopulations();
-            const ul = document.getElementById("load-list");
-            if (!ul) return;
-            ul.innerHTML = "";
-            if (!list.length) {
-                ul.appendChild(Utils.createListEmptyEl("li", "No saved populations"));
-            } else {
-                list.forEach((pop) => {
-                    const li = document.createElement("li");
-                    li.textContent =
-                        (pop.name || "Unnamed") +
-                        " (gen " +
-                        (pop.generation || 0) +
-                        ", " +
-                        (pop.genomes || []).length +
-                        " patterns)";
-                    li.onclick = async () => {
-                        document
-                            .getElementById("load-list-modal")
-                            .classList.remove("show");
-                        if (_loadFromStatelessGenomes) {
-                            var SA = window.SubstrateAdapters;
-                            var r =
-                                SA && SA.safeResolve
-                                    ? SA.safeResolve(pop)
-                                    : window.__eyecatcherDefaultResolution || {
-                                          outputType: "shader",
-                                          substrateId: "dual_cppn",
-                                      };
-                            await _loadFromStatelessGenomes(
-                                pop.genomes || [],
-                                pop.generation || 0,
-                                false,
-                                r.outputType,
-                                r.substrateId
-                            );
-                        }
-                    };
-                    ul.appendChild(li);
+                await window.Utils.withLoading(async function () {
+                    try {
+                        sessionStorage.removeItem("current_population_data");
+                        sessionStorage.removeItem("current_population_id");
+                        sessionStorage.removeItem("has_population");
+                    } catch (_e) {
+                        /* ignore */
+                    }
+                    var size =
+                        (window.EvolutionConfig &&
+                            window.EvolutionConfig.DEFAULT_POPULATION_SIZE) ||
+                        12;
+                    var d = await window.ApiClient.randomPopulation(size);
+                    if (self._loadFromStatelessGenomes) {
+                        await self._loadFromStatelessGenomes(
+                            d.individuals || [],
+                            0,
+                            true,
+                            d.output_type,
+                            d.representation_id
+                        );
+                    }
                 });
+            } catch (error) {
+                console.error("Error starting random population:", error);
+                Toast.error("Error: " + (error.message || String(error)));
             }
-            document.getElementById("load-list-modal").classList.add("show");
-        } catch (e) {
-            Toast.error("Error: " + (e.message || e));
         }
-    }
 
-    /**
-     * Save current population to IndexedDB.
-     */
-    async function onSaveCurrentClick() {
-        if (typeof EyecatcherStorage === "undefined") {
-            Toast.error("Storage not loaded.");
-            return;
-        }
-        const data = _getCurrentGenomesForSave
-            ? await _getCurrentGenomesForSave()
-            : null;
-        if (!data || !data.genomes.length) {
-            Toast.error(
-                "No population to save. Start with New random population or Load Saved."
-            );
-            return;
-        }
-        const name = prompt(
-            "Name this population:",
-            "Session " + new Date().toLocaleDateString()
-        );
-        if (name == null) return;
-        try {
-            await EyecatcherStorage.init();
-            await EyecatcherStorage.savePopulation(
-                name.trim() || "Unnamed",
-                data.genomes,
-                data.generation,
-                data.substrateId,
-                data.outputType
-            );
-            Toast.show("Saved", "Population saved to browser storage.", "success");
-        } catch (e) {
-            Toast.error("Error: " + (e.message || e));
-        }
-    }
-
-    /**
-     * Trigger file input for import.
-     */
-    function onImportClick() {
-        const input = document.getElementById("import-file");
-        if (input) input.click();
-    }
-
-    /**
-     * Handle imported file (call this from the file input's change handler).
-     * Supports .zip (saved pattern with genome_*.json) or .json (population with genomes array).
-     * Adds patterns to the current grid without replacing.
-     * @param {File} file - The imported file
-     */
-    async function handleImportFile(file) {
-        if (!file) return;
-        const name = (file.name || "").toLowerCase();
-        try {
-            let genomes = [];
-            if (name.endsWith(".zip")) {
-                if (typeof JSZip === "undefined") {
-                    Toast.error(
-                        "Import failed: JSZip not loaded. Check script for jszip.min.js."
-                    );
+        async onLoadSavedClick() {
+            try {
+                if (typeof EyecatcherStorage === "undefined") {
+                    if (window.Toast)
+                        Toast.error(
+                            "Storage not loaded. Check that storage.js is served."
+                        );
+                    else alert("Storage not loaded. Check that storage.js is served.");
                     return;
                 }
-                const zip = await JSZip.loadAsync(file);
-                const genomeFiles = Object.keys(zip.files).filter((n) =>
-                    /^genome_.*\.json$/i.test(n)
-                );
-                if (!genomeFiles.length) {
-                    Toast.error(
-                        "No genome JSON found in zip (expected genome_*.json)."
+                await EyecatcherStorage.init();
+                var list = await EyecatcherStorage.listPopulations();
+                var ul = document.getElementById("load-list");
+                if (!ul) return;
+                ul.innerHTML = "";
+                if (!list.length) {
+                    ul.appendChild(
+                        Utils.createListEmptyEl("li", "No saved populations")
                     );
-                    return;
-                }
-                for (const entry of genomeFiles) {
-                    const text = await zip.files[entry].async("string");
-                    const genome = JSON.parse(text);
-                    var accepted =
-                        genome &&
-                        window.SubstrateAdapters &&
-                        window.SubstrateAdapters.findAdapterByGenome &&
-                        !!window.SubstrateAdapters.findAdapterByGenome(genome);
-                    if (accepted) genomes.push(genome);
-                }
-            } else {
-                const json = JSON.parse(await file.text());
-                genomes = json.individuals || json.genomes || [];
-                if (genomes.length && typeof EyecatcherStorage !== "undefined") {
-                    await EyecatcherStorage.init();
-                    var SA = window.SubstrateAdapters;
-                    var r =
-                        SA && SA.safeResolve
-                            ? SA.safeResolve({ genomes: genomes })
-                            : window.__eyecatcherDefaultResolution || {
-                                  outputType: "shader",
-                                  substrateId: "dual_cppn",
-                              };
-                    var importPayload = Object.assign({}, json, {
-                        substrateId: json.substrateId || r.substrateId,
-                        outputType: json.outputType || r.outputType,
+                } else {
+                    var self = this;
+                    list.forEach(function (pop) {
+                        var li = document.createElement("li");
+                        li.textContent =
+                            (pop.name || "Unnamed") +
+                            " (gen " +
+                            (pop.generation || 0) +
+                            ", " +
+                            (pop.genomes || []).length +
+                            " patterns)";
+                        li.onclick = async function () {
+                            document
+                                .getElementById("load-list-modal")
+                                .classList.remove("show");
+                            if (self._loadFromStatelessGenomes) {
+                                var r = window.SubstrateAdapters.safeResolve(pop);
+                                await self._loadFromStatelessGenomes(
+                                    pop.genomes || [],
+                                    pop.generation || 0,
+                                    false,
+                                    r.outputType,
+                                    r.substrateId
+                                );
+                            }
+                        };
+                        ul.appendChild(li);
                     });
-                    await EyecatcherStorage.importPopulation(importPayload);
                 }
+                document.getElementById("load-list-modal").classList.add("show");
+            } catch (e) {
+                Toast.error("Error: " + (e.message || e));
             }
-            if (!genomes.length) {
-                Toast.error("No genomes in file");
+        }
+
+        async onSaveCurrentClick() {
+            if (typeof EyecatcherStorage === "undefined") {
+                Toast.error("Storage not loaded.");
                 return;
             }
-            var adapters = window.SubstrateAdapters;
-            var resolved =
-                adapters && adapters.safeResolve
-                    ? adapters.safeResolve({ genomes: genomes })
-                    : window.__eyecatcherDefaultResolution || {
-                          outputType: "shader",
-                          substrateId: "dual_cppn",
-                      };
-            if (_addToGrid) {
-                await _addToGrid(genomes, resolved.outputType);
+            var data = this._getCurrentGenomesForSave
+                ? await this._getCurrentGenomesForSave()
+                : null;
+            if (!data || !data.genomes.length) {
+                Toast.error(
+                    "No population to save. Start with New random population or Load Saved."
+                );
+                return;
             }
-        } catch (err) {
-            Toast.error("Import failed: " + (err.message || err));
+            var name = prompt(
+                "Name this population:",
+                "Session " + new Date().toLocaleDateString()
+            );
+            if (name == null) return;
+            try {
+                await EyecatcherStorage.init();
+                await EyecatcherStorage.savePopulation(
+                    name.trim() || "Unnamed",
+                    data.genomes,
+                    data.generation,
+                    data.substrateId,
+                    data.outputType
+                );
+                Toast.show("Saved", "Population saved to browser storage.", "success");
+            } catch (e) {
+                Toast.error("Error: " + (e.message || e));
+            }
+        }
+
+        onImportClick() {
+            var input = document.getElementById("import-file");
+            if (input) input.click();
+        }
+
+        async handleImportFile(file) {
+            if (!file) return;
+            var name = (file.name || "").toLowerCase();
+            try {
+                var genomes = [];
+                if (name.endsWith(".zip")) {
+                    if (typeof JSZip === "undefined") {
+                        Toast.error(
+                            "Import failed: JSZip not loaded. Check script for jszip.min.js."
+                        );
+                        return;
+                    }
+                    var zip = await JSZip.loadAsync(file);
+                    var genomeFiles = Object.keys(zip.files).filter(function (n) {
+                        return /^genome_.*\.json$/i.test(n);
+                    });
+                    if (!genomeFiles.length) {
+                        Toast.error(
+                            "No genome JSON found in zip (expected genome_*.json)."
+                        );
+                        return;
+                    }
+                    for (var i = 0; i < genomeFiles.length; i++) {
+                        var entry = genomeFiles[i];
+                        var text = await zip.files[entry].async("string");
+                        var genome = JSON.parse(text);
+                        var accepted =
+                            genome &&
+                            !!window.SubstrateAdapters.findAdapterByGenome(genome);
+                        if (accepted) genomes.push(genome);
+                    }
+                } else {
+                    var json = JSON.parse(await file.text());
+                    genomes = json.individuals || json.genomes || [];
+                    if (genomes.length && typeof EyecatcherStorage !== "undefined") {
+                        await EyecatcherStorage.init();
+                        var r = window.SubstrateAdapters.resolveForGenomes(genomes);
+                        var importPayload = Object.assign({}, json, {
+                            substrateId: json.substrateId || r.substrateId,
+                            outputType: json.outputType || r.outputType,
+                        });
+                        await EyecatcherStorage.importPopulation(importPayload);
+                    }
+                }
+                if (!genomes.length) {
+                    Toast.error("No genomes in file");
+                    return;
+                }
+                var resolved = window.SubstrateAdapters.resolveForGenomes(genomes);
+                if (this._addToGrid) {
+                    await this._addToGrid(genomes, resolved.outputType);
+                }
+            } catch (err) {
+                Toast.error("Import failed: " + (err.message || err));
+            }
         }
     }
 
-    window.PopulationUI = {
-        init: init,
-        startNewRandomPopulation: startNewRandomPopulation,
-        onLoadSavedClick: onLoadSavedClick,
-        onSaveCurrentClick: onSaveCurrentClick,
-        onImportClick: onImportClick,
-        handleImportFile: handleImportFile,
-    };
+    window.PopulationUI = new PopulationUI();
 })();

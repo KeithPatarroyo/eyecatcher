@@ -3,177 +3,204 @@
  * No DOM; used by app.js and coordinators. Researchers extend evolution/interaction via
  * BreedCoordinator and state actions.
  *
- * Load after: utils (optional, for storage helpers if needed).
- * Exposes: PopulationState.init, PopulationState.getState, PopulationState.dispatch, PopulationState.subscribe.
+ * Exposes: PopulationState.getState, PopulationState.dispatch, PopulationState.subscribe, PopulationState.init.
  */
 (function () {
     "use strict";
 
-    var state = {
-        currentPopulation: [],
-        currentGenomes: null,
-        generationNum: 0,
-        populationId: null,
-        branchName: "main",
-        substrateId: null,
-        outputType: "shader",
-        patterns: new Map(),
-        loading: false,
-        error: null,
-    };
-
-    var subscribers = [];
-
-    function getState() {
-        return {
-            currentPopulation: state.currentPopulation,
-            currentGenomes: state.currentGenomes,
-            generationNum: state.generationNum,
-            populationId: state.populationId,
-            branchName: state.branchName,
-            substrateId: state.substrateId,
-            outputType: state.outputType,
-            patterns: state.patterns,
-            loading: state.loading,
-            error: state.error,
-        };
-    }
-
-    function dispatch(action) {
-        switch (action.type) {
-            case "LOAD_POPULATION":
-                state.currentPopulation = action.payload.population || [];
-                state.currentGenomes = action.payload.genomes || null;
-                state.generationNum =
-                    action.payload.generationNum ?? state.generationNum;
-                if (action.payload.populationId !== undefined) {
-                    state.populationId = action.payload.populationId;
-                }
-                if (action.payload.branchName !== undefined) {
-                    state.branchName = action.payload.branchName;
-                }
-                if (action.payload.substrateId !== undefined) {
-                    state.substrateId = action.payload.substrateId;
-                }
-                if (action.payload.outputType !== undefined) {
-                    state.outputType = action.payload.outputType;
-                }
-                state.patterns.clear();
-                if (action.payload.patternsMap) {
-                    action.payload.patternsMap.forEach(function (v, k) {
-                        state.patterns.set(k, v);
-                    });
-                }
-                state.loading = false;
-                state.error = null;
-                break;
-            case "ADD_TO_GRID":
-                state.currentGenomes = (state.currentGenomes || []).concat(
-                    action.payload.genomes || []
-                );
-                state.currentPopulation = (state.currentPopulation || []).concat(
-                    action.payload.population || []
-                );
-                if (action.payload.substrateId !== undefined) {
-                    state.substrateId = action.payload.substrateId;
-                }
-                if (action.payload.outputType !== undefined) {
-                    state.outputType = action.payload.outputType;
-                }
-                if (action.payload.patternsMap) {
-                    action.payload.patternsMap.forEach(function (v, k) {
-                        state.patterns.set(k, v);
-                    });
-                }
-                state.loading = false;
-                break;
-            case "SET_PATTERN_CLICKS":
-                if (state.patterns.has(action.payload.id)) {
-                    var p = state.patterns.get(action.payload.id);
-                    p.clicks = action.payload.clicks;
-                }
-                break;
-            case "SET_EVOLVE_RESULT":
-                if (action.payload.populationId != null) {
-                    state.populationId = action.payload.populationId;
-                }
-                break;
-            case "SET_LOADING":
-                state.loading = action.payload !== undefined ? action.payload : true;
-                break;
-            case "SET_ERROR":
-                state.error = action.payload;
-                state.loading = false;
-                break;
-            case "UPDATE_PATTERN_SHADER":
-                if (state.patterns.has(action.payload.id)) {
-                    state.patterns.set(action.payload.id, action.payload.patternData);
-                }
-                break;
-            case "SET_GENEALOGY":
-                state.populationId = action.payload.populationId;
-                state.branchName = action.payload.branchName || "main";
-                break;
-            case "UPDATE_GENOME_AT_INDEX":
-                if (
-                    state.currentGenomes &&
-                    action.payload.idx >= 0 &&
-                    action.payload.idx < state.currentGenomes.length
-                ) {
-                    state.currentGenomes[action.payload.idx] = action.payload.genome;
-                }
-                break;
-            case "CLEAR":
-                state.currentPopulation = [];
-                state.currentGenomes = null;
-                state.generationNum = 0;
-                state.populationId = null;
-                state.branchName = "main";
-                state.substrateId = null;
-                state.outputType = "shader";
-                state.patterns.clear();
-                state.loading = false;
-                state.error = null;
-                break;
-            default:
-                return;
+    class PopulationState {
+        constructor() {
+            this._state = {
+                currentPopulation: [],
+                currentGenomes: null,
+                generationNum: 0,
+                populationId: null,
+                branchName: "main",
+                substrateId: null,
+                outputType: "shader",
+                patterns: new Map(),
+                loading: false,
+                error: null,
+            };
+            this._subscribers = [];
         }
-        subscribers.forEach(function (cb) {
-            try {
-                cb(getState());
-            } catch (e) {
-                console.warn("PopulationState subscriber error:", e);
+
+        getState() {
+            var s = this._state;
+            return {
+                currentPopulation: s.currentPopulation,
+                currentGenomes: s.currentGenomes,
+                generationNum: s.generationNum,
+                populationId: s.populationId,
+                branchName: s.branchName,
+                substrateId: s.substrateId,
+                outputType: s.outputType,
+                patterns: s.patterns,
+                loading: s.loading,
+                error: s.error,
+            };
+        }
+
+        get substrateId() {
+            return this._state.substrateId;
+        }
+        get outputType() {
+            return this._state.outputType;
+        }
+        get patterns() {
+            return this._state.patterns;
+        }
+        get currentGenomes() {
+            return this._state.currentGenomes;
+        }
+        get currentPopulation() {
+            return this._state.currentPopulation;
+        }
+        get branchName() {
+            return this._state.branchName;
+        }
+        get populationId() {
+            return this._state.populationId;
+        }
+        get generationNum() {
+            return this._state.generationNum;
+        }
+
+        dispatch(action) {
+            var state = this._state;
+            var payload = action.payload;
+
+            switch (action.type) {
+                case "LOAD_POPULATION":
+                    state.currentPopulation = payload.population || [];
+                    state.currentGenomes = payload.genomes || null;
+                    state.generationNum = payload.generationNum ?? state.generationNum;
+                    if (payload.populationId !== undefined) {
+                        state.populationId = payload.populationId;
+                    }
+                    if (payload.branchName !== undefined) {
+                        state.branchName = payload.branchName;
+                    }
+                    if (payload.substrateId !== undefined) {
+                        state.substrateId = payload.substrateId;
+                    }
+                    if (payload.outputType !== undefined) {
+                        state.outputType = payload.outputType;
+                    }
+                    state.patterns.clear();
+                    if (payload.patternsMap) {
+                        payload.patternsMap.forEach(function (v, k) {
+                            state.patterns.set(k, v);
+                        });
+                    }
+                    state.loading = false;
+                    state.error = null;
+                    break;
+                case "ADD_TO_GRID":
+                    state.currentGenomes = (state.currentGenomes || []).concat(
+                        payload.genomes || []
+                    );
+                    state.currentPopulation = (state.currentPopulation || []).concat(
+                        payload.population || []
+                    );
+                    if (payload.substrateId !== undefined) {
+                        state.substrateId = payload.substrateId;
+                    }
+                    if (payload.outputType !== undefined) {
+                        state.outputType = payload.outputType;
+                    }
+                    if (payload.patternsMap) {
+                        payload.patternsMap.forEach(function (v, k) {
+                            state.patterns.set(k, v);
+                        });
+                    }
+                    state.loading = false;
+                    break;
+                case "SET_PATTERN_CLICKS":
+                    if (state.patterns.has(payload.id)) {
+                        var p = state.patterns.get(payload.id);
+                        p.clicks = payload.clicks;
+                    }
+                    break;
+                case "SET_EVOLVE_RESULT":
+                    if (payload.populationId != null) {
+                        state.populationId = payload.populationId;
+                    }
+                    break;
+                case "SET_LOADING":
+                    state.loading = payload !== undefined ? payload : true;
+                    break;
+                case "SET_ERROR":
+                    state.error = payload;
+                    state.loading = false;
+                    break;
+                case "UPDATE_PATTERN_SHADER":
+                    if (state.patterns.has(payload.id)) {
+                        state.patterns.set(payload.id, payload.patternData);
+                    }
+                    break;
+                case "SET_GENEALOGY":
+                    state.populationId = payload.populationId;
+                    state.branchName = payload.branchName || "main";
+                    break;
+                case "UPDATE_GENOME_AT_INDEX":
+                    if (
+                        state.currentGenomes &&
+                        payload.idx >= 0 &&
+                        payload.idx < state.currentGenomes.length
+                    ) {
+                        state.currentGenomes[payload.idx] = payload.genome;
+                    }
+                    break;
+                case "CLEAR":
+                    state.currentPopulation = [];
+                    state.currentGenomes = null;
+                    state.generationNum = 0;
+                    state.populationId = null;
+                    state.branchName = "main";
+                    state.substrateId = null;
+                    state.outputType = "shader";
+                    state.patterns.clear();
+                    state.loading = false;
+                    state.error = null;
+                    break;
+                default:
+                    return;
             }
-        });
-    }
-
-    function init() {
-        state.currentPopulation = [];
-        state.currentGenomes = null;
-        state.generationNum = 0;
-        state.populationId = null;
-        state.branchName = "main";
-        state.substrateId = null;
-        state.outputType = "shader";
-        state.patterns = new Map();
-        state.loading = false;
-        state.error = null;
-    }
-
-    function subscribe(callback) {
-        if (typeof callback === "function") {
-            subscribers.push(callback);
+            var self = this;
+            this._subscribers.forEach(function (cb) {
+                try {
+                    cb(self.getState());
+                } catch (e) {
+                    console.warn("PopulationState subscriber error:", e);
+                }
+            });
         }
-        return function unsubscribe() {
-            var i = subscribers.indexOf(callback);
-            if (i !== -1) subscribers.splice(i, 1);
-        };
+
+        init() {
+            this._state.currentPopulation = [];
+            this._state.currentGenomes = null;
+            this._state.generationNum = 0;
+            this._state.populationId = null;
+            this._state.branchName = "main";
+            this._state.substrateId = null;
+            this._state.outputType = "shader";
+            this._state.patterns = new Map();
+            this._state.loading = false;
+            this._state.error = null;
+        }
+
+        subscribe(callback) {
+            if (typeof callback === "function") {
+                this._subscribers.push(callback);
+            }
+            var self = this;
+            return function unsubscribe() {
+                var i = self._subscribers.indexOf(callback);
+                if (i !== -1) self._subscribers.splice(i, 1);
+            };
+        }
     }
 
-    window.PopulationState = {
-        init: init,
-        getState: getState,
-        dispatch: dispatch,
-        subscribe: subscribe,
-    };
+    window.PopulationState = new PopulationState();
 })();

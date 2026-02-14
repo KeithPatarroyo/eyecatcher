@@ -27,6 +27,25 @@
     }
 
     /**
+     * Run an async function with loading state (UI + PopulationState). Clears loading in finally.
+     * @param {function(): Promise<*>} fn - Async work to run
+     * @returns {Promise<*>} Result of fn()
+     */
+    async function withLoading(fn) {
+        showLoading(true);
+        window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
+        try {
+            return await fn();
+        } finally {
+            showLoading(false);
+            window.PopulationState.dispatch({
+                type: "SET_LOADING",
+                payload: false,
+            });
+        }
+    }
+
+    /**
      * Safe storage get. Returns value or fallback on error or missing.
      * @param {Storage} storage - localStorage or sessionStorage
      * @param {string} key
@@ -113,6 +132,7 @@
         formatBytes: formatBytes,
         escapeHtml: escapeHtml,
         showLoading: showLoading,
+        withLoading: withLoading,
         safeGetItem: safeGetItem,
         safeSetItem: safeSetItem,
         formatApiError: formatApiError,
