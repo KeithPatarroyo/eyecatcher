@@ -99,7 +99,7 @@
      * @param {Object} [context] - Optional RenderContext (gridPosition, neighbors, patternId) for context-derived uniforms
      */
     function buildUniformValues(signalValues, context) {
-        var adapter = window.SubstrateAdapters.currentAdapter();
+        var adapter = window.RepresentationAdapters.currentAdapter();
         if (adapter) return adapter.buildUniforms(signalValues, context);
         return {};
     }
@@ -148,13 +148,13 @@
 
     /**
      * Draw one frame of a pattern with given uniforms.
-     * Uses SubstrateAdapters (substrateId then findAdapterByGenome from patternData).
+     * Uses RepresentationAdapters (representationId then findAdapterByGenome from patternData).
      * @param {Object} patternData - From setupPattern
      * @param {Object} uniformValues - Keys match uniform names (u_raw_time, u_mouse_speed, ...); use buildUniformValues(signalValues) to build from signal ids
      * @param {Object} signalState - Flat { signal_id: boolean } for CPPN enable toggles
      */
     function renderPattern(patternData, uniformValues, signalState) {
-        var adapter = window.SubstrateAdapters.currentAdapter();
+        var adapter = window.RepresentationAdapters.currentAdapter();
         if (adapter) adapter.render(patternData, uniformValues, signalState);
     }
 
@@ -318,6 +318,8 @@
     }
 
     window.PatternRenderer = {
+        VERTEX_SHADER_SOURCE,
+        createProgram,
         setupPattern,
         buildUniformValues,
         renderWithSignals,

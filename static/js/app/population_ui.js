@@ -97,13 +97,13 @@
                                 .getElementById("load-list-modal")
                                 .classList.remove("show");
                             if (self._loadFromStatelessGenomes) {
-                                var r = window.SubstrateAdapters.safeResolve(pop);
+                                var r = window.RepresentationAdapters.safeResolve(pop);
                                 await self._loadFromStatelessGenomes(
                                     pop.genomes || [],
                                     pop.generation || 0,
                                     false,
                                     r.outputType,
-                                    r.substrateId
+                                    r.representationId
                                 );
                             }
                         };
@@ -141,7 +141,7 @@
                     name.trim() || "Unnamed",
                     data.genomes,
                     data.generation,
-                    data.substrateId,
+                    data.representationId,
                     data.outputType
                 );
                 Toast.show("Saved", "Population saved to browser storage.", "success");
@@ -183,7 +183,7 @@
                         var genome = JSON.parse(text);
                         var accepted =
                             genome &&
-                            !!window.SubstrateAdapters.findAdapterByGenome(genome);
+                            !!window.RepresentationAdapters.findAdapterByGenome(genome);
                         if (accepted) genomes.push(genome);
                     }
                 } else {
@@ -191,9 +191,11 @@
                     genomes = json.individuals || json.genomes || [];
                     if (genomes.length && typeof EyecatcherStorage !== "undefined") {
                         await EyecatcherStorage.init();
-                        var r = window.SubstrateAdapters.resolveForGenomes(genomes);
+                        var r =
+                            window.RepresentationAdapters.resolveForGenomes(genomes);
                         var importPayload = Object.assign({}, json, {
-                            substrateId: json.substrateId || r.substrateId,
+                            representationId:
+                                json.representationId || r.representationId,
                             outputType: json.outputType || r.outputType,
                         });
                         await EyecatcherStorage.importPopulation(importPayload);
@@ -203,7 +205,7 @@
                     Toast.error("No genomes in file");
                     return;
                 }
-                var resolved = window.SubstrateAdapters.resolveForGenomes(genomes);
+                var resolved = window.RepresentationAdapters.resolveForGenomes(genomes);
                 if (this._addToGrid) {
                     await this._addToGrid(genomes, resolved.outputType);
                 }

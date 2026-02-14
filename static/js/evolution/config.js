@@ -29,19 +29,21 @@
         MIN_POPULATION_SIZE: defaults.min_population_size,
         CROSSOVER_PROBABILITY: defaults.crossover_probability,
 
-        // Representation (backend returns representation_id; we expose as substrateId for UI)
-        // Initial value; overwritten by mergeFromServer. Canonical default is in substrate/registry.js (safeResolve / getDefaultSubstrateId).
-        DEFAULT_SUBSTRATE_ID: "",
+        // Representation (backend returns representation_id; we expose as representationId for UI)
+        // Initial value; overwritten by mergeFromServer. Canonical default is in representation/registry.js (safeResolve / getDefaultRepresentationId).
+        DEFAULT_REPRESENTATION_ID: "",
         /** Available representation ids from GET /api/config (e.g. ["dual_cppn", "single_cppn", "ca"]). */
-        available_substrate_ids: [],
+        available_representation_ids: [],
 
         /** Single source of truth for default resolution. Uses __eyecatcherDefaultResolution (set by registry) for fallback; do not call SA.getDefaultResolution to avoid circular recursion. */
         getDefaultResolution: function () {
             var def = window.__eyecatcherDefaultResolution;
             return {
                 outputType: (def && def.outputType) || "shader",
-                substrateId:
-                    this.DEFAULT_SUBSTRATE_ID || (def && def.substrateId) || "",
+                representationId:
+                    this.DEFAULT_REPRESENTATION_ID ||
+                    (def && def.representationId) ||
+                    "",
             };
         },
 
@@ -90,10 +92,10 @@
             this.CROSSOVER_PROBABILITY = config.crossover_probability;
         }
         if (config.representation_id != null) {
-            this.DEFAULT_SUBSTRATE_ID = config.representation_id;
+            this.DEFAULT_REPRESENTATION_ID = config.representation_id;
         }
         if (Array.isArray(config.available_representation_ids)) {
-            this.available_substrate_ids = config.available_representation_ids;
+            this.available_representation_ids = config.available_representation_ids;
         }
     };
 

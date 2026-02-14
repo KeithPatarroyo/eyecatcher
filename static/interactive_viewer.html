@@ -187,10 +187,10 @@
                     used on next evolve. No restart.
                 </p>
                 <div class="experiment-params-row">
-                    <label for="param-substrate-id">Substrate</label>
+                    <label for="param-representation-id">Representation</label>
                     <select
-                        id="param-substrate-id"
-                        title="Evolvable model type; switch then Start Fresh to get a population for the new substrate"
+                        id="param-representation-id"
+                        title="Evolvable model type; switch then Start Fresh to get a population for the new representation"
                     >
                         <option value="dual_cppn">dual_cppn</option>
                         <option value="single_cppn">single_cppn</option>
@@ -242,7 +242,7 @@
             <div id="time-mode-controls">
                 <div class="signal-group-title">
                     Time input
-                    <span class="signal-hint">(raw time; substrate may modify it)</span>
+                    <span class="signal-hint">(raw time; representation may modify it)</span>
                 </div>
                 <div class="time-mode-radios">
                     <div class="time-mode-radio">
@@ -316,7 +316,7 @@
                 <div class="signal-group-title">For researchers</div>
                 <p class="signal-hint">
                     <a href="substrate_playground.html" target="_blank" rel="noopener"
-                        >Substrate playground</a
+                        >Representation playground</a
                     >
                     — edit fragment shaders and test uniforms (time, mouse) without the
                     full evolution UI.
@@ -442,7 +442,7 @@
             <div>Loading patterns...</div>
         </div>
 
-        <!-- Network Sidebar (substrate network graph) -->
+        <!-- Network Sidebar (representation network graph) -->
         <div id="network-sidebar" class="network-container">
             <button class="network-container-close" id="network-sidebar-close">
                 Close
@@ -599,13 +599,13 @@
         <script src="js/community/admin.js"></script>
         <script src="js/community/index.js"></script>
         <script src="js/lib/debug.js"></script>
-        <script src="js/substrate/adapter_base.js"></script>
-        <script src="js/substrate/cppn_adapter.js"></script>
-        <script src="js/substrate/config.generated.js"></script>
-        <script src="js/substrate/registry.js"></script>
-        <script src="js/substrate/stateful_adapter.js"></script>
-        <script src="js/substrate/ca.js"></script>
-        <script src="js/substrate/pattern_renderer.js"></script>
+        <script src="js/representation/adapter_base.js"></script>
+        <script src="js/representation/cppn_adapter.js"></script>
+        <script src="js/representation/config.generated.js"></script>
+        <script src="js/representation/registry.js"></script>
+        <script src="js/representation/stateful_adapter.js"></script>
+        <script src="js/representation/ca.js"></script>
+        <script src="js/representation/pattern_renderer.js"></script>
         <script src="js/lib/toast.js"></script>
         <script src="js/evolution/viewer_controls.js"></script>
         <script src="js/app/toolbar_ui.js"></script>

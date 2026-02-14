@@ -1,16 +1,16 @@
 /**
- * Pattern grid zoom and signal checkbox state for substrate input toggles.
+ * Pattern grid zoom and signal checkbox state for representation input toggles.
  * Exposes: ViewerControls.patternZoom, ViewerControls.signalState, ViewerControls.applyZoom(), ViewerControls.init()
  */
 (function () {
     "use strict";
 
-    const ZOOM_MIN = 0.5;
-    const ZOOM_MAX = 2.0;
-    const ZOOM_STEP = 0.1;
+    var ZOOM_MIN = 0.5;
+    var ZOOM_MAX = 2.0;
+    var ZOOM_STEP = 0.1;
 
     function populateSignalControls(signalGroups) {
-        const container = document.getElementById("signal-controls");
+        var container = document.getElementById("signal-controls");
         if (!container || !signalGroups || !signalGroups.length) return;
         container.innerHTML = "";
         for (var i = 0; i < signalGroups.length; i++) {
@@ -57,39 +57,42 @@
         }
     }
 
-    const ViewerControls = {
-        patternZoom: 1.0,
-        signalState: (function () {
+    class ViewerControls {
+        constructor() {
             var config = window.EvolutionConfig;
-            return config && config.getDefaultSignalState
-                ? config.getDefaultSignalState()
-                : {};
-        })(),
-        applyZoom: function () {
+            this.patternZoom = 1.0;
+            this.signalState =
+                config && config.getDefaultSignalState
+                    ? config.getDefaultSignalState()
+                    : {};
+        }
+
+        applyZoom() {
             document.documentElement.style.setProperty(
                 "--pattern-zoom",
                 String(this.patternZoom)
             );
-            const label = document.getElementById("zoom-label");
+            var label = document.getElementById("zoom-label");
             if (label) label.textContent = Math.round(this.patternZoom * 100) + "%";
-        },
+        }
+
         /**
-         * Show or hide signal controls based on substrate adapter (e.g. hide for CA, single_cppn).
-         * Call after load or addToGrid when substrateId changes.
-         * @param {string|null} substrateId - current substrate id
+         * Show or hide signal controls based on representation adapter.
+         * @param {string|null} representationId - current representation id
          */
-        updateForSubstrate: function (substrateId) {
-            const container = document.getElementById("signal-controls");
+        updateForRepresentation(representationId) {
+            var container = document.getElementById("signal-controls");
             if (!container) return;
-            const adapter = window.SubstrateAdapters.getAdapter(substrateId);
-            const show = adapter === null ? true : adapter.hasSignalControls !== false;
+            var adapter = window.RepresentationAdapters.getAdapter(representationId);
+            var show = adapter === null ? true : adapter.hasSignalControls !== false;
             container.style.display = show ? "" : "none";
-        },
-        init: function () {
-            const self = this;
-            const config = window.EvolutionConfig;
-            const signalGroups = config && config.SIGNAL_GROUPS;
-            const toggleableSignals = config && config.TOGGLEABLE_SIGNALS;
+        }
+
+        init() {
+            var self = this;
+            var config = window.EvolutionConfig;
+            var signalGroups = config && config.SIGNAL_GROUPS;
+            var toggleableSignals = config && config.TOGGLEABLE_SIGNALS;
             if (toggleableSignals && toggleableSignals.length) {
                 toggleableSignals.forEach(function (s) {
                     if (self.signalState[s.id] === undefined) {
@@ -101,7 +104,7 @@
                 populateSignalControls(signalGroups);
                 if (toggleableSignals) {
                     toggleableSignals.forEach(function (s) {
-                        const checkbox = document.getElementById("signal-" + s.id);
+                        var checkbox = document.getElementById("signal-" + s.id);
                         if (checkbox) {
                             checkbox.addEventListener("change", function (e) {
                                 self.signalState[s.id] = e.target.checked;
@@ -110,37 +113,26 @@
                     });
                 }
             }
-            const zoomIn = document.getElementById("zoom-in");
-            const zoomOut = document.getElementById("zoom-out");
-            if (zoomIn) {
-                zoomIn.addEventListener("click", function () {
+            var Utils = window.Utils;
+            var zoomIn = document.getElementById("zoom-in");
+            var zoomOut = document.getElementById("zoom-out");
+            if (zoomIn && Utils && Utils.onRoleButtonKeydown) {
+                Utils.onRoleButtonKeydown(zoomIn, function () {
                     self.patternZoom = Math.min(ZOOM_MAX, self.patternZoom + ZOOM_STEP);
                     self.applyZoom();
                 });
-                zoomIn.addEventListener("keydown", function (e) {
-                    if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        zoomIn.click();
-                    }
-                });
             }
-            if (zoomOut) {
-                zoomOut.addEventListener("click", function () {
+            if (zoomOut && Utils && Utils.onRoleButtonKeydown) {
+                Utils.onRoleButtonKeydown(zoomOut, function () {
                     self.patternZoom = Math.max(ZOOM_MIN, self.patternZoom - ZOOM_STEP);
                     self.applyZoom();
                 });
-                zoomOut.addEventListener("keydown", function (e) {
-                    if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        zoomOut.click();
-                    }
-                });
             }
             this.applyZoom();
-            const substrateId = window.PopulationState.getState().substrateId;
-            this.updateForSubstrate(substrateId);
-        },
-    };
+            var representationId = window.PopulationState.getState().representationId;
+            this.updateForRepresentation(representationId);
+        }
+    }
 
-    window.ViewerControls = ViewerControls;
+    window.ViewerControls = new ViewerControls();
 })();

@@ -9,7 +9,7 @@ const EyecatcherDebug = (function () {
     let getPatternsMapFn = null; // Function to get the patterns Map
     let getSignalStateFn = null; // Function to get signal state
     let getGenomeForPatternFn = null; // Async function(patternId) => genome JSON for stateless time-output
-    let getAdapterFn = null; // Function() => current substrate adapter (for capabilities.timeOutput)
+    let getAdapterFn = null; // Function() => current representation adapter (for capabilities.timeOutput)
 
     // State
     let hoveredPatternId = null;
@@ -205,7 +205,7 @@ const EyecatcherDebug = (function () {
                 elements.patternId.textContent = `#${hoveredPatternId}`;
                 elements.mouseDist.textContent = fmt(mouseDist);
 
-                // Time output - only when substrate has timeOutput capability
+                // Time output - only when representation has timeOutput capability
                 if (!hasTimeOutput) {
                     timeEl.textContent = "-";
                     timeEl.classList.remove("disabled", "sampled");
@@ -266,12 +266,12 @@ const EyecatcherDebug = (function () {
         },
 
         /**
-         * Show or hide time-output section based on substrate capabilities.
-         * Call when substrate changes (e.g. after load or addToGrid).
-         * @param {string|null} substrateId - current substrate id
+         * Show or hide time-output section based on representation capabilities.
+         * Call when representation changes (e.g. after load or addToGrid).
+         * @param {string|null} representationId - current representation id
          */
-        updateForSubstrate: function (substrateId) {
-            const adapter = window.SubstrateAdapters.getAdapter(substrateId);
+        updateForRepresentation: function (representationId) {
+            const adapter = window.RepresentationAdapters.getAdapter(representationId);
             const show =
                 adapter &&
                 adapter.capabilities &&

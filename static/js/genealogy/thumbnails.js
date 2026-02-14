@@ -15,12 +15,12 @@
             return cache.get(populationId);
         }
 
-        const SubstrateAdapters = window.SubstrateAdapters;
+        const RepresentationAdapters = window.RepresentationAdapters;
         const ApiClient = window.ApiClient;
         if (
-            !SubstrateAdapters ||
-            !SubstrateAdapters.getDisplayData ||
-            !SubstrateAdapters.findAdapterByGenome ||
+            !RepresentationAdapters ||
+            !RepresentationAdapters.getDisplayData ||
+            !RepresentationAdapters.findAdapterByGenome ||
             !ApiClient
         ) {
             return null;
@@ -35,10 +35,10 @@
             const genome = data.individual != null ? data.individual : data.genome;
             if (!genome) return null;
 
-            const adapter = SubstrateAdapters.findAdapterByGenome(genome);
+            const adapter = RepresentationAdapters.findAdapterByGenome(genome);
             if (!adapter) return null;
 
-            const result = await SubstrateAdapters.getDisplayData(
+            const result = await RepresentationAdapters.getDisplayData(
                 adapter,
                 [genome],
                 {}

@@ -144,7 +144,7 @@
                     this._viewerControls.signalState != null
                 ) {
                     var signalState = this._viewerControls.signalState;
-                    var adapter = window.SubstrateAdapters.currentAdapter();
+                    var adapter = window.RepresentationAdapters.currentAdapter();
                     var GT = window.GridTopology;
 
                     patterns.forEach(function (patternData) {

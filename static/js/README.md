@@ -27,7 +27,7 @@ Script load order in the HTML: lib → evolution (config) → community → subs
 
 **Edit when you change representation types or how patterns are drawn.** (Folder name is legacy; backend concept is "representation".)
 
-- `registry.js` — Adapter registry (SubstrateAdapters), resolve, getDisplayData, getDefaultSubstrateId, registers from SubstrateConfig.
+- `registry.js` — Adapter registry (RepresentationAdapters), resolve, getDisplayData, getDefaultRepresentationId, registers from RepresentationConfig.
 - `cppn_adapter.js` — Shared CPPN adapter (dual_cppn, single_cppn); createCppnAdapter(spec).
 - `stateful_adapter.js` — Factory for stateful (FBO ping-pong) adapters; createStatefulAdapter(spec).
 - `ca.js` — CA (Conway GOL) adapter; uses createStatefulAdapter, stateful grid, FBO ping-pong.
@@ -55,7 +55,7 @@ Choose one when adding a new representation so you write minimal WebGL yourself:
 
 **Edit when you change evolution config, evolve flow, or signal/zoom UI.**
 
-- `config.js` — Population size, signal toggles, representation id (substrateId in JS), mergeFromServer (align with backend).
+- `config.js` — Population size, signal toggles, representation id (representationId in JS), mergeFromServer (align with backend).
 - `config_signals.generated.js` — Generated from Python signal registry (do not edit).
 - `config_defaults.generated.js` — Generated from evolution_defaults.json (do not edit).
 - `coordinator.js` — Parent selection, evolve API call.
@@ -124,7 +124,7 @@ Choose one when adding a new representation so you write minimal WebGL yourself:
 - `storage.js` — IndexedDB wrapper for saved populations.
 - `debug.js` — Debug overlay (optional).
 
-API request/response bodies use **snake_case** (e.g. `substrate_id`, `output_type`) to match the backend; internal JS uses **camelCase** (e.g. `substrateId`, `outputType`).
+API request/response bodies use **snake_case** (e.g. `representation_id`, `output_type`) to match the backend; internal JS uses **camelCase** (e.g. `representationId`, `outputType`).
 
 ---
 

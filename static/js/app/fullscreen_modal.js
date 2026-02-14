@@ -1,6 +1,6 @@
 /**
  * FullscreenModal: open/close fullscreen pattern view. Supports shader and grid/image output types.
- * Dependencies: window.PatternRenderer.setupPattern, SubstrateAdapters, EvolutionConfig (FULLSCREEN_CANVAS_*)
+ * Dependencies: window.PatternRenderer.setupPattern, RepresentationAdapters, EvolutionConfig (FULLSCREEN_CANVAS_*)
  */
 (function () {
     "use strict";
@@ -52,11 +52,11 @@
             });
             if (!pattern) return;
 
-            var substrateId = window.PopulationState.substrateId || null;
-            var resolved = window.SubstrateAdapters.resolveForGenomes([pattern]);
+            var representationId = window.PopulationState.representationId || null;
+            var resolved = window.RepresentationAdapters.resolveForGenomes([pattern]);
             var adapter = resolved.adapter;
             if (!adapter) {
-                adapter = window.SubstrateAdapters.findAdapterByGenome(pattern);
+                adapter = window.RepresentationAdapters.findAdapterByGenome(pattern);
             }
 
             var hasShader = pattern.shader;

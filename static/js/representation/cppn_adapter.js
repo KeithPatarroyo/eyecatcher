@@ -5,8 +5,7 @@
 (function () {
     "use strict";
 
-    var PATTERN_CANVAS_SIZE = 256;
-    var SubstrateAdapter = window.SubstrateAdapter;
+    var RepresentationAdapter = window.RepresentationAdapter;
 
     function buildUniforms(signalValues, _context) {
         var out = {};
@@ -62,30 +61,7 @@
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
 
-    function createDisplayElement(pattern, _options) {
-        var PatternRenderer = window.PatternRenderer;
-        if (!PatternRenderer || !pattern || !pattern.shader) {
-            var fallback = document.createElement("div");
-            fallback.className = "pattern-canvas-fallback";
-            fallback.textContent = "WebGL not available";
-            return { element: fallback, patternData: null };
-        }
-        var canvas = document.createElement("canvas");
-        canvas.className = "pattern-canvas";
-        canvas.width = PATTERN_CANVAS_SIZE;
-        canvas.height = PATTERN_CANVAS_SIZE;
-        var patternData = PatternRenderer.setupPattern(canvas, pattern.shader);
-        if (!patternData || patternData.error) {
-            var errEl = document.createElement("div");
-            errEl.className = "pattern-canvas-fallback";
-            errEl.textContent =
-                patternData && patternData.error ? patternData.error : "Shader error";
-            return { element: errEl, patternData: null };
-        }
-        return { element: canvas, patternData: patternData };
-    }
-
-    class CppnAdapter extends SubstrateAdapter {
+    class CppnAdapter extends RepresentationAdapter {
         /**
          * @param {Object} spec - { id, outputType, isGenomeFormat, hasSignalControls? }
          */
@@ -101,16 +77,12 @@
         }
 
         getDisplayData(genomes, options) {
-            var SA = window.SubstrateAdapters;
+            var SA = window.RepresentationAdapters;
             return SA && SA.fetchViaCompile
                 ? SA.fetchViaCompile(genomes, options)
                 : Promise.reject(
-                      new Error("SubstrateAdapters.fetchViaCompile not available")
+                      new Error("RepresentationAdapters.fetchViaCompile not available")
                   );
-        }
-
-        createDisplayElement(pattern, options) {
-            return createDisplayElement(pattern, options);
         }
 
         render(patternData, uniformValues, signalState) {

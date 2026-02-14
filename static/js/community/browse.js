@@ -8,11 +8,11 @@
     const PREVIEW_CANVAS_SIZE = 80;
 
     async function fetchDisplayDataForList(list, toItem, getKey) {
-        const SubstrateAdapters = window.SubstrateAdapters;
+        const RepresentationAdapters = window.RepresentationAdapters;
         if (
-            !SubstrateAdapters ||
-            !SubstrateAdapters.getDisplayData ||
-            !SubstrateAdapters.findAdapterByGenome
+            !RepresentationAdapters ||
+            !RepresentationAdapters.getDisplayData ||
+            !RepresentationAdapters.findAdapterByGenome
         ) {
             return {};
         }
@@ -27,10 +27,10 @@
                       ? payload.genome
                       : payload);
             const key = getKey(item);
-            const adapter = SubstrateAdapters.findAdapterByGenome(genome);
+            const adapter = RepresentationAdapters.findAdapterByGenome(genome);
             if (!adapter) return;
             try {
-                const result = await SubstrateAdapters.getDisplayData(
+                const result = await RepresentationAdapters.getDisplayData(
                     adapter,
                     [genome],
                     {}

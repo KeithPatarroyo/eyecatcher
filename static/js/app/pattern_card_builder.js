@@ -1,7 +1,7 @@
 /**
  * PatternCardBuilder: builds pattern card DOM (canvas, info, actions, events).
  * Extracted from pattern_renderer.js so WebGL and card layout are separate.
- * Depends: window.SubstrateAdapters, window.PopulationState.
+ * Depends: window.RepresentationAdapters, window.PopulationState.
  */
 (function () {
     "use strict";
@@ -28,17 +28,17 @@
     class PatternCardBuilder {
         /**
          * Create a pattern card DOM element with canvas, info, action buttons, and event binding.
-         * @param {Object} options - pattern, onShare, onNetwork, onSave, onClick, onUnclick, onMouseEnter, onMouseLeave, onFullscreen, substrateId
+         * @param {Object} options - pattern, onShare, onNetwork, onSave, onClick, onUnclick, onMouseEnter, onMouseLeave, onFullscreen, representationId
          * @returns {{ card: HTMLElement, canvas: HTMLCanvasElement|null, patternData: Object|null }}
          */
         createCard(options) {
             const pattern = options.pattern;
-            const substrateId = options.substrateId || null;
+            const representationId = options.representationId || null;
             var resolved =
                 pattern && pattern.id != null
-                    ? window.SubstrateAdapters.resolveForGenomes([pattern])
-                    : window.SubstrateAdapters.safeResolve({
-                          substrateId: substrateId,
+                    ? window.RepresentationAdapters.resolveForGenomes([pattern])
+                    : window.RepresentationAdapters.safeResolve({
+                          representationId: representationId,
                       });
             var adapter = resolved.adapter;
             const id = pattern.id;
@@ -161,8 +161,8 @@
 
         _attachEvents(card, id, options) {
             var canvas = card.querySelector("canvas");
-            var adapter = window.SubstrateAdapters.safeResolve({
-                substrateId: options.substrateId,
+            var adapter = window.RepresentationAdapters.safeResolve({
+                representationId: options.representationId,
             }).adapter;
             var hasCellInteraction = adapter && adapter.supportsCellInteraction();
             var self = this;
@@ -173,7 +173,7 @@
                         self._fireCellInteraction(
                             e,
                             canvas,
-                            options.substrateId,
+                            options.representationId,
                             id,
                             "click"
                         );
@@ -183,7 +183,7 @@
                     self._fireCellInteraction(
                         e,
                         canvas,
-                        options.substrateId,
+                        options.representationId,
                         id,
                         "click"
                     );
@@ -196,7 +196,7 @@
                         self._fireCellInteraction(
                             e,
                             canvas,
-                            options.substrateId,
+                            options.representationId,
                             id,
                             "contextmenu"
                         );
@@ -206,7 +206,7 @@
                     self._fireCellInteraction(
                         e,
                         canvas,
-                        options.substrateId,
+                        options.representationId,
                         id,
                         "contextmenu"
                     );
@@ -224,10 +224,16 @@
             }
         }
 
-        _fireCellInteraction(event, canvas, substrateId, patternId, interactionType) {
+        _fireCellInteraction(
+            event,
+            canvas,
+            representationId,
+            patternId,
+            interactionType
+        ) {
             if (!canvas) return;
-            var adapter = window.SubstrateAdapters.safeResolve({
-                substrateId: substrateId,
+            var adapter = window.RepresentationAdapters.safeResolve({
+                representationId: representationId,
             }).adapter;
             if (adapter && adapter.supportsCellInteraction()) {
                 var coords = getClickCoordinates(event, canvas);

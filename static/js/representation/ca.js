@@ -2,7 +2,6 @@
  * CA (Conway's Game of Life) substrate adapter.
  * Stateful 2D grid: FBO ping-pong, initial state from pattern.grid.
  * Canvas click toggles cell (black <-> white); toggle mask applied before each GOL step.
- * Uses createStatefulAdapter for FBO lifecycle and step/display loop.
  */
 (function () {
     "use strict";
@@ -11,15 +10,6 @@
     const MAX_TOGGLES_PER_PASS = 64;
     const GOL_STEP_INTERVAL_MS = 180;
     const TOGGLE_BRUSH_RADIUS = 1;
-
-    var VERTEX_SHADER_SOURCE =
-        "#version 300 es\n" +
-        "in vec2 position;\n" +
-        "out vec2 vUV;\n" +
-        "void main() {\n" +
-        "  vUV = position * 0.5 + 0.5;\n" +
-        "  gl_Position = vec4(position, 0.0, 1.0);\n" +
-        "}\n";
 
     var DISPLAY_FRAGMENT_SOURCE =
         "#version 300 es\n" +
@@ -58,34 +48,10 @@
         "  fragColor = vec4(v, v, v, 1.0);\n" +
         "}\n";
 
-    function createProgram(gl, vsSource, fsSource) {
-        var vs = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vs, vsSource);
-        gl.compileShader(vs);
-        if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-            gl.deleteShader(vs);
-            return null;
-        }
-        var fs = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fs, fsSource);
-        gl.compileShader(fs);
-        if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-            gl.deleteShader(vs);
-            gl.deleteShader(fs);
-            return null;
-        }
-        var program = gl.createProgram();
-        gl.attachShader(program, vs);
-        gl.attachShader(program, fs);
-        gl.linkProgram(program);
-        gl.deleteShader(vs);
-        gl.deleteShader(fs);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            gl.deleteProgram(program);
-            return null;
-        }
-        return program;
-    }
+    var FINGERPRINT_ALPHABET =
+        "0123456789aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ";
+
+    var StatefulAdapter = window.StatefulAdapter;
 
     function gridToRgbaPixelArray(grid) {
         var rows = Array.isArray(grid) ? grid.length : 0;
@@ -196,9 +162,6 @@
         patternData._liveCount = count;
     }
 
-    var FINGERPRINT_ALPHABET =
-        "0123456789aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ";
-
     function gridFingerprint(grid) {
         if (!grid || !Array.isArray(grid) || grid.length === 0) return "0".repeat(11);
         var rows = grid.length;
@@ -277,84 +240,107 @@
         return s;
     }
 
-    var caAdapter = window.createStatefulAdapter({
-        id: "ca",
-        outputType: "grid",
-        gridSize: GOL_GRID_SIZE,
-        stepIntervalMs: GOL_STEP_INTERVAL_MS,
-        texFormat: "RGBA",
-        wrap: "REPEAT",
+    class CaAdapter extends StatefulAdapter {
+        constructor() {
+            super({
+                id: "ca",
+                outputType: "grid",
+                gridSize: GOL_GRID_SIZE,
+                stepIntervalMs: GOL_STEP_INTERVAL_MS,
+                texFormat: "RGBA",
+                wrap: "REPEAT",
+                isGenomeFormat: function (obj) {
+                    return (
+                        obj &&
+                        Array.isArray(obj.grid) &&
+                        obj.grid.length > 0 &&
+                        Array.isArray(obj.grid[0])
+                    );
+                },
+                initState: function (width, height, patternData) {
+                    var grid = patternData && patternData.grid;
+                    grid = copyGrid(grid) || grid;
+                    if (
+                        grid &&
+                        Array.isArray(grid) &&
+                        grid.length === width &&
+                        Array.isArray(grid[0]) &&
+                        grid[0].length === height
+                    ) {
+                        return gridToRgbaPixelArray(grid);
+                    }
+                    return new Uint8Array(width * height * 4);
+                },
+                stepUniforms: function () {
+                    return {};
+                },
+                displayShaderSource: DISPLAY_FRAGMENT_SOURCE,
+                beforeStep: function (patternData, gl) {
+                    if (patternData.toggleMask && patternData.toggleMask.length > 0) {
+                        runTogglePass(patternData, gl);
+                    }
+                },
+                createExtraPrograms: function (gl) {
+                    var pr = window.PatternRenderer;
+                    var result = pr.createProgram(
+                        gl,
+                        pr.VERTEX_SHADER_SOURCE,
+                        TOGGLE_FRAGMENT_SOURCE
+                    );
+                    if (!result || result.error) return {};
+                    return { toggleProgram: result };
+                },
+                teardownExtra: function (entry, gl) {
+                    if (entry.toggleProgram) {
+                        gl.deleteProgram(entry.toggleProgram);
+                        entry.toggleProgram = null;
+                    }
+                },
+                onInteraction: function (patternData, x, y) {
+                    if (patternData.toggleMask == null) patternData.toggleMask = [];
+                    patternData.toggleMask.push({ x: x, y: y });
+                },
+                preparePatternData: function (patternData, pattern) {
+                    if (pattern && pattern.grid !== undefined) {
+                        patternData.grid = pattern.grid;
+                    }
+                    if (patternData.toggleMask == null) patternData.toggleMask = [];
+                    patternData._liveCount =
+                        patternData.grid && Array.isArray(patternData.grid)
+                            ? countLive(patternData.grid)
+                            : 0;
+                },
+                getMetaLabel: function (pattern) {
+                    if (!pattern) return "? \u00B7 0% \u00B7 0 alive";
+                    return buildCaMetaSuffix(pattern.grid, countLive(pattern.grid));
+                },
+                getMetaIdPrefix: function () {
+                    return "Pattern ";
+                },
+                capabilities: {
+                    save: true,
+                    network: false,
+                    timeOutput: false,
+                    adjustWeight: false,
+                },
+                gridOverlap: gridOverlap,
+            });
+            this.lifecycle = "frame";
+        }
 
-        initState: function (width, height, patternData) {
-            var grid = patternData && patternData.grid;
-            grid = copyGrid(grid) || grid;
-            if (
-                grid &&
-                Array.isArray(grid) &&
-                grid.length === width &&
-                Array.isArray(grid[0]) &&
-                grid[0].length === height
-            ) {
-                return gridToRgbaPixelArray(grid);
+        getDisplayData(genomes, options) {
+            var SA = window.RepresentationAdapters;
+            return SA && SA.fetchViaEvaluate
+                ? SA.fetchViaEvaluate(genomes, options)
+                : Promise.reject(
+                      new Error("RepresentationAdapters.fetchViaEvaluate not available")
+                  );
+        }
+
+        onAfterRender(patternData) {
+            if (patternData.fboRead && patternData.fboRead.fbo) {
+                updateLiveCount(patternData);
             }
-            return new Uint8Array(width * height * 4);
-        },
-
-        stepUniforms: function () {
-            return {};
-        },
-
-        displayShaderSource: DISPLAY_FRAGMENT_SOURCE,
-
-        beforeStep: function (patternData, gl) {
-            if (patternData.toggleMask && patternData.toggleMask.length > 0) {
-                runTogglePass(patternData, gl);
-            }
-        },
-
-        createExtraPrograms: function (gl) {
-            var toggleProgram = createProgram(
-                gl,
-                VERTEX_SHADER_SOURCE,
-                TOGGLE_FRAGMENT_SOURCE
-            );
-            return toggleProgram ? { toggleProgram: toggleProgram } : {};
-        },
-
-        teardownExtra: function (entry, gl) {
-            if (entry.toggleProgram) {
-                gl.deleteProgram(entry.toggleProgram);
-                entry.toggleProgram = null;
-            }
-        },
-
-        onInteraction: function (patternData, x, y) {
-            if (patternData.toggleMask == null) patternData.toggleMask = [];
-            patternData.toggleMask.push({ x: x, y: y });
-        },
-
-        preparePatternData: function (patternData, pattern) {
-            if (pattern && pattern.grid !== undefined) {
-                patternData.grid = pattern.grid;
-            }
-            if (patternData.toggleMask == null) patternData.toggleMask = [];
-            patternData._liveCount =
-                patternData.grid && Array.isArray(patternData.grid)
-                    ? countLive(patternData.grid)
-                    : 0;
-        },
-
-        getMetaLabel: function (pattern) {
-            if (!pattern) return "? \u00B7 0% \u00B7 0 alive";
-            return buildCaMetaSuffix(pattern.grid, countLive(pattern.grid));
-        },
-
-        getMetaIdPrefix: function () {
-            return "Pattern ";
-        },
-
-        onAfterRender: function (patternData) {
-            if (patternData._liveCount === undefined) return;
             var card = document.querySelector(
                 '.pattern-card[data-id="' + String(patternData.patternId) + '"]'
             );
@@ -369,94 +355,8 @@
                 );
                 meta.textContent = "Pattern " + patternData.patternId + " | " + suffix;
             }
-        },
-
-        isGenomeFormat: function (obj) {
-            return (
-                obj &&
-                Array.isArray(obj.grid) &&
-                obj.grid.length > 0 &&
-                Array.isArray(obj.grid[0])
-            );
-        },
-
-        capabilities: {
-            save: true,
-            network: false,
-            timeOutput: false,
-            adjustWeight: false,
-        },
-
-        gridOverlap: gridOverlap,
-    });
-
-    caAdapter.lifecycle = "frame";
-    caAdapter.getDisplayData = function (genomes, options) {
-        var SA = window.SubstrateAdapters;
-        return SA && SA.fetchViaEvaluate
-            ? SA.fetchViaEvaluate(genomes, options)
-            : Promise.reject(
-                  new Error("SubstrateAdapters.fetchViaEvaluate not available")
-              );
-    };
-    caAdapter.createDisplayElement = function (pattern, _options) {
-        var PatternRenderer = window.PatternRenderer;
-        if (!PatternRenderer || !pattern) {
-            var fallback = document.createElement("div");
-            fallback.className = "pattern-canvas-fallback";
-            fallback.textContent = "Display not available";
-            return { element: fallback, patternData: null };
         }
-        var shader = pattern.shader;
-        if (!shader) {
-            if (pattern.image) {
-                var img = document.createElement("img");
-                img.className = "pattern-canvas pattern-image";
-                img.src = pattern.image;
-                img.width = 256;
-                img.height = 256;
-                img.alt = "Pattern " + (pattern.id != null ? pattern.id : "");
-                return { element: img, patternData: null };
-            }
-            var noShader = document.createElement("div");
-            noShader.className = "pattern-canvas-fallback";
-            noShader.textContent = "No shader";
-            return { element: noShader, patternData: null };
-        }
-        var canvas = document.createElement("canvas");
-        canvas.className = "pattern-canvas";
-        canvas.width = 256;
-        canvas.height = 256;
-        var patternData = PatternRenderer.setupPattern(canvas, shader);
-        if (!patternData || patternData.error) {
-            var errEl = document.createElement("div");
-            errEl.className = "pattern-canvas-fallback";
-            errEl.textContent =
-                patternData && patternData.error ? patternData.error : "Shader error";
-            return { element: errEl, patternData: null };
-        }
-        return { element: canvas, patternData: patternData };
-    };
+    }
 
-    caAdapter.onAfterRender = function (patternData) {
-        if (patternData.fboRead && patternData.fboRead.fbo) {
-            updateLiveCount(patternData);
-        }
-        var card = document.querySelector(
-            '.pattern-card[data-id="' + String(patternData.patternId) + '"]'
-        );
-        if (!card) return;
-        var meta = card.querySelector(".pattern-meta");
-        if (meta) {
-            var suffix = buildCaMetaSuffix(
-                patternData.grid,
-                patternData._liveCount,
-                patternData._mostSimilarId,
-                patternData._mostSimilarOverlap
-            );
-            meta.textContent = "Pattern " + patternData.patternId + " | " + suffix;
-        }
-    };
-
-    window.SubstrateAdapters.register(caAdapter);
+    window.RepresentationAdapters.register(new CaAdapter());
 })();

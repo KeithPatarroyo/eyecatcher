@@ -6,15 +6,6 @@
 (function () {
     "use strict";
 
-    var VERTEX_SHADER_SOURCE =
-        "#version 300 es\n" +
-        "in vec2 position;\n" +
-        "out vec2 vUV;\n" +
-        "void main() {\n" +
-        "  vUV = position * 0.5 + 0.5;\n" +
-        "  gl_Position = vec4(position, 0.0, 1.0);\n" +
-        "}\n";
-
     var DEFAULT_DISPLAY_FRAGMENT_SOURCE =
         "#version 300 es\n" +
         "precision highp float;\n" +
@@ -24,35 +15,6 @@
         "void main() {\n" +
         "  fragColor = vec4(texture(u_state, vUV).rgb, 1.0);\n" +
         "}\n";
-
-    function createProgram(gl, vsSource, fsSource) {
-        var vs = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vs, vsSource);
-        gl.compileShader(vs);
-        if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-            gl.deleteShader(vs);
-            return null;
-        }
-        var fs = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fs, fsSource);
-        gl.compileShader(fs);
-        if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-            gl.deleteShader(vs);
-            gl.deleteShader(fs);
-            return null;
-        }
-        var program = gl.createProgram();
-        gl.attachShader(program, vs);
-        gl.attachShader(program, fs);
-        gl.linkProgram(program);
-        gl.deleteShader(vs);
-        gl.deleteShader(fs);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            gl.deleteProgram(program);
-            return null;
-        }
-        return program;
-    }
 
     function createFBOStateful(gl, width, height, options) {
         options = options || {};
@@ -107,9 +69,9 @@
         return { fbo: fbo, texture: texture, width: width, height: height };
     }
 
-    var SubstrateAdapter = window.SubstrateAdapter;
+    var RepresentationAdapter = window.RepresentationAdapter;
 
-    class StatefulAdapter extends SubstrateAdapter {
+    class StatefulAdapter extends RepresentationAdapter {
         /**
          * @param {Object} spec - id, outputType, isGenomeFormat, gridSize?, stepIntervalMs?, ...
          */
@@ -164,16 +126,18 @@
                 wrap: this._wrap,
             });
 
-            var displayProgram = createProgram(
+            var pr = window.PatternRenderer;
+            var programResult = pr.createProgram(
                 gl,
-                VERTEX_SHADER_SOURCE,
+                pr.VERTEX_SHADER_SOURCE,
                 this._displayShaderSource
             );
-            if (!displayProgram) {
-                window.PatternRenderer.destroyFBO(gl, fboRead);
-                window.PatternRenderer.destroyFBO(gl, fboWrite);
+            if (!programResult || programResult.error) {
+                pr.destroyFBO(gl, fboRead);
+                pr.destroyFBO(gl, fboWrite);
                 return;
             }
+            var displayProgram = programResult;
 
             entry.fboRead = fboRead;
             entry.fboWrite = fboWrite;

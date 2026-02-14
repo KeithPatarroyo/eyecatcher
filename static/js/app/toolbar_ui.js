@@ -105,7 +105,7 @@
         const popInput = document.getElementById("param-population-size");
         const maxPopInput = document.getElementById("param-max-population-size");
         const crossoverInput = document.getElementById("param-crossover-probability");
-        const substrateSelect = document.getElementById("param-substrate-id");
+        const substrateSelect = document.getElementById("param-representation-id");
         const applyBtn = document.getElementById("experiment-params-apply");
         if (!popInput || !maxPopInput || !crossoverInput || !applyBtn) return;
         const cfg = window.EvolutionConfig || {};
@@ -136,11 +136,11 @@
             );
             if (substrateSelect) {
                 var current =
-                    window.PopulationState.substrateId ||
+                    window.PopulationState.representationId ||
                     cfg.DEFAULT_SUBSTRATE_ID ||
-                    window.SubstrateAdapters.safeResolve({}).substrateId ||
-                    (window.SubstrateAdapters.getDefaultSubstrateId
-                        ? window.SubstrateAdapters.getDefaultSubstrateId()
+                    window.RepresentationAdapters.safeResolve({}).representationId ||
+                    (window.RepresentationAdapters.getDefaultRepresentationId
+                        ? window.RepresentationAdapters.getDefaultRepresentationId()
                         : "");
                 if (
                     Array.isArray(cfg.available_substrate_ids) &&
@@ -188,7 +188,8 @@
             if (substrateSelect && substrateSelect.value) {
                 updates.representation_id = substrateSelect.value;
             }
-            var previousSubstrateId = window.PopulationState.substrateId || null;
+            var previousRepresentationId =
+                window.PopulationState.representationId || null;
             window.ApiClient.patchConfig(updates).then(
                 function (config) {
                     if (
@@ -202,10 +203,10 @@
                     }
                     if (
                         updates.representation_id &&
-                        config.representation_id !== previousSubstrateId &&
-                        typeof window.onSubstrateSwitched === "function"
+                        config.representation_id !== previousRepresentationId &&
+                        typeof window.onRepresentationSwitched === "function"
                     ) {
-                        window.onSubstrateSwitched(config);
+                        window.onRepresentationSwitched(config);
                     }
                 },
                 function () {

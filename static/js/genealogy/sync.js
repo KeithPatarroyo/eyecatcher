@@ -64,7 +64,7 @@
      * @param {number|null} parentId - parent population id (null for gen 0)
      * @param {Array<number>} fitnessData - parallel to genomes
      * @param {function} apiFetch - (url, options, errorMsg) => Promise
-     * @param {string} [substrateId] - current substrate id for metadata
+     * @param {string} [representationId] - current representation id for metadata
      */
     function saveCurrentPopulationToGenealogy(
         apiUrl,
@@ -74,7 +74,7 @@
         parentId,
         fitnessData,
         apiFetch,
-        substrateId
+        representationId
     ) {
         var url = apiUrl + "/genealogy/save-population";
         var body = {
@@ -89,7 +89,7 @@
             user_id: "user",
             fitness_data: fitnessData || [],
         };
-        if (substrateId != null) body.representation_id = substrateId;
+        if (representationId != null) body.representation_id = representationId;
         return apiFetch(
             url,
             {

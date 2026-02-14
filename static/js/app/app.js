@@ -2,7 +2,7 @@
  * Eyecatcher app entry: init and DOM wiring.
  *
  * Core modules (PopulationState, GridRenderer, AnimationLoop, FullscreenModal,
- * SubstrateAdapters) are ES6 class instances on window; wiring is via init(options).
+ * RepresentationAdapters) are ES6 class instances on window; wiring is via init(options).
  * Load after: those modules, api_client, pattern_renderer, viewer_controls, animation_loop,
  * population_ui, community, network_visualizer, toolbar_ui.
  */
@@ -48,11 +48,6 @@
         importFile: "import-file",
     };
 
-    function onId(id, fn) {
-        var el = document.getElementById(id);
-        if (el) fn(el);
-    }
-
     var EVENT_BINDINGS = [
         ["fullscreenClose", "closeFullscreen"],
         ["fullscreenBackdrop", "closeFullscreen"],
@@ -80,7 +75,14 @@
         }
     }
 
-    function applyEventBindings(IDS, handlers, onIdFn) {
+    function applyEventBindings(IDS, handlers) {
+        var onIdFn =
+            window.Utils && window.Utils.onId
+                ? window.Utils.onId
+                : function (id, fn) {
+                      var el = document.getElementById(id);
+                      if (el) fn(el);
+                  };
         EVENT_BINDINGS.forEach(function (b) {
             var idKey = b[0];
             var handlerKey = b[1];
@@ -99,24 +101,6 @@
         });
     }
 
-    function getColorMode() {
-        var el = document.querySelector('input[name="colorMode"]:checked');
-        return el && el.value === "rgb" ? "rgb" : "hsv";
-    }
-
-    function setEvolveButtonDisabled(disabled) {
-        var el = document.getElementById(IDS.evolveBtn);
-        if (el) {
-            if (disabled) {
-                el.classList.add("disabled");
-                el.setAttribute("aria-disabled", "true");
-            } else {
-                el.classList.remove("disabled");
-                el.setAttribute("aria-disabled", "false");
-            }
-        }
-    }
-
     function updateStats() {
         var totalClicks = 0;
         var hasFitness = false;
@@ -126,55 +110,14 @@
         });
         var totalEl = document.getElementById(IDS.totalClicks);
         if (totalEl) totalEl.textContent = totalClicks;
-        setEvolveButtonDisabled(!hasFitness);
-    }
-
-    function showGridError(message, showRetry) {
-        var grid = document.getElementById(IDS.grid);
-        var tpl = document.getElementById(IDS.gridErrorTpl);
-        window.GridRenderer.clearGrid(IDS);
-        grid = document.getElementById(IDS.grid);
-        if (!tpl || !tpl.content) {
-            if (grid) {
-                var wrap = document.createElement("div");
-                wrap.className = "grid-error";
-                var msg = document.createElement("div");
-                msg.className = "grid-error__message";
-                msg.textContent = message;
-                wrap.appendChild(msg);
-                grid.appendChild(wrap);
-            }
-            showLoading(false);
-            return;
-        }
-        var devPort = window.DEFAULT_DEV_PORT || 5001;
-        var localUrl = "http://localhost:" + devPort;
-        var fragment = tpl.content.cloneNode(true);
-        var root = fragment.querySelector(".grid-error");
-        fragment.querySelector(".grid-error__message").textContent = message;
-        var link = fragment.querySelector("#grid-error-link");
-        if (link) {
-            link.href = localUrl;
-            link.textContent = localUrl;
-        }
-        if (showRetry) {
-            var retryBtn = document.createElement("button");
-            retryBtn.type = "button";
-            retryBtn.className = "retry-btn";
-            retryBtn.id = "grid-retry-btn";
-            retryBtn.textContent = "New random population";
-            root.appendChild(retryBtn);
-        }
-        window.GridRenderer.clearGrid(IDS);
-        grid = document.getElementById(IDS.grid);
-        if (grid) grid.appendChild(fragment);
-        showLoading(false);
-        if (showRetry) {
-            var retryEl = document.getElementById(IDS.gridRetryBtn);
-            if (retryEl) {
-                retryEl.onclick = function () {
-                    window.PopulationUI.startNewRandomPopulation();
-                };
+        var evolveEl = document.getElementById(IDS.evolveBtn);
+        if (evolveEl) {
+            if (hasFitness) {
+                evolveEl.classList.remove("disabled");
+                evolveEl.setAttribute("aria-disabled", "false");
+            } else {
+                evolveEl.classList.add("disabled");
+                evolveEl.setAttribute("aria-disabled", "true");
             }
         }
     }
@@ -223,69 +166,21 @@
         window.FullscreenModal.closeFullscreen(IDS);
     }
 
-    function resolveAdapterAndOutput(outputType, substrateId, genomes) {
-        var resolved = window.SubstrateAdapters.safeResolve({
+    function resolveAdapterAndOutput(outputType, representationId, genomes) {
+        var resolved = window.RepresentationAdapters.safeResolve({
             outputType: outputType,
-            substrateId: substrateId,
+            representationId: representationId,
             genomes: genomes,
         });
         return {
             adapter: resolved.adapter,
             outputType: outputType || resolved.outputType,
-            substrateId: substrateId || resolved.substrateId,
+            representationId: representationId || resolved.representationId,
         };
     }
 
     function evolveGeneration() {
-        var evolveEl = document.getElementById(IDS.evolveBtn);
-        if (evolveEl && evolveEl.classList.contains("disabled")) return;
-        setEvolveButtonDisabled(true);
-        showLoading(true);
-        window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
-
-        function getPopulationSize() {
-            var el = document.getElementById(IDS.populationSizeInput);
-            return parseInt(el && el.value, 10);
-        }
-
-        window.EvolutionCoordinator.evolveGeneration(
-            window.PopulationState.getState,
-            getPopulationSize,
-            window.ApiClient.evolve.bind(window.ApiClient),
-            function (
-                children,
-                newGenerationNum,
-                populationId,
-                outputType,
-                substrateId
-            ) {
-                if (populationId != null) {
-                    window.PopulationState.dispatch({
-                        type: "SET_EVOLVE_RESULT",
-                        payload: { populationId: populationId },
-                    });
-                    window.GenealogySync.syncCurrentPopulationIdToStorage(populationId);
-                }
-                window.GridRenderer.loadFromStatelessGenomes(
-                    children,
-                    newGenerationNum,
-                    false,
-                    outputType,
-                    substrateId
-                );
-            },
-            function (err) {
-                console.error("Error evolving:", err);
-                window.Toast.error("Evolve failed: " + (err.message || String(err)));
-                showLoading(false);
-                window.PopulationState.dispatch({
-                    type: "SET_LOADING",
-                    payload: false,
-                });
-                setEvolveButtonDisabled(false);
-                updateStats();
-            }
-        );
+        window.EvolutionCoordinator.evolve();
     }
 
     function getCurrentGenomesForSave() {
@@ -294,7 +189,7 @@
             return {
                 genomes: genomes,
                 generation: window.PopulationState.generationNum,
-                substrateId: window.PopulationState.substrateId,
+                representationId: window.PopulationState.representationId,
                 outputType: window.PopulationState.outputType,
             };
         }
@@ -392,8 +287,8 @@
             );
             var genNum =
                 genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
-            var resolved = window.SubstrateAdapters.safeResolve({
-                substrateId:
+            var resolved = window.RepresentationAdapters.safeResolve({
+                representationId:
                     genealogyLoad.representation_id || genealogyLoad.substrate_id,
                 genomes: loadGenomes,
             });
@@ -402,7 +297,7 @@
                 genNum,
                 false,
                 resolved.outputType,
-                resolved.substrateId
+                resolved.representationId
             );
         } else {
             window.PopulationUI.startNewRandomPopulation();
@@ -421,13 +316,21 @@
         API_URL: API_URL,
         getGridCallbacks: getGridCallbacks,
         resolveAdapterAndOutput: resolveAdapterAndOutput,
-        getColorMode: getColorMode,
+        getColorMode: function () {
+            var el = document.querySelector('input[name="colorMode"]:checked');
+            return el && el.value === "rgb" ? "rgb" : "hsv";
+        },
         showLoading: showLoading,
-        showGridError: showGridError,
         updateStats: updateStats,
     });
 
-    window.onSubstrateSwitched = function (config) {
+    window.EvolutionCoordinator.init({
+        IDS: IDS,
+        showLoading: showLoading,
+        updateStats: updateStats,
+    });
+
+    window.onRepresentationSwitched = function (config) {
         window.GridRenderer.clearGrid(IDS);
         window.PopulationState.dispatch({
             type: "LOAD_POPULATION",
@@ -435,15 +338,15 @@
                 population: [],
                 genomes: null,
                 generationNum: 0,
-                substrateId: config.representation_id,
+                representationId: config.representation_id,
                 outputType: config.output_type || "shader",
             },
         });
-        window.ViewerControls.updateForSubstrate(config.representation_id);
+        window.ViewerControls.updateForRepresentation(config.representation_id);
         window.GridTopology.rebuild(null);
         if (window.Toast && window.Toast.show) {
             window.Toast.show(
-                "Substrate changed",
+                "Representation changed",
                 "Use Start Fresh to get a population for " +
                     (config.representation_id || "the new substrate") +
                     ".",
@@ -512,7 +415,7 @@
                     data.generation,
                     false,
                     data.outputType,
-                    data.substrateId
+                    data.representationId
                 );
             }
         });
@@ -530,27 +433,30 @@
         var m = document.getElementById(IDS.communityListModal);
         if (m) m.classList.remove("show");
     };
-    applyEventBindings(
-        IDS,
-        {
-            closeFullscreen: closeFullscreen,
-            evolveGeneration: evolveGeneration,
-            closeLoadModal: closeLoadModal,
-            closeCommunityListModal: closeCommunityListModal,
-            submitCommunityForm: window.CommunityUI.submitCommunityForm,
-            closeSubmitCommunityModal: window.CommunityUI.closeSubmitCommunityModal,
-            onCommunityLoadSelected: window.CommunityUI.onCommunityLoadSelected,
-            onCommunityLoad12: window.CommunityUI.onCommunityLoad12,
-            onCommunitySelectAll: window.CommunityUI.onCommunitySelectAll,
-            onCommunityDeselectAll: window.CommunityUI.onCommunityDeselectAll,
-            onNewFromCommunityClick: window.CommunityUI.onNewFromCommunityClick,
-            submitAdminKey: window.CommunityUI.submitAdminKey,
-            closeAdminModal: window.CommunityUI.closeAdminModal,
-            onSaveCurrentClick: window.PopulationUI.onSaveCurrentClick,
-            onImportClick: window.PopulationUI.onImportClick,
-        },
-        onId
-    );
+    applyEventBindings(IDS, {
+        closeFullscreen: closeFullscreen,
+        evolveGeneration: evolveGeneration,
+        closeLoadModal: closeLoadModal,
+        closeCommunityListModal: closeCommunityListModal,
+        submitCommunityForm: window.CommunityUI.submitCommunityForm,
+        closeSubmitCommunityModal: window.CommunityUI.closeSubmitCommunityModal,
+        onCommunityLoadSelected: window.CommunityUI.onCommunityLoadSelected,
+        onCommunityLoad12: window.CommunityUI.onCommunityLoad12,
+        onCommunitySelectAll: window.CommunityUI.onCommunitySelectAll,
+        onCommunityDeselectAll: window.CommunityUI.onCommunityDeselectAll,
+        onNewFromCommunityClick: window.CommunityUI.onNewFromCommunityClick,
+        submitAdminKey: window.CommunityUI.submitAdminKey,
+        closeAdminModal: window.CommunityUI.closeAdminModal,
+        onSaveCurrentClick: window.PopulationUI.onSaveCurrentClick,
+        onImportClick: window.PopulationUI.onImportClick,
+    });
+    var onId =
+        window.Utils && window.Utils.onId
+            ? window.Utils.onId
+            : function (id, fn) {
+                  var el = document.getElementById(id);
+                  if (el) fn(el);
+              };
     onId(IDS.adminKeyInput, function (el) {
         el.addEventListener("keydown", function (e) {
             if (e.key === "Enter") window.CommunityUI.submitAdminKey();
@@ -580,8 +486,8 @@
             },
             getGenomeForPattern: getGenomeForPattern,
             getAdapter: function () {
-                return window.SubstrateAdapters.getAdapter(
-                    window.PopulationState.substrateId
+                return window.RepresentationAdapters.getAdapter(
+                    window.PopulationState.representationId
                 );
             },
         });

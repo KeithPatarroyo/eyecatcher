@@ -16,7 +16,7 @@
                 generationNum: 0,
                 populationId: null,
                 branchName: "main",
-                substrateId: null,
+                representationId: null,
                 outputType: "shader",
                 patterns: new Map(),
                 loading: false,
@@ -33,7 +33,7 @@
                 generationNum: s.generationNum,
                 populationId: s.populationId,
                 branchName: s.branchName,
-                substrateId: s.substrateId,
+                representationId: s.representationId,
                 outputType: s.outputType,
                 patterns: s.patterns,
                 loading: s.loading,
@@ -41,8 +41,8 @@
             };
         }
 
-        get substrateId() {
-            return this._state.substrateId;
+        get representationId() {
+            return this._state.representationId;
         }
         get outputType() {
             return this._state.outputType;
@@ -81,8 +81,8 @@
                     if (payload.branchName !== undefined) {
                         state.branchName = payload.branchName;
                     }
-                    if (payload.substrateId !== undefined) {
-                        state.substrateId = payload.substrateId;
+                    if (payload.representationId !== undefined) {
+                        state.representationId = payload.representationId;
                     }
                     if (payload.outputType !== undefined) {
                         state.outputType = payload.outputType;
@@ -103,8 +103,8 @@
                     state.currentPopulation = (state.currentPopulation || []).concat(
                         payload.population || []
                     );
-                    if (payload.substrateId !== undefined) {
-                        state.substrateId = payload.substrateId;
+                    if (payload.representationId !== undefined) {
+                        state.representationId = payload.representationId;
                     }
                     if (payload.outputType !== undefined) {
                         state.outputType = payload.outputType;
@@ -158,7 +158,7 @@
                     state.generationNum = 0;
                     state.populationId = null;
                     state.branchName = "main";
-                    state.substrateId = null;
+                    state.representationId = null;
                     state.outputType = "shader";
                     state.patterns.clear();
                     state.loading = false;
@@ -183,7 +183,7 @@
             this._state.generationNum = 0;
             this._state.populationId = null;
             this._state.branchName = "main";
-            this._state.substrateId = null;
+            this._state.representationId = null;
             this._state.outputType = "shader";
             this._state.patterns = new Map();
             this._state.loading = false;

@@ -1,9 +1,9 @@
 /**
- * Substrate adapter registry. Each substrate (dual_cppn, single_cppn, ca) can register
- * an adapter. Pattern renderer and app use getAdapter(substrateId) to delegate.
+ * Representation adapter registry. Each substrate (dual_cppn, single_cppn, ca) can register
+ * an adapter. Pattern renderer and app use getAdapter(representationId) to delegate.
  * Single source for default resolution: use resolve() everywhere.
  *
- * @typedef {Object} SubstrateAdapter
+ * @typedef {Object} RepresentationAdapter
  * @typedef {Object} RenderContext
  */
 (function () {
@@ -12,7 +12,7 @@
     var DEFAULT_SUBSTRATE_ID = "dual_cppn";
     var DEFAULT_RESOLUTION = {
         outputType: "shader",
-        substrateId: DEFAULT_SUBSTRATE_ID,
+        representationId: DEFAULT_SUBSTRATE_ID,
     };
 
     function buildIsGenomeFormatFromConfig(entry) {
@@ -51,19 +51,19 @@
         };
     }
 
-    class SubstrateRegistry {
+    class RepresentationRegistry {
         constructor() {
             this._adaptersById = {};
             window.__eyecatcherDefaultResolution = {
                 outputType: "shader",
-                substrateId: DEFAULT_SUBSTRATE_ID,
+                representationId: DEFAULT_SUBSTRATE_ID,
                 adapter: null,
             };
             this._bootstrapFromConfig();
         }
 
         _bootstrapFromConfig() {
-            var config = window.SubstrateConfig;
+            var config = window.RepresentationConfig;
             if (config && Array.isArray(config) && window.createCppnAdapter) {
                 var self = this;
                 config.forEach(function (entry) {
@@ -78,9 +78,9 @@
                         });
                         cppnAdapter.capabilities = capabilities;
                         self.register(cppnAdapter);
-                    } else if (window.createSubstrateAdapter) {
+                    } else if (window.createRepresentationAdapter) {
                         self.register(
-                            window.createSubstrateAdapter({
+                            window.createRepresentationAdapter({
                                 id: entry.id,
                                 outputType: entry.outputType,
                                 lifecycle: "frame",
@@ -108,13 +108,13 @@
             this._adaptersById[adapter.id] = adapter;
         }
 
-        getAdapter(substrateId) {
-            if (!substrateId) return null;
-            return this._adaptersById[substrateId] || null;
+        getAdapter(representationId) {
+            if (!representationId) return null;
+            return this._adaptersById[representationId] || null;
         }
 
         findAdapterByGenome(genome) {
-            var config = window.SubstrateConfig;
+            var config = window.RepresentationConfig;
             var order =
                 config && Array.isArray(config)
                     ? config.map(function (e) {
@@ -140,9 +140,9 @@
                 : DEFAULT_RESOLUTION;
         }
 
-        getDefaultSubstrateId() {
+        getDefaultRepresentationId() {
             var res = this.getDefaultResolution();
-            return res ? res.substrateId : DEFAULT_SUBSTRATE_ID;
+            return res ? res.representationId : DEFAULT_SUBSTRATE_ID;
         }
 
         safeResolve(opts) {
@@ -155,7 +155,7 @@
             }
             var adapter = this.findAdapterByGenome(genomes[0]);
             return adapter
-                ? { outputType: adapter.outputType, substrateId: adapter.id }
+                ? { outputType: adapter.outputType, representationId: adapter.id }
                 : this.getDefaultResolution();
         }
 
@@ -166,16 +166,16 @@
         resolveForLoad(pop) {
             if (!pop) pop = {};
             var adapter = null;
-            if (pop.substrateId) {
-                adapter = this.getAdapter(pop.substrateId);
+            if (pop.representationId) {
+                adapter = this.getAdapter(pop.representationId);
             }
             if (!adapter && pop.genomes && pop.genomes.length) {
                 var r = this.resolveFromGenomes(pop.genomes);
-                adapter = this.getAdapter(r.substrateId);
+                adapter = this.getAdapter(r.representationId);
             }
             if (!adapter) {
                 var def = this.getDefaultResolution();
-                adapter = this.getAdapter(def.substrateId);
+                adapter = this.getAdapter(def.representationId);
             }
             var defRes = this.getDefaultResolution();
             return {
@@ -183,8 +183,10 @@
                     (adapter && adapter.outputType) ||
                     pop.outputType ||
                     defRes.outputType,
-                substrateId:
-                    (adapter && adapter.id) || pop.substrateId || defRes.substrateId,
+                representationId:
+                    (adapter && adapter.id) ||
+                    pop.representationId ||
+                    defRes.representationId,
                 adapter: adapter,
             };
         }
@@ -195,13 +197,14 @@
          */
         currentAdapter() {
             var state = window.PopulationState.getState();
-            return this.safeResolve({ substrateId: state.substrateId }).adapter;
+            return this.safeResolve({ representationId: state.representationId })
+                .adapter;
         }
 
         /**
          * Resolve adapter and output type from a list of genomes.
          * @param {Array} genomes
-         * @returns {{ adapter: Object|null, outputType: string, substrateId: string }}
+         * @returns {{ adapter: Object|null, outputType: string, representationId: string }}
          */
         resolveForGenomes(genomes) {
             return this.resolveForLoad(
@@ -247,5 +250,5 @@
         }
     }
 
-    window.SubstrateAdapters = new SubstrateRegistry();
+    window.RepresentationAdapters = new RepresentationRegistry();
 })();
