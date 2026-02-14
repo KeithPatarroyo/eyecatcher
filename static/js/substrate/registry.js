@@ -8,7 +8,10 @@
  *
  * @typedef {Object} SubstrateAdapter
  * @property {string} id - Substrate identifier (must match Python substrate.id)
- * @property {string} outputType - "shader" | "grid" | "image"
+ * @property {string} outputType - "shader" | "grid" | "image" | "audio" | ...
+ * @property {string} [lifecycle] - "frame" (default): per-frame render via animation loop; "self-managed": adapter owns update (e.g. audio playback)
+ * @property {function(Array, Object): Promise<{ population: Array }>} [getDisplayData] - Fetch display-ready data for genomes; required for agnostic flow, fallback exists for BACKWARDS_COMPAT
+ * @property {function(Object, Object): { element: HTMLElement, patternData: Object|null }} [createDisplayElement] - Create the DOM element for one pattern; required for agnostic flow, fallback exists for BACKWARDS_COMPAT
  * @property {function(Object): boolean} isGenomeFormat - Return true if a genome object belongs to this substrate
  * @property {boolean} [hasSignalControls] - Whether to show signal toggle checkboxes (default false)
  * @property {{ save: boolean, network: boolean, timeOutput: boolean, adjustWeight: boolean }} [capabilities]
@@ -16,6 +19,7 @@
  * @property {function(Object, Object?): Object} [buildUniforms] - Convert signal-id-keyed values to uniform-name-keyed values; optional second arg is RenderContext for grid/neighbor uniforms
  * @property {function(Object, Object): void} [preparePatternData] - Store substrate-specific fields on patternData after setup
  * @property {function(Object): string} [getMetaLabel] - Return a custom info label for the pattern card
+ * @property {function(): string} [getMetaIdPrefix] - Return label prefix before id (e.g. "Pattern " or "ID: "); default "ID: "
  * @property {function(Object, WebGL2RenderingContext): void} [onSetup] - Called once after WebGL setup (create FBOs, textures)
  * @property {function(Object, RenderContext): void} [onBeforeRender] - Called before each frame's render()
  * @property {function(Object, RenderContext): void} [onAfterRender] - Called after each frame's render()
@@ -33,10 +37,16 @@
 (function () {
     "use strict";
 
-    var DEFAULT_RESOLUTION = { outputType: "shader", substrateId: "dual_cppn" };
+    /** Single source for default substrate id when no config is present. */
+    var DEFAULT_SUBSTRATE_ID = "dual_cppn";
+
+    var DEFAULT_RESOLUTION = {
+        outputType: "shader",
+        substrateId: DEFAULT_SUBSTRATE_ID,
+    };
     window.__eyecatcherDefaultResolution = {
         outputType: "shader",
-        substrateId: "dual_cppn",
+        substrateId: DEFAULT_SUBSTRATE_ID,
         adapter: null,
     };
 
@@ -64,7 +74,7 @@
                 ? config.map(function (e) {
                       return e.id;
                   })
-                : ["dual_cppn", "single_cppn", "ca"];
+                : [DEFAULT_SUBSTRATE_ID, "single_cppn", "ca"];
         for (var i = 0; i < order.length; i++) {
             var adapter = adaptersById[order[i]];
             if (adapter && adapter.isGenomeFormat && adapter.isGenomeFormat(genome)) {
@@ -83,6 +93,15 @@
         return window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
             ? window.EvolutionConfig.getDefaultResolution()
             : DEFAULT_RESOLUTION;
+    }
+
+    /**
+     * Default substrate id (single source for fallbacks). Uses EvolutionConfig after mergeFromServer.
+     * @returns {string}
+     */
+    function getDefaultSubstrateId() {
+        var res = getDefaultResolution();
+        return res ? res.substrateId : DEFAULT_SUBSTRATE_ID;
     }
 
     /**
@@ -152,42 +171,61 @@
     }
 
     /**
-     * Default getDisplayData: grid -> evaluate, shader -> compile.
-     * Adapters can override with custom logic.
-     * @param {Object} adapter - Adapter with outputType
+     * Utility: fetch display data via /api/compile (for shader representations).
      * @param {Array} genomes - Genome objects
      * @param {Object} options - { colorMode }
      * @returns {Promise<{ population: Array }>}
      */
-    async function defaultGetDisplayData(adapter, genomes, options) {
+    async function fetchViaCompile(genomes, options) {
         var ApiClient = window.ApiClient;
         if (!ApiClient) throw new Error("ApiClient not available");
-        if (adapter.outputType === "grid") {
-            var evalData = await ApiClient.evaluate(genomes);
-            var results = evalData.results || [];
-            if (typeof performance !== "undefined") {
-                window.CA_ANIMATION_START_TIME = performance.now();
-            }
-            return {
-                population: results.map(function (r) {
-                    return {
-                        id: r.id,
-                        image: r.image,
-                        shader: r.shader,
-                        grid: r.grid,
-                        nodes: 0,
-                        connections: 0,
-                        clicks: 0,
-                    };
-                }),
-            };
-        }
         var compData = await ApiClient.compile(genomes, options && options.colorMode);
         return { population: compData.shaders || [] };
     }
 
     /**
-     * Fetch display data for genomes using adapter (evaluate for grid, compile for shader).
+     * Utility: fetch display data via /api/evaluate (for grid/other representations).
+     * @param {Array} genomes - Genome objects
+     * @param {Object} _options - Unused for evaluate
+     * @returns {Promise<{ population: Array }>}
+     */
+    async function fetchViaEvaluate(genomes, _options) {
+        var ApiClient = window.ApiClient;
+        if (!ApiClient) throw new Error("ApiClient not available");
+        var evalData = await ApiClient.evaluate(genomes);
+        var results = evalData.results || [];
+        if (typeof performance !== "undefined") {
+            window.CA_ANIMATION_START_TIME = performance.now();
+        }
+        return {
+            population: results.map(function (r) {
+                return {
+                    id: r.id,
+                    image: r.image,
+                    shader: r.shader,
+                    grid: r.grid,
+                    nodes: r.nodes !== undefined ? r.nodes : 0,
+                    connections: r.connections !== undefined ? r.connections : 0,
+                    clicks: r.clicks !== undefined ? r.clicks : 0,
+                };
+            }),
+        };
+    }
+
+    /**
+     * BACKWARDS_COMPAT: Default getDisplayData when adapter does not implement getDisplayData.
+     * Prefer adapter.getDisplayData (e.g. using fetchViaCompile/fetchViaEvaluate) and remove this fallback in a future cleanup.
+     */
+    async function defaultGetDisplayData(adapter, genomes, options) {
+        var a = adapter || getDefaultResolution();
+        if (a.outputType === "grid") {
+            return fetchViaEvaluate(genomes, options);
+        }
+        return fetchViaCompile(genomes, options);
+    }
+
+    /**
+     * Fetch display data for genomes. Uses adapter.getDisplayData when present; otherwise BACKWARDS_COMPAT fallback.
      * @param {Object} adapter - Adapter (from getAdapter or resolveFromGenomes)
      * @param {Array} genomes - Genome objects
      * @param {Object} options - { colorMode }
@@ -195,13 +233,10 @@
      */
     async function getDisplayData(adapter, genomes, options) {
         var fn = adapter && adapter.getDisplayData;
-        return fn
-            ? fn(genomes, options)
-            : defaultGetDisplayData(
-                  adapter || getDefaultResolution(),
-                  genomes,
-                  options
-              );
+        if (fn) {
+            return fn.call(adapter, genomes, options);
+        }
+        return defaultGetDisplayData(adapter, genomes, options);
     }
 
     var SubstrateAdapters = {
@@ -213,7 +248,10 @@
         resolveFromGenomes: resolveFromGenomes,
         resolveForLoad: resolveForLoad,
         getDefaultResolution: getDefaultResolution,
+        getDefaultSubstrateId: getDefaultSubstrateId,
         getDisplayData: getDisplayData,
+        fetchViaCompile: fetchViaCompile,
+        fetchViaEvaluate: fetchViaEvaluate,
     };
 
     window.SubstrateAdapters = SubstrateAdapters;
@@ -272,6 +310,7 @@
                 register({
                     id: entry.id,
                     outputType: entry.outputType,
+                    lifecycle: "frame",
                     isGenomeFormat: isGenomeFormat,
                     hasSignalControls: entry.hasSignalControls !== false,
                     capabilities: capabilities,
