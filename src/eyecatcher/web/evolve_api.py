@@ -77,7 +77,7 @@ def evolve():
     parents_for_evolution = [
         {
             "genome": p.get("individual", p.get("genome", p)),
-            "fitness": p.get("fitness", p.get("clicks", 0)),
+            "fitness": p.get("fitness", 0),
         }
         for p in parents_data
     ]

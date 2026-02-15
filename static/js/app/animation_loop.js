@@ -146,12 +146,12 @@
                     var GT = window.GridTopology;
                     var RA = window.RepresentationRegistry;
 
-                    patterns.forEach(function (patternData) {
-                        if (!patternData.gl) return;
-                        var patternId = patternData.patternId;
+                    patterns.forEach(function (runtime) {
+                        if (!runtime.gl) return;
+                        var patternId = runtime.patternId;
                         var renderContext = {
-                            gl: patternData.gl,
-                            canvas: patternData.canvas,
+                            gl: runtime.gl,
+                            canvas: runtime.canvas,
                             gridPosition: GT ? GT.getPosition(patternId) : null,
                             neighbors: GT ? GT.getNeighbors(patternId) : null,
                             frameCount: self._frameCount,
@@ -159,9 +159,9 @@
                             patternId: patternId,
                         };
                         RA.renderFrameWithSignals(
-                            patternData,
+                            runtime,
                             signalState,
-                            patternData.canvas,
+                            runtime.canvas,
                             renderContext
                         );
                     });

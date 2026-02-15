@@ -29,7 +29,7 @@
         /**
          * Create a pattern card DOM element with canvas, info, action buttons, and event binding.
          * @param {Object} options - pattern, onShare, onNetwork, onSave, onClick, onUnclick, onMouseEnter, onMouseLeave, onFullscreen, representationId
-         * @returns {{ card: HTMLElement, canvas: HTMLCanvasElement|null, patternData: Object|null }}
+         * @returns {{ card: HTMLElement, canvas: HTMLCanvasElement|null, runtime: Object|null }}
          */
         createCard(options) {
             const pattern = options.pattern;
@@ -42,7 +42,7 @@
                       });
             var adapter = resolved.adapter;
             const id = pattern.id;
-            const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;
+            const fitness = pattern.fitness !== undefined ? pattern.fitness : 0;
             const hasCellInteraction = adapter && adapter.supportsCellInteraction();
             const card = document.createElement("div");
             card.className =
@@ -66,8 +66,8 @@
                       " | Connections: " +
                       (pattern.connections ?? 0);
             const clickCount = document.createElement("div");
-            clickCount.className = "click-count" + (clicks === 0 ? " zero" : "");
-            clickCount.textContent = String(clicks);
+            clickCount.className = "click-count" + (fitness === 0 ? " zero" : "");
+            clickCount.textContent = String(fitness);
             info.appendChild(meta);
             info.appendChild(clickCount);
 
@@ -133,7 +133,7 @@
                 card.appendChild(actions);
                 card.appendChild(info);
                 this._attachEvents(card, id, options);
-                return { card: card, canvas: null, patternData: null };
+                return { card: card, canvas: null, runtime: null };
             }
             var result = adapter.createDisplayElement(pattern, options);
             var displayEl = result && result.element;
@@ -144,9 +144,9 @@
                     createErrorFallback("Display element creation failed")
                 );
             }
-            var patternData = result && result.patternData;
-            if (adapter && patternData) {
-                adapter.preparePatternData(patternData, pattern);
+            var runtime = result && result.runtime;
+            if (adapter && runtime) {
+                adapter.prepareRuntime(runtime, pattern);
             }
             card.appendChild(actions);
             card.appendChild(info);
@@ -155,7 +155,7 @@
             return {
                 card: card,
                 canvas: isCanvas ? displayEl : null,
-                patternData: patternData || null,
+                runtime: runtime || null,
             };
         }
 
@@ -238,26 +238,21 @@
             if (adapter && adapter.supportsCellInteraction()) {
                 var coords = getClickCoordinates(event, canvas);
                 var patternsMap = window.PopulationState.patterns;
-                var patternData = null;
+                var runtime = null;
                 if (patternsMap) {
-                    patternData = patternsMap.get(patternId);
+                    runtime = patternsMap.get(patternId);
                     if (
-                        patternData == null &&
+                        runtime == null &&
                         typeof patternId === "string" &&
                         /^\d+$/.test(patternId)
                     ) {
-                        patternData = patternsMap.get(parseInt(patternId, 10));
+                        runtime = patternsMap.get(parseInt(patternId, 10));
                     }
-                    if (patternData == null && typeof patternId === "number") {
-                        patternData = patternsMap.get(String(patternId));
+                    if (runtime == null && typeof patternId === "number") {
+                        runtime = patternsMap.get(String(patternId));
                     }
                 }
-                adapter.onCellInteraction(
-                    patternData,
-                    coords.x,
-                    coords.y,
-                    interactionType
-                );
+                adapter.onCellInteraction(runtime, coords.x, coords.y, interactionType);
             }
         }
 

@@ -20,7 +20,7 @@
                 genome: genomes[i],
                 phenotype: p,
                 runtime: map.get(id) || null,
-                clicks: p.clicks != null ? p.clicks : 0,
+                fitness: p.fitness != null ? p.fitness : 0,
             };
         });
     }
@@ -147,13 +147,13 @@
                     }
                     state.loading = false;
                     break;
-                case "SET_PATTERN_CLICKS": {
+                case "SET_ORGANISM_FITNESS": {
                     var o = state.organisms.find(function (x) {
                         return x.id === payload.id;
                     });
                     if (o) {
-                        o.clicks = payload.clicks;
-                        if (o.runtime) o.runtime.clicks = payload.clicks;
+                        o.fitness = payload.fitness;
+                        if (o.runtime) o.runtime.fitness = payload.fitness;
                     }
                     break;
                 }
@@ -173,7 +173,7 @@
                     var o2 = state.organisms.find(function (x) {
                         return x.id === payload.id;
                     });
-                    if (o2) o2.runtime = payload.patternData;
+                    if (o2) o2.runtime = payload.runtime;
                     break;
                 }
                 case "SET_GENEALOGY":

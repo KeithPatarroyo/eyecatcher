@@ -277,7 +277,7 @@ def _fetch_individual_rows_by_pop_ids(conn: Any, pop_ids: list[int]) -> list[Any
 
 
 def get_population(population_id: int) -> dict[str, Any] | None:
-    """Load one population by id with its individuals (genomes with clicks=fitness)."""
+    """Load one population by id with its individuals (genomes with fitness)."""
     with _genealogy_db() as conn:
         pop_row = conn.execute(
             "SELECT * FROM populations WHERE id = ?", (population_id,)
@@ -289,7 +289,7 @@ def get_population(population_id: int) -> dict[str, Any] | None:
         for row in individual_rows:
             genome = _safe_parse_genome_json(row["genome_json"])
             if genome is not None:
-                genome["clicks"] = row["fitness"]
+                genome["fitness"] = row["fitness"]
                 genomes.append(genome)
         metadata = {}
         row_dict = dict(pop_row)

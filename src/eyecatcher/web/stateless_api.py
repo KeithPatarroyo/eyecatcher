@@ -100,7 +100,7 @@ def _require_capability(cap: str):
 def _require_individual_from_request(cap: str):
     """
     Require capability, parse JSON, require individual, deserialize via representation.
-    Returns (ind, individual_id, clicks, err). If err is not None, return it.
+    Returns (ind, individual_id, fitness, err). If err is not None, return it.
     """
     err = _require_capability(cap)
     if err is not None:
@@ -110,25 +110,25 @@ def _require_individual_from_request(cap: str):
     if not individual_data:
         return None, None, None, api_error(ERR_INDIVIDUAL_REQUIRED, 400)
     try:
-        ind, individual_id, clicks = _parse_one_individual(individual_data, 0)
+        ind, individual_id, fitness = _parse_one_individual(individual_data, 0)
     except Exception:
         return None, None, None, api_error("Invalid individual payload.", 400)
-    return ind, individual_id, clicks, None
+    return ind, individual_id, fitness, None
 
 
-def _extract_individual_id_clicks(payload: dict, default_key: int):
-    """Return (individual_id, clicks) from individual JSON and default key."""
-    return (payload.get("key", default_key), payload.get("clicks", 0))
+def _extract_individual_id_fitness(payload: dict, default_key: int):
+    """Return (individual_id, fitness) from individual JSON and default key."""
+    return (payload.get("key", default_key), payload.get("fitness", 0))
 
 
 def _parse_one_individual(payload: dict, index: int):
-    """Deserialize one individual payload; return (ind, individual_id, clicks)."""
+    """Deserialize one individual payload; return (ind, individual_id, fitness)."""
     rep = get_current_representation()
     ind = rep.from_json(payload)
-    individual_id, clicks = _extract_individual_id_clicks(
+    individual_id, fitness = _extract_individual_id_fitness(
         payload, rep.get_individual_id(ind)
     )
-    return ind, individual_id, clicks
+    return ind, individual_id, fitness
 
 
 def _compile_individuals(individuals_data, color_mode):
@@ -136,12 +136,12 @@ def _compile_individuals(individuals_data, color_mode):
     mode = (color_mode or "").strip().lower() or None
     shaders = []
     for i, item_data in enumerate(individuals_data):
-        genome, individual_id, clicks = _parse_one_individual(item_data, i)
+        genome, individual_id, fitness = _parse_one_individual(item_data, i)
         glsl = get_current_representation().develop(genome, color_mode=mode)
         resp = {
             "id": individual_id,
             "shader": glsl or "",
-            "clicks": clicks,
+            "fitness": fitness,
         }
         stats = get_current_representation().get_compile_stats(genome)
         resp.update(stats)
@@ -170,7 +170,7 @@ def api_develop():
     """
     Stateless: develop genomes to shaders.
     Body: { "individuals": [ ... ], "color_mode": "hsv"|"rgb" (optional) }
-    Returns: { "shaders": [ { "id", "shader", "clicks", "nodes", ... }, ... ] }
+    Returns: { "shaders": [ { "id", "shader", "fitness", "nodes", ... }, ... ] }
     Works for any representation with develop (dual_cppn, single_cppn, ca).
     """
     err = _require_can_develop()

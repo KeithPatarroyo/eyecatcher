@@ -105,8 +105,8 @@
         var totalClicks = 0;
         var hasFitness = false;
         window.PopulationState.patterns.forEach(function (p) {
-            totalClicks += p.clicks || 0;
-            if (p.clicks > 0) hasFitness = true;
+            totalClicks += p.fitness || 0;
+            if (p.fitness > 0) hasFitness = true;
         });
         var totalEl = document.getElementById(IDS.totalClicks);
         if (totalEl) totalEl.textContent = totalClicks;
@@ -207,21 +207,18 @@
     function updatePatternShader(individualId, newShader) {
         var pattern = window.PopulationState.patterns.get(individualId);
         if (pattern && window.WebGLUtils) {
-            var newPatternData = window.WebGLUtils.setupPattern(
-                pattern.canvas,
-                newShader
-            );
-            if (newPatternData && !newPatternData.error) {
+            var newRuntime = window.WebGLUtils.setupPattern(pattern.canvas, newShader);
+            if (newRuntime && !newRuntime.error) {
                 window.PopulationState.dispatch({
                     type: "UPDATE_PATTERN_SHADER",
                     payload: {
                         id: individualId,
-                        patternData: {
+                        runtime: {
                             canvas: pattern.canvas,
-                            gl: newPatternData.gl,
-                            program: newPatternData.program,
-                            positionBuffer: newPatternData.positionBuffer,
-                            clicks: pattern.clicks || 0,
+                            gl: newRuntime.gl,
+                            program: newRuntime.program,
+                            positionBuffer: newRuntime.positionBuffer,
+                            fitness: pattern.fitness || 0,
                         },
                     },
                 });
@@ -231,7 +228,7 @@
 
     function getPatterns() {
         var list = Array.from(window.PopulationState.patterns.values());
-        var fullscreen = window.FullscreenModal.getFullscreenPatternData();
+        var fullscreen = window.FullscreenModal.getFullscreenRuntime();
         if (fullscreen) list.push(fullscreen);
         return list;
     }

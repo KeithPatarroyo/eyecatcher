@@ -181,25 +181,25 @@
         }
 
         _buildPatternMapEntry(pattern, result) {
-            var pd = result.patternData || {};
+            var rt = result.runtime || {};
             var entry = {
                 canvas: result.canvas,
-                gl: pd.gl || null,
-                program: pd.program || null,
-                positionBuffer: pd.positionBuffer || null,
-                clicks: pattern.clicks !== undefined ? pattern.clicks : 0,
+                gl: rt.gl || null,
+                program: rt.program || null,
+                positionBuffer: rt.positionBuffer || null,
+                fitness: pattern.fitness !== undefined ? pattern.fitness : 0,
                 patternId: pattern.id,
             };
-            if (pd.caRule !== undefined) entry.caRule = pd.caRule;
-            if (pd.grid !== undefined) entry.grid = pd.grid;
-            if (pd.toggleMask !== undefined) entry.toggleMask = pd.toggleMask;
+            if (rt.caRule !== undefined) entry.caRule = rt.caRule;
+            if (rt.grid !== undefined) entry.grid = rt.grid;
+            if (rt.toggleMask !== undefined) entry.toggleMask = rt.toggleMask;
             if (pattern.grid !== undefined) entry.grid = pattern.grid;
-            for (var k in pd) {
+            for (var k in rt) {
                 if (
-                    Object.prototype.hasOwnProperty.call(pd, k) &&
+                    Object.prototype.hasOwnProperty.call(rt, k) &&
                     entry[k] === undefined
                 ) {
-                    entry[k] = pd[k];
+                    entry[k] = rt[k];
                 }
             }
             return entry;
@@ -369,7 +369,7 @@
                             }
                             var fitnessData = population.map(function (p) {
                                 var pat = patternsMap.get(p.id);
-                                return pat ? pat.clicks || 0 : 0;
+                                return pat ? pat.fitness || 0 : 0;
                             });
                             return window.GenealogySync.saveCurrentPopulationToGenealogy(
                                 self._deps.API_URL,
@@ -444,7 +444,7 @@
             var payload = genomes.map(function (g) {
                 var copy = Object.assign({}, g);
                 copy.key = nextKey++;
-                copy.clicks = 0;
+                copy.fitness = 0;
                 return copy;
             });
             var self = this;

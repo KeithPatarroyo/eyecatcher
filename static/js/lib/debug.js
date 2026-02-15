@@ -199,8 +199,8 @@ const EyecatcherDebug = (function () {
             // Hovered pattern info
             const patterns = getPatternsMapFn();
             if (hoveredPatternId !== null && patterns.has(hoveredPatternId)) {
-                const patternData = patterns.get(hoveredPatternId);
-                const mouseDist = getMouseDistanceFn(patternData.canvas);
+                const runtime = patterns.get(hoveredPatternId);
+                const mouseDist = getMouseDistanceFn(runtime.canvas);
 
                 elements.patternId.textContent = `#${hoveredPatternId}`;
                 elements.mouseDist.textContent = fmt(mouseDist);

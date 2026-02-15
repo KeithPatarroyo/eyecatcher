@@ -89,15 +89,15 @@
                 }
                 return {
                     element: result ? result.element : null,
-                    patternData: result ? result.state : null,
+                    runtime: result ? result.state : null,
                 };
             },
 
-            preparePatternData: function (patternData, pattern) {
-                if (pattern && patternData) {
-                    patternData.patternPayload = patternData.patternPayload || {};
-                    patternData.patternPayload.grid = pattern.grid;
-                    patternData.patternId = pattern.id;
+            prepareRuntime: function (runtime, pattern) {
+                if (pattern && runtime) {
+                    runtime.patternPayload = runtime.patternPayload || {};
+                    runtime.patternPayload.grid = pattern.grid;
+                    runtime.patternId = pattern.id;
                 }
             },
 
@@ -107,9 +107,9 @@
                     : {};
             },
 
-            render: function (patternData, uniformValues, signalState) {
+            render: function (runtime, uniformValues, signalState) {
                 var params = uniformValues || {};
-                substrate.render(patternData, params, signalState || {});
+                substrate.render(runtime, params, signalState || {});
             },
 
             getMetaLabel: function (pattern) {
@@ -140,9 +140,9 @@
                 );
             },
 
-            onCellInteraction: function (patternData, x, y, interactionType) {
+            onCellInteraction: function (runtime, x, y, interactionType) {
                 if (substrate.handleInteraction) {
-                    substrate.handleInteraction(patternData, x, y, interactionType);
+                    substrate.handleInteraction(runtime, x, y, interactionType);
                 }
             },
         };
@@ -278,7 +278,7 @@
                         grid: r.grid,
                         nodes: r.nodes !== undefined ? r.nodes : 0,
                         connections: r.connections !== undefined ? r.connections : 0,
-                        clicks: r.clicks !== undefined ? r.clicks : 0,
+                        fitness: r.fitness !== undefined ? r.fitness : 0,
                     };
                 }),
             };
@@ -291,12 +291,12 @@
         /**
          * Get signal values from the active source (or defaults), build params via current adapter, and render one frame.
          * Use from animation loop, genealogy thumbnails, and community previews.
-         * @param {Object} patternData - From WebGLUtils.setupPattern (gl, program, positionBuffer, canvas)
+         * @param {Object} runtime - From WebGLUtils.setupPattern (gl, program, positionBuffer, canvas)
          * @param {Object} signalState - Flat { signal_id: boolean } for CPPN toggles
          * @param {HTMLCanvasElement} [contextCanvas]
          * @param {Object} [context] - Optional { canvas, gridPosition, neighbors, patternId }
          */
-        renderFrameWithSignals(patternData, signalState, contextCanvas, context) {
+        renderFrameWithSignals(runtime, signalState, contextCanvas, context) {
             var getSource = window.getSignalSource;
             var signalContext = context
                 ? { canvas: contextCanvas || (context && context.canvas), ...context }
@@ -321,7 +321,7 @@
                 adapter && adapter.buildParams
                     ? adapter.buildParams(signalValues, context)
                     : {};
-            if (adapter) adapter.render(patternData, params, signalState || {});
+            if (adapter) adapter.render(runtime, params, signalState || {});
         }
     }
 

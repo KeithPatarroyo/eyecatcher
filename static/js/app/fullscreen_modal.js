@@ -7,7 +7,7 @@
 
     class FullscreenModal {
         constructor() {
-            this._fullscreenPatternData = null;
+            this._fullscreenRuntime = null;
             this._fullscreenAdapter = null;
         }
 
@@ -21,7 +21,7 @@
         }
 
         closeFullscreen(ids) {
-            this._fullscreenPatternData = null;
+            this._fullscreenRuntime = null;
             this._fullscreenAdapter = null;
             var wrapId = (ids && ids.fullscreenCanvasWrap) || "fullscreen-canvas-wrap";
             var modalId = (ids && ids.fullscreenModal) || "fullscreen-modal";
@@ -101,32 +101,32 @@
                 wrap.appendChild(canvas);
 
                 var WebGLUtils = window.WebGLUtils;
-                var patternData =
+                var runtime =
                     WebGLUtils &&
                     WebGLUtils.setupPattern(canvas, patternRef.shader || "");
-                if (!patternData || patternData.error) {
+                if (!runtime || runtime.error) {
                     wrap.innerHTML = "";
                     modal.hidden = true;
                     self._fullscreenAdapter = null;
                     return;
                 }
-                self._fullscreenPatternData = {
+                self._fullscreenRuntime = {
                     canvas: canvas,
-                    gl: patternData.gl,
-                    program: patternData.program,
-                    positionBuffer: patternData.positionBuffer,
+                    gl: runtime.gl,
+                    program: runtime.program,
+                    positionBuffer: runtime.positionBuffer,
                     patternId: id,
                 };
                 if (patternRef.grid !== undefined)
-                    self._fullscreenPatternData.grid = patternRef.grid;
+                    self._fullscreenRuntime.grid = patternRef.grid;
                 if (adapter) {
-                    adapter.preparePatternData(self._fullscreenPatternData, patternRef);
+                    adapter.prepareRuntime(self._fullscreenRuntime, patternRef);
                 }
             });
         }
 
-        getFullscreenPatternData() {
-            return this._fullscreenPatternData;
+        getFullscreenRuntime() {
+            return this._fullscreenRuntime;
         }
     }
 

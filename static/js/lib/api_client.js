@@ -68,7 +68,7 @@
         async develop(individuals, colorMode) {
             var payload = (individuals || []).map(function (g) {
                 var copy = Object.assign({}, g);
-                copy.clicks = 0;
+                copy.fitness = 0;
                 return copy;
             });
             var body = { individuals: payload };
@@ -93,7 +93,7 @@
             var parentsPayload = (parents || []).map(function (p) {
                 return {
                     individual: p.genome || p,
-                    fitness: p.fitness != null ? p.fitness : p.clicks || 0,
+                    fitness: p.fitness != null ? p.fitness : 0,
                 };
             });
             var body = {

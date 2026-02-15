@@ -68,10 +68,10 @@
                     );
                 }
             } else if (pop.shader && window.WebGLUtils) {
-                const patternData = window.WebGLUtils.setupPattern(canvas, pop.shader);
-                if (!patternData || patternData.error) return null;
+                const runtime = window.WebGLUtils.setupPattern(canvas, pop.shader);
+                if (!runtime || runtime.error) return null;
                 if (genome && typeof genome.rule === "number") {
-                    patternData.caRule = genome.rule;
+                    runtime.caRule = genome.rule;
                 }
                 const signalState =
                     window.EvolutionConfig &&
@@ -80,7 +80,7 @@
                         : { time: {}, visual: {} };
                 if (window.RepresentationRegistry) {
                     window.RepresentationRegistry.renderFrameWithSignals(
-                        patternData,
+                        runtime,
                         signalState,
                         canvas
                     );

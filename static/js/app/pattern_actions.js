@@ -75,14 +75,14 @@
         clickPattern(id, card, updateStats) {
             var pattern = window.PopulationState.patterns.get(id);
             if (pattern) {
-                var clicks = (pattern.clicks || 0) + 1;
+                var fitness = (pattern.fitness || 0) + 1;
                 window.PopulationState.dispatch({
-                    type: "SET_PATTERN_CLICKS",
-                    payload: { id: id, clicks: clicks },
+                    type: "SET_ORGANISM_FITNESS",
+                    payload: { id: id, fitness: fitness },
                 });
                 var clickCount = card.querySelector(".click-count");
                 if (clickCount) {
-                    clickCount.textContent = clicks;
+                    clickCount.textContent = fitness;
                     clickCount.classList.remove("zero");
                 }
                 card.classList.add("selected");
@@ -92,16 +92,16 @@
 
         unclickPattern(id, card, updateStats) {
             var pattern = window.PopulationState.patterns.get(id);
-            if (pattern && (pattern.clicks || 0) > 0) {
-                var clicks = pattern.clicks - 1;
+            if (pattern && (pattern.fitness || 0) > 0) {
+                var fitness = pattern.fitness - 1;
                 window.PopulationState.dispatch({
-                    type: "SET_PATTERN_CLICKS",
-                    payload: { id: id, clicks: clicks },
+                    type: "SET_ORGANISM_FITNESS",
+                    payload: { id: id, fitness: fitness },
                 });
                 var clickCount = card.querySelector(".click-count");
                 if (clickCount) {
-                    clickCount.textContent = clicks;
-                    if (clicks === 0) {
+                    clickCount.textContent = fitness;
+                    if (fitness === 0) {
                         clickCount.classList.add("zero");
                         card.classList.remove("selected");
                     }

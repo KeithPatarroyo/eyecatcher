@@ -85,13 +85,13 @@
             var parents = population
                 .map(function (p, idx) {
                     var pat = patterns.get(p.id);
-                    var clicks = pat ? pat.clicks : 0;
+                    var fitness = pat ? pat.fitness : 0;
                     var genome = genomes[idx];
-                    return genome ? { genome: genome, clicks: clicks } : null;
+                    return genome ? { genome: genome, fitness: fitness } : null;
                 })
                 .filter(Boolean)
                 .filter(function (p) {
-                    return p.clicks > 0;
+                    return p.fitness > 0;
                 });
 
             if (!parents.length) {

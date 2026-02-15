@@ -150,8 +150,8 @@ Each pattern card has its own display element (canvas or img). The animation loo
 ### Substrate lifecycle
 
 1. **createDisplayElement** — Substrate creates the DOM element (canvas or img) and optional state. The registry then calls `substrate.setup(state, phenotype)` if present.
-2. **preparePatternData** — Facade copies pattern metadata onto patternData (e.g. grid, patternId).
-3. **Render loop** — Every frame, the animation loop gets signal values, calls `facade.buildParams(signalValues, context)`, then `facade.render(patternData, params, signalState)`.
+2. **prepareRuntime** — Facade copies pattern metadata onto runtime (e.g. grid, patternId).
+3. **Render loop** — Every frame, the animation loop gets signal values, calls `facade.buildParams(signalValues, context)`, then `facade.render(runtime, params, signalState)`.
 4. **Teardown** — WebGL/resources are released when the canvas is removed from the DOM; substrates may implement `teardown(state)` for explicit cleanup.
 
 ### What the renderer supports today
