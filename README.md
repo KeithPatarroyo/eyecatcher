@@ -6,13 +6,15 @@
 
 Time-varying CPPN (Compositional Pattern Producing Network) evolution system. Like Picbreeder, but patterns change over time and react to user input.
 
+**New here?** [START_HERE.md](START_HERE.md) — run an experiment, change representation, add signals or fitness; one sentence per task and a link to the right doc.
+
 ## Quick Start
 
 ```bash
 make docker-up
 ```
 
-Then open **http://localhost:5001**. (Runs `docker compose -f docker/docker-compose.yml up --build` under the hood.) For other options (local Python, tests, deployment), see [Running the project](#running-the-project) below. Common dev tasks: **`make help`** (list targets), **`make test`**, **`make lint`**, **`make format`**.
+Then open **http://localhost:5001**. (Runs `docker compose -f docker/docker-compose.yml up --build` under the hood.) For researcher tasks (representation, signals, fitness, config), see [START_HERE.md](START_HERE.md). For other ways to run (local Python, tests, deployment), see [Running the project](#running-the-project) below. Common dev tasks: **`make help`**, **`make test`**, **`make lint`**, **`make format`**.
 
 ## Features
 
@@ -168,8 +170,8 @@ Access the genealogy viewer at `/genealogy` or click "🌳 Genealogy Tree" in th
 - **data/** – Community and genealogy DBs (gitignored; created on first run).
 - **tests/** – Pytest suite. See [tests/README.md](tests/README.md).
 - **examples/** – [examples/README.md](examples/README.md): `api_usage.py`, `evolution_batch.py`, `time_signal_showcase.py`.
-- **config/** – NEAT config in **config/neat/**; experiment presets in `experiments.json`. See [config/neat/README.md](config/neat/README.md) and [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md).
-- **src/eyecatcher/** – Python package. Entry: `server.py`. Layout and “where to edit”: [src/eyecatcher/README.md](src/eyecatcher/README.md) and [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md).
+- **config/** – NEAT config in **config/neat/**; experiment presets in `experiments.json`. See [config/neat/README.md](config/neat/README.md). For what to edit when: [START_HERE.md](START_HERE.md) and [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md).
+- **src/eyecatcher/** – Python package. Entry: `server.py`. Layout: [src/eyecatcher/README.md](src/eyecatcher/README.md). Where to edit (representation, signals): [START_HERE.md](START_HERE.md) → [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md).
 - **Root** – Makefile, pyproject.toml, **docker/** (Dockerfile, docker-compose), **scripts/** (run.sh). Contributing: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 Generated output (saved patterns, frames) → `output/` (gitignored).

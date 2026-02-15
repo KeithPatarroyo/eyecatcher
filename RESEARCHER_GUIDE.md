@@ -2,6 +2,8 @@
 
 This guide points you to the files that matter for changing evolution behavior (signals, NEAT config, reproduction, rendering). The rest of the app (server, community, genealogy UI) you can mostly ignore for evolution-only work.
 
+**Quick index:** [START_HERE.md](START_HERE.md) — one sentence per task (run experiment, change representation, add signal, add fitness, config) with links into this guide.
+
 ## Backend layout and where to edit
 
 Python package: `src/eyecatcher/`. File tree: **[src/eyecatcher/README.md](src/eyecatcher/README.md)**.
@@ -40,6 +42,10 @@ In practice you work with: **preset → representation → individuals and popul
 
 **API:** Request/response "genome" is representation-specific JSON (see Logical objects above).
 
+### Conceptual model (phenotype and substrate)
+
+The architecture maps to evolutionary biology: **genome** (evolvable data) undergoes **development** (`express()`, `compile_to_shader()`) to produce a **phenotype** (declarative description). The phenotype is expressed on a **substrate** (shader, grid, or image—frontend framework code) and responds to the **environment** (signals: time, mouse, activity). When you add a representation you set `phenotype = Phenotype(substrate="shader")` (or `"grid"` / `"image"`); no JavaScript is required for standard substrates.
+
 ### Architecture map (data flow)
 
 ```mermaid
@@ -60,7 +66,7 @@ flowchart LR
         GenSignals --> EvConfig[config_signals.generated.js]
         GenRep --> SubConfig[config.generated.js]
         EvConfig --> ViewerControls[viewer_controls.js]
-        SubConfig --> AdapterRegistry[substrate_adapters/index.js]
+        SubConfig --> AdapterRegistry[representation/registry.js]
         AdapterRegistry --> PatternRenderer[pattern_renderer.js]
         AnimLoop[animation_loop.js] --> PatternRenderer
         API --> PatternRenderer
@@ -71,14 +77,15 @@ flowchart LR
 
 Architecture (spec, sockets, catalog): [signals/README.md](src/eyecatcher/signals/README.md).
 
-**Checklist (order matters):** 1) Edit [signals/catalog.py](src/eyecatcher/signals/catalog.py) (and representation sockets if you add a new input target) → 2) Run make generate-signals → 3) Update NEAT num_inputs/num_outputs if counts changed → 4) Restart server and reload app.
+**Single source of truth:** Catalog + representation sockets. Add a signal = add to catalog (and socket preset if needed) → run `make generate`. The codegen updates NEAT num_inputs/num_outputs from the representation and writes the frontend signal list; no manual NEAT edit.
+
+**Checklist (order matters):** 1) Edit [signals/catalog.py](src/eyecatcher/signals/catalog.py) (and representation sockets if you add a new input target) → 2) Run `make generate` → 3) Restart server and reload app.
 
 1. **Edit the catalog and representations:** [src/eyecatcher/signals/catalog.py](src/eyecatcher/signals/catalog.py) – add or change `Signal` or `Output` instances and presets (e.g. `DUAL_CPPN_VISUAL_INPUTS`, `DUAL_CPPN_TIME_INPUTS`). Use `Signal("id", "Label")` for inputs; use `Signal("id", "Label", is_spatial=True)` for per-pixel inputs (x, y, distance); use `Output("id", "Label")` for outputs. Representations (e.g. [representation/dual_cppn.py](src/eyecatcher/representation/dual_cppn.py)) build sockets from these presets; if you add a new input target, add a socket that uses the new list. The registry ([signals/registry.py](src/eyecatcher/signals/registry.py)) provides helpers like `export_for_frontend` and `parse_time_inputs`; it does not define the signal lists.
-2. **Generate frontend config:** Run `make generate-signals` (or `python scripts/generate_signal_config.py` from repo root). This writes [static/js/evolution/config_signals.generated.js](static/js/evolution/config_signals.generated.js) and validates NEAT config against the representation’s socket input/output counts.
-3. **NEAT counts:** If you added or removed inputs/outputs, update num_inputs/num_outputs in [config/neat/](config/neat/) (neat_config_experimental.txt, neat_config_time_experimental.txt). The generate script will fail with a clear message if they don’t match.
-4. Restart the server and reload the app.
+2. **Run codegen:** Run `make generate` (or `make generate-signals`). This updates NEAT config num_inputs/num_outputs from the representation’s socket counts, writes [static/js/evolution/config_signals.generated.js](static/js/evolution/config_signals.generated.js), and validates. No manual edit of [config/neat/](config/neat/) needed.
+3. Restart the server and reload the app.
 
-If you forget step 2, the frontend will still use the old signal list until you run `make generate-signals`. The test `test_generated_signals_file_is_up_to_date` in [tests/test_signal_registry.py](tests/test_signal_registry.py) fails if the generated file does not match the current representation spec; run `make test` to catch drift.
+If you forget step 2, the frontend will still use the old signal list until you run `make generate`. The test `test_generated_signals_file_is_up_to_date` in [tests/test_signal_registry.py](tests/test_signal_registry.py) fails if the generated file does not match the current representation spec; run `make test` to catch drift.
 
 ## Pluggable signal sources
 
@@ -176,7 +183,7 @@ Genealogy stores evolutionary history (populations, individuals, branches) in SQ
 
 ## Frontend
 
-**Layout and rendering:** [static/js/README.md](static/js/README.md) — folder map, script order, adapter interface, capabilities matrix. (Frontend: "substrate" in names; backend: "representation".)
+**Layout and rendering:** [static/js/README.md](static/js/README.md) — folder map, script order, adapter interface, capabilities matrix.
 
 ### Data flow (patterns to pixels)
 
@@ -188,60 +195,60 @@ Python representation.compile_to_shader()
 Frontend: PatternRenderer.setupPattern(canvas, glsl) → { gl, program, positionBuffer }
         ↓
 Each frame (animation_loop.js):
-    SignalSource.getValues(canvas) → signal values → adapter.buildUniforms() → uniform dict
+    SignalSource.getValues(canvas) → signal values → substrate.buildParams() → params
         ↓
-    adapter.render(patternData, uniforms, signalState) → gl.drawArrays → pixels
+    substrate.render(state, params, signalState) → pixels
 ```
 
-### Adapter interface (frontend: substrate adapter)
-Custom representations register a JS adapter (see [static/js/substrate/](static/js/substrate/) and adapter registry). The framework is representation-agnostic: adapters that implement `getDisplayData` and `createDisplayElement` own their display pipeline (visual, audio, or other). Legacy adapters without these use a fallback.
+### Substrate contract (frontend)
 
-| Method / property | Required | Purpose |
-|-------------------|----------|---------|
-| `id` | Yes | Representation identifier (must match Python `representation.id`) |
-| `outputType` | Yes | `"shader"`, `"grid"`, `"audio"`, or other |
-| `lifecycle` | No | `"frame"` (default): per-frame render via animation loop; `"self-managed"`: adapter owns updates (e.g. audio playback). Omit or use `"frame"` for visual. |
-| `getDisplayData(genomes, options)` | Preferred | Fetch display-ready data (e.g. `SubstrateAdapters.fetchViaCompile` or `fetchViaEvaluate`). If absent, registry uses a default based on `outputType`. |
-| `createDisplayElement(pattern, options)` | Preferred | Return `{ element: HTMLElement, patternData }` for the card content (canvas, `<audio>`, etc.). If absent, legacy shader/image branch is used. |
-| `render(patternData, uniformValues, signalState)` | Yes for `lifecycle=== "frame"` | Draw one frame |
-| `isGenomeFormat(obj)` | Yes | Return `true` if a genome object matches this representation |
-| `buildUniforms(signalValues)` | No | Convert signal ids to uniform names |
-| `preparePatternData(patternData, pattern)` | No | Store substrate-specific fields on patternData after display element is created |
-| `hasSignalControls` | No | Show signal toggle checkboxes (default: `false`) |
-| `capabilities` | No | `{ save, network, timeOutput, adjustWeight }` |
-| `getMetaLabel(pattern)` | No | Custom label for the pattern card info |
-| `onSetup(entry, gl)` | No | Called once per pattern (create FBOs, wire playback, etc.). `gl` may be null for non-WebGL adapters. |
-| `onBeforeRender`, `onAfterRender`, `onTeardown` | No | Frame lifecycle (only for `lifecycle === "frame"`) |
-| `onCellInteraction(patternData, x, y, type)` | No | Pixel-level or custom interaction |
+Display is driven by **phenotype** (from the backend) and **substrates** (framework JS). The registry builds a facade per representation from `RepresentationConfig` and the substrate chosen by `phenotype.substrate`. Researchers do not implement adapters for standard cases.
 
-Examples: [ca.js](static/js/substrate/ca.js) (stateful grid), [cppn_adapter.js](static/js/substrate/cppn_adapter.js) (config-driven shader). For non-visual (e.g. audio), implement `getDisplayData`, `createDisplayElement`, and `lifecycle: "self-managed"`; no changes to shared framework files are needed. Full capabilities matrix: [static/js/README.md](static/js/README.md).
+**Contract in code:** [substrate.js](static/js/representation/substrate.js) defines the base `Substrate` with six methods; only `createDisplayElement` and `render` are required; others have no-op defaults.
+
+| Method | Purpose |
+|--------|---------|
+| `createDisplayElement(phenotype, patternPayload)` | Create DOM element (canvas, img, etc.); return `{ element, state }`. |
+| `setup(state, phenotype)` | Initialize resources (WebGL programs, FBOs). |
+| `teardown(state)` | Clean up resources. |
+| `buildParams(phenotype, signalValues)` | Map environment signals to substrate-specific params (e.g. uniforms). |
+| `render(state, params, signalState)` | Render one frame or tick. |
+| `handleInteraction(state, x, y, interactionType)` | Optional: handle click/drag (e.g. grid toggle/draw). |
+
+**Built-in substrates:** [shader_substrate.js](static/js/representation/shader_substrate.js) (stateless GLSL), [grid_substrate.js](static/js/representation/grid_substrate.js) (FBO ping-pong, step/display/toggle from phenotype), [image_substrate.js](static/js/representation/image_substrate.js) (static image fallback). Registry: [substrate_registry.js](static/js/representation/substrate_registry.js); unknown `phenotype.substrate` falls back to ImageSubstrate. Full capabilities matrix: [static/js/README.md](static/js/README.md).
 
 ## What you can ignore for evolution-only work
 
-- **Server and routes:** server.py, web/ (stateless_api, genealogy_routes, community_routes) – HTTP and DB; they call evolution (reproduction), genome/substrate (serialization), glsl (compile), and data (genealogy_db).
+- **Server and routes:** server.py, web/ (stateless_api, genealogy_routes, community_routes) – HTTP and DB; they call evolution (reproduction), genome/representation (serialization), glsl (compile), and data (genealogy_db).
 - **Frontend:** static/ – pattern renderer, viewer controls, and evolution_config.js matter for signals and UI; the rest (community UI, genealogy viewer, storage) is optional for "just evolution."
 - **Data and config:** data/ (DBs), config/neat/ (file contents matter; paths set in evolution/config.py).
 
 ## Keeping frontend in sync
 
-Some constants exist in both Python and JavaScript; when you change them, update both sides. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). **Evolution defaults** (population size, max, crossover, etc.): single source is [config/evolution_defaults.json](config/evolution_defaults.json); backend loads it, and `make generate-evolution-config` (or `make generate`) produces [evolution_config_defaults.generated.js](static/js/evolution/evolution_config_defaults.generated.js) for frontend fallbacks. Population size and max are bootstrapped from `GET /api/config` at load time. **Signal toggles and outputs** come from the representation’s signal spec (catalog + sockets): run `make generate-signals` after changing [signals/catalog.py](src/eyecatcher/signals/catalog.py) or representation sockets. **Representation adapter config** (ids, genome format) is generated from [representation/export.py](src/eyecatcher/representation/export.py): run `make generate-substrates` (or the representation codegen target) after adding or changing representations. Run `make generate` to run all codegen. test_signal_registry checks that the generated signals file matches the registry.
+Some constants exist in both Python and JavaScript; when you change them, update both sides. To verify generated files are up to date (e.g. in CI), run `make check-generate`; it exits with an error and tells you to run `make generate` if anything is stale. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). **Evolution defaults** (population size, max, crossover, etc.): single source is [config/evolution_defaults.json](config/evolution_defaults.json); backend loads it, and `make generate-evolution-config` (or `make generate`) produces [evolution_config_defaults.generated.js](static/js/evolution/evolution_config_defaults.generated.js) for frontend fallbacks. Population size and max are bootstrapped from `GET /api/config` at load time. **Signal toggles and outputs** come from the representation’s signal spec (catalog + sockets): run `make generate-signals` after changing [signals/catalog.py](src/eyecatcher/signals/catalog.py) or representation sockets. **Representation config** (phenotype, ids, genome format) is generated from [representation/export.py](src/eyecatcher/representation/export.py). Run `make generate` after adding or changing representations to run all codegen (signals, representation config, representation includes, evolution config). test_signal_registry checks that the generated signals file matches the registry.
 
 **Evolution config vs NEAT:** Representation-agnostic evolution params (population_size, crossover_probability, elitism_default) live in [config/evolution_defaults.json](config/evolution_defaults.json); presets in [config/experiments.json](config/experiments.json) override them. NEAT config paths and NEAT .txt file contents (mutation rates, pop_size in .txt, etc.) stay in [experiment/config.py](src/eyecatcher/experiment/config.py) and config/neat/; population size for interactive evolution is controlled by our config, not by NEAT `pop_size`. At startup, a warning is logged if NEAT `pop_size` differs from our effective population_size.
 
+### Representation types
+
+**NEAT (CPPN):** `dual_cppn`, `single_cppn` — evolved networks, compile to GLSL. **Non-NEAT:** `ca` (Conway’s Game of Life, grid + FBO); `trivial` (minimal template: one socket tying a signal to the “body part” that expresses it, one float genome → solid-color grid). Copy [trivial.py](src/eyecatcher/representation/trivial.py) for custom representations (e.g. audio); see [base.py](src/eyecatcher/representation/base.py) for the protocol and [ca.py](src/eyecatcher/representation/ca.py) for a full non-NEAT example.
+
 ## Add a new representation
 
-Representations (dual_cppn, single_cppn, ca, future NCA) share a common protocol. **Single source of truth:** the representation class defines its own `frontend_metadata`; the registry is the only other place you add the new representation. No separate metadata file.
+Representations (dual_cppn, single_cppn, ca, trivial, future NCA) share a common protocol. **Single source of truth:** the representation class defines its own `frontend_metadata` and **phenotype** (which substrate to use and optional display/behaviour config). The registry is the only other place you add the new representation. No JavaScript is generated: the frontend uses the phenotype from config to choose a substrate (shader, grid, or image).
 
-Use this checklist in order. One line per file or action.
+**Scaffold (recommended):** Run `make new-representation name=<name>` (name in snake_case, e.g. `my_rep`). This creates the Python stub (with a default `Phenotype(substrate="image")`), registry entry, and `__init__.py` export; it prints a preset snippet for [config/experiments.json](config/experiments.json). Then run `make generate` and implement the representation logic in the Python module. For `substrate="image"` implement `render_to_image()`; for `substrate="shader"` implement `compile_to_shader()`; for `substrate="grid"` provide step/display shaders and grid config in the phenotype.
+
+Use this checklist if you add a representation by hand (or to verify after scaffolding). One line per file or action.
 
 ### Backend (required for every new representation)
 
 | # | File or action | One-line description |
 |---|----------------|----------------------|
-| 1 | [src/eyecatcher/representation/\<new\>.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `signal_spec`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and set `frontend_metadata` (`hasSignalControls`, `genomeKeys`). Implement `compile_to_shader` for visual/shader representations (return `None` for non-visual; `/api/compile` will then return 501 for that representation). Optionally implement `serialize_express_output(output)` to control how `express()` output is serialized in `/api/evaluate` (e.g. audio → base64). See [protocol.py](src/eyecatcher/representation/protocol.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
-| 2 | [src/eyecatcher/representation/__init__.py](src/eyecatcher/representation/__init__.py) | Export the new representation class. |
+| 1 | [src/eyecatcher/representation/\<new\>.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `signal_spec`, `phenotype`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and `frontend_metadata` (`hasSignalControls`, `genomeKeys`). Set `phenotype = Phenotype(substrate="shader"|"grid"|"image", ...)`. Implement `compile_to_shader` for shader representations; for grid, put step/display/toggle shaders and config on the phenotype; for image, implement `render_to_image()`. Optionally `serialize_express_output(output)` for `/api/evaluate`. See [protocol.py](src/eyecatcher/representation/protocol.py), [trivial.py](src/eyecatcher/representation/trivial.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
+| 2 | [src/eyecatcher/representation/__init__.py](src/eyecatcher/representation/__init__.py) | Export the new representation class (and genome if needed). |
 | 3 | [src/eyecatcher/representation/registry.py](src/eyecatcher/representation/registry.py) | Add one entry to `REPRESENTATIONS` dict: `"<id>": NewRepresentation`. |
-| 4 | `make generate-substrates` | Regenerate frontend config from `frontend_metadata` (writes [static/js/substrate/config.generated.js](static/js/substrate/config.generated.js) or equivalent). |
+| 4 | `make generate` | Regenerate frontend config from `frontend_metadata` (writes [static/js/representation/config.generated.js](static/js/representation/config.generated.js) and representation includes). |
 
 ### Config
 
@@ -251,16 +258,16 @@ Use this checklist in order. One line per file or action.
 
 ### Frontend – config-driven only (CPPN-like stateless shader)
 
-If your representation compiles to a **stateless** per-pixel shader and uses the same uniform/signal model as dual_cppn/single_cppn, you do **not** add a custom adapter. Steps 1–5 plus codegen are enough; the generated config and [cppn_adapter.js](static/js/substrate/cppn_adapter.js) register it.
+If your representation uses an existing **substrate** (shader, grid, or image), you do **not** write any frontend code. Set `phenotype = Phenotype(substrate="shader")` (or `"grid"` / `"image"`) and run `make generate`; the registry and substrates handle display.
 
-### Frontend – custom adapter (stateful or special rendering)
+### Frontend – custom substrate (new medium only)
 
-If your representation needs **custom rendering** (e.g. FBO ping-pong like CA/NCA, or special uniforms), add and wire a JS adapter:
+If your representation uses a **new medium** (e.g. audio, 3D) that has no built-in substrate yet:
 
 | # | File or action | One-line description |
 |---|----------------|----------------------|
-| 6 | [static/js/substrate/\<new\>.js](static/js/substrate/) | New adapter: implement `id`, `outputType`, `isGenomeFormat`; prefer `getDisplayData` (e.g. `SubstrateAdapters.fetchViaCompile`/`fetchViaEvaluate`) and `createDisplayElement` (return `{ element, patternData }`). Set `lifecycle: "frame"` for per-frame rendering or `"self-managed"` for audio etc. Use [createStatefulAdapter](static/js/substrate/stateful_adapter.js) for FBO-based representations, or [ca.js](static/js/substrate/ca.js) as a full custom example. |
-| 7 | [scripts/generate_substrate_includes.py](scripts/generate_substrate_includes.py) | Add your script basename (e.g. `nca.js`) to `SUBSTRATE_SCRIPTS` in load order; run `make generate-substrate-includes`. This updates both [interactive_viewer.html](static/interactive_viewer.html) and [genealogy_viewer.html](static/genealogy_viewer.html); do not edit those HTML files by hand for substrate scripts. |
+| 6 | [static/js/representation/](static/js/representation/) | New substrate class extending `Substrate` in a new file (e.g. `audio_substrate.js`). Implement the six-method contract from [substrate.js](static/js/representation/substrate.js); register it in [substrate_registry.js](static/js/representation/substrate_registry.js) (e.g. `registerSubstrate("audio", new AudioSubstrate())`). |
+| 7 | [scripts/generate_representation_includes.py](scripts/generate_representation_includes.py) | Add your script basename to `REPRESENTATION_SCRIPTS` in load order; run `make generate-representation-includes` (or `make generate`). |
 
 ### Frontend – app and import (only if behaviour differs)
 
@@ -273,11 +280,11 @@ If your representation needs **custom rendering** (e.g. FBO ping-pong like CA/NC
 
 | # | File or action | One-line description |
 |---|----------------|----------------------|
-| 10 | [static/js/substrate/pattern_renderer.js](static/js/substrate/pattern_renderer.js) | Only if you need a representation-specific branch in card creation (e.g. meta label prefix); prefer implementing `getMetaLabel` on the adapter. |
-| 11 | [static/js/app/grid_renderer.js](static/js/app/grid_renderer.js) | Only if you need grid-specific behaviour (e.g. overlap metric); prefer implementing `gridOverlap` on the adapter. |
+| 10 | [static/js/representation/pattern_renderer.js](static/js/representation/pattern_renderer.js) | Only if you need a representation-specific branch in card creation; metadata is normally driven by phenotype `meta_template` and substrate state. |
+| 11 | [static/js/app/grid_renderer.js](static/js/app/grid_renderer.js) | Only if you need grid-specific behaviour (e.g. overlap metric) beyond what the grid substrate provides. |
 | 12 | Tests | Add representation tests (e.g. [tests/test_ca_substrate.py](tests/test_ca_substrate.py), protocol compliance via [tests/representation_test_helpers.py](tests/representation_test_helpers.py)). |
 
-**Summary:** Config-driven (CPPN-like) = steps 1–5. Custom adapter = 1–7, and 8–11 only when the default behaviour is wrong for your representation.
+**Summary:** Standard substrates (shader, grid, image) = steps 1–5, no frontend code. Custom substrate (new medium) = 1–7; steps 8–11 only when app/import behaviour must differ.
 
 ## Batch evolution (representation-agnostic)
 
@@ -296,9 +303,10 @@ EXPERIMENT_CONFIG=single python examples/evolution_batch.py --fitness color_vari
 
 | I want to… | File(s) |
 |------------|---------|
-| Add a new representation | representation/ (new module with frontend_metadata, protocol, signal_spec), representation/registry.py, config/experiments.json; make generate-substrates; frontend adapter if custom (see “Add a new representation” above) |
-| Add/rename a signal | signals/catalog.py (and representation sockets if new input target), then make generate-signals; update NEAT num_inputs/num_outputs if counts changed |
+| Add a new representation | `make new-representation name=<name>` (scaffold), then fill in logic; or representation/ (module, registry, __init__), config/experiments.json, make generate; phenotype picks substrate (no JS for shader/grid/image); custom substrate only for new medium (see “Add a new representation” above) |
+| Add/rename a signal | signals/catalog.py (and representation sockets if new input target), then make generate; NEAT counts updated by codegen |
 | Change population size or crossover (evolution defaults) | config/evolution_defaults.json, then `make generate`; preset overrides in config/experiments.json |
+| See effective config and where each value comes from | `python -m eyecatcher config --show` or GET `/api/config?provenance=1` |
 | Change NEAT config paths or render resolution | [experiment/config.py](src/eyecatcher/experiment/config.py) |
 | Change reproduction/selection | evolution/reproduction.py, genome/operators.py |
 | Change CPU rendering or representation query | representation/ (e.g. cppn_base, dual_cppn, ca) |

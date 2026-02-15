@@ -85,7 +85,7 @@ The following read from `representation.signal_spec` or from sockets:
 - **Frontend codegen** — `export_for_frontend(spec)`; groups by category.
 - **Viewer / API** — time output uses `spec.socket("time")` when present; default values from `socket.default_values()` or `get_default_signal_values(spec)`.
 - **Fitness** — introspects `spec.inputs` for temporal category.
-- **NEAT validation** — validates config against socket input/output counts (e.g. in generate_signal_config).
+- **NEAT codegen** — `generate_signal_config.py` updates NEAT num_inputs/num_outputs from the representation’s socket counts (single source of truth) and validates.
 - **Debug / inspection** — labels and structure from spec/sockets.
 
 ## Extending for new representations
@@ -95,4 +95,4 @@ The following read from `representation.signal_spec` or from sockets:
 3. Set `self.signal_spec = SignalSpec(sockets=(...), outputs=..., substitutions=...)` in your representation's `__init__`.
 4. Delegate expression to sockets; keep evolution (create_random, mutate, crossover, population) on the representation.
 
-After changing signal lists used by NEAT, run `scripts/generate_signal_config.py` to emit the JS config and validate alignment.
+After changing signal lists used by NEAT representations, run `make generate` (or `make generate-signals`): the script updates NEAT config num_inputs/num_outputs from the representation and emits the frontend signal list.
