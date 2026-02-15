@@ -1,5 +1,5 @@
 /**
- * PatternCardBuilder: builds pattern card DOM (canvas, info, actions, events).
+ * CardBuilder: builds organism card DOM (canvas, info, actions, events).
  * Card layout and events; WebGL setup lives in webgl_utils.js.
  * Depends: window.RepresentationRegistry, window.PopulationState.
  */
@@ -8,7 +8,7 @@
 
     function createErrorFallback(errorMsg) {
         var fallback = document.createElement("div");
-        fallback.className = "pattern-canvas-fallback";
+        fallback.className = "organism-canvas-fallback";
         fallback.textContent = errorMsg || "WebGL not available";
         if (errorMsg && errorMsg.length > 80) {
             fallback.setAttribute("title", errorMsg);
@@ -25,9 +25,9 @@
         };
     }
 
-    class PatternCardBuilder {
+    class CardBuilder {
         /**
-         * Create a pattern card DOM element with canvas, info, action buttons, and event binding.
+         * Create an organism card DOM element with canvas, info, action buttons, and event binding.
          * @param {Object} options - pattern, onShare, onNetwork, onSave, onClick, onUnclick, onMouseEnter, onMouseLeave, onFullscreen, representationId
          * @returns {{ card: HTMLElement, canvas: HTMLCanvasElement|null, runtime: Object|null }}
          */
@@ -40,25 +40,28 @@
                     : window.RepresentationRegistry.resolve({
                           representationId: representationId,
                       });
-            var adapter = resolved.adapter;
+            var representation = resolved.representation;
             const id = pattern.id;
             const fitness = pattern.fitness !== undefined ? pattern.fitness : 0;
-            const hasCellInteraction = adapter && adapter.supportsCellInteraction();
+            const hasCellInteraction =
+                representation && representation.supportsCellInteraction();
             const card = document.createElement("div");
             card.className =
-                "pattern-card" +
-                (hasCellInteraction ? " pattern-card--interactive" : "");
+                "organism-card" +
+                (hasCellInteraction ? " organism-card--interactive" : "");
             card.dataset.id = id;
 
             const info = document.createElement("div");
-            info.className = "pattern-info";
+            info.className = "organism-info";
             const meta = document.createElement("div");
-            meta.className = "pattern-meta";
+            meta.className = "organism-meta";
             var label =
-                adapter && adapter.getMetaLabel ? adapter.getMetaLabel(pattern) : null;
+                representation && representation.getMetaLabel
+                    ? representation.getMetaLabel(pattern)
+                    : null;
             meta.textContent =
                 label != null && label !== ""
-                    ? adapter.getMetaIdPrefix() + id + " | " + label
+                    ? representation.getMetaIdPrefix() + id + " | " + label
                     : "ID: " +
                       id +
                       " | Nodes: " +
@@ -72,7 +75,7 @@
             info.appendChild(clickCount);
 
             const actions = document.createElement("div");
-            actions.className = "pattern-actions";
+            actions.className = "organism-actions";
 
             const fullscreenBtn = document.createElement("button");
             fullscreenBtn.className = "fullscreen-btn";
@@ -94,8 +97,10 @@
                 if (options.onShare) options.onShare(id);
             };
 
-            var showNetwork = adapter ? adapter.hasCapability("network") : true;
-            var showSave = adapter ? adapter.hasCapability("save") : true;
+            var showNetwork = representation
+                ? representation.hasCapability("network")
+                : true;
+            var showSave = representation ? representation.hasCapability("save") : true;
 
             const networkBtn = document.createElement("button");
             networkBtn.className = "network-btn";
@@ -112,11 +117,11 @@
             saveBtn.textContent = "\u2193";
             saveBtn.setAttribute(
                 "title",
-                "Download pattern (compiling may take a moment)"
+                "Download organism (compiling may take a moment)"
             );
             saveBtn.setAttribute(
                 "aria-label",
-                "Download pattern; compiling may take a moment"
+                "Download organism; compiling may take a moment"
             );
             saveBtn.onclick = function (e) {
                 e.stopPropagation();
@@ -128,14 +133,14 @@
             if (showNetwork) actions.appendChild(networkBtn);
             if (showSave) actions.appendChild(saveBtn);
 
-            if (!adapter) {
-                card.appendChild(createErrorFallback("No adapter"));
+            if (!representation) {
+                card.appendChild(createErrorFallback("No representation"));
                 card.appendChild(actions);
                 card.appendChild(info);
                 this._attachEvents(card, id, options);
                 return { card: card, canvas: null, runtime: null };
             }
-            var result = adapter.createDisplayElement(pattern, options);
+            var result = representation.createDisplayElement(pattern, options);
             var displayEl = result && result.element;
             if (displayEl) {
                 card.appendChild(displayEl);
@@ -145,8 +150,8 @@
                 );
             }
             var runtime = result && result.runtime;
-            if (adapter && runtime) {
-                adapter.prepareRuntime(runtime, pattern);
+            if (representation && runtime) {
+                representation.prepareRuntime(runtime, pattern);
             }
             card.appendChild(actions);
             card.appendChild(info);
@@ -161,10 +166,10 @@
 
         _attachEvents(card, id, options) {
             var canvas = card.querySelector("canvas");
-            var adapter = window.RepresentationRegistry.resolve({
+            var rep = window.RepresentationRegistry.resolve({
                 representationId: options.representationId,
-            }).adapter;
-            var hasCellInteraction = adapter && adapter.supportsCellInteraction();
+            }).representation;
+            var hasCellInteraction = rep && rep.supportsCellInteraction();
             var self = this;
 
             if (options.onClick) {
@@ -232,10 +237,10 @@
             interactionType
         ) {
             if (!canvas) return;
-            var adapter = window.RepresentationRegistry.resolve({
+            var rep = window.RepresentationRegistry.resolve({
                 representationId: representationId,
-            }).adapter;
-            if (adapter && adapter.supportsCellInteraction()) {
+            }).representation;
+            if (rep && rep.supportsCellInteraction()) {
                 var coords = getClickCoordinates(event, canvas);
                 var patternsMap = window.PopulationState.patterns;
                 var runtime = null;
@@ -252,7 +257,7 @@
                         runtime = patternsMap.get(String(patternId));
                     }
                 }
-                adapter.onCellInteraction(runtime, coords.x, coords.y, interactionType);
+                rep.onCellInteraction(runtime, coords.x, coords.y, interactionType);
             }
         }
 
@@ -261,5 +266,5 @@
         }
     }
 
-    window.PatternCardBuilder = new PatternCardBuilder();
+    window.CardBuilder = new CardBuilder();
 })();

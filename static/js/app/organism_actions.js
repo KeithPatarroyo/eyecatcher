@@ -1,17 +1,17 @@
 /**
- * Pattern interaction handlers: save, click, unclick.
+ * Organism interaction handlers: save, click, unclick.
  * Used by app.js grid callbacks. Depends on window.PopulationState, ApiClient, Toast.
  */
 (function () {
     "use strict";
 
-    class PatternActions {
+    class OrganismActions {
         savePattern(id, buttonEl) {
             var currentGenomes = window.PopulationState.currentGenomes;
             if (!currentGenomes || !currentGenomes.length) {
                 window.Toast.show(
                     "Cannot save",
-                    "No pattern data. Start with New random population or Load population.",
+                    "No organism data. Start with New random population or Load population.",
                     "error"
                 );
                 return;
@@ -24,7 +24,7 @@
             if (!genome) {
                 window.Toast.show(
                     "Cannot save",
-                    "Could not get pattern data.",
+                    "Could not get organism data.",
                     "error"
                 );
                 return;
@@ -43,14 +43,14 @@
                             : new Blob([file.content], { type: file.mime });
                         window.Toast.triggerDownload(blob, file.filename);
                         window.Toast.show(
-                            "Pattern saved!",
+                            "Organism saved!",
                             "Zip downloaded to your computer.",
                             "success",
                             { duration: 5000 }
                         );
                     } else {
                         window.Toast.show(
-                            "Pattern saved!",
+                            "Organism saved!",
                             "No download in response.",
                             "success"
                         );
@@ -111,5 +111,5 @@
         }
     }
 
-    window.PatternActions = new PatternActions();
+    window.OrganismActions = new OrganismActions();
 })();

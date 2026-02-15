@@ -61,25 +61,25 @@
             var shader = patternPayload && patternPayload.shader;
             if (!shader) {
                 var fallback = document.createElement("div");
-                fallback.className = "pattern-canvas-fallback";
+                fallback.className = "organism-canvas-fallback";
                 fallback.textContent = "No shader";
                 return { element: fallback, state: null };
             }
             var canvas = document.createElement("canvas");
-            canvas.className = "pattern-canvas";
+            canvas.className = "organism-canvas";
             canvas.width = 256;
             canvas.height = 256;
             var wu = window.WebGLUtils;
             if (!wu || !wu.setupPattern) {
                 var err = document.createElement("div");
-                err.className = "pattern-canvas-fallback";
+                err.className = "organism-canvas-fallback";
                 err.textContent = "WebGLUtils not available";
                 return { element: err, state: null };
             }
             var state = wu.setupPattern(canvas, shader);
             if (state && state.error) {
                 var errEl = document.createElement("div");
-                errEl.className = "pattern-canvas-fallback";
+                errEl.className = "organism-canvas-fallback";
                 errEl.textContent = state.error || "Shader error";
                 return { element: errEl, state: null };
             }

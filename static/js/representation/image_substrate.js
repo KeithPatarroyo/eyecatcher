@@ -12,7 +12,7 @@
         createDisplayElement(phenotype, patternPayload) {
             if (patternPayload && patternPayload.image) {
                 var img = document.createElement("img");
-                img.className = "pattern-canvas pattern-image";
+                img.className = "organism-canvas organism-image";
                 img.src = patternPayload.image;
                 img.width = 256;
                 img.height = 256;
@@ -21,7 +21,7 @@
                 return { element: img, state: null };
             }
             var fallback = document.createElement("div");
-            fallback.className = "pattern-canvas-fallback";
+            fallback.className = "organism-canvas-fallback";
             fallback.textContent = "No image";
             return { element: fallback, state: null };
         }

@@ -130,13 +130,13 @@
             onNetwork: function (id, card) {
                 window.NetworkVisualizer.toggle(id, card);
             },
-            onSave: window.PatternActions.savePattern,
+            onSave: window.OrganismActions.savePattern,
             onFullscreen: openFullscreen,
             onClick: function (id, card) {
-                window.PatternActions.clickPattern(id, card, updateStats);
+                window.OrganismActions.clickPattern(id, card, updateStats);
             },
             onUnclick: function (id, card) {
-                window.PatternActions.unclickPattern(id, card, updateStats);
+                window.OrganismActions.unclickPattern(id, card, updateStats);
             },
             onMouseEnter: function (id) {
                 if (typeof window.EyecatcherDebug !== "undefined") {
@@ -172,7 +172,7 @@
             genomes: genomes,
         });
         return {
-            adapter: resolved.adapter,
+            representation: resolved.representation,
             representationId: resolved.representationId,
         };
     }
@@ -400,13 +400,13 @@
         radio.addEventListener("change", function () {
             var data = getCurrentGenomesForSave();
             if (!data) return;
-            var adapter = window.RepresentationRegistry.getAdapter(
+            var representation = window.RepresentationRegistry.get(
                 data.representationId
             );
             if (
-                adapter &&
-                adapter.phenotype &&
-                adapter.phenotype.substrate === "shader"
+                representation &&
+                representation.phenotype &&
+                representation.phenotype.substrate === "shader"
             ) {
                 window.GridRenderer.loadFromStatelessGenomes(
                     data.genomes,
@@ -482,8 +482,8 @@
                 return window.ViewerControls.signalState;
             },
             getGenomeForPattern: getGenomeForPattern,
-            getAdapter: function () {
-                return window.RepresentationRegistry.getAdapter(
+            getRepresentation: function () {
+                return window.RepresentationRegistry.get(
                     window.PopulationState.representationId
                 );
             },

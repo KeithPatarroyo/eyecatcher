@@ -18,7 +18,7 @@
          */
         createDisplayElement(phenotype, patternPayload) {
             var fallback = document.createElement("div");
-            fallback.className = "pattern-canvas-fallback";
+            fallback.className = "organism-canvas-fallback";
             fallback.textContent = "Substrate not implemented";
             return { element: fallback, state: null };
         }

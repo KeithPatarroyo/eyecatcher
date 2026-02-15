@@ -9,7 +9,7 @@ const EyecatcherDebug = (function () {
     let getPatternsMapFn = null; // Function to get the patterns Map
     let getSignalStateFn = null; // Function to get signal state
     let getGenomeForPatternFn = null; // Async function(patternId) => genome JSON for stateless time-output
-    let getAdapterFn = null; // Function() => current representation adapter (for capabilities.timeOutput)
+    let getRepresentationFn = null; // Function() => current representation (for capabilities.timeOutput)
 
     // State
     let hoveredPatternId = null;
@@ -160,7 +160,7 @@ const EyecatcherDebug = (function () {
             getPatternsMapFn = config.getPatterns || (() => new Map());
             getSignalStateFn = config.getSignalState || (() => ({ time: true }));
             getGenomeForPatternFn = config.getGenomeForPattern || null;
-            getAdapterFn = config.getAdapter || null;
+            getRepresentationFn = config.getRepresentation || null;
 
             createDOM();
             setupEventListeners();
@@ -188,11 +188,11 @@ const EyecatcherDebug = (function () {
             elements.mousePos.textContent = `${Math.round(mouseX)}, ${Math.round(mouseY)}`;
 
             const timeEl = elements.timeOutput;
-            const adapter = getAdapterFn ? getAdapterFn() : null;
+            const representation = getRepresentationFn ? getRepresentationFn() : null;
             const hasTimeOutput =
-                adapter &&
-                adapter.capabilities &&
-                adapter.capabilities.timeOutput === true;
+                representation &&
+                representation.capabilities &&
+                representation.capabilities.timeOutput === true;
             const signalState = getSignalStateFn();
             const timeEnabled = hasTimeOutput && signalState && signalState.time;
 
@@ -271,11 +271,11 @@ const EyecatcherDebug = (function () {
          * @param {string|null} representationId - current representation id
          */
         updateForRepresentation: function (representationId) {
-            const adapter = window.RepresentationRegistry.getAdapter(representationId);
+            const representation = window.RepresentationRegistry.get(representationId);
             const show =
-                adapter &&
-                adapter.capabilities &&
-                adapter.capabilities.timeOutput === true;
+                representation &&
+                representation.capabilities &&
+                representation.capabilities.timeOutput === true;
             const section = document.getElementById("debug-time-output-section");
             if (section) section.style.display = show ? "" : "none";
         },

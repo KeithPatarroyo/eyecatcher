@@ -20,7 +20,7 @@
         if (
             !RepresentationRegistry ||
             !RepresentationRegistry.getDisplayData ||
-            !RepresentationRegistry.findAdapterByGenome ||
+            !RepresentationRegistry.findByGenome ||
             !ApiClient
         ) {
             return null;
@@ -35,11 +35,11 @@
             const genome = data.individual != null ? data.individual : data.genome;
             if (!genome) return null;
 
-            const adapter = RepresentationRegistry.findAdapterByGenome(genome);
-            if (!adapter) return null;
+            const representation = RepresentationRegistry.findByGenome(genome);
+            if (!representation) return null;
 
             const result = await RepresentationRegistry.getDisplayData(
-                adapter,
+                representation,
                 [genome],
                 {}
             );

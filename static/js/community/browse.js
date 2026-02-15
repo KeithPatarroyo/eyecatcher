@@ -12,7 +12,7 @@
         if (
             !RepresentationRegistry ||
             !RepresentationRegistry.getDisplayData ||
-            !RepresentationRegistry.findAdapterByGenome
+            !RepresentationRegistry.findByGenome
         ) {
             return {};
         }
@@ -27,11 +27,11 @@
                       ? payload.genome
                       : payload);
             const key = getKey(item);
-            const adapter = RepresentationRegistry.findAdapterByGenome(genome);
-            if (!adapter) return;
+            const representation = RepresentationRegistry.findByGenome(genome);
+            if (!representation) return;
             try {
                 const result = await RepresentationRegistry.getDisplayData(
-                    adapter,
+                    representation,
                     [genome],
                     {}
                 );

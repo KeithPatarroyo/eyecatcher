@@ -8,7 +8,7 @@
     class FullscreenModal {
         constructor() {
             this._fullscreenRuntime = null;
-            this._fullscreenAdapter = null;
+            this._fullscreenRepresentation = null;
         }
 
         _getConfig() {
@@ -22,7 +22,7 @@
 
         closeFullscreen(ids) {
             this._fullscreenRuntime = null;
-            this._fullscreenAdapter = null;
+            this._fullscreenRepresentation = null;
             var wrapId = (ids && ids.fullscreenCanvasWrap) || "fullscreen-canvas-wrap";
             var modalId = (ids && ids.fullscreenModal) || "fullscreen-modal";
             var wrap = document.getElementById(wrapId);
@@ -45,14 +45,14 @@
             var resolved = window.RepresentationRegistry.resolve({
                 genomes: [pattern],
             });
-            var adapter = resolved.adapter;
-            if (!adapter) {
-                adapter = window.RepresentationRegistry.findAdapterByGenome(pattern);
+            var representation = resolved.representation;
+            if (!representation) {
+                representation = window.RepresentationRegistry.findByGenome(pattern);
             }
 
             var hasShader = pattern.shader;
             var hasImage = pattern.image != null;
-            var useLiveCanvas = !!adapter;
+            var useLiveCanvas = !!representation;
             if (!hasShader && !hasImage && !useLiveCanvas) return;
 
             var modalId = (ids && ids.fullscreenModal) || "fullscreen-modal";
@@ -65,7 +65,8 @@
             modal.hidden = false;
             wrap.innerHTML = "";
 
-            var aspectRatio = (adapter && adapter.preferredAspectRatio) || 1;
+            var aspectRatio =
+                (representation && representation.preferredAspectRatio) || 1;
             wrap.style.setProperty("--pattern-aspect-ratio", String(aspectRatio));
 
             var config = this._getConfig();
@@ -74,7 +75,8 @@
 
             if (hasImage && !useLiveCanvas) {
                 var img = document.createElement("img");
-                img.className = "pattern-canvas pattern-image fullscreen-pattern-image";
+                img.className =
+                    "organism-canvas organism-image fullscreen-organism-image";
                 img.src = patternRef.image;
                 img.alt = "Pattern " + id;
                 var maxW = Math.min(wrap.clientWidth || config.default, config.max);
@@ -85,7 +87,7 @@
                 return;
             }
 
-            this._fullscreenAdapter = adapter;
+            this._fullscreenRepresentation = representation;
             requestAnimationFrame(function () {
                 if (modal.hidden) return;
                 var size = Math.min(
@@ -95,7 +97,7 @@
                 );
                 if (size < config.min) size = config.default;
                 var canvas = document.createElement("canvas");
-                canvas.className = "pattern-canvas";
+                canvas.className = "organism-canvas";
                 canvas.width = size;
                 canvas.height = size;
                 wrap.appendChild(canvas);
@@ -107,7 +109,7 @@
                 if (!runtime || runtime.error) {
                     wrap.innerHTML = "";
                     modal.hidden = true;
-                    self._fullscreenAdapter = null;
+                    self._fullscreenRepresentation = null;
                     return;
                 }
                 self._fullscreenRuntime = {
@@ -119,8 +121,8 @@
                 };
                 if (patternRef.grid !== undefined)
                     self._fullscreenRuntime.grid = patternRef.grid;
-                if (adapter) {
-                    adapter.prepareRuntime(self._fullscreenRuntime, patternRef);
+                if (representation) {
+                    representation.prepareRuntime(self._fullscreenRuntime, patternRef);
                 }
             });
         }

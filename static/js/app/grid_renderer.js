@@ -2,7 +2,7 @@
  * GridRenderer: builds and clears the pattern grid DOM; load and add population from stateless genomes.
  * Receives population and callbacks from app.js. Researchers change card layout or styling here or in CSS.
  *
- * Dependencies: window.PatternCardBuilder.createCard, window.PopulationState, window.RepresentationRegistry, etc.
+ * Dependencies: window.CardBuilder.createCard, window.PopulationState, window.RepresentationRegistry, etc.
  * Exposes: init, clearGrid, renderGridFromPopulation, appendCardsToGrid, patternCardCallbacks, loadFromStatelessGenomes, addToGrid
  */
 
@@ -25,7 +25,7 @@
             this._columns = 0;
             if (!gridElement) return;
 
-            var cards = gridElement.querySelectorAll(".pattern-card");
+            var cards = gridElement.querySelectorAll(".organism-card");
             if (!cards.length) return;
 
             var style = window.getComputedStyle(gridElement);
@@ -212,18 +212,14 @@
             patternsMap,
             representationId
         ) {
-            var PatternCardBuilder = window.PatternCardBuilder;
-            if (
-                !PatternCardBuilder ||
-                typeof PatternCardBuilder.createCard !== "function"
-            )
-                return;
-            var adapter = window.RepresentationRegistry.resolve({
+            var CardBuilder = window.CardBuilder;
+            if (!CardBuilder || typeof CardBuilder.createCard !== "function") return;
+            var rep = window.RepresentationRegistry.resolve({
                 representationId: representationId,
-            }).adapter;
+            }).representation;
             var self = this;
             population.forEach(function (pattern) {
-                var result = PatternCardBuilder.createCard(
+                var result = CardBuilder.createCard(
                     self.patternCardCallbacks(pattern, callbacks, representationId)
                 );
                 grid.appendChild(result.card);
@@ -232,7 +228,7 @@
                     patternsMap.set(pattern.id, entry);
                 }
             });
-            if (adapter && typeof adapter.gridOverlap === "function") {
+            if (rep && typeof rep.gridOverlap === "function") {
                 var entries = Array.from(patternsMap.values());
                 for (var i = 0; i < entries.length; i++) {
                     var ei = entries[i];
@@ -243,7 +239,7 @@
                         if (i === j) continue;
                         var ej = entries[j];
                         if (!ej.grid) continue;
-                        var ov = adapter.gridOverlap(ei.grid, ej.grid);
+                        var ov = rep.gridOverlap(ei.grid, ej.grid);
                         if (ov > bestOverlap && ov < 1) {
                             bestOverlap = ov;
                             bestId = ej.patternId;
@@ -302,11 +298,11 @@
             }
             var resolved = this._deps.resolveAdapter(representationId, genomes);
             var resolvedRepresentationId = resolved.representationId;
-            var adapter = resolved.adapter;
+            var representation = resolved.representation;
             var self = this;
-            if (!adapter) {
+            if (!representation) {
                 this.showGridError(
-                    "No adapter for substrate " +
+                    "No representation for " +
                         (resolvedRepresentationId || "?") +
                         ". Check RepresentationConfig.",
                     false
@@ -320,9 +316,13 @@
             }
             return window.Utils.withLoading(function () {
                 self.clearGrid(self._deps.IDS);
-                return window.RepresentationRegistry.getDisplayData(adapter, genomes, {
-                    colorMode: self._deps.getColorMode(),
-                })
+                return window.RepresentationRegistry.getDisplayData(
+                    representation,
+                    genomes,
+                    {
+                        colorMode: self._deps.getColorMode(),
+                    }
+                )
                     .then(function (displayResult) {
                         var population =
                             displayResult.population || displayResult.shaders || [];
@@ -436,7 +436,7 @@
                 window.PopulationState.representationId,
                 genomes
             );
-            var adapter = resolved.adapter;
+            var representation = resolved.representation;
             var nextKey = 0;
             window.PopulationState.patterns.forEach(function (_, id) {
                 nextKey = Math.max(nextKey, id + 1);
@@ -449,9 +449,13 @@
             });
             var self = this;
             return window.Utils.withLoading(function () {
-                return window.RepresentationRegistry.getDisplayData(adapter, payload, {
-                    colorMode: self._deps.getColorMode(),
-                })
+                return window.RepresentationRegistry.getDisplayData(
+                    representation,
+                    payload,
+                    {
+                        colorMode: self._deps.getColorMode(),
+                    }
+                )
                     .then(function (displayResult) {
                         var population = displayResult.population || [];
                         var newPatternsMap = new Map();

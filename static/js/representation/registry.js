@@ -1,7 +1,7 @@
 /**
  * Representation registry. Bootstraps from Phenotype + Substrate registry.
  * Each representation has a phenotype (from config) and a substrate (ShaderSubstrate, GridSubstrate, ImageSubstrate).
- * Adapters are facades that delegate to substrate + phenotype for display and render.
+ * Representations are facades that delegate to substrate + phenotype for display and render.
  */
 (function () {
     "use strict";
@@ -54,7 +54,7 @@
         });
     }
 
-    function createAdapterFacade(entry, substrate, phenotype) {
+    function createRepresentation(entry, substrate, phenotype) {
         var isGenomeFormat = buildIsGenomeFormatFromConfig(entry);
         var capabilities = mergeCapabilities(entry);
         var substrateName = (phenotype && phenotype.substrate) || "image";
@@ -150,10 +150,10 @@
 
     class RepresentationRegistry {
         constructor() {
-            this._adaptersById = {};
+            this._representationsById = {};
             window.__eyecatcherDefaultResolution = {
                 representationId: DEFAULT_REPRESENTATION_ID,
-                adapter: null,
+                representation: null,
             };
             this._bootstrapFromConfig();
         }
@@ -169,17 +169,17 @@
                 var phenotype = entry.phenotype || { substrate: "image" };
                 var substrate = (reg && reg.getSubstrate(phenotype.substrate)) || null;
                 if (!substrate) return;
-                var adapter = createAdapterFacade(entry, substrate, phenotype);
-                self._adaptersById[entry.id] = adapter;
+                var representation = createRepresentation(entry, substrate, phenotype);
+                self._representationsById[entry.id] = representation;
             });
         }
 
-        getAdapter(representationId) {
+        get(representationId) {
             if (!representationId) return null;
-            return this._adaptersById[representationId] || null;
+            return this._representationsById[representationId] || null;
         }
 
-        findAdapterByGenome(genome) {
+        findByGenome(genome) {
             var config = window.RepresentationConfig;
             var order =
                 config && Array.isArray(config)
@@ -188,13 +188,9 @@
                       })
                     : [DEFAULT_REPRESENTATION_ID, "single_cppn", "ca"];
             for (var i = 0; i < order.length; i++) {
-                var adapter = this._adaptersById[order[i]];
-                if (
-                    adapter &&
-                    adapter.isGenomeFormat &&
-                    adapter.isGenomeFormat(genome)
-                ) {
-                    return adapter;
+                var rep = this._representationsById[order[i]];
+                if (rep && rep.isGenomeFormat && rep.isGenomeFormat(genome)) {
+                    return rep;
                 }
             }
             return null;
@@ -209,7 +205,7 @@
                 DEFAULT_REPRESENTATION_ID;
             return {
                 representationId: representationId,
-                adapter: this.getAdapter(representationId),
+                representation: this.get(representationId),
             };
         }
 
@@ -225,30 +221,31 @@
 
         resolve(opts) {
             opts = opts || {};
-            var adapter = null;
+            var representation = null;
             if (opts.representationId) {
-                adapter = this.getAdapter(opts.representationId);
+                representation = this.get(opts.representationId);
             }
-            if (!adapter && opts.genomes && opts.genomes.length) {
-                adapter = this.findAdapterByGenome(opts.genomes[0]);
+            if (!representation && opts.genomes && opts.genomes.length) {
+                representation = this.findByGenome(opts.genomes[0]);
             }
-            if (!adapter) {
-                adapter = this.getDefault().adapter;
+            if (!representation) {
+                representation = this.getDefault().representation;
             }
             return {
                 representationId:
-                    (adapter && adapter.id) || this.getDefault().representationId,
-                adapter: adapter,
+                    (representation && representation.id) ||
+                    this.getDefault().representationId,
+                representation: representation,
             };
         }
 
-        currentAdapter() {
+        currentRepresentation() {
             var state =
                 window.PopulationState &&
                 window.PopulationState.getState &&
                 window.PopulationState.getState();
             var repId = state && state.representationId;
-            return this.resolve({ representationId: repId }).adapter;
+            return this.resolve({ representationId: repId }).representation;
         }
 
         async fetchViaDevelop(genomes, options) {
@@ -284,8 +281,8 @@
             };
         }
 
-        async getDisplayData(adapter, genomes, options) {
-            return adapter.getDisplayData(genomes, options);
+        async getDisplayData(representation, genomes, options) {
+            return representation.getDisplayData(genomes, options);
         }
 
         /**
@@ -316,16 +313,19 @@
                 });
                 if (!Object.keys(signalValues).length) signalValues = { raw_time: 0.5 };
             }
-            var adapter = this.currentAdapter();
+            var representation = this.currentRepresentation();
             var params =
-                adapter && adapter.buildParams
-                    ? adapter.buildParams(signalValues, context)
+                representation && representation.buildParams
+                    ? representation.buildParams(signalValues, context)
                     : {};
-            if (adapter) adapter.render(runtime, params, signalState || {});
+            if (representation)
+                representation.render(runtime, params, signalState || {});
         }
     }
 
     var registry = new RepresentationRegistry();
     window.RepresentationRegistry = registry;
     window.RepresentationAdapters = registry; // backward-compat alias
+    registry.getAdapter = registry.get.bind(registry);
+    registry.findAdapterByGenome = registry.findByGenome.bind(registry);
 })();

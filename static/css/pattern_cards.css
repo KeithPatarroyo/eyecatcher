@@ -1,5 +1,5 @@
 /* Pattern grid cards, canvas, selection, fitness, meta, and card actions */
-.pattern-canvas-fallback {
+.organism-canvas-fallback {
     width: 100%;
     aspect-ratio: 1;
     min-height: 80px;
@@ -57,7 +57,7 @@
     color: var(--color-primary);
 }
 
-.pattern-card {
+.organism-card {
     background: var(--color-bg-primary);
     border-radius: var(--radius-lg);
     overflow: hidden;
@@ -68,24 +68,24 @@
     container-type: inline-size;
 }
 
-.pattern-card:hover {
+.organism-card:hover {
     transform: scale(1.02);
     border-color: var(--color-primary);
 }
 
-.pattern-card.selected {
+.organism-card.selected {
     border-color: var(--color-success);
     box-shadow: 0 0 20px rgba(40, 167, 69, 0.5);
 }
 
 /* Interactive substrates (e.g. CA): highlight bottom only when hovering the bottom, so it's clear that "give fitness" is the info/actions area, not the display */
-.pattern-card--interactive .pattern-info:hover,
-.pattern-card--interactive .pattern-actions:hover {
+.organism-card--interactive .organism-info:hover,
+.organism-card--interactive .organism-actions:hover {
     background: var(--color-primary-soft, rgba(91, 155, 213, 0.15));
     transition: background 0.2s;
 }
 
-.pattern-canvas {
+.organism-canvas {
     width: 100%;
     aspect-ratio: var(--pattern-aspect-ratio, 1);
     height: auto;
@@ -94,18 +94,18 @@
     vertical-align: top;
 }
 
-.pattern-image {
+.organism-image {
     object-fit: contain;
 }
 
-.pattern-info {
+.organism-info {
     padding: 8px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.pattern-meta {
+.organism-meta {
     font-size: 10px;
     color: var(--color-text-tertiary);
 }
@@ -124,7 +124,7 @@
 }
 
 /* In-flow action row: scales with card (no absolute positioning) */
-.pattern-actions {
+.organism-actions {
     display: flex;
     gap: 0.35em;
     justify-content: flex-end;
@@ -133,9 +133,9 @@
     background: var(--color-overlay-bg-light);
 }
 
-.pattern-actions .submit-community-btn,
-.pattern-actions .network-btn,
-.pattern-actions .fullscreen-btn {
+.organism-actions .submit-community-btn,
+.organism-actions .network-btn,
+.organism-actions .fullscreen-btn {
     flex-shrink: 0;
     min-width: 1.8em;
     width: 1.8em;
@@ -147,7 +147,7 @@
     align-items: center;
 }
 
-.pattern-actions .save-btn {
+.organism-actions .save-btn {
     flex-shrink: 0;
     min-width: 1.8em;
     width: auto;
@@ -162,7 +162,7 @@
 /* Shared card action buttons (save, fullscreen, etc.) */
 .save-btn,
 .submit-community-btn,
-.pattern-actions .fullscreen-btn {
+.organism-actions .fullscreen-btn {
     padding: 0.2em 0.45em;
     border: 1px solid var(--color-card-action-border);
     border-radius: 4px;
@@ -176,7 +176,7 @@
 }
 
 .save-btn:hover,
-.pattern-actions .fullscreen-btn:hover {
+.organism-actions .fullscreen-btn:hover {
     background: var(--color-card-action-bg-hover);
 }
 

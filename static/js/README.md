@@ -34,7 +34,7 @@ Display is driven by **phenotype** (from the backend, per representation) and **
 - `shader_substrate.js` — Stateless GLSL: canvas, compile shader from pattern, fullscreen quad. Used by dual_cppn, single_cppn.
 - `grid_substrate.js` — FBO ping-pong: step shader, display shader, toggle interaction from phenotype. Used by ca.
 - `image_substrate.js` — Static image fallback (e.g. from backend `render_to_image()`). Used when no other substrate fits.
-- `registry.js` — Bootstraps from RepresentationConfig; creates facades that delegate to substrate + phenotype. Resolve, getDisplayData, getAdapter.
+- `registry.js` — Bootstraps from RepresentationConfig; creates facades that delegate to substrate + phenotype. Resolve, getDisplayData, get, findByGenome.
 - `config.generated.js` — Generated from Python representation export (do not edit).
 - `webgl_utils.js` — WebGL 2 context, shader compile, fullscreen quad setup, FBO helpers. Rendering pipeline: registry `renderFrameWithSignals()` and adapter `buildParams` / `render`.
 
@@ -107,7 +107,7 @@ Only if you need a new *medium* (e.g. audio): add a JS class extending `Substrat
 - `grid_renderer.js` — Build and clear the pattern grid DOM.
 - `fullscreen_modal.js` — Fullscreen pattern view.
 - `animation_loop.js` — Time mode, mouse tracking, per-frame pattern render.
-- `pattern_actions.js` — Save, click, unclick handlers.
+- `organism_actions.js` — Save, click, unclick handlers.
 - `app_event_bindings.js` — Global event bindings.
 - `app_genealogy_loader.js` — Genealogy load from localStorage.
 - `population_ui.js` — Start fresh, load/save population, import from file.

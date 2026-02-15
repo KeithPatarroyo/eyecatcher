@@ -180,7 +180,7 @@
                         var genome = JSON.parse(text);
                         var accepted =
                             genome &&
-                            !!window.RepresentationRegistry.findAdapterByGenome(genome);
+                            !!window.RepresentationRegistry.findByGenome(genome);
                         if (accepted) genomes.push(genome);
                     }
                 } else {
