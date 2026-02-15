@@ -7,11 +7,11 @@ abstract methods and override only what differs from the defaults.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
-from .protocol import RepresentationOutput
+from .protocol import OutputType, Phenotype, RepresentationOutput
 
 
 class RepresentationBase(ABC):
@@ -19,9 +19,19 @@ class RepresentationBase(ABC):
     Abstract base for all representations. Defines the required contract
     (abstract methods) and default implementations for optional features.
 
-    Subclasses must set: id, output_type, signal_spec, frontend_metadata.
-    Capabilities are auto-derived from overridden methods.
+    Subclasses must set: id, signal_spec, frontend_metadata.
+    output_type is derived from phenotype.substrate. Capabilities are auto-derived.
     """
+
+    @property
+    def output_type(self) -> OutputType:
+        """Derive from phenotype.substrate."""
+        return cast(OutputType, self.phenotype.substrate)
+
+    @property
+    def phenotype(self) -> Phenotype:
+        """Default: image substrate (static display from render_to_image)."""
+        return Phenotype(substrate="image")
 
     @property
     def capabilities(self) -> dict[str, bool]:
@@ -36,7 +46,7 @@ class RepresentationBase(ABC):
             "compile": cls.compile_to_shader is not base.compile_to_shader,
         }
 
-    # --- Required (abstract) ---
+    # --- Genome operations (required) ---
 
     @abstractmethod
     def create_random(self, key: int = 0) -> Any:
@@ -53,6 +63,7 @@ class RepresentationBase(ABC):
         """Return offspring from a and b."""
         ...
 
+    # --- Development (genome → phenotype; required) ---
     @abstractmethod
     def express(
         self, ind: Any, inputs: dict[str, float], **kwargs: Any
@@ -60,6 +71,7 @@ class RepresentationBase(ABC):
         """Produce displayable output."""
         ...
 
+    # --- Serialization (required) ---
     @abstractmethod
     def to_json(self, ind: Any) -> dict[str, Any]:
         """Serialize individual for API/client."""
@@ -70,7 +82,7 @@ class RepresentationBase(ABC):
         """Deserialize individual from API/client payload."""
         ...
 
-    # --- Optional (defaults; override to enable) ---
+    # --- Phenotype sampling & optional (defaults; override to enable) ---
 
     def compile_to_shader(self, ind: Any, color_mode: str | None = None) -> str | None:
         """Return GLSL shader or None if unsupported."""

@@ -18,7 +18,7 @@ from ..genome.serialization import genome_from_json, genome_to_json
 from ..signals import catalog
 from ..signals.spec import SignalSpec
 from .cppn_base import CPPNRepresentationBase, _clamp_rgb, normalize_to_bipolar
-from .protocol import OutputType
+from .protocol import Phenotype
 from .sockets import NeatSocket
 
 
@@ -32,13 +32,16 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
     """
 
     id = "single_cppn"
-    output_type: OutputType = "shader"
     frontend_metadata = {
         "hasSignalControls": False,
         "genomeKeys": ["visual"],
         "excludeKeys": ["time_signal"],
-        "adapterFactory": "cppn",
     }
+
+    phenotype = Phenotype(
+        substrate="shader",
+        meta_template="Nodes: {nodes} | Connections: {connections}",
+    )
 
     def __init__(
         self,

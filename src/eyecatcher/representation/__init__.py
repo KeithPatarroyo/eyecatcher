@@ -8,19 +8,23 @@ evolution and API use the representation interface only.
 from .ca import ConwayGenome, ConwayRepresentation
 from .dual_cppn import DualCPPNRepresentation
 from .export import export_representations_for_frontend
-from .protocol import OutputType, Representation, RepresentationOutput
+from .protocol import OutputType, Phenotype, Representation, RepresentationOutput
 from .registry import REPRESENTATIONS, get_representation
 from .single_cppn import SingleCPPNRepresentation
+from .trivial import TrivialGenome, TrivialRepresentation
 
 __all__ = [
     "ConwayGenome",
     "ConwayRepresentation",
     "DualCPPNRepresentation",
     "OutputType",
+    "Phenotype",
     "Representation",
     "RepresentationOutput",
     "REPRESENTATIONS",
     "SingleCPPNRepresentation",
+    "TrivialGenome",
+    "TrivialRepresentation",
     "export_representations_for_frontend",
     "get_representation",
 ]

@@ -3,14 +3,15 @@ Stateless API Blueprint for Eyecatcher.
 
 Provides endpoints that don't depend on server-side population state.
 Representation is stored on Flask app.config["EYECATCHER_REPRESENTATION"].
-Endpoints: /api/compile, /api/random, /api/evaluate,
-/api/time-output, /api/network, /api/adjust-weight.
+Endpoints: /api/develop (primary), /api/compile (alias), /api/express (primary),
+/api/evaluate (alias), /api/random, /api/time-output, /api/network, /api/adjust-weight.
 """
 
 from flask import Blueprint, current_app, jsonify, request
 
 from ..experiment import (
     get_crossover_probability,
+    get_effective_config_with_provenance,
     get_max_population_size,
     get_population_size,
     update_runtime_config,
@@ -37,7 +38,7 @@ def get_current_representation():
     return current_app.config.get(_REPRESENTATION_CONFIG_KEY)
 
 
-def _config_response():
+def _config_response(include_provenance=False):
     """Build JSON config payload (representation, limits, capabilities)."""
     representation = get_current_representation()
     capabilities = dict(representation.capabilities)
@@ -50,6 +51,8 @@ def _config_response():
         "capabilities": capabilities,
         "available_representation_ids": list(REPRESENTATIONS.keys()),
     }
+    if include_provenance:
+        payload["config_sources"] = get_effective_config_with_provenance()
     return jsonify(payload)
 
 
@@ -75,7 +78,12 @@ def api_config():
                 )
             current_app.config[_REPRESENTATION_CONFIG_KEY] = get_representation(new_id)
         update_runtime_config(data)
-    return _config_response()
+    include_provenance = request.args.get("provenance", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    return _config_response(include_provenance=include_provenance)
 
 
 def _require_capability(cap: str):
@@ -156,6 +164,7 @@ def _require_can_compile():
     return None
 
 
+@stateless_bp.route("/api/develop", methods=["POST"])
 @stateless_bp.route("/api/compile", methods=["POST"])
 @api_try_except
 def api_compile():
@@ -207,8 +216,8 @@ def api_random():
     )
 
 
-@stateless_bp.route("/api/evaluate", methods=["POST"])
 @stateless_bp.route("/api/express", methods=["POST"])
+@stateless_bp.route("/api/evaluate", methods=["POST"])
 @api_try_except
 def api_evaluate():
     """

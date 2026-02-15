@@ -19,7 +19,7 @@ import numpy as np
 from ..signals import catalog
 from ..signals.spec import SignalSpec
 from .base import RepresentationBase
-from .protocol import OutputType, RepresentationOutput
+from .protocol import Phenotype, RepresentationOutput
 from .sockets import GridSocket
 
 # Default grid size for genome and simulation (same size).
@@ -98,6 +98,71 @@ def _nested_list_to_grid(data: list[list[int]] | list[list[float]]) -> np.ndarra
     return (arr > 0.5).astype(np.uint8)
 
 
+# Fragment shaders for grid substrate: GOL step, display (grayscale), toggle (click).
+# Frontend runs step to FBO, display to screen; toggle applies brush before step.
+_GOL_FRAGMENT_SHADER = """#version 300 es
+precision highp float;
+
+uniform sampler2D u_state;
+uniform vec2 u_texelSize;
+
+in vec2 vUV;
+out vec4 fragColor;
+
+void main() {
+    float c = texture(u_state, vUV).r;
+    float n = 0.0;
+    n += texture(u_state, vUV + vec2(-u_texelSize.x, -u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(-u_texelSize.x, 0.0)).r;
+    n += texture(u_state, vUV + vec2(-u_texelSize.x, u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(0.0, -u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(0.0, u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(u_texelSize.x, -u_texelSize.y)).r;
+    n += texture(u_state, vUV + vec2(u_texelSize.x, 0.0)).r;
+    n += texture(u_state, vUV + vec2(u_texelSize.x, u_texelSize.y)).r;
+    float next = (n > 2.5 && n < 3.5) || (c > 0.5 && n > 1.5 && n < 3.5) ? 1.0 : 0.0;
+    fragColor = vec4(next, next, next, 1.0);
+}
+"""
+
+_CA_DISPLAY_SHADER = """#version 300 es
+precision highp float;
+uniform sampler2D u_state;
+in vec2 vUV;
+out vec4 fragColor;
+void main() {
+  float v = texture(u_state, vUV).r;
+  fragColor = vec4(v, v, v, 1.0);
+}
+"""
+
+_CA_TOGGLE_SHADER = """#version 300 es
+precision highp float;
+uniform sampler2D u_state;
+uniform vec2 u_gridSize;
+uniform int u_toggleCount;
+uniform float u_brushRadius;
+uniform vec2 u_toggles[64];
+in vec2 vUV;
+out vec4 fragColor;
+void main() {
+  float v = texture(u_state, vUV).r;
+  vec2 cell = min(floor(vUV * u_gridSize), u_gridSize - 1.0);
+  for (int i = 0; i < 64; i++) {
+    if (i >= u_toggleCount) break;
+    vec2 tc = u_toggles[i];
+    vec2 toggleCell = min(floor(vec2(tc.x, 1.0 - tc.y) * u_gridSize), u_gridSize - 1.0);
+    float dist = max(abs(cell.x - toggleCell.x), abs(cell.y - toggleCell.y));
+    if (dist <= u_brushRadius) {
+      v = 1.0 - v;
+      break;
+    }
+  }
+  fragColor = vec4(v, v, v, 1.0);
+}
+"""
+
+
 class ConwayRepresentation(RepresentationBase):
     """
     Representation for Conway's Game of Life (2D).
@@ -109,12 +174,23 @@ class ConwayRepresentation(RepresentationBase):
     """
 
     id = "ca"
-    output_type: OutputType = "grid"
     frontend_metadata = {
         "hasSignalControls": False,
         "genomeKeys": ["grid", "key"],
-        "adapterFactory": None,
     }
+
+    phenotype = Phenotype(
+        substrate="grid",
+        grid_size=DEFAULT_GRID_SIZE,
+        step_interval_ms=180,
+        step_shader=_GOL_FRAGMENT_SHADER,
+        display_shader=_CA_DISPLAY_SHADER,
+        toggle_shader=_CA_TOGGLE_SHADER,
+        state_format="RGBA",
+        wrap="REPEAT",
+        interactions=["toggle"],
+        meta_template="{fingerprint} · {density} · {live_count} alive",
+    )
 
     def __init__(
         self,
@@ -169,7 +245,7 @@ class ConwayRepresentation(RepresentationBase):
     def compile_to_shader(
         self, ind: ConwayGenome, color_mode: str | None = None
     ) -> str | None:
-        """GLSL for Conway GOL (step + display). Frontend uses two passes with FBOs."""
+        """GLSL for Conway GOL step. Frontend uses phenotype for display/toggle."""
         return _GOL_FRAGMENT_SHADER
 
     def to_json(self, ind: ConwayGenome) -> dict[str, Any]:
@@ -232,31 +308,3 @@ class ConwayRepresentation(RepresentationBase):
                 "utf-8"
             ),
         }
-
-
-# Fragment shader: Conway GOL step. Reads u_state, outputs next (R = alive).
-# Frontend runs this to a FBO, then displays by sampling that texture.
-_GOL_FRAGMENT_SHADER = """#version 300 es
-precision highp float;
-
-uniform sampler2D u_state;
-uniform vec2 u_texelSize;
-
-in vec2 vUV;
-out vec4 fragColor;
-
-void main() {
-    float c = texture(u_state, vUV).r;
-    float n = 0.0;
-    n += texture(u_state, vUV + vec2(-u_texelSize.x, -u_texelSize.y)).r;
-    n += texture(u_state, vUV + vec2(-u_texelSize.x, 0.0)).r;
-    n += texture(u_state, vUV + vec2(-u_texelSize.x, u_texelSize.y)).r;
-    n += texture(u_state, vUV + vec2(0.0, -u_texelSize.y)).r;
-    n += texture(u_state, vUV + vec2(0.0, u_texelSize.y)).r;
-    n += texture(u_state, vUV + vec2(u_texelSize.x, -u_texelSize.y)).r;
-    n += texture(u_state, vUV + vec2(u_texelSize.x, 0.0)).r;
-    n += texture(u_state, vUV + vec2(u_texelSize.x, u_texelSize.y)).r;
-    float next = (n > 2.5 && n < 3.5) || (c > 0.5 && n > 1.5 && n < 3.5) ? 1.0 : 0.0;
-    fragColor = vec4(next, next, next, 1.0);
-}
-"""

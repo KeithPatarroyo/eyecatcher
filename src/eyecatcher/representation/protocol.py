@@ -9,6 +9,7 @@ optional defaults and auto-derived capabilities.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol, TypeVar, Union
 
 import numpy as np
@@ -21,6 +22,29 @@ OutputType = Literal["shader", "image", "grid", "audio"]
 
 # Data for each output type: shader=str, image/grid/audio=ndarray
 RepresentationOutputData = Union[str, np.ndarray]
+
+
+@dataclass(frozen=True)
+class Phenotype:
+    """
+    Declarative description of how this representation's phenotype is expressed
+    and displayed. One per representation; exported to frontend via codegen.
+    The substrate is the physical body (shader surface, grid, image) the phenotype
+    is expressed on.
+    """
+
+    substrate: str  # "shader", "grid", "image", etc.
+    # Grid-substrate fields (optional):
+    grid_size: int | None = None
+    step_interval_ms: int | None = None
+    step_shader: str | None = None  # GLSL for the update rule (behavior)
+    display_shader: str | None = None  # GLSL for visualization
+    toggle_shader: str | None = None  # GLSL for toggle interaction (grid only)
+    state_format: str | None = None  # "RGBA" or "RGBA16F"
+    wrap: str | None = None  # "REPEAT" or "CLAMP"
+    interactions: list[str] = field(default_factory=list)  # ["toggle", "draw"]
+    # Metadata:
+    meta_template: str | None = None  # e.g. "Nodes: {nodes} | Connections: ..."
 
 
 class RepresentationOutput:
@@ -46,17 +70,32 @@ class Representation(Protocol[IndividualT]):
     Optional class attribute: frontend_metadata (dict). When set, it is the single
     source for codegen (hasSignalControls, genomeKeys, capabilities, optional
     excludeKeys). See export.export_representations_for_frontend().
+
+    output_type is derived from phenotype.substrate (shader, grid, image, etc.)
+    unless a representation overrides it.
     """
 
     id: str
-    output_type: OutputType
+
+    # --- Phenotype (what is displayed) ---
+    @property
+    def output_type(self) -> OutputType:
+        """Display/output type; default from phenotype.substrate."""
+        ...
+
     signal_spec: SignalSpec
+
+    @property
+    def phenotype(self) -> Phenotype:
+        """How this representation is expressed and displayed."""
+        ...
 
     @property
     def capabilities(self) -> dict[str, bool]:
         """Capability flags (save, network, time_output, adjust_weight, compile)."""
         ...
 
+    # --- Genome operations (evolution) ---
     def create_random(self, key: int = 0) -> IndividualT:
         """Create a new random individual. key is used as genome/id."""
         ...
@@ -69,6 +108,7 @@ class Representation(Protocol[IndividualT]):
         """Return offspring from a and b with the given key."""
         ...
 
+    # --- Development (genome → phenotype) ---
     def express(
         self, ind: IndividualT, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
@@ -84,6 +124,7 @@ class Representation(Protocol[IndividualT]):
         """
         ...
 
+    # --- Phenotype sampling (fitness, export) ---
     def sample_rgb(
         self, ind: IndividualT, coords: list[tuple[float, float]], time: float = 0.0
     ) -> list[list[float]]:
@@ -101,6 +142,7 @@ class Representation(Protocol[IndividualT]):
         """
         return None
 
+    # --- Serialization (API, save/load) ---
     def to_json(self, ind: IndividualT) -> dict[str, Any]:
         """Serialize individual for API/client."""
         ...
@@ -113,6 +155,7 @@ class Representation(Protocol[IndividualT]):
         """Return the individual's id (e.g. genome key) for API and evolution."""
         ...
 
+    # --- Optional: introspection, save assets, API extensions ---
     def get_network_types(self) -> tuple[str, ...]:
         """Return allowed network names for adjust_weight; empty if not supported."""
         return ()

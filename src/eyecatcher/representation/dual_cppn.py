@@ -29,7 +29,7 @@ from ..signals import catalog
 from ..signals.registry import parse_time_inputs
 from ..signals.spec import SignalSpec
 from .cppn_base import CPPNRepresentationBase, _clamp_rgb
-from .protocol import OutputType
+from .protocol import Phenotype
 from .sockets import NeatSocket
 
 
@@ -43,12 +43,15 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
     """
 
     id = "dual_cppn"
-    output_type: OutputType = "shader"
     frontend_metadata = {
         "hasSignalControls": True,
         "genomeKeys": ["visual", "time_signal"],
-        "adapterFactory": "cppn",
     }
+
+    phenotype = Phenotype(
+        substrate="shader",
+        meta_template="Nodes: {nodes} | Connections: {connections}",
+    )
 
     def __init__(
         self,
