@@ -2,7 +2,7 @@
 Interactive Evolution Server.
 
 Serves population and handles evolution (stateless API). Population state lives
-on the client; server provides compile, random, evolve, save. Save returns file
+on the client; server provides develop, random, evolve, save. Save returns file
 contents for client-side download (Railway / no server filesystem). Representation
 (dual_cppn, single_cppn, ca, etc.) is configured via experiments.json.
 """

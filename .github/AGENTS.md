@@ -48,7 +48,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 
 - **Researchers and evolution-only changes:** See [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md) for touchpoints (signals, NEAT, reproduction, rendering).
 - **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from ..representation import get_representation`). Code outside imports from `eyecatcher.experiment`, `eyecatcher.evolution`, `eyecatcher.representation`, `eyecatcher.genome`, `eyecatcher.glsl`, etc.
-- **Stateless API:** The server does **not** hold population state. Clients send full genome payloads in requests (e.g. `/api/compile`, `/api/evolve`). Do not add server-side population storage.
+- **Stateless API:** The server does **not** hold population state. Clients send full genome payloads in requests (e.g. `/api/develop`, `/api/evolve`). Do not add server-side population storage.
 - **Dual-CPPN:** Each individual is a `DualGenome`: two NEAT genomes (`visual` and `time_signal`) evolved together. Mutations and crossovers operate on both; keep the pairing consistent.
 - **Paths:** `get_root_dir()` in `src/eyecatcher/__init__.py` returns the repo root. Use it (or paths relative to it) for `config/`, `static/`, `data/`. Flask's `static_folder` is set to that root `static/` directory.
 

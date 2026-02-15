@@ -20,7 +20,7 @@ Then open **http://localhost:5001**. (Runs `docker compose -f docker/docker-comp
 
 - **Dual-CPPN Architecture**: Each individual has two evolved networks (visual + time signal).
 - **Configurable input signals** (time, mouse, distance, etc.) and **signal controls** in the UI; see [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md) for how to add or change signals.
-- **GPU Rendering**: CPPNs compile to GLSL for real-time WebGL in the browser.
+- **GPU Rendering**: CPPNs develop to GLSL for real-time WebGL in the browser.
 - **Interactive Evolution**: Web interface for selection, evolution, saving, and community submission.
 - **Genealogical Tree**: Track evolutionary history across generations and branches; explore and continue from any point.
 - **Debug Overlay**: Real-time signal values; optional time-output sampling.
@@ -133,7 +133,7 @@ Or `python -m eyecatcher.server`. Then open **http://localhost:5001**. Optional:
 **Examples (batch evolution, API usage, time-signal plot)** – Live in `examples/`. Run from repo root, e.g.:
 
 ```bash
-python examples/api_usage.py            # create, render, compile, mutate, crossover
+python examples/api_usage.py            # create, render, develop, mutate, crossover
 python examples/evolution_batch.py      # batch evolution with proxy fitness
 python examples/time_signal_showcase.py # plot time CPPN output (requires matplotlib)
 ```
@@ -178,7 +178,7 @@ Generated output (saved patterns, frames) → `output/` (gitignored).
 
 ## Architecture
 
-**Dual-CPPN default:** Each individual has two CPPNs (visual + time); inputs/outputs are defined by the signal system. **Stateless API:** The client stores genomes (e.g. IndexedDB) and sends them on compile/evolve/save; no server-side population. Endpoints: `POST /api/compile`, `/api/random`, `/api/evolve`, `/api/save`, `/api/time-output`, `/api/network`, `/api/adjust-weight`.
+**Dual-CPPN default:** Each individual has two CPPNs (visual + time); inputs/outputs are defined by the signal system. **Stateless API:** The client stores genomes (e.g. IndexedDB) and sends them on develop/evolve/save; no server-side population. Endpoints: `POST /api/develop`, `POST /api/express`, `/api/random`, `/api/evolve`, `/api/save`, `/api/time-output`, `/api/network`, `/api/adjust-weight`.
 
 For object model, signals, NEAT, reproduction, and where to edit: [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md).
 
@@ -193,7 +193,7 @@ from eyecatcher.representation import get_representation
 rep = get_configured_representation()
 ind = rep.create_random(0)
 rep.render_to_image(ind, resolution=(256, 256), extra_inputs={"raw_time": 0.5})
-rep.compile_to_shader(ind)
+rep.develop(ind)
 child = rep.mutate(ind, key=1)
 ```
 

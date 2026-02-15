@@ -1,8 +1,9 @@
 /**
  * API client for Eyecatcher backend. Raw fetch calls; no UI.
  * Sets window.API_URL and window.DEFAULT_DEV_PORT. Exposes: ApiClient.init(apiUrl),
- * ApiClient.compile(individuals), ApiClient.evolve(parents, populationSize),
- * ApiClient.save(id, individual), ApiClient.randomPopulation(size)
+ * ApiClient.develop(individuals, colorMode), ApiClient.express(individuals),
+ * ApiClient.evolve(parents, populationSize), ApiClient.save(id, individual),
+ * ApiClient.randomPopulation(size)
  */
 (function () {
     "use strict";
@@ -64,7 +65,7 @@
             return data;
         }
 
-        /** Primary: develop genome → shader. Prefer over compile(). */
+        /** Develop genome → shader (POST /api/develop). */
         async develop(individuals, colorMode) {
             var payload = (individuals || []).map(function (g) {
                 var copy = Object.assign({}, g);
@@ -82,11 +83,6 @@
                 },
                 "Develop failed"
             );
-        }
-
-        /** Alias for develop(); use develop() for biology-aligned naming. */
-        async compile(individuals, colorMode) {
-            return this.develop(individuals, colorMode);
         }
 
         async evolve(parents, populationSize, genealogy) {
@@ -174,7 +170,7 @@
             );
         }
 
-        /** Primary: express genome → phenotype (image/grid/shader). Prefer over evaluate(). */
+        /** Express genome → phenotype (POST /api/express). */
         async express(individuals) {
             return this.apiFetch(
                 this.getBase() + "/express",
@@ -185,11 +181,6 @@
                 },
                 "Express failed"
             );
-        }
-
-        /** Alias for express(); use express() for biology-aligned naming. */
-        async evaluate(individuals) {
-            return this.express(individuals);
         }
     }
 

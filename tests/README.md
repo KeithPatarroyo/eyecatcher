@@ -12,7 +12,7 @@
 | test_shader_compiler.py | GLSL module (glsl.shader_compiler): compile (structure, main, activations, empty connections, single hidden node). |
 | test_glsl_validity.py | Generated GLSL sanity: every v_* and *_base used is declared/defined; no redefinition of v_* (shared time/visual signals); dual shader uses _base only for time inputs (catches WebGL compile-time regressions). |
 | test_signal_registry.py | Signals module (signals.registry): NEAT config matches registry; frontend evolution_config.js matches Python (toggleable inputs). |
-| test_api.py | Flask API: /api/random, /api/compile, /api/evolve, /api/save, /api/adjust-weight; uses test client and representation fixtures. |
+| test_api.py | Flask API: /api/random, /api/develop, /api/express, /api/evolve, /api/save, /api/adjust-weight; uses test client and representation fixtures. |
 | test_genealogy_routes.py | Genealogy API: save/load population, tree, branches, export, reset, stats. |
 | test_community_routes.py | Community API: submit, list, admin approve/reject. |
 | test_visualization.py | Genome visualizer PDF and render_image (single-CPPN). |

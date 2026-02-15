@@ -31,7 +31,7 @@ Display is driven by **phenotype** (from the backend, per representation) and **
 
 - **Substrate contract:** `substrate.js` — base class with six methods: `createDisplayElement`, `setup`, `teardown`, `buildParams`, `render`, `handleInteraction`. Only `createDisplayElement` and `render` are required; others have no-op defaults.
 - `substrate_registry.js` — Routes `phenotype.substrate` (e.g. `"shader"`, `"grid"`, `"image"`) to a substrate instance. Unknown names fall back to ImageSubstrate.
-- `shader_substrate.js` — Stateless GLSL: canvas, compile shader from pattern, fullscreen quad. Used by dual_cppn, single_cppn.
+- `shader_substrate.js` — Stateless GLSL: canvas, shader from develop(), fullscreen quad. Used by dual_cppn, single_cppn.
 - `grid_substrate.js` — FBO ping-pong: step shader, display shader, toggle interaction from phenotype. Used by ca.
 - `image_substrate.js` — Static image fallback (e.g. from backend `render_to_image()`). Used when no other substrate fits.
 - `registry.js` — Bootstraps from RepresentationConfig; creates facades that delegate to substrate + phenotype. Resolve, getDisplayData, get, findByGenome.
@@ -40,11 +40,11 @@ Display is driven by **phenotype** (from the backend, per representation) and **
 
 ### Three substrates (no custom JS for standard cases)
 
-1. **ShaderSubstrate** (`substrate="shader"`) — Backend compiles genome to a fragment shader. Frontend sets params per frame and draws a fullscreen quad. No state between frames. Set `phenotype = Phenotype(substrate="shader", meta_template="...")` in Python; run `make generate`. Example: dual_cppn, single_cppn.
+1. **ShaderSubstrate** (`substrate="shader"`) — Backend develop() produces a fragment shader. Frontend sets params per frame and draws a fullscreen quad. No state between frames. Set `phenotype = Phenotype(substrate="shader", meta_template="...")` in Python; run `make generate`. Example: dual_cppn, single_cppn.
 
 2. **GridSubstrate** (`substrate="grid"`) — Backend provides step and display shaders (and optional toggle shader). Frontend maintains FBO state, runs step shader per tick, displays result. Set `phenotype = Phenotype(substrate="grid", grid_size=64, step_shader=..., display_shader=..., ...)` in Python. Example: ca. Future NCA would use this too.
 
-3. **ImageSubstrate** (`substrate="image"` or unknown) — Backend evaluates and returns an image. Frontend displays it in an `<img>` tag. Set `phenotype = Phenotype(substrate="image")` and implement `render_to_image()` in Python. Example: trivial (or any representation that does not override phenotype).
+3. **ImageSubstrate** (`substrate="image"` or unknown) — Backend express() returns an image. Frontend displays it in an `<img>` tag. Set `phenotype = Phenotype(substrate="image")` and implement `render_to_image()` in Python. Example: trivial (or any representation that does not override phenotype).
 
 ### Adding a new substrate (new medium only)
 
@@ -119,7 +119,7 @@ Only if you need a new *medium* (e.g. audio): add a JS class extending `Substrat
 
 **Only touch when fixing bugs or adding app-wide support.**
 
-- `api_client.js` — Fetch for compile, evolve, save, random, genealogy, config.
+- `api_client.js` — Fetch for develop, express, evolve, save, random, genealogy, config.
 - `utils.js` — Formatting, storage helpers, showLoading.
 - `toast.js` — Notifications and download trigger.
 - `storage.js` — IndexedDB wrapper for saved populations.

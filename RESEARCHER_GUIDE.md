@@ -44,7 +44,7 @@ In practice you work with: **preset → representation → individuals and popul
 
 ### Conceptual model (phenotype and substrate)
 
-The architecture maps to evolutionary biology: **genome** (evolvable data) undergoes **development** (`express()`, `compile_to_shader()`) to produce a **phenotype** (declarative description). The phenotype is expressed on a **substrate** (shader, grid, or image—frontend framework code) and responds to the **environment** (signals: time, mouse, activity). When you add a representation you set `phenotype = Phenotype(substrate="shader")` (or `"grid"` / `"image"`); no JavaScript is required for standard substrates.
+The architecture maps to evolutionary biology: **genome** (evolvable data) undergoes **development** (`express()`, `develop()`) to produce a **phenotype** (declarative description). The phenotype is expressed on a **substrate** (shader, grid, or image—frontend framework code) and responds to the **environment** (signals: time, mouse, activity). When you add a representation you set `phenotype = Phenotype(substrate="shader")` (or `"grid"` / `"image"`); no JavaScript is required for standard substrates.
 
 ### Architecture map (data flow)
 
@@ -159,17 +159,17 @@ Output mode is how CPPN outputs (e.g. three floats) are turned into final RGB in
 **Exact locations:**
 
 - **Backend:** [src/eyecatcher/glsl/shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py) – method `_get_color_output_code()`. Add a branch (e.g. `elif self.color_mode == "grayscale":`) and return the GLSL string that computes `fragColor` from `output_0`, `output_1`, `output_2`. The `ShaderCompiler` constructor accepts `color_mode`; pass it when creating the compiler (e.g. in representations or API).
-- **Frontend:** The toolbar or viewer controls that let users pick color mode (e.g. RGB vs HSV) are in the main viewer HTML/JS; if you add a new mode, add a radio option and pass the chosen value as `color_mode` in compile/save requests (see [static/js/lib/api_client.js](static/js/lib/api_client.js) `compile(genomes, colorMode)`).
+- **Frontend:** The toolbar or viewer controls that let users pick color mode (e.g. RGB vs HSV) are in the main viewer HTML/JS; if you add a new mode, add a radio option and pass the chosen value as `color_mode` in develop/save requests (see [static/js/lib/api_client.js](static/js/lib/api_client.js) `develop(genomes, colorMode)`).
 
 To introduce a **registry** of output modes (name → GLSL function), you would refactor `_get_color_output_code()` to look up a dict of mode names to GLSL code strings; the frontend could then read available modes from config.
 
-## Shader response (compile / save / export)
+## Shader response (develop / save / export)
 
-The same “shader + network stats” shape is used by the compile API, save bundle, and export:
+The same “shader + network stats” shape is used by the develop API, save bundle, and export:
 
-- **Compile:** [src/eyecatcher/web/stateless_api.py](src/eyecatcher/web/stateless_api.py) – `_compile_genomes` builds each item via the representation’s `compile_to_shader` and `get_compile_stats`. Returns `{ "shaders": [ { "id", "shader", "clicks", "nodes", "connections", "visual_nodes", "visual_connections", "time_nodes", "time_connections" }, ... ] }`.
+- **Develop:** [src/eyecatcher/web/stateless_api.py](src/eyecatcher/web/stateless_api.py) – Builds each item via the representation’s `develop` and `get_compile_stats`. Returns `{ "shaders": [ { "id", "shader", "fitness", "nodes", "connections", ... }, ... ] }`.
 - **Save/export:** Same stats come from the representation (e.g. dual_cppn’s `get_compile_stats`, `build_save_assets`); stateless_api and save handler build the bundle (PNG, GLSL, genome JSON, optional network PDF).
-- **Extending metadata:** Extend the dict built in stateless_api (or representation `get_compile_stats` / save assets) so compile, save, and export expose new fields consistently.
+- **Extending metadata:** Extend the dict built in stateless_api (or representation `get_compile_stats` / save assets) so develop, save, and export expose new fields consistently.
 
 ## Data collection / genealogy
 
@@ -188,7 +188,7 @@ Genealogy stores evolutionary history (populations, individuals, branches) in SQ
 ### Data flow (patterns to pixels)
 
 ```
-Python representation.compile_to_shader()
+Python representation.develop()
         ↓
     GLSL string (fragment shader)
         ↓
@@ -219,7 +219,7 @@ Display is driven by **phenotype** (from the backend) and **substrates** (framew
 
 ## What you can ignore for evolution-only work
 
-- **Server and routes:** server.py, web/ (stateless_api, genealogy_routes, community_routes) – HTTP and DB; they call evolution (reproduction), genome/representation (serialization), glsl (compile), and data (genealogy_db).
+- **Server and routes:** server.py, web/ (stateless_api, genealogy_routes, community_routes) – HTTP and DB; they call evolution (reproduction), genome/representation (serialization), glsl (develop), and data (genealogy_db).
 - **Frontend:** static/ – pattern renderer, viewer controls, and evolution_config.js matter for signals and UI; the rest (community UI, genealogy viewer, storage) is optional for "just evolution."
 - **Data and config:** data/ (DBs), config/neat/ (file contents matter; paths set in evolution/config.py).
 
@@ -231,13 +231,13 @@ Some constants exist in both Python and JavaScript; when you change them, update
 
 ### Representation types
 
-**NEAT (CPPN):** `dual_cppn`, `single_cppn` — evolved networks, compile to GLSL. **Non-NEAT:** `ca` (Conway’s Game of Life, grid + FBO); `trivial` (minimal template: one socket tying a signal to the “body part” that expresses it, one float genome → solid-color grid). Copy [trivial.py](src/eyecatcher/representation/trivial.py) for custom representations (e.g. audio); see [base.py](src/eyecatcher/representation/base.py) for the protocol and [ca.py](src/eyecatcher/representation/ca.py) for a full non-NEAT example.
+**NEAT (CPPN):** `dual_cppn`, `single_cppn` — evolved networks, develop to GLSL. **Non-NEAT:** `ca` (Conway’s Game of Life, grid + FBO); `trivial` (minimal template: one socket tying a signal to the “body part” that expresses it, one float genome → solid-color grid). Copy [trivial.py](src/eyecatcher/representation/trivial.py) for custom representations (e.g. audio); see [base.py](src/eyecatcher/representation/base.py) for the protocol and [ca.py](src/eyecatcher/representation/ca.py) for a full non-NEAT example.
 
 ## Add a new representation
 
 Representations (dual_cppn, single_cppn, ca, trivial, future NCA) share a common protocol. **Single source of truth:** the representation class defines its own `frontend_metadata` and **phenotype** (which substrate to use and optional display/behaviour config). The registry is the only other place you add the new representation. No JavaScript is generated: the frontend uses the phenotype from config to choose a substrate (shader, grid, or image).
 
-**Scaffold (recommended):** Run `make new-representation name=<name>` (name in snake_case, e.g. `my_rep`). This creates the Python stub (with a default `Phenotype(substrate="image")`), registry entry, and `__init__.py` export; it prints a preset snippet for [config/experiments.json](config/experiments.json). Then run `make generate` and implement the representation logic in the Python module. For `substrate="image"` implement `render_to_image()`; for `substrate="shader"` implement `compile_to_shader()`; for `substrate="grid"` provide step/display shaders and grid config in the phenotype.
+**Scaffold (recommended):** Run `make new-representation name=<name>` (name in snake_case, e.g. `my_rep`). This creates the Python stub (with a default `Phenotype(substrate="image")`), registry entry, and `__init__.py` export; it prints a preset snippet for [config/experiments.json](config/experiments.json). Then run `make generate` and implement the representation logic in the Python module. For `substrate="image"` implement `render_to_image()`; for `substrate="shader"` implement `develop()`; for `substrate="grid"` provide step/display shaders and grid config in the phenotype.
 
 Use this checklist if you add a representation by hand (or to verify after scaffolding). One line per file or action.
 
@@ -245,7 +245,7 @@ Use this checklist if you add a representation by hand (or to verify after scaff
 
 | # | File or action | One-line description |
 |---|----------------|----------------------|
-| 1 | [src/eyecatcher/representation/\<new\>.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `signal_spec`, `phenotype`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and `frontend_metadata` (`hasSignalControls`, `genomeKeys`). Set `phenotype = Phenotype(substrate="shader"|"grid"|"image", ...)`. Implement `compile_to_shader` for shader representations; for grid, put step/display/toggle shaders and config on the phenotype; for image, implement `render_to_image()`. Optionally `serialize_express_output(output)` for `/api/evaluate`. See [protocol.py](src/eyecatcher/representation/protocol.py), [trivial.py](src/eyecatcher/representation/trivial.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
+| 1 | [src/eyecatcher/representation/\<new\>.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `signal_spec`, `phenotype`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and `frontend_metadata` (`hasSignalControls`, `genomeKeys`). Set `phenotype = Phenotype(substrate="shader"|"grid"|"image", ...)`. Implement `develop` for shader representations; for grid, put step/display/toggle shaders and config on the phenotype; for image, implement `render_to_image()`. Optionally `serialize_express_output(output)` for `/api/express`. See [protocol.py](src/eyecatcher/representation/protocol.py), [trivial.py](src/eyecatcher/representation/trivial.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
 | 2 | [src/eyecatcher/representation/__init__.py](src/eyecatcher/representation/__init__.py) | Export the new representation class (and genome if needed). |
 | 3 | [src/eyecatcher/representation/registry.py](src/eyecatcher/representation/registry.py) | Add one entry to `REPRESENTATIONS` dict: `"<id>": NewRepresentation`. |
 | 4 | `make generate` | Regenerate frontend config from `frontend_metadata` (writes [static/js/representation/config.generated.js](static/js/representation/config.generated.js) and representation includes). |
@@ -273,7 +273,7 @@ If your representation uses a **new medium** (e.g. audio, 3D) that has no built-
 
 | # | File or action | One-line description |
 |---|----------------|----------------------|
-| 8 | [static/js/app/app.js](static/js/app/app.js) | Only if load/add flow must branch on your representation: ensure `output_type`/`representation_id` is passed so grid uses evaluate and shader uses compile. |
+| 8 | [static/js/app/app.js](static/js/app/app.js) | Only if load/add flow must branch on your representation: ensure `output_type`/`representation_id` is passed so grid uses express and shader uses develop. |
 | 9 | [static/js/app/population_ui.js](static/js/app/population_ui.js) | Only if import must recognise your genome shape: ensure adapter’s `isGenomeFormat` is in the resolution order, or add branch so imported individuals get correct `output_type`. |
 
 ### Optional
@@ -311,7 +311,7 @@ EXPERIMENT_CONFIG=single python examples/evolution_batch.py --fitness color_vari
 | Change reproduction/selection | evolution/reproduction.py, genome/operators.py |
 | Change CPU rendering or representation query | representation/ (e.g. cppn_base, dual_cppn, ca) |
 | Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl/glsl_fragments.py, glsl/node_code_generator.py, glsl/compiler_topology.py |
-| Change compile/save/export response shape | web/stateless_api.py, representation get_compile_stats / build_save_assets |
+| Change develop/save/export response shape | web/stateless_api.py, representation get_compile_stats / build_save_assets |
 | Change genealogy storage or export | data/genealogy_db.py |
 | Change wire serialization | genome/serialization.py, representation to_json/from_json |
 | Change network graph/stats for API or viz | inspection/network_data.py |
