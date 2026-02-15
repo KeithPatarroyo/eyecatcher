@@ -8,6 +8,12 @@ evolution and API use the representation interface only.
 from .ca import ConwayGenome, ConwayRepresentation
 from .dual_cppn import DualCPPNRepresentation
 from .export import export_representations_for_frontend
+from .mixins import (
+    GridAnalyzable,
+    NetworkInspectable,
+    Samplable,
+    Saveable,
+)
 from .protocol import OutputType, Phenotype, Representation, RepresentationOutput
 from .registry import REPRESENTATIONS, get_representation
 from .single_cppn import SingleCPPNRepresentation
@@ -17,11 +23,15 @@ __all__ = [
     "ConwayGenome",
     "ConwayRepresentation",
     "DualCPPNRepresentation",
+    "GridAnalyzable",
+    "NetworkInspectable",
     "OutputType",
     "Phenotype",
     "Representation",
     "RepresentationOutput",
     "REPRESENTATIONS",
+    "Samplable",
+    "Saveable",
     "SingleCPPNRepresentation",
     "TrivialGenome",
     "TrivialRepresentation",

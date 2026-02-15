@@ -19,6 +19,7 @@ import numpy as np
 from ..signals import catalog
 from ..signals.spec import SignalSpec
 from .base import RepresentationBase
+from .mixins import GridAnalyzable, Saveable
 from .protocol import Phenotype, RepresentationOutput
 from .sockets import GridSocket
 
@@ -163,7 +164,7 @@ void main() {
 """
 
 
-class ConwayRepresentation(RepresentationBase):
+class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
     """
     Representation for Conway's Game of Life (2D).
     Individual = ConwayGenome (initial grid); output = grid (H×W×3 RGB).

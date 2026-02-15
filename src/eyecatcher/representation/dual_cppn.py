@@ -29,11 +29,12 @@ from ..signals import catalog
 from ..signals.registry import parse_time_inputs
 from ..signals.spec import SignalSpec
 from .cppn_base import CPPNRepresentationBase, _clamp_rgb
+from .mixins import NetworkInspectable
 from .protocol import Phenotype
 from .sockets import NeatSocket
 
 
-class DualCPPNRepresentation(CPPNRepresentationBase):
+class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
     """
     Representation that wraps the current dual-CPPN (visual + time) setup.
     Individual = DualGenome; output = shader.

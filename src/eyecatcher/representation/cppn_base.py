@@ -20,6 +20,7 @@ from ..experiment.config import DEFAULT_RENDER_RESOLUTION
 from ..glsl import ShaderCompiler
 from ..signals.registry import get_default_signal_values
 from .base import RepresentationBase
+from .mixins import Samplable, Saveable
 from .protocol import RepresentationOutput
 
 
@@ -80,7 +81,7 @@ def compile_with_color_mode(
     return develop_fn(compiler, *develop_args)
 
 
-class CPPNRepresentationBase(RepresentationBase):
+class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
     """
     Shared base for single and dual CPPN representations.
     Subclasses set self.visual (and optionally self.time), self.signal_spec,

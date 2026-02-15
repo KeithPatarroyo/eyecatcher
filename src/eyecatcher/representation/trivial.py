@@ -20,6 +20,7 @@ from ..signals import catalog
 from ..signals.socket import Socket
 from ..signals.spec import SignalSpec
 from .base import RepresentationBase
+from .mixins import GridAnalyzable
 from .protocol import Phenotype, RepresentationOutput
 
 SIZE = 16  # 16×16 grid for express output
@@ -49,7 +50,7 @@ def _rgb_to_png_base64(arr: np.ndarray) -> str:
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-class TrivialRepresentation(RepresentationBase):
+class TrivialRepresentation(GridAnalyzable, RepresentationBase):
     """
     Minimal representation: one socket, one signal, one "body part" (the display).
 

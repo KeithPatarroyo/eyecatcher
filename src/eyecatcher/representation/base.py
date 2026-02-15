@@ -11,6 +11,7 @@ from typing import Any, cast
 
 import numpy as np
 
+from .mixins import NetworkInspectable, Saveable
 from .protocol import OutputType, Phenotype, RepresentationOutput
 
 
@@ -35,14 +36,14 @@ class RepresentationBase(ABC):
 
     @property
     def capabilities(self) -> dict[str, bool]:
-        """Derive capability flags from which optional methods are overridden."""
+        """Capability flags from mixin inheritance and optional methods."""
         base = RepresentationBase
         cls = type(self)
         return {
-            "save": cls.build_save_assets is not base.build_save_assets,
-            "network": cls.get_network_data is not base.get_network_data,
+            "save": isinstance(self, Saveable),
+            "network": isinstance(self, NetworkInspectable),
             "time_output": cls.query_time_output is not base.query_time_output,
-            "adjust_weight": cls.adjust_weight is not base.adjust_weight,
+            "adjust_weight": isinstance(self, NetworkInspectable),
             "develop": cls.develop is not base.develop,
         }
 
