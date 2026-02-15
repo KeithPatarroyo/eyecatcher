@@ -97,7 +97,7 @@ def test_get_population_roundtrip(db_path):
     assert pop["description"] == "test"
     assert len(pop["genomes"]) == 1
     assert pop["genomes"][0]["key"] == 7
-    assert "clicks" in pop["genomes"][0]
+    assert "fitness" in pop["genomes"][0]
 
 
 def test_get_population_not_found(db_path):
