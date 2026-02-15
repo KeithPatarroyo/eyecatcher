@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-Generate evolution_config_signals.generated.js from the Python signal registry
-and validate NEAT config num_inputs/num_outputs match the registry.
+Generate evolution_config_signals.generated.js from the Python signal registry.
+Single source of truth: catalog + representation sockets. This script updates
+NEAT config num_inputs/num_outputs in config/neat/*.txt to match the catalog.
+If you store experiment settings in those .txt files (not in config/experiments.json),
+they can be overwritten; prefer presets in experiments.json for reproducible settings.
 
 Run from repo root: python scripts/generate_signal_config.py
-Or: make generate-signals
+Or: make generate-signals (or make generate)
 """
 
 import json
@@ -16,6 +19,31 @@ import sys
 def _repo_root() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.dirname(script_dir)
+
+
+def _update_neat_counts(path: str, num_inputs: int, num_outputs: int) -> bool:
+    """Update num_inputs/num_outputs in a NEAT config file. Returns True if changed."""
+    if not os.path.isfile(path):
+        return False
+    with open(path, encoding="utf-8") as f:
+        content = f.read()
+    new_content = re.sub(
+        r"^(\s*num_inputs\s*=\s*)\d+(\s*)$",
+        r"\g<1>" + str(num_inputs) + r"\g<2>",
+        content,
+        flags=re.MULTILINE,
+    )
+    new_content = re.sub(
+        r"^(\s*num_outputs\s*=\s*)\d+(\s*)$",
+        r"\g<1>" + str(num_outputs) + r"\g<2>",
+        new_content,
+        flags=re.MULTILINE,
+    )
+    if new_content != content:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+        return True
+    return False
 
 
 def _neat_value(path: str, key: str) -> int | None:
@@ -80,12 +108,53 @@ def main() -> None:
 
     from eyecatcher.experiment import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
     from eyecatcher.representation import DualCPPNRepresentation
-    from eyecatcher.signals import export_for_frontend
+    from eyecatcher.signals import catalog, export_for_frontend
 
-    rep = DualCPPNRepresentation()
+    # Single source of truth: catalog (same presets dual_cppn uses). Discover NEAT
+    # config files in config/neat/ and update each (convention: "time" in filename →
+    # time counts, else visual counts). Then representation load won't fail validation.
+    visual_in_count = len(catalog.DUAL_CPPN_VISUAL_INPUTS)
+    visual_out_count = len(catalog.RGB_OUTPUTS)
+    time_in_count = len(catalog.DUAL_CPPN_TIME_INPUTS)
+    time_out_count = len(catalog.TIME_OUTPUT)
+
+    neat_dir = os.path.join(root, "config", "neat")
+    for filename in sorted(os.listdir(neat_dir)):
+        if not filename.endswith(".txt"):
+            continue
+        path = os.path.join(neat_dir, filename)
+        if not os.path.isfile(path):
+            continue
+        is_time = "time" in filename.lower()
+        if is_time:
+            updated = _update_neat_counts(path, time_in_count, time_out_count)
+            if updated:
+                print(
+                    f"Updated {path} num_inputs={time_in_count} "
+                    f"num_outputs={time_out_count}",
+                    file=sys.stderr,
+                )
+                print(
+                    "  (NEAT .txt updated by codegen; use config/experiments.json.)",
+                    file=sys.stderr,
+                )
+        else:
+            updated = _update_neat_counts(path, visual_in_count, visual_out_count)
+            if updated:
+                print(
+                    f"Updated {path} num_inputs={visual_in_count} "
+                    f"num_outputs={visual_out_count}",
+                    file=sys.stderr,
+                )
+                print(
+                    "  (NEAT .txt updated by codegen; use config/experiments.json.)",
+                    file=sys.stderr,
+                )
+
     visual_path = NEAT_CONFIG_PATH
     time_path = NEAT_TIME_CONFIG_PATH
-    print(f"Validating NEAT: visual={visual_path}, time={time_path}", file=sys.stderr)
+
+    rep = DualCPPNRepresentation()
     validate_neat(
         root,
         visual_path,
