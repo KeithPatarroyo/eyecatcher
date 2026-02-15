@@ -166,7 +166,7 @@
         window.FullscreenModal.closeFullscreen(IDS);
     }
 
-    function resolveAdapter(representationId, genomes) {
+    function resolveRepresentation(representationId, genomes) {
         var resolved = window.RepresentationRegistry.resolve({
             representationId: representationId,
             genomes: genomes,
@@ -308,7 +308,7 @@
         IDS: IDS,
         API_URL: API_URL,
         getGridCallbacks: getGridCallbacks,
-        resolveAdapter: resolveAdapter,
+        resolveRepresentation: resolveRepresentation,
         getColorMode: function () {
             var el = document.querySelector('input[name="colorMode"]:checked');
             return el && el.value === "rgb" ? "rgb" : "hsv";

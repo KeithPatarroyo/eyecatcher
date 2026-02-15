@@ -329,7 +329,4 @@
 
     var registry = new RepresentationRegistry();
     window.RepresentationRegistry = registry;
-    window.RepresentationAdapters = registry; // backward-compat alias (prefer RepresentationRegistry, get, findByGenome)
-    registry.getAdapter = registry.get.bind(registry);
-    registry.findAdapterByGenome = registry.findByGenome.bind(registry);
 })();

@@ -296,7 +296,7 @@
             if (!this._deps || !genomes || !genomes.length) {
                 return Promise.resolve();
             }
-            var resolved = this._deps.resolveAdapter(representationId, genomes);
+            var resolved = this._deps.resolveRepresentation(representationId, genomes);
             var resolvedRepresentationId = resolved.representationId;
             var representation = resolved.representation;
             var self = this;
@@ -432,7 +432,7 @@
 
         addToGrid(genomes) {
             if (!this._deps || !genomes || !genomes.length) return Promise.resolve();
-            var resolved = this._deps.resolveAdapter(
+            var resolved = this._deps.resolveRepresentation(
                 window.PopulationState.representationId,
                 genomes
             );
