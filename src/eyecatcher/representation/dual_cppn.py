@@ -149,7 +149,7 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
 
     # -- Inspection (sockets know the structure of the individual) --
 
-    def get_compile_stats(self, genome: DualGenome) -> dict[str, Any]:
+    def get_develop_stats(self, genome: DualGenome) -> dict[str, Any]:
         stats: dict[str, Any] = {}
         stats.update(self.visual.network_stats(genome.visual))
         stats.update(self.time.network_stats(genome.time_signal))
@@ -171,7 +171,7 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
             return {}
         assets = super().build_save_assets(genome, individual_id, **kwargs)
         shader_code = self.develop(genome) or ""
-        stats = self.get_compile_stats(genome)
+        stats = self.get_develop_stats(genome)
         bundle = {
             "shader": shader_code,
             "metadata": {

@@ -7,7 +7,7 @@
 | File | Covers |
 |------|--------|
 | test_cppn_engine.py | Dual-CPPN representation: create_random, evaluate (query), mutate, crossover. |
-| test_substrate_compile.py | Representation develop and get_compile_stats (GLSL, node/connection counts). |
+| test_substrate_compile.py | Representation develop and get_develop_stats (GLSL, node/connection counts). |
 | test_genome_serialization.py | Dual-genome serialization: dual_genome_to_json/from_json round-trip, extract_network_data, query consistency. |
 | test_shader_compiler.py | GLSL module (glsl.shader_compiler): compile (structure, main, activations, empty connections, single hidden node). |
 | test_glsl_validity.py | Generated GLSL sanity: every v_* and *_base used is declared/defined; no redefinition of v_* (shared time/visual signals); dual shader uses _base only for time inputs (catches WebGL compile-time regressions). |

@@ -12,7 +12,7 @@ signals/
   registry.py  -- Parameterized helpers (export_for_frontend, parse_time_inputs, etc.)
 ```
 
-Representation-specific socket implementations live in **representation/sockets.py** (e.g. `NeatSocket`, `GridSocket`). Representations never touch raw signal lists for expression — they use sockets.
+Representation-specific socket implementations live in **representation/sockets.py** (e.g. `NeatSocket`). Grid representations (e.g. CA) use the base `Socket` from signals. Representations never touch raw signal lists for expression — they use sockets.
 
 ### Self-describing signals
 
@@ -42,7 +42,7 @@ class SignalSpec:
 
 - **inputs** and **derived_inputs** are derived from all sockets (no manual lists at spec level).
 - **groups** are gone: UI grouping uses `Signal.category` only.
-- Representations that use NEAT networks hold `NeatSocket` instances; those that use a grid hold a `GridSocket`. The representation delegates expression (query, stats, PDF, etc.) to sockets and owns evolution (population, mutate, crossover).
+- Representations that use NEAT networks hold `NeatSocket` instances; those that use a grid (e.g. CA) hold a base `Socket` for interaction inputs. The representation delegates expression (query, stats, PDF, etc.) to sockets and owns evolution (population, mutate, crossover).
 
 ### Socket
 
@@ -55,7 +55,7 @@ A **Socket** binds a set of signals to one input target. Base class is represent
 Subclasses add target-specific behaviour:
 
 - **NeatSocket** (in `representation/sockets.py`): `config_path`, `query(genome, values)`, `glsl_input_map()`, `network_stats()`, `extract_network_data()`, `render_network_pdf()`.
-- **GridSocket**: `grid_size`, `map_to_cell(values)` for e.g. CA interaction (mouse_x, mouse_y → cell).
+- **Grid (CA)**: Base `Socket` with interaction inputs (mouse_x, mouse_y); frontend maps to cell.
 
 ### Signal catalog
 
@@ -73,9 +73,9 @@ Representations build sockets from these presets; the spec is then `SignalSpec(s
 
 ### How representations use sockets
 
-- **DualCPPN**: Two `NeatSocket`s (visual, time). Expression (query_rgb, get_compile_stats, get_network_data, render_network_pdf) delegates to the sockets; evolution (populations, mutate, crossover) stays on the representation.
+- **DualCPPN**: Two `NeatSocket`s (visual, time). Expression (query_rgb, get_develop_stats, get_network_data, render_network_pdf) delegates to the sockets; evolution (populations, mutate, crossover) stays on the representation.
 - **SingleCPPN**: One `NeatSocket` (visual). Same split.
-- **Conway CA**: One `GridSocket` (interaction) for mouse_x/mouse_y → cell; no NEAT.
+- **Conway CA**: One `Socket` (interaction) for mouse_x/mouse_y; no NEAT.
 
 ### Consumers
 

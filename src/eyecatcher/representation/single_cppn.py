@@ -121,5 +121,5 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
 
     # -- Inspection (socket knows the structure) --
 
-    def get_compile_stats(self, genome: neat.DefaultGenome) -> dict[str, Any]:
+    def get_develop_stats(self, genome: neat.DefaultGenome) -> dict[str, Any]:
         return self.visual.network_stats(genome)
