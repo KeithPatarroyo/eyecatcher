@@ -68,11 +68,11 @@
                       (pattern.nodes ?? 0) +
                       " | Connections: " +
                       (pattern.connections ?? 0);
-            const clickCount = document.createElement("div");
-            clickCount.className = "click-count" + (fitness === 0 ? " zero" : "");
-            clickCount.textContent = String(fitness);
+            const fitnessBadge = document.createElement("div");
+            fitnessBadge.className = "fitness-badge" + (fitness === 0 ? " zero" : "");
+            fitnessBadge.textContent = String(fitness);
             info.appendChild(meta);
-            info.appendChild(clickCount);
+            info.appendChild(fitnessBadge);
 
             const actions = document.createElement("div");
             actions.className = "organism-actions";

@@ -80,10 +80,10 @@
                     type: "SET_ORGANISM_FITNESS",
                     payload: { id: id, fitness: fitness },
                 });
-                var clickCount = card.querySelector(".click-count");
-                if (clickCount) {
-                    clickCount.textContent = fitness;
-                    clickCount.classList.remove("zero");
+                var fitnessBadge = card.querySelector(".fitness-badge");
+                if (fitnessBadge) {
+                    fitnessBadge.textContent = fitness;
+                    fitnessBadge.classList.remove("zero");
                 }
                 card.classList.add("selected");
                 if (typeof updateStats === "function") updateStats();
@@ -98,11 +98,11 @@
                     type: "SET_ORGANISM_FITNESS",
                     payload: { id: id, fitness: fitness },
                 });
-                var clickCount = card.querySelector(".click-count");
-                if (clickCount) {
-                    clickCount.textContent = fitness;
+                var fitnessBadge = card.querySelector(".fitness-badge");
+                if (fitnessBadge) {
+                    fitnessBadge.textContent = fitness;
                     if (fitness === 0) {
-                        clickCount.classList.add("zero");
+                        fitnessBadge.classList.add("zero");
                         card.classList.remove("selected");
                     }
                 }

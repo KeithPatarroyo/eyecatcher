@@ -25,7 +25,7 @@
         genNum: "gen-num",
         evolveBtn: "evolve-btn",
         populationSizeInput: "population-size-input",
-        totalClicks: "total-clicks",
+        totalFitness: "total-fitness",
         loadListModal: "load-list-modal",
         communityListModal: "community-list-modal",
         fullscreenClose: "fullscreen-close",
@@ -102,14 +102,14 @@
     }
 
     function updateStats() {
-        var totalClicks = 0;
+        var totalFitness = 0;
         var hasFitness = false;
         window.PopulationState.patterns.forEach(function (p) {
-            totalClicks += p.fitness || 0;
+            totalFitness += p.fitness || 0;
             if (p.fitness > 0) hasFitness = true;
         });
-        var totalEl = document.getElementById(IDS.totalClicks);
-        if (totalEl) totalEl.textContent = totalClicks;
+        var totalEl = document.getElementById(IDS.totalFitness);
+        if (totalEl) totalEl.textContent = totalFitness;
         var evolveEl = document.getElementById(IDS.evolveBtn);
         if (evolveEl) {
             if (hasFitness) {
@@ -358,7 +358,7 @@
             }
         })
         .catch(function () {
-            /* fallback to hardcoded EvolutionConfig */
+            /* keep in-app defaults if server config fetch fails */
         });
 
     window.AnimationLoop.init({
