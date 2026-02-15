@@ -125,5 +125,5 @@ If none of the tried directories exist or pytest fails with import errors: do no
 ## Boundaries
 
 - **Always:** Run `pytest` and `ruff check` (and fix issues) before committing, or use `pre-commit install` so hooks run on commit; use relative imports inside `src/eyecatcher/`; preserve the stateless API contract (no server-side population state).
-- **Ask first:** Adding new dependencies; changing NEAT config files; modifying the GLSL shader template in `src/eyecatcher/glsl/shader_compiler.py`; changing DB schema (community or genealogy).
+- **Ask first:** Adding new dependencies; changing NEAT config files; modifying the GLSL rule assembly in `src/eyecatcher/glsl/rule_assembler.py`; changing DB schema (community or genealogy).
 - **Never:** Commit secrets or real API keys; modify files in `data/` (runtime-generated DBs); hardcode absolute paths; break the `DualGenome` visual + time_signal pairing; **skip repo health precautions** — do not use `git commit --no-verify` or otherwise bypass pre-commit hooks; fix lint/format/test failures so commits pass the hooks.

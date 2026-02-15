@@ -5,7 +5,7 @@
         representations: [
             {
                 id: "dual_cppn",
-                outputType: "shader",
+                outputType: "field",
                 hasSignalControls: true,
                 genomeKeys: ["visual", "time_signal"],
                 capabilities: {
@@ -14,7 +14,7 @@
                     timeOutput: true,
                     adjustWeight: true,
                 },
-                signalSpec: {
+                sensorySystem: {
                     inputs: [
                         {
                             id: "x",
@@ -106,13 +106,15 @@
                     ],
                 },
                 phenotype: {
-                    substrate: "shader",
+                    substrate: {
+                        type: "field",
+                    },
                     metaTemplate: "Nodes: {nodes} | Connections: {connections}",
                 },
             },
             {
                 id: "single_cppn",
-                outputType: "shader",
+                outputType: "field",
                 hasSignalControls: false,
                 genomeKeys: ["visual"],
                 excludeKeys: ["time_signal"],
@@ -122,7 +124,7 @@
                     timeOutput: false,
                     adjustWeight: false,
                 },
-                signalSpec: {
+                sensorySystem: {
                     inputs: [
                         {
                             id: "x",
@@ -208,7 +210,9 @@
                     ],
                 },
                 phenotype: {
-                    substrate: "shader",
+                    substrate: {
+                        type: "field",
+                    },
                     metaTemplate: "Nodes: {nodes} | Connections: {connections}",
                 },
             },
@@ -223,7 +227,7 @@
                     timeOutput: false,
                     adjustWeight: false,
                 },
-                signalSpec: {
+                sensorySystem: {
                     inputs: [
                         {
                             id: "mouse_x",
@@ -242,20 +246,24 @@
                     derivedInputs: [],
                 },
                 phenotype: {
-                    substrate: "grid",
-                    gridSize: 64,
-                    stepIntervalMs: 180,
-                    stepShader:
-                        "#version 300 es\nprecision highp float;\n\nuniform sampler2D u_state;\nuniform vec2 u_texelSize;\n\nin vec2 vUV;\nout vec4 fragColor;\n\nvoid main() {\n    float c = texture(u_state, vUV).r;\n    float n = 0.0;\n    n += texture(u_state, vUV + vec2(-u_texelSize.x, -u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(-u_texelSize.x, 0.0)).r;\n    n += texture(u_state, vUV + vec2(-u_texelSize.x, u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(0.0, -u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(0.0, u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(u_texelSize.x, -u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(u_texelSize.x, 0.0)).r;\n    n += texture(u_state, vUV + vec2(u_texelSize.x, u_texelSize.y)).r;\n    float next = (n > 2.5 && n < 3.5) || (c > 0.5 && n > 1.5 && n < 3.5) ? 1.0 : 0.0;\n    fragColor = vec4(next, next, next, 1.0);\n}\n",
-                    displayShader:
+                    substrate: {
+                        type: "grid",
+                        gridSize: 64,
+                        stateFormat: "RGBA",
+                        wrap: "REPEAT",
+                    },
+                    displayRule:
                         "#version 300 es\nprecision highp float;\nuniform sampler2D u_state;\nin vec2 vUV;\nout vec4 fragColor;\nvoid main() {\n  float v = texture(u_state, vUV).r;\n  fragColor = vec4(v, v, v, 1.0);\n}\n",
-                    toggleShader:
-                        "#version 300 es\nprecision highp float;\nuniform sampler2D u_state;\nuniform vec2 u_gridSize;\nuniform int u_toggleCount;\nuniform float u_brushRadius;\nuniform vec2 u_toggles[64];\nin vec2 vUV;\nout vec4 fragColor;\nvoid main() {\n  float v = texture(u_state, vUV).r;\n  vec2 cell = min(floor(vUV * u_gridSize), u_gridSize - 1.0);\n  for (int i = 0; i < 64; i++) {\n    if (i >= u_toggleCount) break;\n    vec2 tc = u_toggles[i];\n    vec2 toggleCell = min(floor(vec2(tc.x, 1.0 - tc.y) * u_gridSize), u_gridSize - 1.0);\n    float dist = max(abs(cell.x - toggleCell.x), abs(cell.y - toggleCell.y));\n    if (dist <= u_brushRadius) {\n      v = 1.0 - v;\n      break;\n    }\n  }\n  fragColor = vec4(v, v, v, 1.0);\n}\n",
-                    stateFormat: "RGBA",
-                    wrap: "REPEAT",
-                    interactions: ["toggle"],
                     metaTemplate:
                         "{fingerprint} \u00b7 {density} \u00b7 {live_count} alive",
+                    behaviour: {
+                        updateRule:
+                            "#version 300 es\nprecision highp float;\n\nuniform sampler2D u_state;\nuniform vec2 u_texelSize;\n\nin vec2 vUV;\nout vec4 fragColor;\n\nvoid main() {\n    float c = texture(u_state, vUV).r;\n    float n = 0.0;\n    n += texture(u_state, vUV + vec2(-u_texelSize.x, -u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(-u_texelSize.x, 0.0)).r;\n    n += texture(u_state, vUV + vec2(-u_texelSize.x, u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(0.0, -u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(0.0, u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(u_texelSize.x, -u_texelSize.y)).r;\n    n += texture(u_state, vUV + vec2(u_texelSize.x, 0.0)).r;\n    n += texture(u_state, vUV + vec2(u_texelSize.x, u_texelSize.y)).r;\n    float next = (n > 2.5 && n < 3.5) || (c > 0.5 && n > 1.5 && n < 3.5) ? 1.0 : 0.0;\n    fragColor = vec4(next, next, next, 1.0);\n}\n",
+                        updateIntervalMs: 180,
+                        interactionRule:
+                            "#version 300 es\nprecision highp float;\nuniform sampler2D u_state;\nuniform vec2 u_gridSize;\nuniform int u_toggleCount;\nuniform float u_brushRadius;\nuniform vec2 u_toggles[64];\nin vec2 vUV;\nout vec4 fragColor;\nvoid main() {\n  float v = texture(u_state, vUV).r;\n  vec2 cell = min(floor(vUV * u_gridSize), u_gridSize - 1.0);\n  for (int i = 0; i < 64; i++) {\n    if (i >= u_toggleCount) break;\n    vec2 tc = u_toggles[i];\n    vec2 toggleCell = min(floor(vec2(tc.x, 1.0 - tc.y) * u_gridSize), u_gridSize - 1.0);\n    float dist = max(abs(cell.x - toggleCell.x), abs(cell.y - toggleCell.y));\n    if (dist <= u_brushRadius) {\n      v = 1.0 - v;\n      break;\n    }\n  }\n  fragColor = vec4(v, v, v, 1.0);\n}\n",
+                        interactions: ["toggle"],
+                    },
                 },
             },
             {
@@ -269,7 +277,7 @@
                     timeOutput: false,
                     adjustWeight: false,
                 },
-                signalSpec: {
+                sensorySystem: {
                     inputs: [
                         {
                             id: "raw_time",
@@ -282,7 +290,9 @@
                     derivedInputs: [],
                 },
                 phenotype: {
-                    substrate: "grid",
+                    substrate: {
+                        type: "grid",
+                    },
                 },
             },
         ],
