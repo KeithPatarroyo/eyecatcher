@@ -25,7 +25,7 @@ def test_api_random(client):
 
 
 def test_api_express(client):
-    """POST /api/express returns results (shader or grid per representation)."""
+    """POST /api/express returns results (field or grid per representation)."""
     rv = client.post("/api/random", json={"size": 2})
     assert rv.status_code == 200
     individuals = rv.get_json()["individuals"]
@@ -38,8 +38,8 @@ def test_api_express(client):
     for r in data["results"]:
         assert "id" in r
         assert r["output_type"] == data["output_type"]
-    if data["output_type"] == "shader":
-        assert "shader" in data["results"][0]
+    if data["output_type"] == "field":
+        assert "rule" in data["results"][0]
     elif data["output_type"] == "grid":
         assert "image" in data["results"][0]
         assert data["results"][0]["image"].startswith("data:image/png;base64,")
@@ -47,18 +47,18 @@ def test_api_express(client):
 
 @pytest.mark.slow
 def test_api_develop(client):
-    """POST /api/develop with individuals returns shaders."""
+    """POST /api/develop with individuals returns rules."""
     rv = client.post("/api/random", json={"size": 2})
     assert rv.status_code == 200
     individuals = rv.get_json()["individuals"]
     rv = client.post("/api/develop", json={"individuals": individuals})
     assert rv.status_code == 200
     data = rv.get_json()
-    assert "shaders" in data
-    assert len(data["shaders"]) == 2
-    for s in data["shaders"]:
-        assert "shader" in s
-        assert "void main()" in s["shader"]
+    assert "rules" in data
+    assert len(data["rules"]) == 2
+    for r in data["rules"]:
+        assert "rule" in r
+        assert "void main()" in r["rule"]
 
 
 def test_api_evolve(client):
@@ -263,7 +263,7 @@ def test_api_error_response_shape(client):
 
 
 def test_api_adjust_weight(client, representation):
-    """POST /api/adjust-weight with valid payload returns shader and individual."""
+    """POST /api/adjust-weight with valid payload returns rule and individual."""
     from tests.conftest import minimal_dual_genome_one_hidden_visual
 
     dual = minimal_dual_genome_one_hidden_visual(representation)
@@ -294,7 +294,7 @@ def test_api_adjust_weight(client, representation):
     assert rv.status_code == 200
     data = rv.get_json()
     assert data.get("status") == "success"
-    assert "shader" in data
+    assert "rule" in data
     assert "individual" in data
 
 

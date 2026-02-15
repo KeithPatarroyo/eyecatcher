@@ -1,10 +1,10 @@
 /**
  * Substrate base class: contract for the physical body on which a phenotype is expressed.
- * Substrates (shader, grid, image) implement this interface; framework code uses it.
+ * Substrates (field, grid, image) implement this interface; framework code uses it.
  * Only createDisplayElement and render are required; others have no-op defaults.
  *
  * @typedef {Object} Phenotype - From config: substrate, gridSize, stepShader, etc.
- * @typedef {Object} PatternPayload - From API: shader, grid, image, id, nodes, connections, etc.
+ * @typedef {Object} PatternPayload - From API: rule (field), grid, image, id, nodes, connections, etc.
  */
 (function () {
     "use strict";

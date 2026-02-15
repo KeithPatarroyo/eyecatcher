@@ -17,7 +17,7 @@ Creates:
 
 No JavaScript is generated. The frontend uses Phenotype (substrate) from config;
 run make generate to export. For substrate="image" the backend render_to_image()
-provides static display. For substrate="shader" or "grid" the existing substrates
+provides static display. For substrate="field" or "grid" the existing substrates
 render from your phenotype. Prints a preset snippet for config/experiments.json.
 """
 
@@ -67,10 +67,10 @@ import random
 from typing import Any
 
 from ..signals import catalog
-from ..signals.socket import Socket
-from ..signals.spec import SignalSpec
+from ..signals.receptor import Receptor
+from ..signals.sensory_system import SensorySystem
 from .base import RepresentationBase
-from .protocol import OutputType, Phenotype, RepresentationOutput
+from .protocol import OutputType, Phenotype, RepresentationOutput, Substrate
 
 
 class {pascal}Genome:
@@ -83,7 +83,7 @@ class {pascal}Genome:
 
 
 class {pascal}Representation(RepresentationBase):
-    """{pascal} representation. Set id, signal_spec; implement protocol methods."""
+    """{pascal} representation. Set id, sensory_system, phenotype; see protocol."""
 
     id = "{name}"
     output_type: OutputType = "grid"
@@ -92,16 +92,16 @@ class {pascal}Representation(RepresentationBase):
         "genomeKeys": ["key"],
     }}
 
-    phenotype = Phenotype(substrate="image")
+    phenotype = Phenotype(substrate=Substrate(type="image"))
 
     def __init__(self, **kwargs: Any) -> None:
-        self.display = Socket(
+        self.display = Receptor(
             "display",
             inputs=(catalog.raw_time,),
             outputs=(),
             derived=(),
         )
-        self.signal_spec = SignalSpec(sockets=(self.display,), outputs=())
+        self.sensory_system = SensorySystem(receptors=(self.display,), outputs=())
 
     def create_random(self, key: int = 0) -> {pascal}Genome:
         return {pascal}Genome(key=key)
@@ -117,7 +117,7 @@ class {pascal}Representation(RepresentationBase):
     def express(
         self, ind: {pascal}Genome, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
-        # TODO: produce actual output (e.g. grid, shader). See trivial.py / ca.py.
+        # TODO: produce actual output (e.g. grid, rule). See trivial.py / ca.py.
         import numpy as np
         rgb = np.zeros((16, 16, 3), dtype=np.uint8)
         return RepresentationOutput("grid", rgb)
@@ -270,7 +270,7 @@ def main() -> int:
     )
     print(
         "Use substrate='image' for static display (render_to_image()), "
-        "or 'shader'/'grid' for existing substrates."
+        "or 'field'/'grid' for existing substrates."
     )
     return 0
 
