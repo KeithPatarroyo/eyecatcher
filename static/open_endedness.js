@@ -12,7 +12,7 @@ const OpenEndednessTracker = (function() {
     let currentScores = new Map();  // genome_key -> score
 
     // Compute OE scores for all patterns in the grid
-    async function computeAllScores(genomes) {
+    async function computeAllScores(genomes, generation) {
         if (isComputing || !genomes || genomes.length === 0) {
             return;
         }
@@ -46,7 +46,8 @@ const OpenEndednessTracker = (function() {
                 body: JSON.stringify({
                     genomes: genomes,
                     num_frames: 16,
-                    resolution: 64
+                    resolution: 64,
+                    generation: generation || 0
                 })
             });
 
@@ -116,9 +117,10 @@ const OpenEndednessTracker = (function() {
             return;
         }
 
-        // Get all current genomes from the viewer
+        // Get all current genomes and generation from the viewer
         if (typeof currentGenomes !== 'undefined' && currentGenomes && currentGenomes.length > 0) {
-            await computeAllScores(currentGenomes);
+            const generation = typeof currentGenerationNum !== 'undefined' ? currentGenerationNum : 0;
+            await computeAllScores(currentGenomes, generation);
         } else {
             showToast('No patterns', 'No patterns loaded to compute scores for', 'info');
         }

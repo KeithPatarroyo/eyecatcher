@@ -255,13 +255,18 @@ def api_open_endedness_batch():
     Body: {
         "genomes": [ { "key", "visual", "time_signal" }, ... ],
         "num_frames": 16,
-        "resolution": 64
+        "resolution": 64,
+        "generation": 0  // optional, for saving frames
     }
     Returns: {
         "scores": [ { "genome_key": int, "score": float }, ... ],
         "available": true
     }
     """
+    import os
+    from PIL import Image
+    import numpy as np
+
     try:
         if not _init_open_endedness():
             return jsonify({
@@ -276,14 +281,21 @@ def api_open_endedness_batch():
 
         num_frames = int(data.get('num_frames', 16))
         resolution = int(data.get('resolution', 64))
+        generation = int(data.get('generation', 0))
 
         from rollout import render_video_rollout, compute_video_embeddings
         from asal_metrics import calc_open_endedness_score
+
+        # Create output directory for this generation
+        output_base = os.path.join(os.path.dirname(__file__), 'oe_frames')
+        gen_dir = os.path.join(output_base, f'generation{generation}')
+        os.makedirs(gen_dir, exist_ok=True)
 
         total = len(genomes_data)
         print(f"\n{'='*60}")
         print(f"Computing Open-Endedness Scores for {total} patterns")
         print(f"Resolution: {resolution}x{resolution}, Frames: {num_frames}")
+        print(f"Saving frames to: {gen_dir}")
         print(f"{'='*60}")
 
         results = []
@@ -297,6 +309,14 @@ def api_open_endedness_batch():
                 resolution=resolution,
                 time_range=(0.0, 1.0),
             )
+
+            # Save frames for this pattern
+            pattern_dir = os.path.join(gen_dir, f'pattern{genome_key}')
+            os.makedirs(pattern_dir, exist_ok=True)
+            for frame_idx, frame in enumerate(frames):
+                img = Image.fromarray(frame.astype(np.uint8))
+                img.save(os.path.join(pattern_dir, f'frame_{frame_idx:02d}.png'))
+
             embeddings = compute_video_embeddings(frames, _clip_embedder)
             score = float(calc_open_endedness_score(embeddings))
 
@@ -306,15 +326,17 @@ def api_open_endedness_batch():
             })
 
             # Progress logging
-            print(f"[{i+1}/{total}] Pattern {genome_key}: OE score = {score:.4f}")
+            print(f"[{i+1}/{total}] Pattern {genome_key}: OE score = {score:.4f} (frames saved)")
 
         print(f"{'='*60}")
         print(f"Completed! Scores range: {min(r['score'] for r in results):.4f} - {max(r['score'] for r in results):.4f}")
+        print(f"Frames saved to: {gen_dir}")
         print(f"{'='*60}\n")
 
         return jsonify({
             'scores': results,
-            'available': True
+            'available': True,
+            'frames_dir': gen_dir
         })
 
     except Exception as e:
