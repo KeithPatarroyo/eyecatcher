@@ -6,13 +6,17 @@ abstract methods and override only what differs from the defaults.
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, cast
 
 import numpy as np
 
 from .mixins import NetworkInspectable, Saveable
-from .protocol import OutputType, Phenotype, RepresentationOutput
+from .protocol import OutputType, Phenotype, RepresentationOutput, Substrate
+
+logger = logging.getLogger(__name__)
+_develop_warned: set[str] = set()
 
 
 class RepresentationBase(ABC):
@@ -20,19 +24,19 @@ class RepresentationBase(ABC):
     Abstract base for all representations. Defines the required contract
     (abstract methods) and default implementations for optional features.
 
-    Subclasses must set: id, signal_spec, frontend_metadata.
-    output_type is derived from phenotype.substrate. Capabilities are auto-derived.
+    Subclasses must set: id, sensory_system, frontend_metadata.
+    output_type is derived from phenotype.substrate.type. Capabilities are auto-derived.
     """
 
     @property
     def output_type(self) -> OutputType:
-        """Derive from phenotype.substrate."""
-        return cast(OutputType, self.phenotype.substrate)
+        """Derive from phenotype.substrate.type."""
+        return cast(OutputType, self.phenotype.substrate.type)
 
     @property
     def phenotype(self) -> Phenotype:
         """Default: image substrate (static display from render_to_image)."""
-        return Phenotype(substrate="image")
+        return Phenotype(substrate=Substrate(type="image"))
 
     @property
     def capabilities(self) -> dict[str, bool]:
@@ -86,7 +90,19 @@ class RepresentationBase(ABC):
     # --- Phenotype sampling & optional (defaults; override to enable) ---
 
     def develop(self, genome: Any, color_mode: str | None = None) -> str | None:
-        """Return GLSL shader or None if unsupported."""
+        """Return GLSL rule or None if unsupported."""
+        rid = getattr(type(self), "id", "")
+        if (
+            getattr(self.phenotype.substrate, "type", None) == "field"
+            and rid
+            and rid not in _develop_warned
+        ):
+            _develop_warned.add(rid)
+            logger.warning(
+                "Representation %r has substrate 'field' but develop() returned None; "
+                "implement develop() to return a GLSL rule.",
+                rid,
+            )
         return None
 
     def serialize_output(
