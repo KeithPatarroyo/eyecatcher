@@ -60,7 +60,7 @@ def produce_next_generation(
     if not parents:
         raise ValueError("No valid parents")
 
-    max_key = max(representation.get_individual_id(p["genome"]) for p in parents)
+    max_key = max(representation.get_id(p["genome"]) for p in parents)
     next_key = max_key + 1
     children = []
 

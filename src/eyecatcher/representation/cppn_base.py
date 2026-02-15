@@ -197,7 +197,7 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
             names["genome_json"]: json_bytes,
         }
 
-    def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
+    def serialize_output(self, output: RepresentationOutput) -> dict[str, Any]:
         """CPPN output is shader string."""
         glsl = output.data if isinstance(output.data, str) else ""
         return {"shader": glsl}

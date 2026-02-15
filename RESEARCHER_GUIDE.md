@@ -167,9 +167,9 @@ To introduce a **registry** of output modes (name → GLSL function), you would 
 
 The same “shader + network stats” shape is used by the develop API, save bundle, and export:
 
-- **Develop:** [src/eyecatcher/web/stateless_api.py](src/eyecatcher/web/stateless_api.py) – Builds each item via the representation’s `develop` and `get_compile_stats`. Returns `{ "shaders": [ { "id", "shader", "fitness", "nodes", "connections", ... }, ... ] }`.
-- **Save/export:** Same stats come from the representation (e.g. dual_cppn’s `get_compile_stats`, `build_save_assets`); stateless_api and save handler build the bundle (PNG, GLSL, genome JSON, optional network PDF).
-- **Extending metadata:** Extend the dict built in stateless_api (or representation `get_compile_stats` / save assets) so develop, save, and export expose new fields consistently.
+- **Develop:** [src/eyecatcher/web/stateless_api.py](src/eyecatcher/web/stateless_api.py) – Builds each item via the representation’s `develop` and `get_develop_stats`. Returns `{ "shaders": [ { "id", "shader", "fitness", "nodes", "connections", ... }, ... ] }`.
+- **Save/export:** Same stats come from the representation (e.g. dual_cppn’s `get_develop_stats`, `build_save_assets`); stateless_api and save handler build the bundle (PNG, GLSL, genome JSON, optional network PDF).
+- **Extending metadata:** Extend the dict built in stateless_api (or representation `get_develop_stats` / save assets) so develop, save, and export expose new fields consistently.
 
 ## Data collection / genealogy
 
@@ -245,7 +245,7 @@ Use this checklist if you add a representation by hand (or to verify after scaff
 
 | # | File or action | One-line description |
 |---|----------------|----------------------|
-| 1 | [src/eyecatcher/representation/\<new\>.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `signal_spec`, `phenotype`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and `frontend_metadata` (`hasSignalControls`, `genomeKeys`). Set `phenotype = Phenotype(substrate="shader"|"grid"|"image", ...)`. Implement `develop` for shader representations; for grid, put step/display/toggle shaders and config on the phenotype; for image, implement `render_to_image()`. Optionally `serialize_express_output(output)` for `/api/express`. See [protocol.py](src/eyecatcher/representation/protocol.py), [trivial.py](src/eyecatcher/representation/trivial.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
+| 1 | [src/eyecatcher/representation/\<new\>.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `signal_spec`, `phenotype`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and `frontend_metadata` (`hasSignalControls`, `genomeKeys`). Set `phenotype = Phenotype(substrate="shader"|"grid"|"image", ...)`. Implement `develop` for shader representations; for grid, put step/display/toggle shaders and config on the phenotype; for image, implement `render_to_image()`. Optionally `serialize_output(output)` for `/api/express`. See [protocol.py](src/eyecatcher/representation/protocol.py), [trivial.py](src/eyecatcher/representation/trivial.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
 | 2 | [src/eyecatcher/representation/__init__.py](src/eyecatcher/representation/__init__.py) | Export the new representation class (and genome if needed). |
 | 3 | [src/eyecatcher/representation/registry.py](src/eyecatcher/representation/registry.py) | Add one entry to `REPRESENTATIONS` dict: `"<id>": NewRepresentation`. |
 | 4 | `make generate` | Regenerate frontend config from `frontend_metadata` (writes [static/js/representation/config.generated.js](static/js/representation/config.generated.js) and representation includes). |
@@ -311,7 +311,7 @@ EXPERIMENT_CONFIG=single python examples/evolution_batch.py --fitness color_vari
 | Change reproduction/selection | evolution/reproduction.py, genome/operators.py |
 | Change CPU rendering or representation query | representation/ (e.g. cppn_base, dual_cppn, ca) |
 | Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl/glsl_fragments.py, glsl/node_code_generator.py, glsl/compiler_topology.py |
-| Change develop/save/export response shape | web/stateless_api.py, representation get_compile_stats / build_save_assets |
+| Change develop/save/export response shape | web/stateless_api.py, representation get_develop_stats / build_save_assets |
 | Change genealogy storage or export | data/genealogy_db.py |
 | Change wire serialization | genome/serialization.py, representation to_json/from_json |
 | Change network graph/stats for API or viz | inspection/network_data.py |

@@ -89,7 +89,7 @@ class RepresentationBase(ABC):
         """Return GLSL shader or None if unsupported."""
         return None
 
-    def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
+    def serialize_output(self, output: RepresentationOutput) -> dict[str, Any]:
         """Serialize express output for API response. Override per output_type."""
         return {}
 
@@ -111,7 +111,7 @@ class RepresentationBase(ABC):
         """Unsupported."""
         return None
 
-    def get_individual_id(self, genome: Any) -> int:
+    def get_id(self, genome: Any) -> int:
         """Genomes expose a .key attribute."""
         return genome.key
 
@@ -131,7 +131,7 @@ class RepresentationBase(ABC):
         """Not NEAT."""
         return None
 
-    def get_compile_stats(self, genome: Any) -> dict[str, Any]:
+    def get_develop_stats(self, genome: Any) -> dict[str, Any]:
         """No network stats."""
         return {"nodes": 0, "connections": 0}
 

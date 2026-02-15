@@ -149,7 +149,7 @@ class Representation(Protocol[GenomeT]):
         """Deserialize genome from API/client payload."""
         ...
 
-    def get_individual_id(self, genome: GenomeT) -> int:
+    def get_id(self, genome: GenomeT) -> int:
         """Return the genome's id (key) for API and evolution."""
         ...
 
@@ -173,9 +173,9 @@ class Representation(Protocol[GenomeT]):
         """Return NEAT pop_size if this representation uses NEAT; None otherwise."""
         return None
 
-    def get_compile_stats(self, genome: GenomeT) -> dict[str, Any]:
+    def get_develop_stats(self, genome: GenomeT) -> dict[str, Any]:
         """
-        Return per-network node/connection stats for compile response.
+        Return per-network node/connection stats for develop response.
 
         Representations with network visualization return a dict like
         { visual_nodes, visual_connections, time_nodes, time_connections };
@@ -244,9 +244,9 @@ class Representation(Protocol[GenomeT]):
         """
         return None
 
-    def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
+    def serialize_output(self, output: RepresentationOutput) -> dict[str, Any]:
         """
-        Serialize express output for API response (e.g. /api/evaluate).
+        Serialize express output for API response (e.g. /api/express).
         Each representation returns the keys it needs
         (image, shader, grid, audio_data, etc.).
         """

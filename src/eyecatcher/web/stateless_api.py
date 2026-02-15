@@ -125,9 +125,7 @@ def _parse_one_individual(payload: dict, index: int):
     """Deserialize one individual payload; return (ind, individual_id, fitness)."""
     rep = get_current_representation()
     ind = rep.from_json(payload)
-    individual_id, fitness = _extract_individual_id_fitness(
-        payload, rep.get_individual_id(ind)
-    )
+    individual_id, fitness = _extract_individual_id_fitness(payload, rep.get_id(ind))
     return ind, individual_id, fitness
 
 
@@ -143,7 +141,7 @@ def _compile_individuals(individuals_data, color_mode):
             "shader": glsl or "",
             "fitness": fitness,
         }
-        stats = get_current_representation().get_compile_stats(genome)
+        stats = get_current_representation().get_develop_stats(genome)
         resp.update(stats)
         resp["nodes"] = sum(v for k, v in stats.items() if k.endswith("_nodes"))
         resp["connections"] = sum(
@@ -235,7 +233,7 @@ def api_express():
         rep = get_current_representation()
         out = rep.express(ind, {})
         item = {"id": individual_id, "output_type": out.output_type}
-        item.update(rep.serialize_express_output(out))
+        item.update(rep.serialize_output(out))
         item.update(rep.serialize_individual_extra(ind))
         results.append(item)
     rep = get_current_representation()

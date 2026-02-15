@@ -17,11 +17,11 @@ from typing import Any, Callable
 import numpy as np
 
 from ..signals import catalog
+from ..signals.socket import Socket
 from ..signals.spec import SignalSpec
 from .base import RepresentationBase
 from .mixins import GridAnalyzable, Saveable
 from .protocol import Phenotype, RepresentationOutput
-from .sockets import GridSocket
 
 # Default grid size for genome and simulation (same size).
 DEFAULT_GRID_SIZE = 64
@@ -202,11 +202,11 @@ class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
         self.grid_size = grid_size
         self.gol_steps = gol_steps
 
-        # -- Socket: interaction signal translation --
-        self.interaction = GridSocket(
-            "interaction",
+        # -- Socket: interaction signal translation (mouse_x, mouse_y for frontend) --
+        self.interaction = Socket(
+            name="interaction",
             inputs=catalog.CA_INTERACTION_INPUTS,
-            grid_size=grid_size,
+            outputs=(),
         )
 
         # -- Public signal spec (socket-centric) --
@@ -272,7 +272,7 @@ class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
     def serialize_individual_extra(self, genome: ConwayGenome) -> dict[str, Any]:
         return {"grid": _grid_to_nested_list(genome.grid)}
 
-    def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
+    def serialize_output(self, output: RepresentationOutput) -> dict[str, Any]:
         """Return image (base64), shader (GOL), and grid (nested list) for API."""
         if output.output_type != "grid" or not hasattr(output.data, "shape"):
             return {"image": "", "shader": _GOL_FRAGMENT_SHADER, "grid": []}

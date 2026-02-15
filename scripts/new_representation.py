@@ -58,7 +58,7 @@ def _python_stub(name: str, pascal: str) -> str:
 {pascal} representation: scaffold from scripts/new_representation.py.
 
 Implement: create_random, mutate, crossover, express, to_json, from_json.
-Optional: develop, serialize_express_output, etc. See base.py and protocol.py.
+Optional: develop, serialize_output, etc. See base.py and protocol.py.
 """
 
 from __future__ import annotations
