@@ -359,11 +359,10 @@ def api_open_endedness_from_frames():
 
     Body: {
         "patterns": [
-            { "genome_key": int, "frames": [base64_rgb, ...] },
+            { "genome_key": int, "frames": [base64_rgb, ...], "width": int, "height": int },
             ...
         ],
         "num_frames": 16,
-        "resolution": 64,
         "generation": 0
     }
     Returns: {
@@ -375,6 +374,9 @@ def api_open_endedness_from_frames():
     import base64
     from PIL import Image
     import numpy as np
+
+    # Target resolution for CLIP (will resize if needed)
+    TARGET_RESOLUTION = 64
 
     try:
         if not _init_open_endedness():
@@ -389,7 +391,6 @@ def api_open_endedness_from_frames():
             return jsonify({'error': 'patterns array required'}), 400
 
         num_frames = int(data.get('num_frames', 16))
-        resolution = int(data.get('resolution', 64))
         generation = int(data.get('generation', 0))
 
         from asal_metrics import calc_open_endedness_score
@@ -402,7 +403,7 @@ def api_open_endedness_from_frames():
         total = len(patterns_data)
         print(f"\n{'='*60}")
         print(f"Computing OE Scores from WebGL-captured frames")
-        print(f"Patterns: {total}, Resolution: {resolution}x{resolution}, Frames: {num_frames}")
+        print(f"Patterns: {total}, Frames: {num_frames}, Target: {TARGET_RESOLUTION}x{TARGET_RESOLUTION}")
         print(f"Saving frames to: {gen_dir}")
         print(f"{'='*60}")
 
@@ -410,6 +411,8 @@ def api_open_endedness_from_frames():
         for i, p_data in enumerate(patterns_data):
             genome_key = p_data.get('genome_key', i)
             frames_b64 = p_data.get('frames', [])
+            width = p_data.get('width', TARGET_RESOLUTION)
+            height = p_data.get('height', TARGET_RESOLUTION)
 
             if not frames_b64 or len(frames_b64) == 0:
                 print(f"[{i+1}/{total}] Pattern {genome_key}: No frames provided, skipping")
@@ -424,12 +427,19 @@ def api_open_endedness_from_frames():
             for frame_idx, frame_b64 in enumerate(frames_b64):
                 # Decode base64 RGB data
                 rgb_bytes = base64.b64decode(frame_b64)
-                rgb_array = np.frombuffer(rgb_bytes, dtype=np.uint8).reshape(resolution, resolution, 3)
+                rgb_array = np.frombuffer(rgb_bytes, dtype=np.uint8).reshape(height, width, 3)
+
+                # Resize to target resolution if needed
+                img = Image.fromarray(rgb_array)
+                if width != TARGET_RESOLUTION or height != TARGET_RESOLUTION:
+                    img = img.resize((TARGET_RESOLUTION, TARGET_RESOLUTION), Image.LANCZOS)
+                    rgb_array = np.array(img)
+
                 frames.append(rgb_array)
 
-                # Save frame as PNG
-                img = Image.fromarray(rgb_array)
-                img.save(os.path.join(pattern_dir, f'frame_{frame_idx:02d}.png'))
+                # Save frame as PNG (at target resolution)
+                img_to_save = Image.fromarray(rgb_array)
+                img_to_save.save(os.path.join(pattern_dir, f'frame_{frame_idx:02d}.png'))
 
             frames = np.array(frames)  # Shape: (T, H, W, C)
 
