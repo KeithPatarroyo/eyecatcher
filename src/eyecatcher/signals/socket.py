@@ -4,6 +4,9 @@ Socket: representation-agnostic binding of signals to an input target.
 A Socket holds inputs, optional outputs, and optional derived inputs. It provides
 to_array(), default_values(), and input_ids() so representations can resolve
 signal values into the format their internal computation expects.
+
+This is the base type; NeatSocket (in representation/sockets.py) adds NEAT
+network query, GLSL input mapping, and network stats for CPPN representations.
 """
 
 from __future__ import annotations

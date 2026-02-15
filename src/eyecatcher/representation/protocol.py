@@ -122,24 +122,6 @@ class Representation(Protocol[GenomeT]):
         """
         ...
 
-    # --- Phenotype sampling (fitness, export) ---
-    def sample_rgb(
-        self, genome: GenomeT, coords: list[tuple[float, float]], time: float = 0.0
-    ) -> list[list[float]]:
-        """
-        Optional: return [r,g,b] per coordinate for fitness/sampling.
-        Default returns [] (e.g. CA uses express instead).
-        """
-        return []
-
-    def render_to_image(
-        self, genome: GenomeT, resolution: int | None = None, **kwargs: Any
-    ) -> np.ndarray | None:
-        """
-        Optional: return RGB image array for save/export, or None if unsupported.
-        """
-        return None
-
     # --- Serialization (API, save/load) ---
     def to_json(self, genome: GenomeT) -> dict[str, Any]:
         """Serialize genome for API/client."""
@@ -153,101 +135,12 @@ class Representation(Protocol[GenomeT]):
         """Return the genome's id (key) for API and evolution."""
         ...
 
-    # --- Optional: introspection, save assets, API extensions ---
-    def get_network_types(self) -> tuple[str, ...]:
-        """Return allowed network names for adjust_weight; empty if not supported."""
-        return ()
-
-    def has_temporal_signals(self) -> bool:
-        """True if the representation has temporal input signals (e.g. time)."""
-        ...
-
-    def get_grid_for_symmetry(self, out: RepresentationOutput) -> np.ndarray | None:
-        """
-        Return a 2D grid for symmetry fitness, or None if not applicable.
-        Used by ca_symmetry fitness; grid representations return out.data as 2D.
-        """
-        ...
-
-    def get_neat_pop_size(self) -> int | None:
-        """Return NEAT pop_size if this representation uses NEAT; None otherwise."""
-        return None
-
-    def get_develop_stats(self, genome: GenomeT) -> dict[str, Any]:
-        """
-        Return per-network node/connection stats for develop response.
-
-        Representations with network visualization return a dict like
-        { visual_nodes, visual_connections, time_nodes, time_connections };
-        others return {"nodes": 0, "connections": 0}.
-        """
-        return {"nodes": 0, "connections": 0}
-
-    def serialize_individual_extra(self, genome: GenomeT) -> dict[str, Any]:
-        """
-        Optional: extra key-value pairs to merge into response for this individual.
-
-        E.g. CA: {"rule": int(ind.rule)}; CPPN: {}.
-        """
-        return {}
-
-    def get_save_filenames(self, individual_id: int) -> dict[str, str]:
-        """
-        Return logical filenames for saved assets (e.g. png, glsl, zip).
-
-        Keys match those returned by build_save_assets. Used for zip name and
-        serve_saved_* routes.
-        """
-        return {
-            "png": f"pattern_{individual_id}.png",
-            "zip": f"pattern_{individual_id}.zip",
-        }
-
-    def build_save_assets(
-        self, genome: GenomeT, individual_id: int, **kwargs: Any
-    ) -> dict[str, bytes]:
-        """
-        Build filename -> raw bytes for all assets to include in the save zip.
-
-        Representations override to add shader, genome JSON, network PDF, etc.
-        Default returns empty dict (caller may treat as unsupported).
-        """
-        return {}
-
-    def query_time_output(
-        self, genome: GenomeT, inputs: dict[str, float]
-    ) -> dict[str, Any] | None:
-        """
-        Optional: query time/signal output for debug panel.
-        Returns {"timeOutput": float, "inputs": {...}} or None if unsupported.
-        """
-        return None
-
-    def get_network_data(self, genome: GenomeT) -> dict[str, Any] | None:
-        """
-        Optional: return network visualization data for a genome.
-        Returns {"nodes": [...], "connections": [...]} or None if unsupported.
-        """
-        return None
-
-    def adjust_weight(
-        self,
-        genome: GenomeT,
-        network: str,
-        source: str,
-        target: str,
-        weight: float,
-    ) -> dict[str, Any] | None:
-        """
-        Optional: adjust a connection weight and return updated shader and genome.
-        Returns {"shader": str, "individual": dict} or None if unsupported.
-        """
-        return None
-
-    def serialize_output(self, output: RepresentationOutput) -> dict[str, Any]:
+    def serialize_output(
+        self, output: RepresentationOutput, genome: GenomeT | None = None
+    ) -> dict[str, Any]:
         """
         Serialize express output for API response (e.g. /api/express).
-        Each representation returns the keys it needs
-        (image, shader, grid, audio_data, etc.).
+        Optionally include genome-based keys when genome is provided.
+        Returns keys such as image, shader, grid, audio_data, etc.
         """
         ...

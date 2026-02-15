@@ -117,7 +117,7 @@ def fitness_temporal_variance(
     Variation over time at center. Non-zero for representations that vary
     output with time.  Returns 0 for representations without temporal signals.
     """
-    if not representation.has_temporal_signals():
+    if not representation.signal_spec.has_category("temporal"):
         return 0.0
     samples = []
     for t in TEMPORAL_SAMPLES:

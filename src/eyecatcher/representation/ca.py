@@ -269,21 +269,28 @@ class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
             grid = grid[:, :, 0]
         return grid if grid.ndim >= 2 else None
 
-    def serialize_individual_extra(self, genome: ConwayGenome) -> dict[str, Any]:
-        return {"grid": _grid_to_nested_list(genome.grid)}
-
-    def serialize_output(self, output: RepresentationOutput) -> dict[str, Any]:
-        """Return image (base64), shader (GOL), and grid (nested list) for API."""
+    def serialize_output(
+        self,
+        output: RepresentationOutput,
+        genome: ConwayGenome | None = None,
+    ) -> dict[str, Any]:
+        """Return image (base64), shader (GOL), and grid for API.
+        When genome is provided, includes genome grid for client."""
+        result: dict[str, Any]
         if output.output_type != "grid" or not hasattr(output.data, "shape"):
-            return {"image": "", "shader": _GOL_FRAGMENT_SHADER, "grid": []}
-        arr = np.asarray(output.data)
-        b64 = _rgb_to_png_base64(arr)
-        grid_01 = (arr[:, :, 0] > 127).astype(np.uint8)
-        return {
-            "image": "data:image/png;base64," + b64,
-            "shader": _GOL_FRAGMENT_SHADER,
-            "grid": _grid_to_nested_list(grid_01),
-        }
+            result = {"image": "", "shader": _GOL_FRAGMENT_SHADER, "grid": []}
+        else:
+            arr = np.asarray(output.data)
+            b64 = _rgb_to_png_base64(arr)
+            grid_01 = (arr[:, :, 0] > 127).astype(np.uint8)
+            result = {
+                "image": "data:image/png;base64," + b64,
+                "shader": _GOL_FRAGMENT_SHADER,
+                "grid": _grid_to_nested_list(grid_01),
+            }
+        if genome is not None:
+            result["grid"] = _grid_to_nested_list(genome.grid)
+        return result
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         return {

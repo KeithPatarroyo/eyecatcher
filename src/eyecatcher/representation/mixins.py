@@ -55,6 +55,11 @@ class NetworkInspectable(ABC):
         """Adjust a connection weight and return updated shader and genome, or None."""
         ...
 
+    def get_develop_stats(self, genome: Any) -> dict[str, Any]:
+        """Return per-network node/connection stats for develop response.
+        Subclasses (e.g. DualCPPN, SingleCPPN) override with actual counts."""
+        return {"nodes": 0, "connections": 0}
+
 
 class Samplable(ABC):
     """Mixin: can sample RGB at coordinates (for fitness)."""

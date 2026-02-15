@@ -105,7 +105,9 @@ class TrivialRepresentation(GridAnalyzable, RepresentationBase):
         value = float(data.get("value", 0.5))
         return TrivialGenome(value=value, key=key)
 
-    def serialize_output(self, output: RepresentationOutput) -> dict[str, Any]:
+    def serialize_output(
+        self, output: RepresentationOutput, genome: Any = None
+    ) -> dict[str, Any]:
         if output.output_type != "grid" or not hasattr(output.data, "shape"):
             return {"image": "", "grid": []}
         arr = np.asarray(output.data)

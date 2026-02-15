@@ -89,8 +89,11 @@ class RepresentationBase(ABC):
         """Return GLSL shader or None if unsupported."""
         return None
 
-    def serialize_output(self, output: RepresentationOutput) -> dict[str, Any]:
-        """Serialize express output for API response. Override per output_type."""
+    def serialize_output(
+        self, output: RepresentationOutput, genome: Any = None
+    ) -> dict[str, Any]:
+        """Serialize express output for API response. Override per output_type.
+        When genome is provided, representations may add genome-based keys."""
         return {}
 
     def sample_rgb(
@@ -134,10 +137,6 @@ class RepresentationBase(ABC):
     def get_develop_stats(self, genome: Any) -> dict[str, Any]:
         """No network stats."""
         return {"nodes": 0, "connections": 0}
-
-    def serialize_individual_extra(self, genome: Any) -> dict[str, Any]:
-        """No extra keys per genome."""
-        return {}
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         """Default: png and zip only."""

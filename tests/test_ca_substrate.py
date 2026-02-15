@@ -107,12 +107,14 @@ def test_ca_protocol_compliance(ca_substrate):
     assert_representation_protocol_compliance(ca_substrate)
 
 
-def test_serialize_individual_extra_includes_grid(ca_substrate):
+def test_serialize_output_includes_genome_grid(ca_substrate):
+    """serialize_output(output, genome) includes genome grid when genome is passed."""
     ind = ca_substrate.create_random(key=0)
-    extra = ca_substrate.serialize_individual_extra(ind)
-    assert "grid" in extra
-    assert len(extra["grid"]) == DEFAULT_GRID_SIZE
-    assert len(extra["grid"][0]) == DEFAULT_GRID_SIZE
+    out = ca_substrate.express(ind, {})
+    result = ca_substrate.serialize_output(out, ind)
+    assert "grid" in result
+    assert len(result["grid"]) == DEFAULT_GRID_SIZE
+    assert len(result["grid"][0]) == DEFAULT_GRID_SIZE
 
 
 def test_ca_has_interaction_signal_spec(ca_substrate):

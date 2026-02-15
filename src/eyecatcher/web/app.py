@@ -16,6 +16,7 @@ from flask_cors import CORS
 
 from .. import get_root_dir
 from ..experiment import get_configured_representation, warn_if_neat_pop_size_mismatch
+from ..representation.mixins import Saveable
 from .api_helpers import (
     ERR_INDIVIDUAL_REQUIRED_BODY,
     api_error,
@@ -90,8 +91,7 @@ def save_individual():
     representation = app.config.get("EYECATCHER_REPRESENTATION")
     if representation is None:
         return api_error("No representation configured.", 503)
-    caps = representation.capabilities
-    if not caps.get("save", False):
+    if not isinstance(representation, Saveable):
         return api_error("Save is not supported for this representation.", 501)
     data = request.json or {}
     individual_json = data.get("individual")

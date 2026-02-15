@@ -17,6 +17,7 @@ from ..experiment import (
     update_runtime_config,
 )
 from ..representation import get_representation
+from ..representation.mixins import NetworkInspectable, Saveable
 from ..representation.registry import REPRESENTATIONS
 from ..signals import parse_time_inputs
 from .api_helpers import (
@@ -88,7 +89,14 @@ def api_config():
 
 def _require_capability(cap: str):
     """Error if representation does not have the given capability."""
-    caps = get_current_representation().capabilities
+    rep = get_current_representation()
+    if cap == "save" and not isinstance(rep, Saveable):
+        return api_error("This representation does not support saving.", 501)
+    if cap in ("network", "adjust_weight") and not isinstance(rep, NetworkInspectable):
+        return api_error(
+            "This endpoint requires a representation with network inspection.", 501
+        )
+    caps = rep.capabilities
     if not caps.get(cap, False):
         return api_error(
             f"This endpoint requires a representation with '{cap}' capability.",
@@ -233,8 +241,7 @@ def api_express():
         rep = get_current_representation()
         out = rep.express(ind, {})
         item = {"id": individual_id, "output_type": out.output_type}
-        item.update(rep.serialize_output(out))
-        item.update(rep.serialize_individual_extra(ind))
+        item.update(rep.serialize_output(out, ind))
         results.append(item)
     rep = get_current_representation()
     return jsonify(
