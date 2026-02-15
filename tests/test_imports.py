@@ -60,11 +60,10 @@ def test_signal_catalog_imports():
 
 def test_socket_subclass_imports():
     """Test that Socket subclasses are importable from representation.sockets."""
-    from eyecatcher.representation.sockets import GridSocket, NeatSocket
+    from eyecatcher.representation.sockets import NeatSocket
     from eyecatcher.signals import Socket
 
     assert issubclass(NeatSocket, Socket)
-    assert issubclass(GridSocket, Socket)
 
 
 def test_web_imports():

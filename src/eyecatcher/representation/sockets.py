@@ -2,7 +2,8 @@
 Representation-specific socket subclasses.
 
 NeatSocket binds signals to a NEAT network (config, query, visualization).
-GridSocket binds signals to a grid (e.g. CA cell coordinates).
+For grid representations (e.g. CA), use the base Socket from signals.socket
+with interaction inputs (e.g. mouse_x, mouse_y); no grid-specific subclass needed.
 """
 
 from __future__ import annotations
@@ -126,21 +127,3 @@ class NeatSocket(Socket):
             signals_in=list(self.inputs),
             signals_out=list(self.outputs),
         )
-
-
-@dataclass(frozen=True)
-class GridSocket(Socket):
-    """Socket that binds signals to grid cell coordinates.
-
-    Used e.g. for CA interaction (mouse_x, mouse_y -> cell row, col).
-    """
-
-    grid_size: int = 0
-
-    def map_to_cell(self, values: dict[str, float]) -> tuple[int, int]:
-        """Map signal values (e.g. mouse_x, mouse_y in [0,1]) to grid (row, col)."""
-        mx = values.get("mouse_x", 0.0)
-        my = values.get("mouse_y", 0.0)
-        col = int(mx * self.grid_size) % self.grid_size
-        row = int(my * self.grid_size) % self.grid_size
-        return row, col

@@ -35,7 +35,7 @@ src/eyecatcher/
 │   ├── protocol.py     # Representation protocol, representation.capabilities
 │   ├── registry.py     # REPRESENTATIONS, get_representation
 │   ├── export.py       # export_representations_for_frontend (codegen)
-│   ├── sockets.py      # NeatSocket, GridSocket
+│   ├── sockets.py      # NeatSocket
 │   ├── cppn_base.py
 │   ├── dual_cppn.py
 │   ├── single_cppn.py
