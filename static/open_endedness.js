@@ -69,8 +69,14 @@ const OpenEndednessTracker = (function() {
                 }
             }
 
-            // Convert to base64 for transmission
-            frames.push(btoa(String.fromCharCode.apply(null, rgb)));
+            // Convert to base64 for transmission (chunked to avoid stack overflow)
+            let binary = '';
+            const chunkSize = 8192;
+            for (let j = 0; j < rgb.length; j += chunkSize) {
+                const chunk = rgb.subarray(j, Math.min(j + chunkSize, rgb.length));
+                binary += String.fromCharCode.apply(null, chunk);
+            }
+            frames.push(btoa(binary));
         }
 
         // Re-render at current animation time to restore display
