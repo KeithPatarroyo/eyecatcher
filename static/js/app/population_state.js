@@ -1,9 +1,8 @@
 /**
  * PopulationState: single source of truth for current population and genealogy context.
- * State is a single organisms array; currentPopulation, currentGenomes, and patterns
- * are derived views for callers that use them.
+ * Canonical state is organisms array. Use getOrganism(id), getGenomes(), getPhenotypes() for derived data.
  *
- * Exposes: PopulationState.getState, PopulationState.dispatch, PopulationState.subscribe, PopulationState.init.
+ * Exposes: PopulationState.getState, getOrganism, getGenomes, getPhenotypes, dispatch, subscribe, init.
  */
 (function () {
     "use strict";
@@ -41,24 +40,8 @@
 
         getState() {
             var s = this._state;
-            var organisms = s.organisms;
             return {
-                organisms: organisms,
-                currentPopulation: organisms.map(function (o) {
-                    return o.phenotype;
-                }),
-                currentGenomes: organisms.map(function (o) {
-                    return o.genome;
-                }),
-                patterns: new Map(
-                    organisms
-                        .map(function (o) {
-                            return [o.id, o.runtime];
-                        })
-                        .filter(function (entry) {
-                            return entry[1] != null;
-                        })
-                ),
+                organisms: s.organisms,
                 generationNum: s.generationNum,
                 populationId: s.populationId,
                 branchName: s.branchName,
@@ -68,33 +51,29 @@
             };
         }
 
+        getOrganism(id) {
+            return this._state.organisms.find(function (o) {
+                return o.id === id;
+            });
+        }
+
+        getGenomes() {
+            return this._state.organisms.map(function (o) {
+                return o.genome;
+            });
+        }
+
+        getPhenotypes() {
+            return this._state.organisms.map(function (o) {
+                return o.phenotype;
+            });
+        }
+
         get representationId() {
             return this._state.representationId;
         }
         get organisms() {
             return this._state.organisms;
-        }
-        get patterns() {
-            var organisms = this._state.organisms;
-            return new Map(
-                organisms
-                    .map(function (o) {
-                        return [o.id, o.runtime];
-                    })
-                    .filter(function (entry) {
-                        return entry[1] != null;
-                    })
-            );
-        }
-        get currentGenomes() {
-            return this._state.organisms.map(function (o) {
-                return o.genome;
-            });
-        }
-        get currentPopulation() {
-            return this._state.organisms.map(function (o) {
-                return o.phenotype;
-            });
         }
         get branchName() {
             return this._state.branchName;

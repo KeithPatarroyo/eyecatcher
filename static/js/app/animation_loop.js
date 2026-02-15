@@ -134,9 +134,9 @@
                 this._lastFrameTime = now;
                 this._frameCount++;
 
-                var patterns = this._getPatterns ? this._getPatterns() : null;
+                var runtimes = this._getPatterns ? this._getPatterns() : null;
                 if (
-                    patterns &&
+                    runtimes &&
                     this._viewerControls &&
                     this._viewerControls.signalState != null &&
                     window.RepresentationRegistry
@@ -144,7 +144,7 @@
                     var signalState = this._viewerControls.signalState;
                     var GT = window.GridTopology;
 
-                    patterns.forEach(function (runtime) {
+                    runtimes.forEach(function (runtime) {
                         if (!runtime.gl) return;
                         var patternId = runtime.patternId;
                         var renderContext = {

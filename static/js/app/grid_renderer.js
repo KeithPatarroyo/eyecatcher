@@ -434,8 +434,11 @@
             );
             var representation = resolved.representation;
             var nextKey = 0;
-            window.PopulationState.patterns.forEach(function (_, id) {
-                nextKey = Math.max(nextKey, id + 1);
+            window.PopulationState.organisms.forEach(function (o) {
+                var id = o.id;
+                if (typeof id === "number" && !isNaN(id)) {
+                    nextKey = Math.max(nextKey, id + 1);
+                }
             });
             var payload = genomes.map(function (g) {
                 var copy = Object.assign({}, g);

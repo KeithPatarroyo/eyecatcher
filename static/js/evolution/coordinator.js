@@ -68,12 +68,9 @@
             });
 
             var self = this;
-            var state = window.PopulationState.getState();
-            var genomes = state.currentGenomes;
-            var population = state.currentPopulation;
-            var patterns = state.patterns;
+            var organisms = window.PopulationState.organisms;
 
-            if (!genomes || !genomes.length) {
+            if (!organisms || !organisms.length) {
                 self._onError(
                     new Error(
                         "No population loaded. Start with New random population or Load population."
@@ -82,17 +79,16 @@
                 return;
             }
 
-            var parents = population
-                .map(function (p, idx) {
-                    var pat = patterns.get(p.id);
-                    var fitness = pat ? pat.fitness : 0;
-                    var genome = genomes[idx];
-                    return genome ? { genome: genome, fitness: fitness } : null;
+            var parents = organisms
+                .filter(function (o) {
+                    return (o.fitness || 0) > 0;
                 })
-                .filter(Boolean)
-                .filter(function (p) {
-                    return p.fitness > 0;
-                });
+                .map(function (o) {
+                    return o.genome
+                        ? { genome: o.genome, fitness: o.fitness || 0 }
+                        : null;
+                })
+                .filter(Boolean);
 
             if (!parents.length) {
                 self._onError(
@@ -113,11 +109,11 @@
                 )
             );
 
-            var newGenerationNum = state.generationNum + 1;
+            var newGenerationNum = (window.PopulationState.generationNum || 0) + 1;
             var opts = {
-                parentPopulationId: state.populationId,
+                parentPopulationId: window.PopulationState.populationId,
                 generationNum: newGenerationNum,
-                branchName: state.branchName || "main",
+                branchName: window.PopulationState.branchName || "main",
             };
 
             window.ApiClient.evolve(parents, populationSize, opts)

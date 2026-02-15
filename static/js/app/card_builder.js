@@ -263,21 +263,15 @@
                 rep.substrate.handleInteraction
             ) {
                 var coords = getClickCoordinates(event, canvas);
-                var patternsMap = window.PopulationState.patterns;
-                var runtime = null;
-                if (patternsMap) {
-                    runtime = patternsMap.get(patternId);
-                    if (
-                        runtime == null &&
-                        typeof patternId === "string" &&
-                        /^\d+$/.test(patternId)
-                    ) {
-                        runtime = patternsMap.get(parseInt(patternId, 10));
-                    }
-                    if (runtime == null && typeof patternId === "number") {
-                        runtime = patternsMap.get(String(patternId));
-                    }
-                }
+                var org =
+                    window.PopulationState.getOrganism(patternId) ||
+                    (typeof patternId === "string" && /^\d+$/.test(patternId)
+                        ? window.PopulationState.getOrganism(parseInt(patternId, 10))
+                        : null) ||
+                    (typeof patternId === "number"
+                        ? window.PopulationState.getOrganism(String(patternId))
+                        : null);
+                var runtime = org ? org.runtime : null;
                 rep.substrate.handleInteraction(
                     runtime,
                     coords.x,

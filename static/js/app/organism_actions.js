@@ -7,8 +7,7 @@
 
     class OrganismActions {
         savePattern(id, buttonEl) {
-            var currentGenomes = window.PopulationState.currentGenomes;
-            if (!currentGenomes || !currentGenomes.length) {
+            if (!window.PopulationState.organisms.length) {
                 window.Toast.show(
                     "Cannot save",
                     "No organism data. Start with New random population or Load population.",
@@ -16,11 +15,8 @@
                 );
                 return;
             }
-            var currentPopulation = window.PopulationState.currentPopulation;
-            var idx = currentPopulation.findIndex(function (p) {
-                return p.id === id;
-            });
-            var genome = idx >= 0 && currentGenomes[idx] ? currentGenomes[idx] : null;
+            var org = window.PopulationState.getOrganism(id);
+            var genome = org ? org.genome : null;
             if (!genome) {
                 window.Toast.show(
                     "Cannot save",
@@ -73,9 +69,9 @@
         }
 
         clickPattern(id, card, updateStats) {
-            var pattern = window.PopulationState.patterns.get(id);
-            if (pattern) {
-                var fitness = (pattern.fitness || 0) + 1;
+            var org = window.PopulationState.getOrganism(id);
+            if (org) {
+                var fitness = (org.fitness || 0) + 1;
                 window.PopulationState.dispatch({
                     type: "SET_ORGANISM_FITNESS",
                     payload: { id: id, fitness: fitness },
@@ -91,9 +87,9 @@
         }
 
         unclickPattern(id, card, updateStats) {
-            var pattern = window.PopulationState.patterns.get(id);
-            if (pattern && (pattern.fitness || 0) > 0) {
-                var fitness = pattern.fitness - 1;
+            var org = window.PopulationState.getOrganism(id);
+            if (org && (org.fitness || 0) > 0) {
+                var fitness = org.fitness - 1;
                 window.PopulationState.dispatch({
                     type: "SET_ORGANISM_FITNESS",
                     payload: { id: id, fitness: fitness },

@@ -104,9 +104,9 @@
     function updateStats() {
         var totalFitness = 0;
         var hasFitness = false;
-        window.PopulationState.patterns.forEach(function (p) {
-            totalFitness += p.fitness || 0;
-            if (p.fitness > 0) hasFitness = true;
+        window.PopulationState.organisms.forEach(function (o) {
+            totalFitness += o.fitness || 0;
+            if (o.fitness > 0) hasFitness = true;
         });
         var totalEl = document.getElementById(IDS.totalFitness);
         if (totalEl) totalEl.textContent = totalFitness;
@@ -157,7 +157,7 @@
     function openFullscreen(id) {
         window.FullscreenModal.openFullscreen(
             id,
-            window.PopulationState.getState().currentPopulation,
+            window.PopulationState.getPhenotypes(),
             IDS
         );
     }
@@ -182,7 +182,7 @@
     }
 
     function getCurrentGenomesForSave() {
-        var genomes = window.PopulationState.currentGenomes;
+        var genomes = window.PopulationState.getGenomes();
         if (genomes && genomes.length) {
             return {
                 genomes: genomes,
@@ -194,18 +194,13 @@
     }
 
     function getGenomeForPattern(patternId) {
-        var currentGenomes = window.PopulationState.currentGenomes;
-        if (!currentGenomes) return Promise.resolve(null);
-        var state = window.PopulationState.getState();
-        var idx = state.currentPopulation.findIndex(function (p) {
-            return p.id === patternId;
-        });
-        var genome = idx >= 0 && currentGenomes[idx] ? currentGenomes[idx] : null;
-        return Promise.resolve(genome);
+        var org = window.PopulationState.getOrganism(patternId);
+        return Promise.resolve(org ? org.genome : null);
     }
 
     function updatePatternShader(individualId, newShader) {
-        var pattern = window.PopulationState.patterns.get(individualId);
+        var org = window.PopulationState.getOrganism(individualId);
+        var pattern = org && org.runtime;
         if (pattern && window.WebGLUtils) {
             var newRuntime = window.WebGLUtils.setupPattern(pattern.canvas, newShader);
             if (newRuntime && !newRuntime.error) {
@@ -227,14 +222,20 @@
     }
 
     function getPatterns() {
-        var list = Array.from(window.PopulationState.patterns.values());
+        var list = window.PopulationState.organisms
+            .filter(function (o) {
+                return o.runtime != null;
+            })
+            .map(function (o) {
+                return o.runtime;
+            });
         var fullscreen = window.FullscreenModal.getFullscreenRuntime();
         if (fullscreen) list.push(fullscreen);
         return list;
     }
 
     function getCurrentPopulation() {
-        return window.PopulationState.getState().currentPopulation;
+        return window.PopulationState.getPhenotypes();
     }
 
     function onGenomeUpdated(individualId, idx, genome) {
@@ -298,7 +299,12 @@
     }
 
     function getPatternsMap() {
-        return window.PopulationState.patterns;
+        var organisms = window.PopulationState.organisms;
+        var map = new Map();
+        organisms.forEach(function (o) {
+            if (o.runtime != null) map.set(o.id, o.runtime);
+        });
+        return map;
     }
 
     window.PopulationState.init();
