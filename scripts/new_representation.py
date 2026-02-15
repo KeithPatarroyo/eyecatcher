@@ -70,7 +70,7 @@ from ..signals import catalog
 from ..signals.receptor import Receptor
 from ..signals.sensory_system import SensorySystem
 from .base import RepresentationBase
-from .protocol import OutputType, Phenotype, RepresentationOutput, Substrate
+from .protocol import Phenotype, RepresentationOutput, Substrate
 
 
 class {pascal}Genome:
@@ -86,7 +86,6 @@ class {pascal}Representation(RepresentationBase):
     """{pascal} representation. Set id, sensory_system, phenotype; see protocol."""
 
     id = "{name}"
-    output_type: OutputType = "grid"
     frontend_metadata = {{
         "hasSignalControls": True,
         "genomeKeys": ["key"],
