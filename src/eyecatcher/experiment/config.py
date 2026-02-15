@@ -165,3 +165,71 @@ def get_elitism_default() -> bool:
 def update_runtime_config(updates: dict | None) -> None:
     """Update in-memory experiment parameters (no restart)."""
     config.update_runtime_config(updates)
+
+
+def _load_preset_by_name(preset_name: str) -> dict | None:
+    """Load a single preset from config/experiments.json. Used for provenance only."""
+    root = _get_root_dir()
+    path = os.path.join(root, "config", "experiments.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data.get(preset_name) if isinstance(data, dict) else None
+
+
+def get_effective_config_with_provenance() -> dict:
+    """
+    Return effective experiment config with provenance per key.
+
+    Use for "where do I set X?" — run `python -m eyecatcher config --show` or
+    GET /api/config?provenance=1. Keys: population_size, max_population_size,
+    min_population_size, crossover_probability, elitism_default, representation_id.
+    Each value has "value" and "from" (which layer it came from).
+    """
+    preset_name = os.environ.get("EXPERIMENT_CONFIG", "default").strip() or "default"
+    defaults = _load_evolution_defaults()
+    preset = _load_preset_by_name(preset_name)
+
+    def source(key: str, effective_value) -> str:
+        if key in config._runtime_overlay:
+            return "runtime (PATCH /api/config)"
+        if preset and key in preset and preset.get(key) is not None:
+            if key not in defaults or preset[key] != defaults.get(key):
+                return f"config/experiments.json (preset: {preset_name})"
+        return "config/evolution_defaults.json"
+
+    result = {
+        "population_size": {
+            "value": config.get_population_size(),
+            "from": source("population_size", config.get_population_size()),
+        },
+        "max_population_size": {
+            "value": config.get_max_population_size(),
+            "from": source("max_population_size", config.get_max_population_size()),
+        },
+        "min_population_size": {
+            "value": config.min_population_size,
+            "from": "config/evolution_defaults.json",
+        },
+        "crossover_probability": {
+            "value": config.get_crossover_probability(),
+            "from": source("crossover_probability", config.get_crossover_probability()),
+        },
+        "elitism_default": {
+            "value": config.get_elitism_default(),
+            "from": source("elitism_default", config.get_elitism_default()),
+        },
+    }
+    rep_id = None
+    rep_from = f"config/experiments.json (preset: {preset_name})"
+    if preset and isinstance(preset, dict):
+        rep_id = preset.get("representation") or preset.get("substrate")
+    if rep_id is None:
+        rep_id = "dual_cppn"
+        rep_from = "default (no preset or key)"
+    result["representation_id"] = {"value": rep_id, "from": rep_from}
+    return result
