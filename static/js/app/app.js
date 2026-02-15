@@ -287,11 +287,11 @@
                     genealogyLoad.representation_id || genealogyLoad.substrate_id,
                 genomes: loadGenomes,
             });
-            window.GridRenderer.loadFromStatelessGenomes(
+            window.PopulationLoader.loadPopulation(
                 loadGenomes,
                 genNum,
-                false,
-                resolved.representationId
+                resolved.representationId,
+                { saveToGenealogy: false }
             );
         } else {
             window.PopulationUI.startNewRandomPopulation();
@@ -310,7 +310,7 @@
     window.PopulationState.init();
     window.ApiClient.init(API_URL);
 
-    window.GridRenderer.init({
+    var gridDeps = {
         IDS: IDS,
         API_URL: API_URL,
         getGridCallbacks: getGridCallbacks,
@@ -321,7 +321,26 @@
         },
         showLoading: showLoading,
         updateStats: updateStats,
-    });
+    };
+    window.GridRenderer.init(gridDeps);
+    window.PopulationLoader.init(gridDeps);
+
+    /** Wrapper for UI that expects (genomes, generationNum, saveToGenealogy, representationId). */
+    function loadFromStatelessGenomes(
+        genomes,
+        generationNum,
+        saveToGenealogy,
+        representationId
+    ) {
+        return window.PopulationLoader.loadPopulation(
+            genomes,
+            generationNum,
+            representationId,
+            {
+                saveToGenealogy: saveToGenealogy,
+            }
+        );
+    }
 
     window.EvolutionCoordinator.init({
         IDS: IDS,
@@ -375,19 +394,19 @@
 
     window.PopulationUI.init({
         apiUrl: API_URL,
-        loadFromStatelessGenomes: window.GridRenderer.loadFromStatelessGenomes.bind(
-            window.GridRenderer
+        loadFromStatelessGenomes: loadFromStatelessGenomes,
+        addToGrid: window.PopulationLoader.addToPopulation.bind(
+            window.PopulationLoader
         ),
-        addToGrid: window.GridRenderer.addToGrid.bind(window.GridRenderer),
         getCurrentGenomesForSave: getCurrentGenomesForSave,
     });
 
     window.CommunityUI.init({
         apiUrl: API_URL,
-        loadFromStatelessGenomes: window.GridRenderer.loadFromStatelessGenomes.bind(
-            window.GridRenderer
+        loadFromStatelessGenomes: loadFromStatelessGenomes,
+        addToGrid: window.PopulationLoader.addToPopulation.bind(
+            window.PopulationLoader
         ),
-        addToGrid: window.GridRenderer.addToGrid.bind(window.GridRenderer),
         getGenomeForPattern: getGenomeForPattern,
         viewerControls: window.ViewerControls || null,
     });
@@ -414,11 +433,11 @@
                 representation.phenotype &&
                 representation.phenotype.substrate === "shader"
             ) {
-                window.GridRenderer.loadFromStatelessGenomes(
+                window.PopulationLoader.loadPopulation(
                     data.genomes,
                     data.generation,
-                    false,
-                    data.representationId
+                    data.representationId,
+                    { saveToGenealogy: false }
                 );
             }
         });

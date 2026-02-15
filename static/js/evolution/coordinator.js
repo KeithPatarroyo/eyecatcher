@@ -136,11 +136,11 @@
                             );
                         }
                     }
-                    window.GridRenderer.loadFromStatelessGenomes(
+                    window.PopulationLoader.loadPopulation(
                         data.children,
                         newGenerationNum,
-                        false,
-                        data.representation_id
+                        data.representation_id,
+                        { saveToGenealogy: false }
                     );
                 })
                 .catch(function (err) {
