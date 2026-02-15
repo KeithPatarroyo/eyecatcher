@@ -265,14 +265,6 @@
             return this._mouseY;
         }
 
-        getTime() {
-            return this._animationTime;
-        }
-
-        getFrameCount() {
-            return this._frameCount;
-        }
-
         /**
          * Get signal values from the active source (or defaults), build params via current
          * representation substrate, and render one frame. Used by the animation loop,

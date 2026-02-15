@@ -7,9 +7,6 @@
     "use strict";
 
     var DEFAULT_REPRESENTATION_ID = "dual_cppn";
-    var DEFAULT_RESOLUTION = {
-        representationId: DEFAULT_REPRESENTATION_ID,
-    };
 
     function buildIsGenomeFormatFromConfig(entry) {
         var genomeKeys = entry.genomeKeys || [];

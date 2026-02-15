@@ -1,17 +1,14 @@
 /**
  * Eyecatcher IndexedDB storage module.
- * Stores populations (genomes + generation) and settings for the stateless client.
+ * Stores populations (genomes + generation) for the stateless client.
  *
  * Database: "eyecatcher"
- * Object stores:
- *   - populations: { id, name, genomes, generation, representationId, created, modified }
- *   - settings: { key, value }
+ * Object store: populations: { id, name, genomes, generation, representationId, created, modified }
  */
 const EyecatcherStorage = (function () {
     const DB_NAME = "eyecatcher";
     const DB_VERSION = 1;
     const POPULATIONS_STORE = "populations";
-    const SETTINGS_STORE = "settings";
 
     let db = null;
 
@@ -35,9 +32,6 @@ const EyecatcherStorage = (function () {
                         autoIncrement: true,
                     });
                     pop.createIndex("modified", "modified", { unique: false });
-                }
-                if (!database.objectStoreNames.contains(SETTINGS_STORE)) {
-                    database.createObjectStore(SETTINGS_STORE, { keyPath: "key" });
                 }
             };
         });
@@ -69,31 +63,6 @@ const EyecatcherStorage = (function () {
             });
         },
 
-        async updatePopulation(id, name, genomes, generation, representationId) {
-            const database = await open();
-            const existing = await this.loadPopulation(id);
-            if (!existing) return null;
-            const record = {
-                id: id,
-                name: name != null ? name : existing.name,
-                genomes: genomes != null ? genomes : existing.genomes,
-                generation: generation != null ? generation : existing.generation,
-                created: existing.created,
-                modified: new Date().toISOString(),
-            };
-            if (representationId !== undefined)
-                record.representationId = representationId;
-            else if (existing.representationId !== undefined)
-                record.representationId = existing.representationId;
-            return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, "readwrite");
-                const store = tx.objectStore(POPULATIONS_STORE);
-                const req = store.put(record);
-                req.onsuccess = () => resolve(id);
-                req.onerror = () => reject(req.error);
-            });
-        },
-
         async loadPopulation(id) {
             const database = await open();
             return new Promise((resolve, reject) => {
@@ -119,28 +88,6 @@ const EyecatcherStorage = (function () {
             });
         },
 
-        async deletePopulation(id) {
-            const database = await open();
-            return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, "readwrite");
-                const req = tx.objectStore(POPULATIONS_STORE).delete(id);
-                req.onsuccess = () => resolve();
-                req.onerror = () => reject(req.error);
-            });
-        },
-
-        async exportPopulation(id) {
-            const pop = await this.loadPopulation(id);
-            if (!pop) return null;
-            return {
-                name: pop.name,
-                generation: pop.generation,
-                genomes: pop.genomes,
-                representationId: pop.representationId,
-                exportedAt: new Date().toISOString(),
-            };
-        },
-
         async importPopulation(json) {
             const name = json.name || "Imported";
             const genomes = json.genomes || [];
@@ -155,27 +102,6 @@ const EyecatcherStorage = (function () {
                 representationId
             );
             return { id, name, generation, count: genomes.length };
-        },
-
-        async getSetting(key) {
-            const database = await open();
-            return new Promise((resolve, reject) => {
-                const tx = database.transaction(SETTINGS_STORE, "readonly");
-                const req = tx.objectStore(SETTINGS_STORE).get(key);
-                req.onsuccess = () =>
-                    resolve(req.result ? req.result.value : undefined);
-                req.onerror = () => reject(req.error);
-            });
-        },
-
-        async setSetting(key, value) {
-            const database = await open();
-            return new Promise((resolve, reject) => {
-                const tx = database.transaction(SETTINGS_STORE, "readwrite");
-                const req = tx.objectStore(SETTINGS_STORE).put({ key, value });
-                req.onsuccess = () => resolve();
-                req.onerror = () => reject(req.error);
-            });
         },
     };
 })();
