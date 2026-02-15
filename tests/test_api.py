@@ -4,6 +4,23 @@ import pytest
 from eyecatcher.genome import create_random_dual_genome, dual_genome_to_json
 
 
+def _random_individuals(client, size):
+    """POST /api/random and return individuals list."""
+    rv = client.post("/api/random", json={"size": size})
+    assert rv.status_code == 200
+    return rv.get_json()["individuals"]
+
+
+def _make_dual_payload(representation, key=0):
+    """Build dual genome JSON with key for API payloads."""
+    dual = create_random_dual_genome(
+        representation.config, representation.time_config, genome_id=key
+    )
+    payload = dual_genome_to_json(dual)
+    payload["key"] = key
+    return payload
+
+
 def test_health(client):
     """GET /health returns 200."""
     rv = client.get("/health")
@@ -26,9 +43,7 @@ def test_api_random(client):
 
 def test_api_express(client):
     """POST /api/express returns results (field or grid per representation)."""
-    rv = client.post("/api/random", json={"size": 2})
-    assert rv.status_code == 200
-    individuals = rv.get_json()["individuals"]
+    individuals = _random_individuals(client, 2)
     rv = client.post("/api/express", json={"individuals": individuals})
     assert rv.status_code == 200
     data = rv.get_json()
@@ -48,9 +63,7 @@ def test_api_express(client):
 @pytest.mark.slow
 def test_api_develop(client):
     """POST /api/develop with individuals returns rules."""
-    rv = client.post("/api/random", json={"size": 2})
-    assert rv.status_code == 200
-    individuals = rv.get_json()["individuals"]
+    individuals = _random_individuals(client, 2)
     rv = client.post("/api/develop", json={"individuals": individuals})
     assert rv.status_code == 200
     data = rv.get_json()
@@ -63,9 +76,7 @@ def test_api_develop(client):
 
 def test_api_evolve(client):
     """POST /api/evolve with parents returns children."""
-    rv = client.post("/api/random", json={"size": 2})
-    assert rv.status_code == 200
-    individuals = rv.get_json()["individuals"]
+    individuals = _random_individuals(client, 2)
     parents = [{"individual": g, "fitness": 1} for g in individuals]
     rv = client.post(
         "/api/evolve",
@@ -79,11 +90,7 @@ def test_api_evolve(client):
 
 def test_api_evolve_without_genealogy(client, representation):
     """Evolve without parent_population_id returns children only, no population_id."""
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    ind_json = dual_genome_to_json(dual)
-    ind_json["key"] = 0
+    ind_json = _make_dual_payload(representation, 0)
     parents = [{"individual": ind_json, "fitness": 0}]
     rv = client.post(
         "/api/evolve",
@@ -96,37 +103,30 @@ def test_api_evolve_without_genealogy(client, representation):
     assert "population_id" not in data
 
 
-def test_api_evolve_missing_parents(client):
-    """POST /api/evolve without parents returns 400."""
-    rv = client.post("/api/evolve", json={})
+@pytest.mark.parametrize(
+    "payload,error_substring",
+    [
+        ({}, "parents"),
+        ({"parents": []}, None),
+        (
+            {"parents": [{"individual": "not an individual", "fitness": 0}]},
+            "no valid parents",
+        ),
+    ],
+    ids=["missing_parents", "empty_parents", "malformed_parents"],
+)
+def test_api_evolve_bad_request(client, payload, error_substring):
+    """POST /api/evolve with missing/empty/malformed parents returns 400."""
+    rv = client.post("/api/evolve", json=payload)
     assert rv.status_code == 400
-    assert "parents" in rv.get_json().get("error", "").lower()
-
-
-def test_api_evolve_empty_parents(client):
-    """POST /api/evolve with empty parents returns 400."""
-    rv = client.post("/api/evolve", json={"parents": []})
-    assert rv.status_code == 400
-
-
-def test_api_evolve_malformed_parents(client):
-    """POST /api/evolve with invalid individual in parents returns 400."""
-    rv = client.post(
-        "/api/evolve",
-        json={"parents": [{"individual": "not an individual", "fitness": 0}]},
-    )
-    assert rv.status_code == 400
-    assert "no valid parents" in rv.get_json().get("error", "").lower()
+    if error_substring:
+        assert error_substring in rv.get_json().get("error", "").lower()
 
 
 @pytest.mark.slow
 def test_api_evolve_with_genealogy(client, genealogy_db, representation):
     """Evolve with parent_population_id saves to genealogy and returns population_id."""
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    payload = dual_genome_to_json(dual)
-    payload["key"] = 0
+    payload = _make_dual_payload(representation, 0)
     save_rv = client.post(
         "/api/genealogy/save-population",
         json={
@@ -159,11 +159,7 @@ def test_api_evolve_with_genealogy(client, genealogy_db, representation):
 @pytest.mark.slow
 def test_api_save(client, representation):
     """POST /api/save with individual returns id, status, and downloads."""
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    ind_json = dual_genome_to_json(dual)
-    ind_json["key"] = 0
+    ind_json = _make_dual_payload(representation, 0)
     rv = client.post("/api/save", json={"individual": ind_json})
     assert rv.status_code == 200
     data = rv.get_json()
@@ -178,11 +174,7 @@ def test_api_save(client, representation):
 @pytest.mark.slow
 def test_save_download_structure(client, representation):
     """Save returns downloads[0] with .zip filename and non-empty content_base64."""
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    ind_json = dual_genome_to_json(dual)
-    ind_json["key"] = 0
+    ind_json = _make_dual_payload(representation, 0)
     rv = client.post("/api/save", json={"individual": ind_json})
     assert rv.status_code == 200
     data = rv.get_json()
@@ -193,18 +185,10 @@ def test_save_download_structure(client, representation):
     assert len(d["content_base64"]) > 0
 
 
-def test_api_save_missing_genome(client):
-    """POST /api/save without individual returns 400."""
-    rv = client.post("/api/save", json={})
-    assert rv.status_code == 400
-    assert "individual" in rv.get_json().get("error", "").lower()
-
-
 def test_api_time_output(client):
     """POST /api/time-output with individual returns timeOutput and inputs."""
-    rv = client.post("/api/random", json={"size": 1})
-    assert rv.status_code == 200
-    ind = rv.get_json()["individuals"][0]
+    individuals = _random_individuals(client, 1)
+    ind = individuals[0]
     rv = client.post(
         "/api/time-output",
         json={
@@ -223,18 +207,10 @@ def test_api_time_output(client):
     assert data["inputs"]["raw_time"] == 0.5
 
 
-def test_api_time_output_missing_individual(client):
-    """POST /api/time-output without individual returns 400."""
-    rv = client.post("/api/time-output", json={})
-    assert rv.status_code == 400
-    assert "individual" in rv.get_json().get("error", "").lower()
-
-
 def test_api_network(client):
     """POST /api/network with individual returns nodes and connections."""
-    rv = client.post("/api/random", json={"size": 1})
-    assert rv.status_code == 200
-    ind = rv.get_json()["individuals"][0]
+    individuals = _random_individuals(client, 1)
+    ind = individuals[0]
     rv = client.post("/api/network", json={"individual": ind})
     assert rv.status_code == 200
     data = rv.get_json()
@@ -245,11 +221,20 @@ def test_api_network(client):
     assert isinstance(data["connections"], list)
 
 
-def test_api_network_missing_individual(client):
-    """POST /api/network without individual returns 400."""
-    rv = client.post("/api/network", json={})
+@pytest.mark.parametrize(
+    "endpoint,payload,error_key",
+    [
+        ("/api/save", {}, "individual"),
+        ("/api/time-output", {}, "individual"),
+        ("/api/network", {}, "individual"),
+    ],
+    ids=["save_missing_genome", "time_output_missing", "network_missing"],
+)
+def test_api_missing_individual_400(client, endpoint, payload, error_key):
+    """POST without required individual returns 400."""
+    rv = client.post(endpoint, json=payload)
     assert rv.status_code == 400
-    assert "individual" in rv.get_json().get("error", "").lower()
+    assert error_key in rv.get_json().get("error", "").lower()
 
 
 def test_api_error_response_shape(client):

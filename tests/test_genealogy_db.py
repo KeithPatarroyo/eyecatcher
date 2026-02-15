@@ -26,23 +26,21 @@ def _genome_payload(key=0):
 
 def test_init_creates_tables(db_path):
     """init_genealogy_db creates populations and individuals tables."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        # Already inited by fixture; call again is idempotent
-        genealogy_db_module.init_genealogy_db()
-        stats = genealogy_db_module.get_stats()
+    # Already inited by fixture; call again is idempotent
+    genealogy_db_module.init_genealogy_db()
+    stats = genealogy_db_module.get_stats()
     assert stats["total_populations"] == 0
     assert stats["total_individuals"] == 0
 
 
 def test_save_population_returns_ids(db_path):
     """save_population returns population_id and individual_ids."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        result = genealogy_db_module.save_population(
-            genomes=[_genome_payload(0), _genome_payload(1)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-        )
+    result = genealogy_db_module.save_population(
+        genomes=[_genome_payload(0), _genome_payload(1)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+    )
     assert "error" not in result
     assert result["population_id"] == 1
     assert result["individual_ids"] == [1, 2]
@@ -51,45 +49,42 @@ def test_save_population_returns_ids(db_path):
 
 def test_save_population_parent_not_found(db_path):
     """save_population with invalid parent_id returns error dict."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        result = genealogy_db_module.save_population(
-            genomes=[_genome_payload(0)],
-            parent_id=999,
-            generation_num=1,
-        )
+    result = genealogy_db_module.save_population(
+        genomes=[_genome_payload(0)],
+        parent_id=999,
+        generation_num=1,
+    )
     assert result.get("error") == "parent_not_found"
 
 
 def test_save_population_generation_mismatch(db_path):
     """save_population with wrong generation_num returns error dict."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(0)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-        )
-        result = genealogy_db_module.save_population(
-            genomes=[_genome_payload(1)],
-            parent_id=1,
-            generation_num=5,
-            branch_name="main",
-        )
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(0)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+    )
+    result = genealogy_db_module.save_population(
+        genomes=[_genome_payload(1)],
+        parent_id=1,
+        generation_num=5,
+        branch_name="main",
+    )
     assert result.get("error") == "generation_mismatch"
     assert result.get("parent_generation_num") == 0
 
 
 def test_get_population_roundtrip(db_path):
     """After save_population, get_population returns same data."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(7)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-            description="test",
-        )
-        pop = genealogy_db_module.get_population(1)
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(7)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+        description="test",
+    )
+    pop = genealogy_db_module.get_population(1)
     assert pop is not None
     assert pop["population_id"] == 1
     assert pop["generation_num"] == 0
@@ -102,21 +97,19 @@ def test_get_population_roundtrip(db_path):
 
 def test_get_population_not_found(db_path):
     """get_population returns None for missing id."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        assert genealogy_db_module.get_population(99999) is None
+    assert genealogy_db_module.get_population(99999) is None
 
 
 def test_get_tree_nodes_and_branches(db_path):
     """get_tree_nodes and get_branches return expected shape after save."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(0)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-        )
-        nodes = genealogy_db_module.get_tree_nodes()
-        branches = genealogy_db_module.get_branches()
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(0)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+    )
+    nodes = genealogy_db_module.get_tree_nodes()
+    branches = genealogy_db_module.get_branches()
     assert len(nodes) == 1
     assert nodes[0]["id"] == 1
     assert nodes[0]["branch_name"] == "main"
@@ -128,14 +121,13 @@ def test_get_tree_nodes_and_branches(db_path):
 
 def test_get_stats(db_path):
     """get_stats returns aggregates."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(0), _genome_payload(1)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-        )
-        stats = genealogy_db_module.get_stats()
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(0), _genome_payload(1)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+    )
+    stats = genealogy_db_module.get_stats()
     assert stats["total_populations"] == 1
     assert stats["total_individuals"] == 2
     assert stats["total_branches"] == 1
@@ -144,14 +136,13 @@ def test_get_stats(db_path):
 
 def test_export_sizes(db_path):
     """export_sizes returns full and per-branch estimated bytes."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(0)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-        )
-        sizes = genealogy_db_module.export_sizes()
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(0)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+    )
+    sizes = genealogy_db_module.export_sizes()
     assert "full" in sizes
     assert sizes["full"]["populations"] == 1
     assert sizes["full"]["individuals"] == 1
@@ -162,16 +153,15 @@ def test_export_sizes(db_path):
 
 def test_export_genealogy_data_full_and_branch(db_path):
     """export_genealogy_data(branch_name=None) and with branch_name."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(0)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-        )
-        full = genealogy_db_module.export_genealogy_data(branch_name=None)
-        main_branch = genealogy_db_module.export_genealogy_data(branch_name="main")
-        missing = genealogy_db_module.export_genealogy_data(branch_name="missing")
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(0)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+    )
+    full = genealogy_db_module.export_genealogy_data(branch_name=None)
+    main_branch = genealogy_db_module.export_genealogy_data(branch_name="main")
+    missing = genealogy_db_module.export_genealogy_data(branch_name="missing")
     assert full is not None
     assert full["branch_name"] is None
     assert len(full["populations"]) == 1
@@ -185,16 +175,15 @@ def test_export_genealogy_data_full_and_branch(db_path):
 
 def test_get_population_thumbnail(db_path):
     """get_population_thumbnail returns fittest individual or None."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        assert genealogy_db_module.get_population_thumbnail(1) is None
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(0)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-            fitness_data=[0.5],
-        )
-        thumb = genealogy_db_module.get_population_thumbnail(1)
+    assert genealogy_db_module.get_population_thumbnail(1) is None
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(0)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+        fitness_data=[0.5],
+    )
+    thumb = genealogy_db_module.get_population_thumbnail(1)
     assert thumb is not None
     assert "genome" in thumb
     assert "fitness" in thumb
@@ -203,36 +192,33 @@ def test_get_population_thumbnail(db_path):
 
 def test_reset_genealogy(db_path):
     """reset_genealogy clears all data."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(0)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-        )
-        genealogy_db_module.reset_genealogy()
-        assert genealogy_db_module.get_tree_nodes() == []
-        assert genealogy_db_module.get_stats()["total_populations"] == 0
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(0)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+    )
+    genealogy_db_module.reset_genealogy()
+    assert genealogy_db_module.get_tree_nodes() == []
+    assert genealogy_db_module.get_stats()["total_populations"] == 0
 
 
 def test_save_generation_result(db_path):
     """save_generation_result inserts population and individuals."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(0)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-        )
-        new_id = genealogy_db_module.save_generation_result(
-            parent_population_id=1,
-            generation_num=1,
-            branch_name="main",
-            children=[_genome_payload(1), _genome_payload(2)],
-        )
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(0)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+    )
+    new_id = genealogy_db_module.save_generation_result(
+        parent_population_id=1,
+        generation_num=1,
+        branch_name="main",
+        children=[_genome_payload(1), _genome_payload(2)],
+    )
     assert new_id == 2
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        pop = genealogy_db_module.get_population(2)
+    pop = genealogy_db_module.get_population(2)
     assert pop is not None
     assert pop["generation_num"] == 1
     assert pop["parent_id"] == 1
@@ -241,20 +227,19 @@ def test_save_generation_result(db_path):
 
 def test_get_experiment_log(db_path):
     """get_experiment_log returns recent populations with parsed metadata."""
-    with patch.object(genealogy_db_module, "GENEALOGY_DB_PATH", str(db_path)):
-        genealogy_db_module.save_population(
-            genomes=[_genome_payload(0)],
-            parent_id=None,
-            generation_num=0,
-            branch_name="main",
-            metadata={
-                "experiment_config": {
-                    "substrate_id": "dual_cppn",
-                    "population_size": 12,
-                }
-            },
-        )
-        log = genealogy_db_module.get_experiment_log(limit=10)
+    genealogy_db_module.save_population(
+        genomes=[_genome_payload(0)],
+        parent_id=None,
+        generation_num=0,
+        branch_name="main",
+        metadata={
+            "experiment_config": {
+                "substrate_id": "dual_cppn",
+                "population_size": 12,
+            }
+        },
+    )
+    log = genealogy_db_module.get_experiment_log(limit=10)
     assert len(log) == 1
     assert log[0]["id"] == 1
     assert log[0]["branch_name"] == "main"

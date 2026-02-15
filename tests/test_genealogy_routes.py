@@ -4,24 +4,46 @@ import pytest
 from eyecatcher.genome import create_random_dual_genome, dual_genome_to_json
 
 
+def _make_individual_payload(representation, key=0):
+    """Build dual genome JSON for genealogy API payloads."""
+    dual = create_random_dual_genome(
+        representation.config, representation.time_config, genome_id=key
+    )
+    payload = dual_genome_to_json(dual)
+    payload["key"] = key
+    return payload
+
+
+def _save_population(
+    client,
+    individuals,
+    parent_id=None,
+    generation_num=0,
+    branch_name="main",
+    description=None,
+    **kwargs,
+):
+    """POST save-population; return response."""
+    body = {
+        "individuals": individuals,
+        "parent_id": parent_id,
+        "generation_num": generation_num,
+        "branch_name": branch_name,
+    }
+    if description is not None:
+        body["description"] = description
+    body.update(kwargs)
+    return client.post("/api/genealogy/save-population", json=body)
+
+
 @pytest.mark.slow
 def test_save_population(client, genealogy_db, representation):
     """POST save-population with individuals returns population_id and individual_ids."""  # noqa: E501
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    payload = dual_genome_to_json(dual)
-    payload["key"] = 0
-
-    rv = client.post(
-        "/api/genealogy/save-population",
-        json={
-            "individuals": [payload],
-            "parent_id": None,
-            "generation_num": 0,
-            "branch_name": "main",
-            "description": "test",
-        },
+    payload = _make_individual_payload(representation, 0)
+    rv = _save_population(
+        client,
+        [payload],
+        description="test",
     )
     assert rv.status_code == 200
     data = rv.get_json()
@@ -51,21 +73,8 @@ def test_load_population_not_found(client, genealogy_db):
 @pytest.mark.slow
 def test_save_and_load_population(client, genealogy_db, representation):
     """Save a population then load it by id; individuals round-trip."""
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=7
-    )
-    payload = dual_genome_to_json(dual)
-    payload["key"] = 7
-
-    save_rv = client.post(
-        "/api/genealogy/save-population",
-        json={
-            "individuals": [payload],
-            "parent_id": None,
-            "generation_num": 0,
-            "branch_name": "main",
-        },
-    )
+    payload = _make_individual_payload(representation, 7)
+    save_rv = _save_population(client, [payload])
     assert save_rv.status_code == 200
     pop_id = save_rv.get_json()["population_id"]
 
@@ -91,20 +100,8 @@ def test_experiment_log_empty(client, genealogy_db):
 @pytest.mark.slow
 def test_experiment_log_after_save(client, genealogy_db, representation):
     """GET experiment-log after save-population returns entry with experiment_config."""
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    payload = dual_genome_to_json(dual)
-    payload["key"] = 0
-    client.post(
-        "/api/genealogy/save-population",
-        json={
-            "individuals": [payload],
-            "parent_id": None,
-            "generation_num": 0,
-            "branch_name": "main",
-        },
-    )
+    payload = _make_individual_payload(representation, 0)
+    _save_population(client, [payload])
     rv = client.get("/api/experiment-log")
     assert rv.status_code == 200
     entries = rv.get_json()["entries"]
@@ -126,22 +123,8 @@ def test_tree_empty(client, genealogy_db):
 @pytest.mark.slow
 def test_tree_after_save(client, genealogy_db, representation):
     """GET tree after save returns one node."""
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    payload = dual_genome_to_json(dual)
-    payload["key"] = 0
-
-    client.post(
-        "/api/genealogy/save-population",
-        json={
-            "individuals": [payload],
-            "parent_id": None,
-            "generation_num": 0,
-            "branch_name": "main",
-        },
-    )
-
+    payload = _make_individual_payload(representation, 0)
+    _save_population(client, [payload])
     rv = client.get("/api/genealogy/tree")
     assert rv.status_code == 200
     nodes = rv.get_json()["nodes"]
@@ -160,25 +143,9 @@ def test_branches_empty(client, genealogy_db):
 @pytest.mark.slow
 def test_export_genealogy_full(client, genealogy_db, representation):
     """GET export (no branch): full tree; populations, individuals, exported_at."""
-    dual1 = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    dual2 = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=1
-    )
-    p1 = dual_genome_to_json(dual1)
-    p2 = dual_genome_to_json(dual2)
-    p1["key"] = 0
-    p2["key"] = 1
-    client.post(
-        "/api/genealogy/save-population",
-        json={
-            "individuals": [p1, p2],
-            "parent_id": None,
-            "generation_num": 0,
-            "branch_name": "main",
-        },
-    )
+    p1 = _make_individual_payload(representation, 0)
+    p2 = _make_individual_payload(representation, 1)
+    _save_population(client, [p1, p2])
     rv = client.get("/api/genealogy/export")
     assert rv.status_code == 200
     data = rv.get_json()
@@ -198,29 +165,9 @@ def test_export_genealogy_full(client, genealogy_db, representation):
 @pytest.mark.slow
 def test_export_genealogy_branch(client, genealogy_db, representation):
     """GET export?branch_name=main returns branch; nonexistent branch returns 404."""
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    payload = dual_genome_to_json(dual)
-    payload["key"] = 0
-    client.post(
-        "/api/genealogy/save-population",
-        json={
-            "individuals": [payload],
-            "parent_id": None,
-            "generation_num": 0,
-            "branch_name": "main",
-        },
-    )
-    client.post(
-        "/api/genealogy/save-population",
-        json={
-            "individuals": [payload],
-            "parent_id": 1,
-            "generation_num": 1,
-            "branch_name": "main",
-        },
-    )
+    payload = _make_individual_payload(representation, 0)
+    _save_population(client, [payload])
+    _save_population(client, [payload], parent_id=1, generation_num=1)
     rv = client.get("/api/genealogy/export?branch_name=main")
     assert rv.status_code == 200
     data = rv.get_json()
@@ -234,20 +181,8 @@ def test_export_genealogy_branch(client, genealogy_db, representation):
 @pytest.mark.slow
 def test_reset_genealogy(client, genealogy_db, representation):
     """POST reset clears all data; tree and stats are empty after."""
-    dual = create_random_dual_genome(
-        representation.config, representation.time_config, genome_id=0
-    )
-    payload = dual_genome_to_json(dual)
-    payload["key"] = 0
-    client.post(
-        "/api/genealogy/save-population",
-        json={
-            "individuals": [payload],
-            "parent_id": None,
-            "generation_num": 0,
-            "branch_name": "main",
-        },
-    )
+    payload = _make_individual_payload(representation, 0)
+    _save_population(client, [payload])
     rv = client.post("/api/genealogy/reset")
     assert rv.status_code == 200
     assert rv.get_json().get("status") == "ok"
