@@ -58,24 +58,26 @@ def render_pixel_grid(
     return img
 
 
-def base_express(compile_fn: Cb[[Any], str | None], ind: Any) -> RepresentationOutput:
-    """Wrap compile_to_shader result in RepresentationOutput."""
-    glsl = compile_fn(ind)
+def base_express(
+    develop_fn: Cb[[Any], str | None], genome: Any
+) -> RepresentationOutput:
+    """Wrap develop result in RepresentationOutput."""
+    glsl = develop_fn(genome)
     return RepresentationOutput("shader", glsl if glsl else "")
 
 
 def compile_with_color_mode(
     compiler: Any,
-    ind: Any,
+    genome: Any,
     color_mode: str | None,
-    compile_fn: Cb[[Any, Any], str | None],
-    *compile_args: Any,
+    develop_fn: Cb[[Any, Any], str | None],
+    *develop_args: Any,
 ) -> str | None:
     """Use one-off compiler if color_mode differs; else use given compiler."""
     if color_mode and color_mode != compiler.color_mode:
         alt = compiler.with_color_mode(color_mode)
-        return compile_fn(alt, *compile_args)
-    return compile_fn(compiler, *compile_args)
+        return develop_fn(alt, *develop_args)
+    return develop_fn(compiler, *develop_args)
 
 
 class CPPNRepresentationBase(RepresentationBase):
@@ -96,9 +98,9 @@ class CPPNRepresentationBase(RepresentationBase):
 
     @abstractmethod
     def query_rgb(
-        self, ind: Any, inputs: dict[str, float]
+        self, genome: Any, inputs: dict[str, float]
     ) -> tuple[float, float, float]:
-        """Return (r, g, b) in 0–1 for this individual and inputs."""
+        """Return (r, g, b) in 0–1 for this genome and inputs."""
         ...
 
     @abstractmethod
@@ -114,19 +116,19 @@ class CPPNRepresentationBase(RepresentationBase):
         ...
 
     @abstractmethod
-    def _compile(self, compiler: Any, ind: Any) -> str | None:
-        """Compile individual to GLSL using the given compiler. Subclass-specific."""
+    def _compile(self, compiler: Any, genome: Any) -> str | None:
+        """Compile genome to GLSL using the given compiler. Subclass-specific."""
         ...
 
-    def compile_to_shader(self, ind: Any, color_mode: str | None = None) -> str | None:
-        """Compile individual to GLSL fragment shader string."""
+    def develop(self, genome: Any, color_mode: str | None = None) -> str | None:
+        """Compile genome to GLSL fragment shader string."""
         return compile_with_color_mode(
-            self.compiler, ind, color_mode, self._compile, ind
+            self.compiler, genome, color_mode, self._compile, genome
         )
 
     @abstractmethod
-    def to_json(self, ind: Any) -> dict[str, Any]:
-        """Serialize individual to JSON-serializable dict."""
+    def to_json(self, genome: Any) -> dict[str, Any]:
+        """Serialize genome to JSON-serializable dict."""
         ...
 
     @abstractmethod
@@ -135,37 +137,37 @@ class CPPNRepresentationBase(RepresentationBase):
         ...
 
     def express(
-        self, ind: Any, inputs: dict[str, float], **kwargs: Any
+        self, genome: Any, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
-        """Wrap compile_to_shader in RepresentationOutput."""
-        return base_express(lambda i: self.compile_to_shader(i), ind)
+        """Wrap develop in RepresentationOutput."""
+        return base_express(lambda g: self.develop(g), genome)
 
     def sample_rgb(
         self,
-        ind: Any,
+        genome: Any,
         coords: list[tuple[float, float]],
         time: float = 0.0,
     ) -> list[list[float]]:
         """Sample RGB at each (x, y) with shared time/signal base."""
         base = get_default_signal_values(self.signal_spec, time=time)
         return [
-            list(self.query_rgb(ind, self._sample_inputs(x, y, time, base)))
+            list(self.query_rgb(genome, self._sample_inputs(x, y, time, base)))
             for x, y in coords
         ]
 
     def render_to_image(
         self,
-        ind: Any,
+        genome: Any,
         resolution: int | None = None,
         **kwargs: Any,
     ) -> np.ndarray:
-        """Render individual to (resolution, resolution, 3) RGB image."""
+        """Render genome to (resolution, resolution, 3) RGB image."""
         if resolution is None:
             resolution = DEFAULT_RENDER_RESOLUTION
         return render_pixel_grid(
             resolution,
             self.get_base_inputs_for_render(),
-            lambda inputs: self.query_rgb(ind, inputs),
+            lambda inputs: self.query_rgb(genome, inputs),
         )
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
@@ -178,16 +180,16 @@ class CPPNRepresentationBase(RepresentationBase):
         }
 
     def build_save_assets(
-        self, ind: Any, individual_id: int, **kwargs: Any
+        self, genome: Any, individual_id: int, **kwargs: Any
     ) -> dict[str, bytes]:
         """Common save assets (png, glsl, genome_json). Override to add more."""
         to_png_bytes: Cb[[np.ndarray], bytes] | None = kwargs.get("to_png_bytes")
         if not callable(to_png_bytes):
             return {}
         names = self.get_save_filenames(individual_id)
-        shader_code = self.compile_to_shader(ind) or ""
-        img = self.render_to_image(ind, resolution=DEFAULT_RENDER_RESOLUTION)
-        json_bytes = json.dumps(self.to_json(ind), indent=2).encode("utf-8")
+        shader_code = self.develop(genome) or ""
+        img = self.render_to_image(genome, resolution=DEFAULT_RENDER_RESOLUTION)
+        json_bytes = json.dumps(self.to_json(genome), indent=2).encode("utf-8")
         return {
             names["png"]: to_png_bytes(img),
             names["glsl"]: shader_code.encode("utf-8"),

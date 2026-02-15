@@ -43,7 +43,7 @@ class RepresentationBase(ABC):
             "network": cls.get_network_data is not base.get_network_data,
             "time_output": cls.query_time_output is not base.query_time_output,
             "adjust_weight": cls.adjust_weight is not base.adjust_weight,
-            "compile": cls.compile_to_shader is not base.compile_to_shader,
+            "develop": cls.develop is not base.develop,
         }
 
     # --- Genome operations (required) ---
@@ -54,8 +54,8 @@ class RepresentationBase(ABC):
         ...
 
     @abstractmethod
-    def mutate(self, ind: Any, key: int) -> Any:
-        """Return a mutated copy of ind."""
+    def mutate(self, genome: Any, key: int) -> Any:
+        """Return a mutated copy of genome."""
         ...
 
     @abstractmethod
@@ -66,25 +66,25 @@ class RepresentationBase(ABC):
     # --- Development (genome → phenotype; required) ---
     @abstractmethod
     def express(
-        self, ind: Any, inputs: dict[str, float], **kwargs: Any
+        self, genome: Any, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
         """Produce displayable output."""
         ...
 
     # --- Serialization (required) ---
     @abstractmethod
-    def to_json(self, ind: Any) -> dict[str, Any]:
-        """Serialize individual for API/client."""
+    def to_json(self, genome: Any) -> dict[str, Any]:
+        """Serialize genome for API/client."""
         ...
 
     @abstractmethod
     def from_json(self, data: dict[str, Any]) -> Any:
-        """Deserialize individual from API/client payload."""
+        """Deserialize genome from API/client payload."""
         ...
 
     # --- Phenotype sampling & optional (defaults; override to enable) ---
 
-    def compile_to_shader(self, ind: Any, color_mode: str | None = None) -> str | None:
+    def develop(self, genome: Any, color_mode: str | None = None) -> str | None:
         """Return GLSL shader or None if unsupported."""
         return None
 
@@ -94,7 +94,7 @@ class RepresentationBase(ABC):
 
     def sample_rgb(
         self,
-        ind: Any,
+        genome: Any,
         coords: list[tuple[float, float]],
         time: float = 0.0,
     ) -> list[list[float]]:
@@ -103,16 +103,16 @@ class RepresentationBase(ABC):
 
     def render_to_image(
         self,
-        ind: Any,
+        genome: Any,
         resolution: int | None = None,
         **kwargs: Any,
     ) -> np.ndarray | None:
         """Unsupported."""
         return None
 
-    def get_individual_id(self, ind: Any) -> int:
-        """Individuals expose a .key attribute."""
-        return ind.key
+    def get_individual_id(self, genome: Any) -> int:
+        """Genomes expose a .key attribute."""
+        return genome.key
 
     def get_network_types(self) -> tuple[str, ...]:
         """No adjust_weight networks."""
@@ -130,12 +130,12 @@ class RepresentationBase(ABC):
         """Not NEAT."""
         return None
 
-    def get_compile_stats(self, ind: Any) -> dict[str, Any]:
+    def get_compile_stats(self, genome: Any) -> dict[str, Any]:
         """No network stats."""
         return {"nodes": 0, "connections": 0}
 
-    def serialize_individual_extra(self, ind: Any) -> dict[str, Any]:
-        """No extra keys per individual."""
+    def serialize_individual_extra(self, genome: Any) -> dict[str, Any]:
+        """No extra keys per genome."""
         return {}
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
@@ -146,24 +146,24 @@ class RepresentationBase(ABC):
         }
 
     def build_save_assets(
-        self, ind: Any, individual_id: int, **kwargs: Any
+        self, genome: Any, individual_id: int, **kwargs: Any
     ) -> dict[str, bytes]:
         """Unsupported."""
         return {}
 
     def query_time_output(
-        self, ind: Any, inputs: dict[str, float]
+        self, genome: Any, inputs: dict[str, float]
     ) -> dict[str, Any] | None:
         """Unsupported."""
         return None
 
-    def get_network_data(self, ind: Any) -> dict[str, Any] | None:
+    def get_network_data(self, genome: Any) -> dict[str, Any] | None:
         """Unsupported."""
         return None
 
     def adjust_weight(
         self,
-        ind: Any,
+        genome: Any,
         network: str,
         source: str,
         target: str,

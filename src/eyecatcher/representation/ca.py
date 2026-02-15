@@ -220,8 +220,8 @@ class ConwayRepresentation(RepresentationBase):
         grid = (np.random.random((n, n)) < density).astype(np.uint8)
         return ConwayGenome(grid=grid, key=key)
 
-    def mutate(self, ind: ConwayGenome, key: int) -> ConwayGenome:
-        grid = ind.grid.copy()
+    def mutate(self, genome: ConwayGenome, key: int) -> ConwayGenome:
+        grid = genome.grid.copy()
         n = grid.shape[0]
         r, c = random.randint(0, n - 1), random.randint(0, n - 1)
         grid[r, c] = 1 - grid[r, c]
@@ -235,21 +235,21 @@ class ConwayRepresentation(RepresentationBase):
         return ConwayGenome(grid=grid, key=key)
 
     def express(
-        self, ind: ConwayGenome, inputs: dict[str, float], **kwargs: Any
+        self, genome: ConwayGenome, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
         steps = kwargs.get("gol_steps", self.gol_steps)
-        grid = _run_gol(ind.grid, steps)
+        grid = _run_gol(genome.grid, steps)
         rgb = _grid_to_rgb(grid)
         return RepresentationOutput("grid", rgb)
 
-    def compile_to_shader(
-        self, ind: ConwayGenome, color_mode: str | None = None
+    def develop(
+        self, genome: ConwayGenome, color_mode: str | None = None
     ) -> str | None:
         """GLSL for Conway GOL step. Frontend uses phenotype for display/toggle."""
         return _GOL_FRAGMENT_SHADER
 
-    def to_json(self, ind: ConwayGenome) -> dict[str, Any]:
-        return {"key": ind.key, "grid": _grid_to_nested_list(ind.grid)}
+    def to_json(self, genome: ConwayGenome) -> dict[str, Any]:
+        return {"key": genome.key, "grid": _grid_to_nested_list(genome.grid)}
 
     def from_json(self, data: dict[str, Any]) -> ConwayGenome:
         key = int(data.get("key", 0))
@@ -268,8 +268,8 @@ class ConwayRepresentation(RepresentationBase):
             grid = grid[:, :, 0]
         return grid if grid.ndim >= 2 else None
 
-    def serialize_individual_extra(self, ind: ConwayGenome) -> dict[str, Any]:
-        return {"grid": _grid_to_nested_list(ind.grid)}
+    def serialize_individual_extra(self, genome: ConwayGenome) -> dict[str, Any]:
+        return {"grid": _grid_to_nested_list(genome.grid)}
 
     def serialize_express_output(self, output: RepresentationOutput) -> dict[str, Any]:
         """Return image (base64), shader (GOL), and grid (nested list) for API."""
@@ -292,19 +292,19 @@ class ConwayRepresentation(RepresentationBase):
         }
 
     def build_save_assets(
-        self, ind: ConwayGenome, individual_id: int, **kwargs: Any
+        self, genome: ConwayGenome, individual_id: int, **kwargs: Any
     ) -> dict[str, bytes]:
         to_png_bytes: Callable[[np.ndarray], bytes] = kwargs.get("to_png_bytes")
         if not callable(to_png_bytes):
             return {}
-        out = self.express(ind, {})
+        out = self.express(genome, {})
         if out.output_type != "grid" or not hasattr(out.data, "shape"):
             return {}
         arr = np.asarray(out.data)
         names = self.get_save_filenames(individual_id)
         return {
             names["png"]: to_png_bytes(arr),
-            names["genome_json"]: json.dumps(self.to_json(ind), indent=2).encode(
+            names["genome_json"]: json.dumps(self.to_json(genome), indent=2).encode(
                 "utf-8"
             ),
         }

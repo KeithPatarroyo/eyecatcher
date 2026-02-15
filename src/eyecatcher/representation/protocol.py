@@ -16,7 +16,7 @@ import numpy as np
 
 from ..signals.spec import SignalSpec
 
-IndividualT = TypeVar("IndividualT")
+GenomeT = TypeVar("GenomeT")
 
 OutputType = Literal["shader", "image", "grid", "audio"]
 
@@ -61,7 +61,7 @@ class RepresentationOutput:
 RepresentationFrontendMetadata = dict[str, object]
 
 
-class Representation(Protocol[IndividualT]):
+class Representation(Protocol[GenomeT]):
     """
     Protocol for pluggable representations.
 
@@ -92,41 +92,39 @@ class Representation(Protocol[IndividualT]):
 
     @property
     def capabilities(self) -> dict[str, bool]:
-        """Capability flags (save, network, time_output, adjust_weight, compile)."""
+        """Capability flags (save, network, time_output, adjust_weight, develop)."""
         ...
 
     # --- Genome operations (evolution) ---
-    def create_random(self, key: int = 0) -> IndividualT:
-        """Create a new random individual. key is used as genome/id."""
+    def create_random(self, key: int = 0) -> GenomeT:
+        """Create a new random genome. key is used as genome id."""
         ...
 
-    def mutate(self, ind: IndividualT, key: int) -> IndividualT:
-        """Return a mutated copy of ind with the given key."""
+    def mutate(self, genome: GenomeT, key: int) -> GenomeT:
+        """Return a mutated copy of genome with the given key."""
         ...
 
-    def crossover(self, a: IndividualT, b: IndividualT, key: int) -> IndividualT:
+    def crossover(self, a: GenomeT, b: GenomeT, key: int) -> GenomeT:
         """Return offspring from a and b with the given key."""
         ...
 
     # --- Development (genome → phenotype) ---
     def express(
-        self, ind: IndividualT, inputs: dict[str, float], **kwargs: Any
+        self, genome: GenomeT, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
         """Produce displayable output (image, grid, etc.)."""
         ...
 
-    def compile_to_shader(
-        self, ind: IndividualT, color_mode: str | None = None
-    ) -> str | None:
+    def develop(self, genome: GenomeT, color_mode: str | None = None) -> str | None:
         """
         Return GLSL fragment shader for real-time display, or None to use
-        CPU evaluate + texture upload. color_mode (e.g. 'hsv', 'rgb') is optional.
+        CPU express + texture upload. color_mode (e.g. 'hsv', 'rgb') is optional.
         """
         ...
 
     # --- Phenotype sampling (fitness, export) ---
     def sample_rgb(
-        self, ind: IndividualT, coords: list[tuple[float, float]], time: float = 0.0
+        self, genome: GenomeT, coords: list[tuple[float, float]], time: float = 0.0
     ) -> list[list[float]]:
         """
         Optional: return [r,g,b] per coordinate for fitness/sampling.
@@ -135,7 +133,7 @@ class Representation(Protocol[IndividualT]):
         return []
 
     def render_to_image(
-        self, ind: IndividualT, resolution: int | None = None, **kwargs: Any
+        self, genome: GenomeT, resolution: int | None = None, **kwargs: Any
     ) -> np.ndarray | None:
         """
         Optional: return RGB image array for save/export, or None if unsupported.
@@ -143,16 +141,16 @@ class Representation(Protocol[IndividualT]):
         return None
 
     # --- Serialization (API, save/load) ---
-    def to_json(self, ind: IndividualT) -> dict[str, Any]:
-        """Serialize individual for API/client."""
+    def to_json(self, genome: GenomeT) -> dict[str, Any]:
+        """Serialize genome for API/client."""
         ...
 
-    def from_json(self, data: dict[str, Any]) -> IndividualT:
-        """Deserialize individual from API/client payload."""
+    def from_json(self, data: dict[str, Any]) -> GenomeT:
+        """Deserialize genome from API/client payload."""
         ...
 
-    def get_individual_id(self, ind: IndividualT) -> int:
-        """Return the individual's id (e.g. genome key) for API and evolution."""
+    def get_individual_id(self, genome: GenomeT) -> int:
+        """Return the genome's id (key) for API and evolution."""
         ...
 
     # --- Optional: introspection, save assets, API extensions ---
@@ -175,7 +173,7 @@ class Representation(Protocol[IndividualT]):
         """Return NEAT pop_size if this representation uses NEAT; None otherwise."""
         return None
 
-    def get_compile_stats(self, ind: IndividualT) -> dict[str, Any]:
+    def get_compile_stats(self, genome: GenomeT) -> dict[str, Any]:
         """
         Return per-network node/connection stats for compile response.
 
@@ -185,7 +183,7 @@ class Representation(Protocol[IndividualT]):
         """
         return {"nodes": 0, "connections": 0}
 
-    def serialize_individual_extra(self, ind: IndividualT) -> dict[str, Any]:
+    def serialize_individual_extra(self, genome: GenomeT) -> dict[str, Any]:
         """
         Optional: extra key-value pairs to merge into response for this individual.
 
@@ -206,7 +204,7 @@ class Representation(Protocol[IndividualT]):
         }
 
     def build_save_assets(
-        self, ind: IndividualT, individual_id: int, **kwargs: Any
+        self, genome: GenomeT, individual_id: int, **kwargs: Any
     ) -> dict[str, bytes]:
         """
         Build filename -> raw bytes for all assets to include in the save zip.
@@ -217,7 +215,7 @@ class Representation(Protocol[IndividualT]):
         return {}
 
     def query_time_output(
-        self, ind: IndividualT, inputs: dict[str, float]
+        self, genome: GenomeT, inputs: dict[str, float]
     ) -> dict[str, Any] | None:
         """
         Optional: query time/signal output for debug panel.
@@ -225,7 +223,7 @@ class Representation(Protocol[IndividualT]):
         """
         return None
 
-    def get_network_data(self, ind: IndividualT) -> dict[str, Any] | None:
+    def get_network_data(self, genome: GenomeT) -> dict[str, Any] | None:
         """
         Optional: return network visualization data for a genome.
         Returns {"nodes": [...], "connections": [...]} or None if unsupported.
@@ -234,7 +232,7 @@ class Representation(Protocol[IndividualT]):
 
     def adjust_weight(
         self,
-        ind: IndividualT,
+        genome: GenomeT,
         network: str,
         source: str,
         target: str,

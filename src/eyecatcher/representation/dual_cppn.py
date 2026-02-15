@@ -89,17 +89,17 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
     def create_random(self, key: int = 0) -> DualGenome:
         return create_random_dual_genome(self.config, self.time_config, genome_id=key)
 
-    def mutate(self, ind: DualGenome, key: int) -> DualGenome:
-        return mutate_dual_genome(ind, self.config, self.time_config, key)
+    def mutate(self, genome: DualGenome, key: int) -> DualGenome:
+        return mutate_dual_genome(genome, self.config, self.time_config, key)
 
     def crossover(self, a: DualGenome, b: DualGenome, key: int) -> DualGenome:
         return crossover_dual_genomes(a, b, self.config, self.time_config, key)
 
     # -- Expression (delegated to sockets) --
 
-    def _compile(self, compiler: Any, ind: DualGenome) -> str | None:
+    def _compile(self, compiler: Any, genome: DualGenome) -> str | None:
         return compiler.compile(
-            ind.visual, self.config, ind.time_signal, self.time_config
+            genome.visual, self.config, genome.time_signal, self.time_config
         )
 
     def _query_time_signal(
@@ -109,20 +109,20 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
         return max(-1.0, min(1.0, out[0]))
 
     def _query_visual_rgb(
-        self, ind: DualGenome, inputs: dict[str, float]
+        self, genome: DualGenome, inputs: dict[str, float]
     ) -> tuple[float, float, float]:
-        out = self.visual.query(ind.visual, inputs)
+        out = self.visual.query(genome.visual, inputs)
         return _clamp_rgb(out)
 
     def query_rgb(
-        self, ind: DualGenome, inputs: dict[str, float]
+        self, genome: DualGenome, inputs: dict[str, float]
     ) -> tuple[float, float, float]:
-        modified_time = self._query_time_signal(ind.time_signal, inputs)
+        modified_time = self._query_time_signal(genome.time_signal, inputs)
         visual_inputs = {
             **inputs,
             catalog.time.id: modified_time,
         }
-        return self._query_visual_rgb(ind, visual_inputs)
+        return self._query_visual_rgb(genome, visual_inputs)
 
     def _sample_inputs(
         self, x: float, y: float, time: float, base: dict[str, float]
@@ -134,8 +134,8 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
 
     # -- Serialization --
 
-    def to_json(self, ind: DualGenome) -> dict[str, Any]:
-        return dual_genome_to_json(ind)
+    def to_json(self, genome: DualGenome) -> dict[str, Any]:
+        return dual_genome_to_json(genome)
 
     def from_json(self, data: dict[str, Any]) -> DualGenome:
         return dual_genome_from_json(data, self.config, self.time_config)
@@ -148,10 +148,10 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
 
     # -- Inspection (sockets know the structure of the individual) --
 
-    def get_compile_stats(self, ind: DualGenome) -> dict[str, Any]:
+    def get_compile_stats(self, genome: DualGenome) -> dict[str, Any]:
         stats: dict[str, Any] = {}
-        stats.update(self.visual.network_stats(ind.visual))
-        stats.update(self.time.network_stats(ind.time_signal))
+        stats.update(self.visual.network_stats(genome.visual))
+        stats.update(self.time.network_stats(genome.time_signal))
         return stats
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
@@ -162,15 +162,15 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
         return base
 
     def build_save_assets(
-        self, ind: DualGenome, individual_id: int, **kwargs: Any
+        self, genome: DualGenome, individual_id: int, **kwargs: Any
     ) -> dict[str, bytes]:
         to_png_bytes: Callable[[np.ndarray], bytes] | None = kwargs.get("to_png_bytes")
         visualize: bool = kwargs.get("visualize", True)
         if not callable(to_png_bytes):
             return {}
-        assets = super().build_save_assets(ind, individual_id, **kwargs)
-        shader_code = self.compile_to_shader(ind) or ""
-        stats = self.get_compile_stats(ind)
+        assets = super().build_save_assets(genome, individual_id, **kwargs)
+        shader_code = self.develop(genome) or ""
+        stats = self.get_compile_stats(genome)
         bundle = {
             "shader": shader_code,
             "metadata": {
@@ -183,42 +183,46 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
                     "num_nodes": stats.get("time_nodes", 0),
                     "num_connections": stats.get("time_connections", 0),
                 },
-                "fitness": ind.fitness,
+                "fitness": genome.fitness,
             },
         }
         names = self.get_save_filenames(individual_id)
         pkl_buffer = io.BytesIO()
         pickle.dump(
-            {"visual": ind.visual, "time_signal": ind.time_signal, "key": ind.key},
+            {
+                "visual": genome.visual,
+                "time_signal": genome.time_signal,
+                "key": genome.key,
+            },
             pkl_buffer,
         )
         assets[names["bundle_json"]] = json.dumps(bundle, indent=2).encode("utf-8")
         assets[names["pkl"]] = pkl_buffer.getvalue()
         if visualize:
             pdf_buffer = io.BytesIO()
-            self.visual.render_network_pdf(ind.visual, pdf_buffer)
+            self.visual.render_network_pdf(genome.visual, pdf_buffer)
             assets[names["network_pdf"]] = pdf_buffer.getvalue()
         return assets
 
     def query_time_output(
-        self, ind: DualGenome, inputs: dict[str, float]
+        self, genome: DualGenome, inputs: dict[str, float]
     ) -> dict[str, Any] | None:
         time_signals = list(self.time.inputs)
         response_inputs = parse_time_inputs(inputs, time_signals, bipolar=False)
         time_inputs = parse_time_inputs(inputs, time_signals, bipolar=True)
-        out = self._query_time_signal(ind.time_signal, time_inputs)
+        out = self._query_time_signal(genome.time_signal, time_inputs)
         return {"timeOutput": out, "inputs": response_inputs}
 
-    def get_network_data(self, ind: DualGenome) -> dict[str, Any] | None:
+    def get_network_data(self, genome: DualGenome) -> dict[str, Any] | None:
         all_nodes: list[dict[str, Any]] = []
         all_connections: list[dict[str, Any]] = []
-        if ind.visual:
-            nodes, conns = self.visual.extract_network_data(ind.visual, x_offset=0)
+        if genome.visual:
+            nodes, conns = self.visual.extract_network_data(genome.visual, x_offset=0)
             all_nodes.extend(nodes)
             all_connections.extend(conns)
-        if ind.time_signal:
+        if genome.time_signal:
             nodes, conns = self.time.extract_network_data(
-                ind.time_signal, x_offset=1000
+                genome.time_signal, x_offset=1000
             )
             all_nodes.extend(nodes)
             all_connections.extend(conns)
@@ -226,21 +230,21 @@ class DualCPPNRepresentation(CPPNRepresentationBase):
 
     def adjust_weight(
         self,
-        ind: DualGenome,
+        genome: DualGenome,
         network: str,
         source: str,
         target: str,
         weight: float,
     ) -> dict[str, Any] | None:
-        genome = ind.visual if network == "visual" else ind.time_signal
+        net_genome = genome.visual if network == "visual" else genome.time_signal
         try:
             source_id = parse_network_node_id(source)
             target_id = parse_network_node_id(target)
         except (ValueError, IndexError):
             return None
         conn_key = (source_id, target_id)
-        if conn_key not in genome.connections:
+        if conn_key not in net_genome.connections:
             return None
-        genome.connections[conn_key].weight = weight
-        shader_code = self.compile_to_shader(ind) or ""
-        return {"shader": shader_code, "individual": self.to_json(ind)}
+        net_genome.connections[conn_key].weight = weight
+        shader_code = self.develop(genome) or ""
+        return {"shader": shader_code, "individual": self.to_json(genome)}

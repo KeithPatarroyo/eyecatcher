@@ -78,26 +78,26 @@ class TrivialRepresentation(RepresentationBase):
     def create_random(self, key: int = 0) -> TrivialGenome:
         return TrivialGenome(value=random.random(), key=key)
 
-    def mutate(self, ind: TrivialGenome, key: int) -> TrivialGenome:
+    def mutate(self, genome: TrivialGenome, key: int) -> TrivialGenome:
         delta = (random.random() - 0.5) * 0.2
-        return TrivialGenome(value=max(0.0, min(1.0, ind.value + delta)), key=key)
+        return TrivialGenome(value=max(0.0, min(1.0, genome.value + delta)), key=key)
 
     def crossover(self, a: TrivialGenome, b: TrivialGenome, key: int) -> TrivialGenome:
         v = (a.value + b.value) / 2.0
         return TrivialGenome(value=v, key=key)
 
     def express(
-        self, ind: TrivialGenome, inputs: dict[str, float], **kwargs: Any
+        self, genome: TrivialGenome, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
         # Genome value + socket signal: the "display" part expresses both.
         t = inputs.get("raw_time", 0.5)
-        blend = ind.value * 0.6 + t * 0.4  # 0–1
+        blend = genome.value * 0.6 + t * 0.4  # 0–1
         c = int(max(0, min(1, blend)) * 255)
         rgb = np.full((SIZE, SIZE, 3), c, dtype=np.uint8)
         return RepresentationOutput("grid", rgb)
 
-    def to_json(self, ind: TrivialGenome) -> dict[str, Any]:
-        return {"key": ind.key, "value": ind.value}
+    def to_json(self, genome: TrivialGenome) -> dict[str, Any]:
+        return {"key": genome.key, "value": genome.value}
 
     def from_json(self, data: dict[str, Any]) -> TrivialGenome:
         key = int(data.get("key", 0))

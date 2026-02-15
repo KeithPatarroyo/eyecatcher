@@ -67,8 +67,8 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
     def create_random(self, key: int = 0) -> neat.DefaultGenome:
         return create_random_genome(self.config, genome_id=key)
 
-    def mutate(self, ind: neat.DefaultGenome, key: int) -> neat.DefaultGenome:
-        child = mutate_genome(ind, self.config)
+    def mutate(self, genome: neat.DefaultGenome, key: int) -> neat.DefaultGenome:
+        child = mutate_genome(genome, self.config)
         child.key = key  # type: ignore[assignment]
         return child
 
@@ -81,13 +81,13 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
 
     # -- Expression (delegated to socket) --
 
-    def _compile(self, compiler: Any, ind: neat.DefaultGenome) -> str | None:
-        return compiler.compile(ind, self.config)
+    def _compile(self, compiler: Any, genome: neat.DefaultGenome) -> str | None:
+        return compiler.compile(genome, self.config)
 
     def query_rgb(
-        self, ind: neat.DefaultGenome, inputs: dict[str, float]
+        self, genome: neat.DefaultGenome, inputs: dict[str, float]
     ) -> tuple[float, float, float]:
-        out = self.visual.query(ind, inputs)
+        out = self.visual.query(genome, inputs)
         return _clamp_rgb(out)
 
     def _sample_inputs(
@@ -107,8 +107,8 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
 
     # -- Serialization --
 
-    def to_json(self, ind: neat.DefaultGenome) -> dict[str, Any]:
-        return genome_to_json(ind)
+    def to_json(self, genome: neat.DefaultGenome) -> dict[str, Any]:
+        return genome_to_json(genome)
 
     def from_json(self, data: dict[str, Any]) -> neat.DefaultGenome:
         return genome_from_json(data, self.config)
@@ -121,5 +121,5 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
 
     # -- Inspection (socket knows the structure) --
 
-    def get_compile_stats(self, ind: neat.DefaultGenome) -> dict[str, Any]:
-        return self.visual.network_stats(ind)
+    def get_compile_stats(self, genome: neat.DefaultGenome) -> dict[str, Any]:
+        return self.visual.network_stats(genome)
