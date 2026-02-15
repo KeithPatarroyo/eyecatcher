@@ -5,13 +5,13 @@
 - `interactive_viewer.html` – main app (interactive evolution, population grid, evolve/save).
 - `genealogy_viewer.html` – genealogy tree (load/save/export populations).
 
-**Terminology:** The backend uses the term **representation** for the evolvable model type (e.g. dual_cppn, single_cppn, ca). In the frontend, folder names and many variables still use **substrate** (legacy). API responses use `representation_id`; JS may refer to "substrate" in adapters and config. Treat them as the same concept.
+**Terminology:** The evolvable model type (e.g. dual_cppn, single_cppn, ca) is called **representation** everywhere: config ([config/experiments.json](../../config/experiments.json) key `"representation"`), API (`representation_id`), and this folder (`representation/`).
 
 **JavaScript is grouped to mirror the backend** so you can find frontend counterparts of backend packages.
 
 | Folder | Purpose | Backend counterpart |
 |--------|---------|----------------------|
-| **substrate/** | Representation adapters, registry, config, pattern rendering (WebGL). | `representation/`, `glsl/` |
+| **representation/** | Substrates, registry, config, pattern rendering (WebGL). | `representation/`, `glsl/` |
 | **evolution/** | Evolution config, coordinator, viewer controls (signals, zoom). | `evolution/`, `signals/` |
 | **community/** | Community browse, submit, admin UI. | `web/community_routes` |
 | **genealogy/** | Genealogy viewer, export, thumbnails, sync. | `data/`, `web/genealogy_routes` |
@@ -19,35 +19,36 @@
 | **app/** | Application shell — state, grid, animation loop, toolbar, population UI. | — |
 | **lib/** | API client, utils, toast, storage, debug. | `web/` (API) |
 
-Script load order in the HTML: lib → evolution (config) → community → substrate → evolution (viewer) → inspection / app (app loads last and wires everything).
+Script load order in the HTML: lib → evolution (config) → community → representation → evolution (viewer) → inspection / app (app loads last and wires everything).
 
 ---
 
-## substrate/ — Representations and rendering
+## representation/ — Representations and rendering
 
-**Edit when you change representation types or how patterns are drawn.** (Folder name is legacy; backend concept is "representation".)
+**Edit when you change representation types or how patterns are drawn.**
 
-- `registry.js` — Adapter registry (RepresentationAdapters), resolve, getDisplayData, getDefaultRepresentationId, registers from RepresentationConfig.
-- `cppn_adapter.js` — Shared CPPN adapter (dual_cppn, single_cppn); createCppnAdapter(spec).
-- `stateful_adapter.js` — Factory for stateful (FBO ping-pong) adapters; createStatefulAdapter(spec).
-- `ca.js` — CA (Conway GOL) adapter; uses createStatefulAdapter, stateful grid, FBO ping-pong.
-- `config.generated.js` — Generated from Python substrate export (do not edit).
-- `pattern_renderer.js` — WebGL 2 setup, shader compile, renderWithSignals, createPatternCard, FBO helpers.
+Display is driven by **phenotype** (from the backend, per representation) and **substrates** (frontend framework). The registry builds a facade per representation from `RepresentationConfig` and the substrate chosen by `phenotype.substrate`. Researchers do not write JavaScript for standard substrates.
 
-### Three rendering strategies (adapter toolkit)
+- **Substrate contract:** `substrate.js` — base class with six methods: `createDisplayElement`, `setup`, `teardown`, `buildParams`, `render`, `handleInteraction`. Only `createDisplayElement` and `render` are required; others have no-op defaults.
+- `substrate_registry.js` — Routes `phenotype.substrate` (e.g. `"shader"`, `"grid"`, `"image"`) to a substrate instance. Unknown names fall back to ImageSubstrate.
+- `shader_substrate.js` — Stateless GLSL: canvas, compile shader from pattern, fullscreen quad. Used by dual_cppn, single_cppn.
+- `grid_substrate.js` — FBO ping-pong: step shader, display shader, toggle interaction from phenotype. Used by ca.
+- `image_substrate.js` — Static image fallback (e.g. from backend `render_to_image()`). Used when no other substrate fits.
+- `registry.js` — Bootstraps from RepresentationConfig; creates facades that delegate to substrate + phenotype. Resolve, getDisplayData, getAdapter.
+- `config.generated.js` — Generated from Python representation export (do not edit).
+- `webgl_utils.js` — WebGL 2 context, shader compile, fullscreen quad setup, FBO helpers. Rendering pipeline: registry `renderFrameWithSignals()` and adapter `buildParams` / `render`.
 
-Choose one when adding a new representation so you write minimal WebGL yourself:
+### Three substrates (no custom JS for standard cases)
 
-1. **Stateless shader** — Backend compiles genome to a complete fragment shader. Frontend sets uniforms per frame and draws a fullscreen quad. No state between frames.
-   - **Use:** `createCppnAdapter(spec)` in `cppn_adapter.js`. No custom adapter file; add representation + run `make generate-substrates`.
-   - **Example:** dual_cppn, single_cppn.
+1. **ShaderSubstrate** (`substrate="shader"`) — Backend compiles genome to a fragment shader. Frontend sets params per frame and draws a fullscreen quad. No state between frames. Set `phenotype = Phenotype(substrate="shader", meta_template="...")` in Python; run `make generate`. Example: dual_cppn, single_cppn.
 
-2. **Stateful shader** — Backend compiles genome to a *step* shader. Frontend maintains FBO state, runs step shader per tick, displays result. State persists between frames.
-   - **Use:** `createStatefulAdapter(spec)` in `stateful_adapter.js`. Provide `gridSize`, `stepIntervalMs`, `initState`, `stepUniforms`, optional `beforeStep`, `displayShaderSource`, `onInteraction`, etc. Register the returned adapter.
-   - **Example:** ca.js (Conway GOL). Future NCA, reaction-diffusion, Lenia would use this too.
+2. **GridSubstrate** (`substrate="grid"`) — Backend provides step and display shaders (and optional toggle shader). Frontend maintains FBO state, runs step shader per tick, displays result. Set `phenotype = Phenotype(substrate="grid", grid_size=64, step_shader=..., display_shader=..., ...)` in Python. Example: ca. Future NCA would use this too.
 
-3. **Pre-rendered image** — Backend evaluates and returns an image. Frontend displays it in an `<img>` tag.
-   - **Use:** Return image from backend `express()`; no custom JS. `pattern_renderer.js` handles the `pattern.image` path.
+3. **ImageSubstrate** (`substrate="image"` or unknown) — Backend evaluates and returns an image. Frontend displays it in an `<img>` tag. Set `phenotype = Phenotype(substrate="image")` and implement `render_to_image()` in Python. Example: trivial (or any representation that does not override phenotype).
+
+### Adding a new substrate (new medium only)
+
+Only if you need a new *medium* (e.g. audio): add a JS class extending `Substrate`, implement the six-method contract, and `registerSubstrate("audio", new AudioSubstrate())` in `substrate_registry.js`. Add the script to `REPRESENTATION_SCRIPTS` in `generate_representation_includes.py` and run `make generate`.
 
 ---
 
@@ -124,62 +125,49 @@ Choose one when adding a new representation so you write minimal WebGL yourself:
 - `storage.js` — IndexedDB wrapper for saved populations.
 - `debug.js` — Debug overlay (optional).
 
-API request/response bodies use **snake_case** (e.g. `representation_id`, `output_type`) to match the backend; internal JS uses **camelCase** (e.g. `representationId`, `outputType`).
+API request/response bodies use **snake_case** (e.g. `representation_id`) to match the backend; internal JS uses **camelCase** (e.g. `representationId`).
 
 ---
 
 ## Rendering architecture
 
-This section describes how patterns get from data to pixels. Read this before writing a custom substrate adapter.
+Patterns are rendered by **substrates** driven by **phenotype** and **environment signals**. The animation loop gets signal values and calls the registry facade, which delegates to the substrate.
 
 ### Pipeline overview
 
 ```
 SignalSource.getValues(canvas)   →  signal values  { raw_time, mouse_speed, ... }
       ↓
-adapter.buildUniforms(signals)   →  uniform dict   { u_raw_time: 0.5, ... }
+facade.buildParams(signals)       →  params (substrate-specific, e.g. uniforms)
       ↓
-adapter.render(patternData, uniforms, signalState)
+substrate.render(state, params, signalState)
       ↓
-gl.uniform1f / gl.drawArrays    →  pixels on canvas
+gl.uniform1f / gl.drawArrays      →  pixels on canvas
 ```
 
-Each pattern card has its own `<canvas>` with its own WebGL 2 context. The animation loop (`app/animation_loop.js`) calls `renderWithSignals()` once per pattern per frame via `requestAnimationFrame`.
+Each pattern card has its own display element (canvas or img). The animation loop (`app/animation_loop.js`) calls `renderWithSignals()` once per pattern per frame, which gets signal values, calls `buildParams()`, then `render()` on the facade (which delegates to the substrate).
 
-### Pattern lifecycle
+### Substrate lifecycle
 
-1. **Setup** — `PatternRenderer.setupPattern(canvas, shaderCode)` creates a WebGL 2 context, compiles the vertex + fragment shader into a program, and creates a fullscreen-quad position buffer. Returns `{ gl, program, positionBuffer }`.
-2. **Prepare** — `adapter.preparePatternData(patternData, pattern)` stores substrate-specific fields (e.g. `patternData.grid` for CA).
-3. **Render loop** — Every frame, the animation loop iterates all patterns and calls `renderWithSignals(patternData, patternRenderer, signalState, canvas)`. This: gets signal values from the active `SignalSource`, builds uniforms via `adapter.buildUniforms()`, and calls `adapter.render()`.
-4. **Teardown** — Currently none; WebGL resources are released when the canvas is removed from the DOM.
-
-### Adapter lifecycle hooks (optional)
-
-Adapters can implement optional lifecycle methods for stateful rendering:
-
-- `onSetup(patternData, gl)` — Called once after `setupPattern`. Use for FBO/texture creation.
-- `onBeforeRender(patternData, context)` — Called before each frame's `render()`. Context includes `{ gl, canvas, gridPosition, neighbors, frameCount, deltaTime }`.
-- `render(patternData, uniformValues, signalState)` — **Required.** Main draw call.
-- `onAfterRender(patternData, context)` — Called after each frame's `render()`. Use for FBO swap, edge-state export.
-- `onTeardown(patternData, gl)` — Called when the pattern is removed. Use for FBO/texture cleanup.
+1. **createDisplayElement** — Substrate creates the DOM element (canvas or img) and optional state. The registry then calls `substrate.setup(state, phenotype)` if present.
+2. **preparePatternData** — Facade copies pattern metadata onto patternData (e.g. grid, patternId).
+3. **Render loop** — Every frame, the animation loop gets signal values, calls `facade.buildParams(signalValues, context)`, then `facade.render(patternData, params, signalState)`.
+4. **Teardown** — WebGL/resources are released when the canvas is removed from the DOM; substrates may implement `teardown(state)` for explicit cleanup.
 
 ### What the renderer supports today
 
 | Capability                    | Supported | Notes |
 |-------------------------------|-----------|-------|
-| Fragment shaders (stateless)  | Yes       | Each frame draws from scratch using uniforms |
-| Scalar float uniforms         | Yes       | Via signal system + `adapter.buildUniforms()` |
-| Integer uniforms              | Yes       | Set directly in `adapter.render()` (see CA adapter) |
-| Custom vertex shader          | No        | Hard-coded fullscreen quad in `pattern_renderer.js` |
-| Framebuffer objects (FBOs)    | Yes       | Via `PatternRenderer.createFBO()` / `swapFBOs()` helpers |
-| Texture uniforms (sampler2D)  | Partial   | FBO textures can be bound; no general texture upload yet |
-| Multi-pass rendering          | Partial   | Adapters can do multiple draw calls in `render()` using FBOs |
-| Cross-pattern communication   | Yes       | Via `GridTopology` (neighbor lookup) and adapter lifecycle hooks |
-| Per-pixel click interaction   | Yes       | Via `PatternRenderer.getClickCoordinates(event, canvas)` |
+| Fragment shaders (stateless)  | Yes       | ShaderSubstrate: fullscreen quad, params from signals |
+| Scalar float uniforms         | Yes       | Via signal system + `substrate.buildParams()` |
+| Integer uniforms              | Yes       | Set in substrate `render()` (e.g. GridSubstrate) |
+| Custom vertex shader          | No        | Shared fullscreen quad |
+| Framebuffer objects (FBOs)    | Yes       | GridSubstrate uses `WebGLUtils.createFBO` / `swapFBOs` |
+| Texture uniforms (sampler2D)  | Partial   | FBO textures in grid substrate |
+| Multi-pass rendering          | Partial   | GridSubstrate step then display |
+| Per-pixel click interaction   | Yes       | GridSubstrate handles toggle/draw from phenotype.interactions |
 
 ### Extension points
 
-- **New uniform types:** Set any uniform in your `adapter.render()` method (you have full access to `gl` and `program`).
-- **Stateful rendering (FBOs):** Use `PatternRenderer.createFBO(gl, width, height)` in `adapter.onSetup()` and ping-pong between FBOs in `render()`.
-- **Pixel-level interaction:** Use `PatternRenderer.getClickCoordinates(event, canvas)` to get normalized (0–1) coordinates from a click event. Wire the result into your adapter's state (e.g. a kill-mask texture).
-- **Neighbor communication:** Use `GridTopology.getNeighbors(patternId)` and `GridTopology.getGridPosition(patternId)` to find adjacent patterns. Exchange state via `adapter.onAfterRender()` (write edge state) and `adapter.onBeforeRender()` (read neighbor edge state).
+- **New substrate:** Implement the six-method contract in a new file, register in `substrate_registry.js`, add to script list, run `make generate`.
+- **Pixel-level interaction:** Substrates implement `handleInteraction(state, x, y, type)`; the registry wires it when `phenotype.interactions` includes e.g. `"toggle"` or `"draw"`.

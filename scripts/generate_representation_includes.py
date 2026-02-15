@@ -8,23 +8,24 @@ Adding a new adapter = add one entry to REPRESENTATION_SCRIPTS below and run:
 
 Run from repo root. Rewrites static/interactive_viewer.html and
 static/genealogy_viewer.html so the contiguous block of js/representation/*.js
-script tags is exactly this list. Load order matters: registry and
-stateful_adapter before adapters that use them; pattern_renderer last.
+script tags is exactly this list. Load order: webgl_utils before substrates;
+registry after config.
 """
 
 import os
 import re
 
 # Single source of truth: representation script basenames in load order.
-# adapter_base.js first (defines RepresentationAdapter); add new adapters after.
+# WebGLUtils before shader/grid substrates; substrate_registry and registry last.
 REPRESENTATION_SCRIPTS = [
-    "adapter_base.js",
-    "cppn_adapter.js",
+    "substrate.js",
+    "image_substrate.js",
+    "webgl_utils.js",
+    "shader_substrate.js",
+    "grid_substrate.js",
+    "substrate_registry.js",
     "config.generated.js",
     "registry.js",
-    "stateful_adapter.js",
-    "ca.js",
-    "pattern_renderer.js",
 ]
 
 SCRIPT_PREFIX = "js/representation/"
@@ -79,6 +80,7 @@ def main() -> None:
                 f.write(new_content)
             print(f"Updated {path}")
         else:
+            os.utime(path, None)  # touch so codegen sync sees output as up to date
             print(f"Unchanged {path}")
 
 
