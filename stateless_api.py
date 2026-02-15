@@ -206,7 +206,7 @@ def api_open_endedness():
             return jsonify({'error': 'genome required'}), 400
 
         num_frames = int(data.get('num_frames', 16))
-        resolution = int(data.get('resolution', 224))
+        resolution = int(data.get('resolution', 64))
 
         # Parse genome
         dual = dual_genome_from_json(genome_data, _engine)
@@ -275,7 +275,7 @@ def api_open_endedness_batch():
             return jsonify({'error': 'genomes array required'}), 400
 
         num_frames = int(data.get('num_frames', 16))
-        resolution = int(data.get('resolution', 224))
+        resolution = int(data.get('resolution', 64))
 
         from rollout import render_video_rollout, compute_video_embeddings
         from asal_metrics import calc_open_endedness_score
