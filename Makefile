@@ -59,8 +59,8 @@ generate-neat:
 	.venv/bin/python scripts/update_neat_config.py
 
 new-representation:
-	@if [ -z "$(name)" ]; then echo "Usage: make new-representation name=<snake_case>"; echo "Example: make new-representation name=my_rep"; exit 1; fi
-	.venv/bin/python scripts/new_representation.py "$(name)"
+	@if [ -z "$(name)" ]; then echo "Usage: make new-representation name=<snake_case> [substrate=image|field|grid]"; echo "Example: make new-representation name=my_rep substrate=field"; exit 1; fi
+	.venv/bin/python scripts/new_representation.py "$(name)" $(if $(substrate),--substrate=$(substrate),)
 
 docker-build:
 	docker compose -f docker/docker-compose.yml build

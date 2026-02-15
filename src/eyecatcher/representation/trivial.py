@@ -1,10 +1,10 @@
 """
-Minimal non-NEAT representation: template for custom representations (e.g. audio).
+Minimal non-NEAT representation: template for custom representations.
 
-Genome = single float value (0–1) + key. One receptor ties a signal to the "body part"
-that expresses it (here, the solid-color display). express() uses both genome and
-the receptor's input signal. Copy this module when adding a custom representation
-that does not use CPPNs (e.g. audio, custom nets).
+Genome = single float (0–1) + key. One receptor binds a signal (raw_time) to the
+display. express() combines genome and receptor input so the signal is visible
+(e.g. gradient shifting with time). Next steps: ca.py for grid + GLSL update rules;
+dual_cppn.py for field substrate and develop().
 """
 
 from __future__ import annotations
@@ -37,11 +37,11 @@ class TrivialGenome:
 
 class TrivialRepresentation(GridAnalyzable, RepresentationBase):
     """
-    Minimal representation: one receptor, one signal, one "body part" (the display).
+    Minimal representation: one receptor, one signal, one display.
 
-    The receptor ties the signal (e.g. raw_time) to the part that expresses it: the
-    solid-color grid. express() combines genome value and receptor input. Copy this
-    pattern for custom representations (e.g. audio); see ca.py for a full example.
+    The receptor supplies raw_time; express() uses it so the pattern changes with
+    the signal (gradient phase). Copy this for custom representations; see ca.py
+    for grid + GLSL, dual_cppn.py for field + develop().
     """
 
     id = "trivial"
@@ -52,7 +52,7 @@ class TrivialRepresentation(GridAnalyzable, RepresentationBase):
     phenotype = Phenotype(substrate=Substrate(type="grid"))
 
     def __init__(self, **kwargs: Any) -> None:
-        # One receptor = one input target. Here the "display" part consumes raw_time.
+        # One receptor binds signals to one input target (here, the display).
         self.display = Receptor(
             "display",
             inputs=(catalog.raw_time,),
@@ -75,11 +75,16 @@ class TrivialRepresentation(GridAnalyzable, RepresentationBase):
     def express(
         self, genome: TrivialGenome, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
-        # Genome value + receptor signal: the "display" part expresses both.
-        t = inputs.get("raw_time", 0.5)
-        blend = genome.value * 0.6 + t * 0.4  # 0–1
-        c = int(max(0, min(1, blend)) * 255)
-        rgb = np.full((SIZE, SIZE, 3), c, dtype=np.uint8)
+        # Receptor signal (raw_time) drives gradient phase; genome.value sets base hue.
+        t = inputs.get("raw_time", 0.5)  # 0–1 from frontend
+        phase = (genome.value + t * 0.5) % 1.0
+        rgb = np.zeros((SIZE, SIZE, 3), dtype=np.uint8)
+        for i in range(SIZE):
+            for j in range(SIZE):
+                # Vertical gradient that shifts with phase (so time is visible).
+                v = (i / SIZE + phase) % 1.0
+                c = int(max(0, min(1, v)) * 255)
+                rgb[i, j] = (c, c // 2, 255 - c)
         return RepresentationOutput("grid", rgb)
 
     def to_json(self, genome: TrivialGenome) -> dict[str, Any]:

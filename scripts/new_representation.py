@@ -94,6 +94,7 @@ class {pascal}Representation(RepresentationBase):
     phenotype = Phenotype(substrate=Substrate(type="image"))
 
     def __init__(self, **kwargs: Any) -> None:
+        # Presets: STANDARD_2D_INPUTS, TEMPORAL_INPUTS, MINIMAL_SPATIAL (catalog)
         self.display = Receptor(
             "display",
             inputs=(catalog.raw_time,),
@@ -177,10 +178,17 @@ def _update_registry(name: str, pascal: str, content: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _update_init(name: str, pascal: str, content: str) -> str:
+def _update_init(
+    name: str, pascal: str, content: str, *, has_genome: bool = True
+) -> str:
     """Add import and __all__ entries for the new representation."""
     module = name
-    import_line = f"from .{module} import {pascal}Genome, {pascal}Representation"
+    if has_genome:
+        import_line = f"from .{module} import {pascal}Genome, {pascal}Representation"
+        all_extra = f'    "{pascal}Genome",\n    "{pascal}Representation",\n'
+    else:
+        import_line = f"from .{module} import {pascal}Representation"
+        all_extra = f'    "{pascal}Representation",\n'
     if import_line in content:
         return content
     # Insert after last representation import (e.g. from .trivial import ...)
@@ -197,8 +205,8 @@ def _update_init(name: str, pascal: str, content: str) -> str:
         return content
     old = '"TrivialRepresentation",\n    "export_representations_for_frontend"'
     new = (
-        f'"TrivialRepresentation",\n    "{pascal}Genome",\n'
-        f'    "{pascal}Representation",\n    "export_representations_for_frontend"'
+        f'"TrivialRepresentation",\n    {all_extra.rstrip()},\n'
+        + '"export_representations_for_frontend"'
     )
     content = content.replace(old, new, 1)
     return content
@@ -209,6 +217,252 @@ def _update_init(name: str, pascal: str, content: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _python_stub_field(name: str, pascal: str) -> str:
+    """Stub for substrate=field (CPPN-like, one receptor, develop())."""
+    return f'''"""
+{pascal} representation: field substrate (CPPN-like). Scaffold: --substrate=field.
+
+Implement: create_random, mutate, crossover, express, to_json, from_json.
+Uses NeatReceptor + RuleAssembler; develop() returns GLSL rule.
+See single_cppn.py and dual_cppn.py for full examples.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import neat
+
+from ..experiment import NEAT_CONFIG_PATH
+from ..genome import create_random_genome
+from ..genome.operators import crossover_genomes, mutate_genome
+from ..genome.serialization import genome_from_json, genome_to_json
+from ..signals import catalog
+from ..signals.sensory_system import SensorySystem
+from .cppn_base import CPPNRepresentationBase, _clamp_rgb, normalize_to_bipolar
+from .protocol import Phenotype, Substrate
+from .receptors import NeatReceptor
+
+
+class {pascal}Representation(CPPNRepresentationBase):
+    """Field substrate: one visual CPPN, rule from develop()."""
+
+    id = "{name}"
+    frontend_metadata = {{
+        "hasSignalControls": True,
+        "genomeKeys": ["visual"],
+    }}
+    phenotype = Phenotype(
+        substrate=Substrate(type="field"),
+        meta_template="Nodes: {{nodes}} | Connections: {{connections}}",
+    )
+
+    def __init__(self, neat_config_path: str | None = None, **kwargs: Any) -> None:
+        self.visual = NeatReceptor(
+            "visual",
+            inputs=catalog.STANDARD_2D_INPUTS,
+            outputs=catalog.RGB_OUTPUTS,
+            derived=(catalog.DISTANCE,),
+            config_path=neat_config_path or NEAT_CONFIG_PATH,
+            role="primary",
+        )
+        self.sensory_system = SensorySystem(
+            receptors=(self.visual,),
+            outputs=catalog.RGB_OUTPUTS,
+        )
+        super().__init__(color_mode=kwargs.get("color_mode", "hsv"))
+
+    def _compile_contributions(self, genome: neat.DefaultGenome) -> dict[str, Any]:
+        return {{"visual": self.visual.compile(genome)}}
+
+    def query_rgb(
+        self, genome: neat.DefaultGenome, inputs: dict[str, float]
+    ) -> tuple[float, float, float]:
+        out = self.visual.query(genome, inputs)
+        return _clamp_rgb(out)
+
+    def _sample_inputs(
+        self, x: float, y: float, time: float, base: dict[str, float]
+    ) -> dict[str, float]:
+        return {{**base, "x": x, "y": y, catalog.time.id: time * 2.0 - 1.0}}
+
+    def get_base_inputs_for_render(self) -> dict[str, float]:
+        base = self.visual.default_values()
+        base[catalog.time.id] = normalize_to_bipolar(0.0)
+        return base
+
+    def create_random(self, key: int = 0) -> neat.DefaultGenome:
+        return create_random_genome(self.config, genome_id=key)
+
+    def mutate(self, genome: neat.DefaultGenome, key: int) -> neat.DefaultGenome:
+        child = mutate_genome(genome, self.config)
+        child.key = key  # type: ignore[assignment]
+        return child
+
+    def crossover(
+        self, a: neat.DefaultGenome, b: neat.DefaultGenome, key: int
+    ) -> neat.DefaultGenome:
+        child = crossover_genomes(a, b, self.config)
+        child.key = key  # type: ignore[assignment]
+        return child
+
+    def to_json(self, genome: neat.DefaultGenome) -> dict[str, Any]:
+        return genome_to_json(genome)
+
+    def from_json(self, data: dict[str, Any]) -> neat.DefaultGenome:
+        return genome_from_json(data, self.config)
+
+    def get_network_types(self) -> tuple[str, ...]:
+        return ("visual",)
+
+    def get_develop_stats(self, genome: neat.DefaultGenome) -> dict[str, Any]:
+        return self.visual.network_stats(genome)
+'''
+
+
+def _python_stub_grid(name: str, pascal: str) -> str:
+    """Stub for substrate=grid (FBO, update/display/interaction GLSL)."""
+    return f'''"""
+{pascal} representation: grid substrate. Scaffold: --substrate=grid.
+
+Implement: create_random, mutate, crossover, express, to_json, from_json.
+Phenotype supplies update_rule, display_rule, interaction_rule (GLSL).
+See ca.py for a full example (Conway GOL).
+"""
+
+from __future__ import annotations
+
+import random
+from typing import Any
+
+import numpy as np
+
+from ..signals import catalog
+from ..signals.receptor import Receptor
+from ..signals.sensory_system import SensorySystem
+from ._image_util import rgb_to_png_base64
+from .base import RepresentationBase
+from .mixins import GridAnalyzable, Saveable
+from .protocol import Behaviour, Phenotype, RepresentationOutput, Substrate
+
+DEFAULT_GRID_SIZE = 64
+
+# Template GLSL: replace with your update logic (e.g. GOL, Lenia, reaction-diffusion).
+_UPDATE_SHADER = """#version 300 es
+precision highp float;
+uniform sampler2D u_state;
+uniform vec2 u_texelSize;
+in vec2 vUV;
+out vec4 fragColor;
+void main() {{
+    float c = texture(u_state, vUV).r;
+    // TODO: sample neighbors, compute next state (e.g. GOL, Lenia kernel).
+    fragColor = vec4(c, c, c, 1.0);
+}}
+"""
+
+_DISPLAY_SHADER = """#version 300 es
+precision highp float;
+uniform sampler2D u_state;
+in vec2 vUV;
+out vec4 fragColor;
+void main() {{
+    float v = texture(u_state, vUV).r;
+    fragColor = vec4(v, v, v, 1.0);
+}}
+"""
+
+
+class {pascal}Genome:
+    """Genome for {name}: initial grid + key. Customize for your representation."""
+
+    __slots__ = ("grid", "key")
+
+    def __init__(self, grid: np.ndarray, key: int = 0) -> None:
+        self.grid = np.asarray(grid, dtype=np.uint8)
+        self.key = key
+
+
+class {pascal}Representation(GridAnalyzable, Saveable, RepresentationBase):
+    """Grid substrate: FBO ping-pong, update/display/toggle from phenotype."""
+
+    id = "{name}"
+    frontend_metadata = {{
+        "hasSignalControls": True,
+        "genomeKeys": ["grid", "key"],
+    }}
+    phenotype = Phenotype(
+        substrate=Substrate(
+            type="grid",
+            grid_size=DEFAULT_GRID_SIZE,
+            state_format="RGBA",
+            wrap="REPEAT",
+        ),
+        display_rule=_DISPLAY_SHADER,
+        behaviour=Behaviour(
+            update_rule=_UPDATE_SHADER,
+            update_interval_ms=180,
+            interaction_rule=None,
+            interactions=(),
+        ),
+    )
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.interaction = Receptor(
+            "interaction",
+            inputs=catalog.CA_INTERACTION_INPUTS,
+            outputs=(),
+        )
+        self.sensory_system = SensorySystem(receptors=(self.interaction,), outputs=())
+
+    def create_random(self, key: int = 0) -> {pascal}Genome:
+        n = DEFAULT_GRID_SIZE
+        grid = (np.random.random((n, n)) < 0.3).astype(np.uint8)
+        return {pascal}Genome(grid=grid, key=key)
+
+    def mutate(self, genome: {pascal}Genome, key: int) -> {pascal}Genome:
+        grid = genome.grid.copy()
+        r = random.randint(0, grid.shape[0] - 1)
+        c = random.randint(0, grid.shape[1] - 1)
+        grid[r, c] = 1 - grid[r, c]
+        return {pascal}Genome(grid=grid, key=key)
+
+    def crossover(
+        self, a: {pascal}Genome, b: {pascal}Genome, key: int
+    ) -> {pascal}Genome:
+        mask = np.random.randint(0, 2, a.grid.shape)
+        grid = np.where(mask, a.grid, b.grid)
+        return {pascal}Genome(grid=grid, key=key)
+
+    def express(
+        self, genome: {pascal}Genome, inputs: dict[str, float], **kwargs: Any
+    ) -> RepresentationOutput:
+        # TODO: run your update rule for N steps, convert to RGB. See ca.py.
+        rgb = np.zeros((DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, 3), dtype=np.uint8)
+        rgb[genome.grid > 0] = 255
+        return RepresentationOutput("grid", rgb)
+
+    def to_json(self, genome: {pascal}Genome) -> dict[str, Any]:
+        return {{"key": genome.key, "grid": genome.grid.tolist()}}
+
+    def from_json(self, data: dict[str, Any]) -> {pascal}Genome:
+        key = int(data.get("key", 0))
+        grid = np.asarray(data.get("grid", []), dtype=np.uint8)
+        if grid.size == 0:
+            grid = np.zeros((DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE), dtype=np.uint8)
+        return {pascal}Genome(grid=grid, key=key)
+
+    def serialize_output(
+        self, output: RepresentationOutput, genome: Any = None
+    ) -> dict[str, Any]:
+        if output.output_type != "grid" or not hasattr(output.data, "shape"):
+            return {{"image": "", "grid": []}}
+        arr = np.asarray(output.data)
+        b64 = rgb_to_png_base64(arr)
+        return {{"image": "data:image/png;base64," + b64, "grid": arr.tolist()}}
+'''
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Scaffold a new representation (Python, registry, includes)."
@@ -217,10 +471,24 @@ def main() -> int:
         "name",
         help="Representation name in snake_case (e.g. my_rep, nca).",
     )
+    parser.add_argument(
+        "--substrate",
+        choices=("image", "field", "grid"),
+        default="image",
+        help="Substrate type: image (static), field (CPPN/GLSL rule), grid (FBO).",
+    )
     args = parser.parse_args()
     name = _validate_name(args.name.strip().lower())
     pascal = _snake_to_pascal(name)
     root = _repo_root()
+    substrate = args.substrate
+
+    def stub_for_substrate() -> str:
+        if substrate == "field":
+            return _python_stub_field(name, pascal)
+        if substrate == "grid":
+            return _python_stub_grid(name, pascal)
+        return _python_stub(name, pascal)
 
     # 1. Write Python module
     py_path = root / "src" / "eyecatcher" / "representation" / f"{name}.py"
@@ -228,8 +496,8 @@ def main() -> int:
         print(f"Skip (exists): {py_path}", file=sys.stderr)
     else:
         py_path.parent.mkdir(parents=True, exist_ok=True)
-        py_path.write_text(_python_stub(name, pascal), encoding="utf-8")
-        print(f"Created: {py_path}")
+        py_path.write_text(stub_for_substrate(), encoding="utf-8")
+        print(f"Created: {py_path} (substrate={substrate})")
 
     # 2. Update registry
     registry_path = root / "src" / "eyecatcher" / "representation" / "registry.py"
@@ -244,7 +512,8 @@ def main() -> int:
     # 3. Update __init__.py exports
     init_path = root / "src" / "eyecatcher" / "representation" / "__init__.py"
     init_content = init_path.read_text(encoding="utf-8")
-    new_init = _update_init(name, pascal, init_content)
+    has_genome = substrate != "field"
+    new_init = _update_init(name, pascal, init_content, has_genome=has_genome)
     if new_init != init_content:
         init_path.write_text(new_init, encoding="utf-8")
         print(f"Updated: {init_path}")

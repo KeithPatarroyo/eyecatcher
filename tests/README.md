@@ -10,8 +10,8 @@
 | test_substrate_compile.py | Representation develop and get_develop_stats (GLSL, node/connection counts). |
 | test_genome_serialization.py | Dual-genome serialization: dual_genome_to_json/from_json round-trip, extract_network_data, query consistency. |
 | test_shader_compiler.py | RuleAssembler + representation.develop(): GLSL output (main, activations, empty connections, single hidden node). |
-| test_glsl_validity.py | Generated GLSL sanity: every v_* and *_base used is declared/defined; no redefinition of v_* (shared time/visual signals); dual shader uses _base only for time inputs (catches WebGL compile-time regressions). |
-| test_signal_registry.py | Signals module (signals.registry): NEAT config matches registry; frontend evolution_config.js matches Python (toggleable inputs). |
+| test_glsl_validity.py | Generated GLSL sanity: every v_* and *_base used is declared/defined; no redefinition of v_* (shared time/visual signals); dual-CPPN rule uses _base only for time inputs (catches WebGL compile-time regressions). |
+| test_signal_registry.py | Signals module: NEAT config matches representation receptors; config.generated.js signals match Python (catalog, toggleable inputs). |
 | test_api.py | Flask API: /api/random, /api/develop, /api/express, /api/evolve, /api/save, /api/adjust-weight; uses test client and representation fixtures. |
 | test_genealogy_routes.py | Genealogy API: save/load population, tree, branches, export, reset, stats. |
 | test_community_routes.py | Community API: submit, list, admin approve/reject. |
