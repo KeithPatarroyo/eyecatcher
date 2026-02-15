@@ -139,7 +139,7 @@ If `EXPERIMENT_CONFIG` is unset, the `"default"` preset is used (when the file e
 
 Shaders are how we *display* evolved genomes, not part of the evolution algorithm. The pipeline lives in **glsl/**:
 
-- **Phases:** Topology → node code → template. Implemented in [glsl/compiler_topology.py](src/eyecatcher/glsl/compiler_topology.py) (enabled connections, evaluation order), [glsl/node_code_generator.py](src/eyecatcher/glsl/node_code_generator.py) (genome → GLSL node computations), [glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) (activation GLSL strings), [glsl/shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py) (orchestrates and builds the full shader).
+- **Phases:** Topology → node code → template. Implemented in [glsl/shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py) (orchestrates: enabled connections, evaluation order, genome → GLSL node computations, full shader build) and [glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) (activation GLSL strings).
 - **Add an activation:** See checklist below.
 - **Change output (color mode):** See "Add or change an output mode" below.
 - **Change inputs/signals:** Edit [signals/catalog.py](src/eyecatcher/signals/catalog.py) and representation sockets; the compiler uses the representation’s signal spec (see “Add or change a signal” above).
@@ -148,7 +148,7 @@ Shaders are how we *display* evolved genomes, not part of the evolution algorith
 
 1. **CPU (query):** [src/eyecatcher/genome/activation.py](src/eyecatcher/genome/activation.py) – define the Python function and add it in `register_custom_activations()` (e.g. `activation_defs.add("myname", my_fn)`).
 2. **GLSL string:** [src/eyecatcher/glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) – add the GLSL snippet for the activation (e.g. in `ACTIVATION_GLSL_BLOCK` or the dict that maps names to code).
-3. **Name mapping:** [src/eyecatcher/glsl/node_code_generator.py](src/eyecatcher/glsl/node_code_generator.py) – add the name to `ACTIVATION_FUNCTIONS` so the compiler emits the correct GLSL function name.
+3. **Name mapping:** [src/eyecatcher/glsl/activation_registry.py](src/eyecatcher/glsl/activation_registry.py) and [shader_compiler.py](src/eyecatcher/glsl/shader_compiler.py) – ensure the activation is in the registry so the compiler emits the correct GLSL function name.
 4. **NEAT config:** In [config/neat/](config/neat/) (e.g. neat_config_experimental.txt), add the new name to `activation_options` (and optionally `activation_default`) so genomes can use it.
 5. Restart the server and run `make generate` if you changed anything that affects the signal/activation export.
 
@@ -310,7 +310,7 @@ EXPERIMENT_CONFIG=single python examples/evolution_batch.py --fitness color_vari
 | Change NEAT config paths or render resolution | [experiment/config.py](src/eyecatcher/experiment/config.py) |
 | Change reproduction/selection | evolution/reproduction.py, genome/operators.py |
 | Change CPU rendering or representation query | representation/ (e.g. cppn_base, dual_cppn, ca) |
-| Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl/glsl_fragments.py, glsl/node_code_generator.py, glsl/compiler_topology.py |
+| Change how CPPN becomes GLSL | glsl/shader_compiler.py, glsl/glsl_fragments.py |
 | Change develop/save/export response shape | web/stateless_api.py, representation get_develop_stats / build_save_assets |
 | Change genealogy storage or export | data/genealogy_db.py |
 | Change wire serialization | genome/serialization.py, representation to_json/from_json |

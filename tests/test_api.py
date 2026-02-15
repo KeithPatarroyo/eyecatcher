@@ -66,7 +66,7 @@ def test_api_evolve(client):
     rv = client.post("/api/random", json={"size": 2})
     assert rv.status_code == 200
     individuals = rv.get_json()["individuals"]
-    parents = [{"individual": g, "clicks": 1} for g in individuals]
+    parents = [{"individual": g, "fitness": 1} for g in individuals]
     rv = client.post(
         "/api/evolve",
         json={"parents": parents, "population_size": 4},
@@ -84,7 +84,7 @@ def test_api_evolve_without_genealogy(client, representation):
     )
     ind_json = dual_genome_to_json(dual)
     ind_json["key"] = 0
-    parents = [{"individual": ind_json, "clicks": 0}]
+    parents = [{"individual": ind_json, "fitness": 0}]
     rv = client.post(
         "/api/evolve",
         json={"parents": parents, "population_size": 2},
@@ -113,7 +113,7 @@ def test_api_evolve_malformed_parents(client):
     """POST /api/evolve with invalid individual in parents returns 400."""
     rv = client.post(
         "/api/evolve",
-        json={"parents": [{"individual": "not an individual", "clicks": 0}]},
+        json={"parents": [{"individual": "not an individual", "fitness": 0}]},
     )
     assert rv.status_code == 400
     assert "no valid parents" in rv.get_json().get("error", "").lower()
@@ -138,7 +138,7 @@ def test_api_evolve_with_genealogy(client, genealogy_db, representation):
     )
     assert save_rv.status_code == 200
     pop_id = save_rv.get_json()["population_id"]
-    parents = [{"individual": payload, "clicks": 1}]
+    parents = [{"individual": payload, "fitness": 1}]
     evolve_rv = client.post(
         "/api/evolve",
         json={

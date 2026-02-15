@@ -28,8 +28,8 @@ def main():
         Image.fromarray(img, "RGB").save("output/dual_pattern.png")
         print("Saved: output/dual_pattern.png")
 
-    # Compile to GLSL
-    shader_code = representation.compile_to_shader(ind)
+    # Develop genome to GLSL
+    shader_code = representation.develop(ind)
     with open("output/dual_pattern.glsl", "w") as f:
         f.write(shader_code or "")
     print("Saved: output/dual_pattern.glsl")

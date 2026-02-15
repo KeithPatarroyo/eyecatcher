@@ -1,7 +1,7 @@
 /**
  * PopulationState: single source of truth for current population and genealogy context.
  * State is a single organisms array; currentPopulation, currentGenomes, and patterns
- * are derived for backward compatibility.
+ * are derived views for callers that use them.
  *
  * Exposes: PopulationState.getState, PopulationState.dispatch, PopulationState.subscribe, PopulationState.init.
  */

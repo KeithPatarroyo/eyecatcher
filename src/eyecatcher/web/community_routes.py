@@ -17,8 +17,8 @@ from flask import Blueprint, jsonify, request
 
 from ..data.db_util import default_db_path, with_db_connection
 from .api_helpers import (
-    ERR_GENOME_OBJECT_REQUIRED,
     ERR_ID_REQUIRED,
+    ERR_INDIVIDUAL_OBJECT_REQUIRED,
     api_error,
     api_try_except,
 )
@@ -137,7 +137,7 @@ def api_community_submit():
     name = (data.get("name") or "").strip() or "Unnamed"
     creator = (data.get("creator") or "").strip() or "Anonymous"
     if not individual or not isinstance(individual, dict):
-        return api_error(ERR_GENOME_OBJECT_REQUIRED, 400)
+        return api_error(ERR_INDIVIDUAL_OBJECT_REQUIRED, 400)
     genome_json = json.dumps(individual)
     with with_db_connection(DATABASE_PATH) as conn:
         cur = conn.execute(

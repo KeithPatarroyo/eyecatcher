@@ -65,20 +65,13 @@ def get_configured_representation():
     Return the representation instance for the current experiment preset.
 
     Uses EXPERIMENT_CONFIG / config/experiments.json; preset must set "representation"
-    (e.g. "dual_cppn"). "substrate" is accepted as a deprecated alias and logs a
-    warning once. Defaults to "dual_cppn" if no preset or key.
+    (e.g. "dual_cppn"). Defaults to "dual_cppn" if no preset or key.
     """
     from ..representation import get_representation
 
     preset = _load_experiment_preset()
     if preset and isinstance(preset, dict):
         representation_id = preset.get("representation")
-        if representation_id is None and "substrate" in preset:
-            logger.warning(
-                "Preset key 'substrate' is deprecated; use 'representation' in "
-                "config/experiments.json."
-            )
-            representation_id = preset.get("substrate", "dual_cppn")
         if representation_id is None:
             representation_id = "dual_cppn"
         return get_representation(representation_id, **preset)

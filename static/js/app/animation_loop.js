@@ -70,8 +70,7 @@
                 computed.grid_col = cols > 1 ? pos.col / (cols - 1) : 0;
             }
             var signalIds =
-                (window.EvolutionConfigSignals &&
-                    window.EvolutionConfigSignals.SIGNAL_IDS) ||
+                (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_IDS) ||
                 Object.keys(computed);
             var out = {};
             signalIds.forEach(function (id) {

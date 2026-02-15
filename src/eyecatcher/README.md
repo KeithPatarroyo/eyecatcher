@@ -57,8 +57,6 @@ src/eyecatcher/
 ├── glsl/                # Genome → GLSL fragment shader
 │   ├── __init__.py
 │   ├── activation_registry.py
-│   ├── compiler_topology.py
-│   ├── node_code_generator.py
 │   └── shader_compiler.py
 │
 ├── web/                 # Flask app, routes, stateless API

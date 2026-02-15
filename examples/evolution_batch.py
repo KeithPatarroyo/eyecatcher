@@ -83,7 +83,7 @@ def run_evolution(
 
         # Breed: use produce_next_generation
         parents_data = [
-            {"genome": representation.to_json(p), "clicks": 1}
+            {"genome": representation.to_json(p), "fitness": 1}
             for i, p in enumerate(parents)
         ]
         children = produce_next_generation(
@@ -99,7 +99,7 @@ def run_evolution(
     scores = [(ind, fitness_fn(ind, representation)) for ind in population]
     scores.sort(key=lambda x: x[1], reverse=True)
     best = scores[0][0]
-    shader = representation.compile_to_shader(best)
+    shader = representation.develop(best)
     if shader:
         shader_path = os.path.join(output_dir, "best_pattern.glsl")
         with open(shader_path, "w") as f:

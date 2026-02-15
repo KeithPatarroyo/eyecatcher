@@ -1,28 +1,28 @@
 /**
  * Evolution and viewer constants. Population defaults from config/evolution_defaults.json
  * (run make generate). mergeFromServer overwrites from API.
- * Reads from window.EyecatcherConfig (single config.generated.js) or legacy globals.
+ * Reads from window.EyecatcherConfig (config.generated.js; run make generate).
  * Exposes: window.EvolutionConfig
  */
 (function () {
     "use strict";
 
     var unified = window.EyecatcherConfig;
-    var signals = (unified && unified.signals) || window.EvolutionConfigSignals || null;
+    var signals = unified && unified.signals;
     if (!signals) {
         console.warn(
             "Signal config not loaded (run make generate). Signal toggles will be empty."
         );
     }
 
-    var defaults = (unified && unified.defaults) || window.EvolutionConfigDefaults;
+    var defaults = unified && unified.defaults;
     if (!defaults) {
         console.error("Defaults not loaded (run make generate).");
         defaults = {};
     }
 
     var EvolutionConfig = {
-        // Population (from EyecatcherConfig.defaults or config_defaults.generated.js)
+        // Population (from EyecatcherConfig.defaults)
         DEFAULT_POPULATION_SIZE: defaults.population_size,
         MAX_POPULATION_SIZE: defaults.max_population_size,
         MIN_POPULATION_SIZE: defaults.min_population_size,

@@ -13,7 +13,7 @@
         /**
          * Create DOM element for display (canvas, img, etc.).
          * @param {Phenotype} phenotype - Declarative phenotype from config
-         * @param {PatternPayload} patternPayload - Pattern data from compile/evaluate
+         * @param {PatternPayload} patternPayload - Pattern data from develop/express
          * @returns {{ element: HTMLElement, state: Object }} state is substrate-managed opaque data
          */
         createDisplayElement(phenotype, patternPayload) {
