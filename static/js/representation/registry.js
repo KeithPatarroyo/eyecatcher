@@ -152,7 +152,11 @@
             var self = this;
             config.forEach(function (entry) {
                 var phenotype = entry.phenotype || { substrate: "image" };
-                var substrate = (reg && reg.getSubstrate(phenotype.substrate)) || null;
+                var substrateKey =
+                    typeof phenotype.substrate === "string"
+                        ? phenotype.substrate
+                        : (phenotype.substrate && phenotype.substrate.type) || "image";
+                var substrate = (reg && reg.getSubstrate(substrateKey)) || null;
                 if (!substrate) return;
                 var representation = createRepresentation(entry, substrate, phenotype);
                 self._representationsById[entry.id] = representation;

@@ -72,7 +72,7 @@ def _get_signals(root: str) -> dict:
     from eyecatcher.signals import export_for_frontend
 
     rep = DualCPPNRepresentation()
-    return export_for_frontend(rep.signal_spec)
+    return export_for_frontend(rep.sensory_system)
 
 
 def _get_defaults(root: str) -> dict:

@@ -52,7 +52,7 @@ class NetworkInspectable(ABC):
         target: str,
         weight: float,
     ) -> dict[str, Any] | None:
-        """Adjust a connection weight and return updated shader and genome, or None."""
+        """Adjust a connection weight and return updated rule and genome, or None."""
         ...
 
     def get_develop_stats(self, genome: Any) -> dict[str, Any]:
@@ -78,7 +78,11 @@ class Samplable(ABC):
 class GridAnalyzable(ABC):
     """Mixin: can provide a 2D grid for symmetry fitness."""
 
-    @abstractmethod
     def get_grid_for_symmetry(self, out: RepresentationOutput) -> np.ndarray | None:
         """Return a 2D grid for symmetry fitness, or None if not applicable."""
-        ...
+        if out.output_type != "grid" or not hasattr(out.data, "shape"):
+            return None
+        grid = np.asarray(out.data)
+        if grid.ndim == 3:
+            grid = grid[:, :, 0]
+        return grid if grid.ndim >= 2 else None

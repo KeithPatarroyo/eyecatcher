@@ -1,12 +1,12 @@
 """
-Signal specification primitives and the SignalSpec container.
+SensorySystem: the organism's complete apparatus for sensing and transducing signals.
 
-Signal, Output, DerivedInput are the building blocks. SignalSpec is the
-representation-agnostic declaration of what a representation accepts and
-produces -- socket-centric: sockets hold the binding to each input target.
+Signal, Output, DerivedInput are the building blocks. SensorySystem is the
+representation-agnostic declaration of what signals flow into the organism --
+receptor-centric: receptors hold the binding to each input target.
 
-Helper functions (build_glsl_input_map, inputs_array, default_inputs,
-apply_derived_inputs) operate on sequences of these primitives.
+Helper functions (inputs_array, default_inputs, apply_derived_inputs)
+operate on sequences of these primitives.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
-    from .socket import Socket
+    from .receptor import Receptor
 
 
 def _is_toggleable(s: Signal) -> bool:
@@ -42,12 +42,6 @@ class Signal:
     is_derived: bool = False  # value from internal computation, not external
     category: str = ""  # spatial | temporal | interaction | structural
 
-    def _uniform(self) -> str:
-        return f"u_{self.id}" if _is_toggleable(self) else ""
-
-    def _glsl_var(self) -> str:
-        return f"v_{self.id}"
-
     def _is_derived(self) -> bool:
         return self.is_derived
 
@@ -67,32 +61,34 @@ class DerivedInput:
     id: str
     deps: tuple[str, ...]
     compute: Callable[..., float]
-    glsl: str  # GLSL line(s) computing v_{id} from v_{dep} vars
+    render_code: (
+        str  # Code snippet computing this input from dependencies (e.g. for rendering)
+    )
 
 
 # ------------------------------------------------------------------
-# SignalSpec – the representation-agnostic interface declaration
+# SensorySystem – the organism's sensory apparatus
 # ------------------------------------------------------------------
 
 
-def _dedup_inputs(sockets: Sequence[Socket]) -> tuple[Signal, ...]:
-    """Union of all socket inputs, deduped by signal id (first occurrence wins)."""
+def _dedup_inputs(receptors: Sequence[Receptor]) -> tuple[Signal, ...]:
+    """Union of all receptor inputs, deduped by signal id (first occurrence wins)."""
     seen: set[str] = set()
     out: list[Signal] = []
-    for sock in sockets:
-        for s in sock.inputs:
+    for r in receptors:
+        for s in r.inputs:
             if s.id not in seen:
                 seen.add(s.id)
                 out.append(s)
     return tuple(out)
 
 
-def _dedup_derived(sockets: Sequence[Socket]) -> tuple[DerivedInput, ...]:
-    """Union of all socket derived inputs, deduped by id."""
+def _dedup_derived(receptors: Sequence[Receptor]) -> tuple[DerivedInput, ...]:
+    """Union of all receptor derived inputs, deduped by id."""
     seen: set[str] = set()
     out: list[DerivedInput] = []
-    for sock in sockets:
-        for d in sock.derived:
+    for r in receptors:
+        for d in r.derived:
             if d.id not in seen:
                 seen.add(d.id)
                 out.append(d)
@@ -100,33 +96,33 @@ def _dedup_derived(sockets: Sequence[Socket]) -> tuple[DerivedInput, ...]:
 
 
 @dataclass(frozen=True)
-class SignalSpec:
-    """What a representation accepts and produces.
+class SensorySystem:
+    """The organism's sensory apparatus: receptors and signal bindings.
 
-    Socket-centric: sockets bind signals to each input target (e.g. NEAT network,
-    grid). inputs and derived_inputs are computed from sockets. outputs and
+    Receptor-centric: receptors bind signals to each input target (e.g. NEAT network,
+    grid). inputs and derived_inputs are computed from receptors. outputs and
     substitutions are representation-level.
     """
 
-    sockets: tuple[Socket, ...] = ()
+    receptors: tuple[Receptor, ...] = ()
     outputs: tuple[Output, ...] = ()
     substitutions: dict[str, str] = field(default_factory=dict)
 
     @property
     def inputs(self) -> tuple[Signal, ...]:
-        """All signals the representation accepts (union of socket inputs, deduped)."""
-        return _dedup_inputs(self.sockets)
+        """All signals the representation accepts (union of receptor inputs)."""
+        return _dedup_inputs(self.receptors)
 
     @property
     def derived_inputs(self) -> tuple[DerivedInput, ...]:
-        """Signals computed from other inputs (union of all socket derived, deduped)."""
-        return _dedup_derived(self.sockets)
+        """Signals computed from other inputs (union of receptor derived, deduped)."""
+        return _dedup_derived(self.receptors)
 
-    def socket(self, name: str) -> Socket:
-        """Look up socket by name. Raises KeyError if not found."""
-        for s in self.sockets:
-            if s.name == name:
-                return s
+    def receptor(self, name: str) -> Receptor:
+        """Look up receptor by name. Raises KeyError if not found."""
+        for r in self.receptors:
+            if r.name == name:
+                return r
         raise KeyError(name)
 
     def input_ids(self) -> list[str]:
@@ -174,15 +170,6 @@ def output_labels(outputs: Sequence[Output]) -> list[str]:
 def input_names(signals: Sequence[Signal]) -> list[str]:
     """Return id strings for a list of signals."""
     return [s.id for s in signals]
-
-
-def build_glsl_input_map(signals: Sequence[Signal]) -> dict[int, str]:
-    """Map NEAT negative node IDs to GLSL variable names.
-
-    First signal gets the most-negative ID.
-    """
-    n = len(signals)
-    return {-n + i: signals[i]._glsl_var() for i in range(n)}
 
 
 def inputs_array(signals: Sequence[Signal], values: dict[str, float]) -> list[float]:

@@ -1,5 +1,5 @@
 /**
- * Display data fetching: develop (shader) and express (image/grid) via ApiClient.
+ * Display data fetching: develop (rule) and express (image/grid) via ApiClient.
  * No state, no DOM. Use from grid load, append, community preview, genealogy thumbnails.
  * Depends on window.ApiClient.
  */
@@ -10,7 +10,7 @@
         var ApiClient = window.ApiClient;
         if (!ApiClient) throw new Error("ApiClient not available");
         var compData = await ApiClient.develop(genomes, options && options.colorMode);
-        return { population: compData.shaders || [] };
+        return { population: compData.rules || [] };
     }
 
     async function expressGenomes(genomes, _options) {
@@ -26,7 +26,7 @@
                 return {
                     id: r.id,
                     image: r.image,
-                    shader: r.shader,
+                    rule: r.rule,
                     grid: r.grid,
                     nodes: r.nodes !== undefined ? r.nodes : 0,
                     connections: r.connections !== undefined ? r.connections : 0,
@@ -38,8 +38,8 @@
 
     /**
      * Fetch display data for the given representation and genomes.
-     * Routes to develop (shader) or express (image/grid) based on representation.phenotype.substrate.
-     * @param {Object} representation - { phenotype: { substrate }, ... }
+     * Routes to develop (rule) or express (image/grid) based on representation.phenotype.substrate.type.
+     * @param {Object} representation - { phenotype: { substrate: { type } }, ... }
      * @param {Array} genomes
      * @param {Object} [options] - e.g. { colorMode }
      * @returns {Promise<{ population: Array }>}
@@ -50,7 +50,11 @@
                 representation.phenotype &&
                 representation.phenotype.substrate) ||
             "image";
-        if (substrate === "shader") {
+        var substrateType =
+            typeof substrate === "string"
+                ? substrate
+                : (substrate && substrate.type) || "image";
+        if (substrateType === "field") {
             return developGenomes(genomes, options);
         }
         return expressGenomes(genomes, options);

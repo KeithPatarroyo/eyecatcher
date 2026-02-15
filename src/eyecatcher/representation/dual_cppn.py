@@ -1,7 +1,7 @@
 """
 Dual-CPPN representation: visual + time signal networks (current default).
 
-Expression and signal translation are delegated to NeatSocket instances.
+Expression and signal translation are delegated to NeatReceptor instances.
 Evolution (populations, mutation, crossover) is owned by the representation.
 """
 
@@ -27,19 +27,19 @@ from ..genome.dual import (
 from ..inspection import parse_network_node_id
 from ..signals import catalog
 from ..signals.registry import parse_time_inputs
-from ..signals.spec import SignalSpec
+from ..signals.sensory_system import SensorySystem
 from .cppn_base import CPPNRepresentationBase, _clamp_rgb
 from .mixins import NetworkInspectable
-from .protocol import Phenotype
-from .sockets import NeatSocket
+from .protocol import Phenotype, Substrate
+from .receptors import NeatReceptor
 
 
 class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
     """
     Representation that wraps the current dual-CPPN (visual + time) setup.
-    Individual = DualGenome; output = shader.
+    Individual = DualGenome; output = rule.
 
-    Sockets handle expression (signal -> network query -> output).
+    Receptors handle expression (signal -> network query -> output).
     Representation handles evolution (populations, mutation, crossover).
     """
 
@@ -50,7 +50,7 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
     }
 
     phenotype = Phenotype(
-        substrate="shader",
+        substrate=Substrate(type="field"),
         meta_template="Nodes: {nodes} | Connections: {connections}",
     )
 
@@ -61,21 +61,21 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
         color_mode: str = "hsv",
         **kwargs: Any,
     ) -> None:
-        self.visual = NeatSocket(
+        self.visual = NeatReceptor(
             "visual",
             inputs=catalog.DUAL_CPPN_VISUAL_INPUTS,
             outputs=catalog.RGB_OUTPUTS,
             derived=(catalog.DISTANCE,),
             config_path=neat_config_path or NEAT_CONFIG_PATH,
         )
-        self.time = NeatSocket(
+        self.time = NeatReceptor(
             "time",
             inputs=catalog.DUAL_CPPN_TIME_INPUTS,
             outputs=catalog.TIME_OUTPUT,
             config_path=time_config_path or NEAT_TIME_CONFIG_PATH,
         )
-        self.signal_spec = SignalSpec(
-            sockets=(self.visual, self.time),
+        self.sensory_system = SensorySystem(
+            receptors=(self.visual, self.time),
             outputs=catalog.RGB_OUTPUTS,
             substitutions={"time": "timeFromNetwork"},
         )
@@ -96,12 +96,13 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
     def crossover(self, a: DualGenome, b: DualGenome, key: int) -> DualGenome:
         return crossover_dual_genomes(a, b, self.config, self.time_config, key)
 
-    # -- Expression (delegated to sockets) --
+    # -- Expression (delegated to receptors) --
 
-    def _compile(self, compiler: Any, genome: DualGenome) -> str | None:
-        return compiler.compile(
-            genome.visual, self.config, genome.time_signal, self.time_config
-        )
+    def _compile_contributions(self, genome: DualGenome) -> dict[str, Any]:
+        return {
+            "visual": self.visual.compile(genome.visual),
+            "time": self.time.compile(genome.time_signal),
+        }
 
     def _query_time_signal(
         self, time_genome: neat.DefaultGenome, inputs: dict[str, float]
@@ -147,7 +148,7 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
     def get_neat_pop_size(self) -> int | None:
         return getattr(self.config, "pop_size", None)
 
-    # -- Inspection (sockets know the structure of the individual) --
+    # -- Inspection (receptors know the structure of the individual) --
 
     def get_develop_stats(self, genome: DualGenome) -> dict[str, Any]:
         stats: dict[str, Any] = {}
@@ -170,10 +171,10 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
         if not callable(to_png_bytes):
             return {}
         assets = super().build_save_assets(genome, individual_id, **kwargs)
-        shader_code = self.develop(genome) or ""
+        rule_str = self.develop(genome) or ""
         stats = self.get_develop_stats(genome)
         bundle = {
-            "shader": shader_code,
+            "rule": rule_str,
             "metadata": {
                 "type": self.id,
                 "visual": {
@@ -247,5 +248,5 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
         if conn_key not in net_genome.connections:
             return None
         net_genome.connections[conn_key].weight = weight
-        shader_code = self.develop(genome) or ""
-        return {"shader": shader_code, "individual": self.to_json(genome)}
+        rule_str = self.develop(genome) or ""
+        return {"rule": rule_str, "individual": self.to_json(genome)}

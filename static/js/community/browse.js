@@ -83,8 +83,8 @@
         }
         li.appendChild(info);
         if (options.appendNodes) options.appendNodes(li, item);
-        if (displayItem && displayItem.shader && window.WebGLUtils) {
-            return window.WebGLUtils.setupPattern(canvas, displayItem.shader);
+        if (displayItem && displayItem.rule && window.WebGLUtils) {
+            return window.WebGLUtils.setupPattern(canvas, displayItem.rule);
         }
         return null;
     }

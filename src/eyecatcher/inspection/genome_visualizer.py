@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import neat  # noqa: E402
 from matplotlib.patches import FancyArrowPatch  # noqa: E402
 
-from ..signals.spec import Output, Signal, input_names, output_labels
+from ..signals.sensory_system import Output, Signal, input_names, output_labels
 from .genome_graph import assign_layers, get_nodes_required_for_output
 
 logger = logging.getLogger(__name__)
@@ -329,7 +329,7 @@ def render_genome_network_pdf(
     Handles ImportError and other exceptions; logs and returns None on failure.
     If output is a path (str), writes to file and returns None.
     If output is a file-like (e.g. BytesIO), writes to it and returns its bytes.
-    Caller must pass signal lists (e.g. from a NeatSocket's inputs/outputs).
+    Caller must pass signal lists (e.g. from a NeatReceptor's inputs/outputs).
 
     Returns:
         PDF bytes when output is file-like, else None.

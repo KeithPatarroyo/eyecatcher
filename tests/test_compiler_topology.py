@@ -1,9 +1,11 @@
 """Tests for compiler topology: enabled connections and evaluation order."""
 
-from eyecatcher.glsl.shader_compiler import ShaderCompiler
-
-get_enabled_connections = ShaderCompiler._get_enabled_connections
-topological_sort = ShaderCompiler._topological_sort
+from eyecatcher.representation.receptors import (
+    _get_enabled_connections as get_enabled_connections,
+)
+from eyecatcher.representation.receptors import (
+    _topological_sort as topological_sort,
+)
 
 
 def test_get_enabled_connections_returns_only_enabled(

@@ -1,11 +1,11 @@
 """
-Socket: representation-agnostic binding of signals to an input target.
+Receptor: representation-agnostic binding of signals to an input target.
 
-A Socket holds inputs, optional outputs, and optional derived inputs. It provides
+A Receptor holds inputs, optional outputs, and optional derived inputs. It provides
 to_array(), default_values(), and input_ids() so representations can resolve
 signal values into the format their internal computation expects.
 
-This is the base type; NeatSocket (in representation/sockets.py) adds NEAT
+This is the base type; NeatReceptor (in representation/receptors.py) adds NEAT
 network query, GLSL input mapping, and network stats for CPPN representations.
 """
 
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .spec import (
+from .sensory_system import (
     DerivedInput,
     Output,
     Signal,
@@ -24,12 +24,12 @@ from .spec import (
 
 
 @dataclass(frozen=True)
-class Socket:
+class Receptor:
     """Binding of named signals to one representation input target.
 
-    Representation-agnostic: the same Socket type can feed a NEAT network,
+    Representation-agnostic: the same Receptor type can feed a NEAT network,
     a grid cell, or another kind of target. Subclasses add target-specific
-    behaviour (e.g. NeatSocket loads config and runs query).
+    behaviour (e.g. NeatReceptor loads config and runs query).
     """
 
     name: str
@@ -38,7 +38,7 @@ class Socket:
     derived: tuple[DerivedInput, ...] = ()
 
     def to_array(self, values: dict[str, float]) -> list[float]:
-        """Build ordered input array for this socket from id -> value dict.
+        """Build ordered input array for this receptor from id -> value dict.
 
         Applies derived inputs when dependencies are present. Missing keys
         use each Signal.default.

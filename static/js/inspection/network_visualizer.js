@@ -8,7 +8,7 @@
 
     let _apiUrl = "";
     let _getGenomeForPattern = null;
-    let _updatePatternShader = null;
+    let _updatePatternRule = null;
     let _onGenomeUpdated = null;
     let _getCurrentPopulation = null;
 
@@ -346,7 +346,7 @@
         options = options || {};
         _apiUrl = options.apiUrl || "";
         _getGenomeForPattern = options.getGenomeForPattern || null;
-        _updatePatternShader = options.updatePatternShader || null;
+        _updatePatternRule = options.updatePatternRule || null;
         _onGenomeUpdated = options.onGenomeUpdated || null;
         _getCurrentPopulation = options.getCurrentPopulation || null;
 
@@ -354,7 +354,7 @@
             window.NetworkWeightSliders.init({
                 apiUrl: _apiUrl,
                 getGenomeForPattern: _getGenomeForPattern,
-                updatePatternShader: _updatePatternShader,
+                updatePatternRule: _updatePatternRule,
                 onGenomeUpdated: _onGenomeUpdated,
                 getCurrentPopulation: _getCurrentPopulation,
                 updateNetworkEdgeWeight: updateNetworkEdgeWeight,

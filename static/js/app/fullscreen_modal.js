@@ -50,10 +50,10 @@
                 representation = window.RepresentationRegistry.findByGenome(pattern);
             }
 
-            var hasShader = pattern.shader;
+            var hasRule = pattern.rule;
             var hasImage = pattern.image != null;
             var useLiveCanvas = !!representation;
-            if (!hasShader && !hasImage && !useLiveCanvas) return;
+            if (!hasRule && !hasImage && !useLiveCanvas) return;
 
             var modalId = (ids && ids.fullscreenModal) || "fullscreen-modal";
             var wrapId = (ids && ids.fullscreenCanvasWrap) || "fullscreen-canvas-wrap";
@@ -105,7 +105,7 @@
                 var WebGLUtils = window.WebGLUtils;
                 var runtime =
                     WebGLUtils &&
-                    WebGLUtils.setupPattern(canvas, patternRef.shader || "");
+                    WebGLUtils.setupPattern(canvas, patternRef.rule || "");
                 if (!runtime || runtime.error) {
                     wrap.innerHTML = "";
                     modal.hidden = true;

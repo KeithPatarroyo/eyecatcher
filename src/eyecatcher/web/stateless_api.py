@@ -4,7 +4,7 @@ Stateless API Blueprint for Eyecatcher.
 Provides endpoints that don't depend on server-side population state.
 Representation is stored on Flask app.config["EYECATCHER_REPRESENTATION"].
 Endpoints: /api/develop, /api/express, /api/random, /api/time-output, /api/network,
-/api/adjust-weight. Shader endpoints use protocol develop() and capability "develop".
+/api/adjust-weight. Rule endpoints use protocol develop() and capability "develop".
 """
 
 from flask import Blueprint, current_app, jsonify, request
@@ -138,15 +138,15 @@ def _parse_one_individual(payload: dict, index: int):
 
 
 def _compile_individuals(individuals_data, color_mode):
-    """Develop genome JSONs to shader response dicts via representation protocol."""
+    """Develop genome JSONs to rule response dicts via representation protocol."""
     mode = (color_mode or "").strip().lower() or None
-    shaders = []
+    rules = []
     for i, item_data in enumerate(individuals_data):
         genome, individual_id, fitness = _parse_one_individual(item_data, i)
-        glsl = get_current_representation().develop(genome, color_mode=mode)
+        rule_str = get_current_representation().develop(genome, color_mode=mode)
         resp = {
             "id": individual_id,
-            "shader": glsl or "",
+            "rule": rule_str or "",
             "fitness": fitness,
         }
         stats = get_current_representation().get_develop_stats(genome)
@@ -155,8 +155,8 @@ def _compile_individuals(individuals_data, color_mode):
         resp["connections"] = sum(
             v for k, v in stats.items() if k.endswith("_connections")
         )
-        shaders.append(resp)
-    return shaders
+        rules.append(resp)
+    return rules
 
 
 def _require_can_develop():
@@ -174,10 +174,10 @@ def _require_can_develop():
 @api_try_except
 def api_develop():
     """
-    Stateless: develop genomes to shaders.
+    Stateless: develop genomes to rules.
     Body: { "individuals": [ ... ], "color_mode": "hsv"|"rgb" (optional) }
-    Returns: { "shaders": [ { "id", "shader", "fitness", "nodes", ... }, ... ] }
-    Works for any representation with develop (dual_cppn, single_cppn, ca).
+    Returns: { "rules": [ { "id", "rule", "fitness", "nodes", ... }, ... ] }
+    Works for any representation with develop (dual_cppn, single_cppn).
     """
     err = _require_can_develop()
     if err is not None:
@@ -189,8 +189,8 @@ def api_develop():
     color_mode = (data.get("color_mode") or "").strip().lower()
     if color_mode and color_mode not in ("hsv", "rgb"):
         color_mode = "hsv"
-    shaders = _compile_individuals(individuals_data, color_mode)
-    return jsonify({"shaders": shaders})
+    rules = _compile_individuals(individuals_data, color_mode)
+    return jsonify({"rules": rules})
 
 
 @stateless_bp.route("/api/random", methods=["POST"])
@@ -200,7 +200,7 @@ def api_random():
     Stateless: create a new random population.
 
     Body: { "size": N } (default from config)
-    Returns: { "individuals": [ ... ], "output_type": "shader"|"grid"|... }
+    Returns: { "individuals": [ ... ], "output_type": "field"|"grid"|... }
     Individual shape depends on representation (dual_cppn: visual/time_signal;
     ca: grid, key).
     """
@@ -228,8 +228,8 @@ def api_express():
     Express genomes with the current representation and return displayable output.
 
     Body: { "individuals": [ ... ] } (each item is representation-specific JSON).
-    Returns: { "results": [ { "id", "output_type", "image"?, "shader"? } ],
-        "output_type" }. Grid has "image"; shader has "shader".
+    Returns: { "results": [ { "id", "output_type", "image"?, "rule"? } ],
+        "output_type" }. Grid has "image"; field has "rule" (rendering rule string).
     """
     data = request.json or {}
     individuals_data = data.get("individuals", [])
@@ -268,8 +268,8 @@ def api_time_output():
     data = request.json or {}
     rep = get_current_representation()
     try:
-        time_socket = rep.signal_spec.socket("time")
-        inputs = parse_time_inputs(data, list(time_socket.inputs), bipolar=False)
+        time_receptor = rep.sensory_system.receptor("time")
+        inputs = parse_time_inputs(data, list(time_receptor.inputs), bipolar=False)
     except KeyError:
         inputs = {}
     result = rep.query_time_output(ind, inputs)
@@ -308,10 +308,10 @@ def api_network():
 @api_try_except
 def api_adjust_weight():
     """
-    Stateless: adjust a connection weight in an individual and return updated shader.
+    Stateless: adjust a connection weight in an individual and return updated rule.
     Body: { "individual": {...}, "network": <from registry>, "source",
     "target", "weight" }
-    Returns: { "status": "success", "shader": "...", "individual": {...} }
+    Returns: { "status": "success", "rule": "...", "individual": {...} }
     """
     ind, _, _, err = _require_individual_from_request("adjust_weight")
     if err is not None:
@@ -333,7 +333,7 @@ def api_adjust_weight():
     return jsonify(
         {
             "status": "success",
-            "shader": result["shader"],
+            "rule": result["rule"],
             "individual": result.get("individual", result.get("genome")),
             "network": network_type,
             "source": source_node,

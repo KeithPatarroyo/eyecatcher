@@ -22,7 +22,7 @@ REPRESENTATION_SCRIPTS = [
     "substrate.js",
     "image_substrate.js",
     "webgl_utils.js",
-    "shader_substrate.js",
+    "field_substrate.js",
     "grid_substrate.js",
     "substrate_registry.js",
     "registry.js",

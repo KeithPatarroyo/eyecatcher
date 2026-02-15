@@ -10,7 +10,7 @@ from typing import Any, Optional
 
 import neat
 
-from ..signals.spec import Output, Signal, input_labels, output_labels
+from ..signals.sensory_system import Output, Signal, input_labels, output_labels
 
 
 def _append_nodes_for_layer(

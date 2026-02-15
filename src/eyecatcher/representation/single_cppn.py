@@ -1,7 +1,7 @@
 """
 Single-CPPN representation: visual network only (no time signal CPPN).
 
-Expression and signal translation are delegated to a NeatSocket.
+Expression and signal translation are delegated to a NeatReceptor.
 Evolution (population, mutation, crossover) is owned by the representation.
 """
 
@@ -16,18 +16,18 @@ from ..genome import create_random_genome
 from ..genome.operators import crossover_genomes, mutate_genome
 from ..genome.serialization import genome_from_json, genome_to_json
 from ..signals import catalog
-from ..signals.spec import SignalSpec
+from ..signals.sensory_system import SensorySystem
 from .cppn_base import CPPNRepresentationBase, _clamp_rgb, normalize_to_bipolar
-from .protocol import Phenotype
-from .sockets import NeatSocket
+from .protocol import Phenotype, Substrate
+from .receptors import NeatReceptor
 
 
 class SingleCPPNRepresentation(CPPNRepresentationBase):
     """
     Representation with a single visual CPPN (no time signal network).
-    Individual = neat.DefaultGenome; output = shader.
+    Individual = neat.DefaultGenome; output = rule.
 
-    Socket handles expression (signal -> network query -> output).
+    Receptor handles expression (signal -> network query -> output).
     Representation handles evolution (population, mutation, crossover).
     """
 
@@ -39,7 +39,7 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
     }
 
     phenotype = Phenotype(
-        substrate="shader",
+        substrate=Substrate(type="field"),
         meta_template="Nodes: {nodes} | Connections: {connections}",
     )
 
@@ -49,15 +49,15 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
         color_mode: str = "hsv",
         **kwargs: Any,
     ) -> None:
-        self.visual = NeatSocket(
+        self.visual = NeatReceptor(
             "visual",
             inputs=catalog.DUAL_CPPN_VISUAL_INPUTS,
             outputs=catalog.RGB_OUTPUTS,
             derived=(catalog.DISTANCE,),
             config_path=neat_config_path or NEAT_CONFIG_PATH,
         )
-        self.signal_spec = SignalSpec(
-            sockets=(self.visual,),
+        self.sensory_system = SensorySystem(
+            receptors=(self.visual,),
             outputs=catalog.RGB_OUTPUTS,
         )
         super().__init__(color_mode=color_mode)
@@ -79,10 +79,10 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
         child.key = key  # type: ignore[assignment]
         return child
 
-    # -- Expression (delegated to socket) --
+    # -- Expression (delegated to receptor) --
 
-    def _compile(self, compiler: Any, genome: neat.DefaultGenome) -> str | None:
-        return compiler.compile(genome, self.config)
+    def _compile_contributions(self, genome: neat.DefaultGenome) -> dict[str, Any]:
+        return {"visual": self.visual.compile(genome)}
 
     def query_rgb(
         self, genome: neat.DefaultGenome, inputs: dict[str, float]
@@ -119,7 +119,7 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
     def get_neat_pop_size(self) -> int | None:
         return getattr(self.config, "pop_size", None)
 
-    # -- Inspection (socket knows the structure) --
+    # -- Inspection (receptor knows the structure) --
 
     def get_develop_stats(self, genome: neat.DefaultGenome) -> dict[str, Any]:
         return self.visual.network_stats(genome)

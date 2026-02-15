@@ -198,14 +198,14 @@
         return Promise.resolve(org ? org.genome : null);
     }
 
-    function updatePatternShader(individualId, newShader) {
+    function updatePatternRule(individualId, newRule) {
         var org = window.PopulationState.getOrganism(individualId);
         var pattern = org && org.runtime;
         if (pattern && window.WebGLUtils) {
-            var newRuntime = window.WebGLUtils.setupPattern(pattern.canvas, newShader);
+            var newRuntime = window.WebGLUtils.setupPattern(pattern.canvas, newRule);
             if (newRuntime && !newRuntime.error) {
                 window.PopulationState.dispatch({
-                    type: "UPDATE_PATTERN_SHADER",
+                    type: "UPDATE_PATTERN_RULE",
                     payload: {
                         id: individualId,
                         runtime: {
@@ -414,7 +414,7 @@
     window.NetworkVisualizer.init({
         apiUrl: API_URL,
         getGenomeForPattern: getGenomeForPattern,
-        updatePatternShader: updatePatternShader,
+        updatePatternRule: updatePatternRule,
         getCurrentPopulation: getCurrentPopulation,
         onGenomeUpdated: onGenomeUpdated,
     });
@@ -428,11 +428,14 @@
             var representation = window.RepresentationRegistry.get(
                 data.representationId
             );
-            if (
+            var st =
                 representation &&
                 representation.phenotype &&
-                representation.phenotype.substrate === "shader"
-            ) {
+                representation.phenotype.substrate;
+            var isField =
+                (typeof st === "string" && st === "field") ||
+                (st && st.type === "field");
+            if (representation && representation.phenotype && isField) {
                 window.PopulationLoader.loadPopulation(
                     data.genomes,
                     data.generation,

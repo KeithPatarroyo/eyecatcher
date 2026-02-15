@@ -9,7 +9,7 @@ def test_canonical_package_imports():
         create_random_dual_genome,
         dual_genome_to_json,
     )
-    from eyecatcher.glsl import ShaderCompiler
+    from eyecatcher.glsl import RuleAssembler
     from eyecatcher.representation import DualCPPNRepresentation, get_representation
 
     assert produce_next_generation is not None
@@ -18,7 +18,7 @@ def test_canonical_package_imports():
     assert create_random_dual_genome is not None
     assert dual_genome_to_json is not None
     assert get_representation is not None
-    assert ShaderCompiler is not None
+    assert RuleAssembler is not None
 
 
 def test_new_submodule_imports():
@@ -26,44 +26,43 @@ def test_new_submodule_imports():
     from eyecatcher.genome import DualGenome
     from eyecatcher.inspection import render_genome_network_pdf
     from eyecatcher.representation import DualCPPNRepresentation
-    from eyecatcher.signals import SignalSpec, catalog
+    from eyecatcher.signals import SensorySystem, catalog
 
     assert DualCPPNRepresentation is not None
     assert DualGenome is not None
     assert catalog.DUAL_CPPN_VISUAL_INPUTS is not None
-    assert SignalSpec is not None
+    assert SensorySystem is not None
     assert render_genome_network_pdf is not None
     representation = DualCPPNRepresentation()
     assert callable(getattr(representation, "render_to_image", None))
-    assert hasattr(representation, "signal_spec")
+    assert hasattr(representation, "sensory_system")
 
 
 def test_signal_catalog_imports():
-    """Test that signal catalog and spec are importable."""
-    from eyecatcher.signals import Socket, catalog
-    from eyecatcher.signals.spec import (
+    """Test that signal catalog and sensory system are importable."""
+    from eyecatcher.signals import Receptor, SensorySystem, catalog
+    from eyecatcher.signals.sensory_system import (
         DerivedInput,
         Output,
         Signal,
-        SignalSpec,
     )
 
     assert Signal is not None
     assert Output is not None
     assert DerivedInput is not None
-    assert SignalSpec is not None
-    assert Socket is not None
+    assert SensorySystem is not None
+    assert Receptor is not None
     assert len(catalog.SPATIAL) > 0
     assert len(catalog.INTERACTION) > 0
     assert len(catalog.RGB_OUTPUTS) == 3
 
 
-def test_socket_subclass_imports():
-    """Test that Socket subclasses are importable from representation.sockets."""
-    from eyecatcher.representation.sockets import NeatSocket
-    from eyecatcher.signals import Socket
+def test_receptor_subclass_imports():
+    """Test that Receptor subclasses are importable from representation.receptors."""
+    from eyecatcher.representation.receptors import NeatReceptor
+    from eyecatcher.signals import Receptor
 
-    assert issubclass(NeatSocket, Socket)
+    assert issubclass(NeatReceptor, Receptor)
 
 
 def test_web_imports():

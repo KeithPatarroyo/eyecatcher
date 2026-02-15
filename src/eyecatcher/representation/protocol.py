@@ -14,37 +14,51 @@ from typing import Any, Literal, Protocol, TypeVar, Union
 
 import numpy as np
 
-from ..signals.spec import SignalSpec
+from ..signals.sensory_system import SensorySystem
 
 GenomeT = TypeVar("GenomeT")
 
-OutputType = Literal["shader", "image", "grid", "audio"]
+OutputType = Literal["field", "image", "grid", "audio"]
 
-# Data for each output type: shader=str, image/grid/audio=ndarray
+# Data for each output type: field=str (GLSL), image/grid/audio=ndarray
 RepresentationOutputData = Union[str, np.ndarray]
 
 
 @dataclass(frozen=True)
-class Phenotype:
-    """
-    Declarative description of how this representation's phenotype is expressed
-    and displayed. One per representation; exported to frontend via codegen.
-    The substrate is the physical body (shader surface, grid, image) the phenotype
-    is expressed on.
+class Substrate:
+    """The physical medium: where the organism exists.
+
+    Types: "field" (continuous 2D morphogenetic field), "grid" (discrete lattice),
+    "image" (static raster).
     """
 
-    substrate: str  # "shader", "grid", "image", etc.
-    # Grid-substrate fields (optional):
+    type: str  # "field", "grid", "image"
     grid_size: int | None = None
-    step_interval_ms: int | None = None
-    step_shader: str | None = None  # GLSL for the update rule (behavior)
-    display_shader: str | None = None  # GLSL for visualization
-    toggle_shader: str | None = None  # GLSL for toggle interaction (grid only)
-    state_format: str | None = None  # "RGBA" or "RGBA16F"
-    wrap: str | None = None  # "REPEAT" or "CLAMP"
-    interactions: list[str] = field(default_factory=list)  # ["toggle", "draw"]
-    # Metadata:
-    meta_template: str | None = None  # e.g. "Nodes: {nodes} | Connections: ..."
+    state_format: str | None = None  # "RGBA", "RGBA16F"
+    wrap: str | None = None  # "REPEAT", "CLAMP"
+
+
+@dataclass(frozen=True)
+class Behaviour:
+    """Dynamics: how the organism changes over time and responds to interaction.
+
+    Empty for static representations (e.g. CPPN fields).
+    """
+
+    update_rule: str | None = None  # GLSL for state transitions
+    update_interval_ms: int | None = None
+    interaction_rule: str | None = None  # GLSL for responding to stimuli
+    interactions: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Phenotype:
+    """Observable traits: what the organism looks like and how it exists."""
+
+    substrate: Substrate
+    display_rule: str | None = None  # GLSL for visualization
+    meta_template: str | None = None
+    behaviour: Behaviour = field(default_factory=Behaviour)
 
 
 class RepresentationOutput:
@@ -71,7 +85,7 @@ class Representation(Protocol[GenomeT]):
     source for codegen (hasSignalControls, genomeKeys, capabilities, optional
     excludeKeys). See export.export_representations_for_frontend().
 
-    output_type is derived from phenotype.substrate (shader, grid, image, etc.)
+    output_type is derived from phenotype.substrate.type (field, grid, image, etc.)
     unless a representation overrides it.
     """
 
@@ -83,7 +97,7 @@ class Representation(Protocol[GenomeT]):
         """Display/output type; default from phenotype.substrate."""
         ...
 
-    signal_spec: SignalSpec
+    sensory_system: SensorySystem
 
     @property
     def phenotype(self) -> Phenotype:
@@ -117,7 +131,7 @@ class Representation(Protocol[GenomeT]):
 
     def develop(self, genome: GenomeT, color_mode: str | None = None) -> str | None:
         """
-        Return GLSL fragment shader for real-time display, or None to use
+        Return GLSL rendering rule for real-time display, or None to use
         CPU express + texture upload. color_mode (e.g. 'hsv', 'rgb') is optional.
         """
         ...
@@ -141,6 +155,6 @@ class Representation(Protocol[GenomeT]):
         """
         Serialize express output for API response (e.g. /api/express).
         Optionally include genome-based keys when genome is provided.
-        Returns keys such as image, shader, grid, audio_data, etc.
+        Returns keys such as image, rule, grid, audio_data, etc.
         """
         ...

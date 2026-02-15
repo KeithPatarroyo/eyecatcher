@@ -1,7 +1,7 @@
 """
 Shared CPPN representation helpers: render utilities and CPPNRepresentationBase.
 
-Expression and signal translation are delegated to NeatSocket instances.
+Expression and signal translation are delegated to NeatReceptor instances.
 CPPNRepresentationBase implements shared orchestration logic (compile, render,
 sample, save) for SingleCPPNRepresentation and DualCPPNRepresentation.
 """
@@ -17,7 +17,7 @@ import neat
 import numpy as np
 
 from ..experiment.config import DEFAULT_RENDER_RESOLUTION
-from ..glsl import ShaderCompiler
+from ..glsl import RuleAssembler
 from ..signals.registry import get_default_signal_values
 from .base import RepresentationBase
 from .mixins import Samplable, Saveable
@@ -64,37 +64,23 @@ def base_express(
 ) -> RepresentationOutput:
     """Wrap develop result in RepresentationOutput."""
     glsl = develop_fn(genome)
-    return RepresentationOutput("shader", glsl if glsl else "")
-
-
-def compile_with_color_mode(
-    compiler: Any,
-    genome: Any,
-    color_mode: str | None,
-    develop_fn: Cb[[Any, Any], str | None],
-    *develop_args: Any,
-) -> str | None:
-    """Use one-off compiler if color_mode differs; else use given compiler."""
-    if color_mode and color_mode != compiler.color_mode:
-        alt = compiler.with_color_mode(color_mode)
-        return develop_fn(alt, *develop_args)
-    return develop_fn(compiler, *develop_args)
+    return RepresentationOutput("field", glsl if glsl else "")
 
 
 class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
     """
     Shared base for single and dual CPPN representations.
-    Subclasses set self.visual (and optionally self.time), self.signal_spec,
+    Subclasses set self.visual (and optionally self.time), self.sensory_system,
     then call super().__init__(color_mode=...). Subclasses implement
-    query_rgb, _sample_inputs, get_base_inputs_for_render, _compile,
+    query_rgb, _sample_inputs, get_base_inputs_for_render, _compile_contributions,
     to_json, from_json, create_random, mutate, crossover.
     """
 
     def __init__(self, *, color_mode: str = "hsv") -> None:
         self.config = self.visual.config
         self._population = neat.Population(self.config)
-        self.compiler = ShaderCompiler.from_spec(
-            self.signal_spec, color_mode=color_mode
+        self.rule_assembler = RuleAssembler.from_sensory_system(
+            self.sensory_system, color_mode=color_mode
         )
 
     @abstractmethod
@@ -117,14 +103,21 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
         ...
 
     @abstractmethod
-    def _compile(self, compiler: Any, genome: Any) -> str | None:
-        """Compile genome to GLSL using the given compiler. Subclass-specific."""
+    def _compile_contributions(self, genome: Any) -> dict[str, Any]:
+        """Compile genome through receptors. Return dict with 'visual' and
+        optionally 'time'.
+        """
         ...
 
     def develop(self, genome: Any, color_mode: str | None = None) -> str | None:
-        """Compile genome to GLSL fragment shader string."""
-        return compile_with_color_mode(
-            self.compiler, genome, color_mode, self._compile, genome
+        """Compile genome to rendering rule string via receptors and rule assembler."""
+        assembler = self.rule_assembler
+        if color_mode and color_mode != assembler.color_mode:
+            assembler = assembler.with_color_mode(color_mode)
+        contributions = self._compile_contributions(genome)
+        return assembler.assemble(
+            visual=contributions["visual"],
+            time=contributions.get("time"),
         )
 
     @abstractmethod
@@ -150,7 +143,7 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
         time: float = 0.0,
     ) -> list[list[float]]:
         """Sample RGB at each (x, y) with shared time/signal base."""
-        base = get_default_signal_values(self.signal_spec, time=time)
+        base = get_default_signal_values(self.sensory_system, time=time)
         return [
             list(self.query_rgb(genome, self._sample_inputs(x, y, time, base)))
             for x, y in coords
@@ -188,21 +181,21 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
         if not callable(to_png_bytes):
             return {}
         names = self.get_save_filenames(individual_id)
-        shader_code = self.develop(genome) or ""
+        rule_code = self.develop(genome) or ""
         img = self.render_to_image(genome, resolution=DEFAULT_RENDER_RESOLUTION)
         json_bytes = json.dumps(self.to_json(genome), indent=2).encode("utf-8")
         return {
             names["png"]: to_png_bytes(img),
-            names["glsl"]: shader_code.encode("utf-8"),
+            names["glsl"]: rule_code.encode("utf-8"),
             names["genome_json"]: json_bytes,
         }
 
     def serialize_output(
         self, output: RepresentationOutput, genome: Any = None
     ) -> dict[str, Any]:
-        """CPPN output is shader string."""
-        glsl = output.data if isinstance(output.data, str) else ""
-        return {"shader": glsl}
+        """CPPN output is rule string."""
+        rule_str = output.data if isinstance(output.data, str) else ""
+        return {"rule": rule_str}
 
     def has_temporal_signals(self) -> bool:
         """CPPN representations have time as an input."""

@@ -25,8 +25,8 @@
         if (window.ImageSubstrate && !defaultSubstrate) {
             defaultSubstrate = new window.ImageSubstrate();
         }
-        if (window.ShaderSubstrate && !substrates.shader) {
-            registerSubstrate("shader", new window.ShaderSubstrate());
+        if (window.FieldSubstrate && !substrates.field) {
+            registerSubstrate("field", new window.FieldSubstrate());
         }
         if (window.GridSubstrate && !substrates.grid) {
             registerSubstrate("grid", new window.GridSubstrate());

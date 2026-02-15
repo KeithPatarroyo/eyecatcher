@@ -41,8 +41,8 @@
             )
                 .then(function (data) {
                     if (data.status === "success") {
-                        if (typeof _deps.updatePatternShader === "function") {
-                            _deps.updatePatternShader(individualId, data.shader);
+                        if (typeof _deps.updatePatternRule === "function") {
+                            _deps.updatePatternRule(individualId, data.rule);
                         }
                         var updatedGenome =
                             data.individual != null ? data.individual : data.genome;

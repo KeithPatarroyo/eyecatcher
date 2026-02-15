@@ -70,15 +70,11 @@ def test_express_respects_kwargs(ca_substrate):
     assert out.data.shape == (64, 64, 3)
 
 
-def test_develop_returns_gol_glsl(ca_substrate):
+def test_ca_has_no_develop_capability(ca_substrate):
+    """CA rules come from phenotype.behaviour only; develop() returns None."""
     genome = ca_substrate.create_random(key=0)
     glsl = ca_substrate.develop(genome)
-    assert glsl is not None
-    assert "u_state" in glsl
-    assert "u_texelSize" in glsl
-    assert "void main()" in glsl
-    assert "uRule" not in glsl
-    assert "uGeneration" not in glsl
+    assert glsl is None
 
 
 def test_to_json_from_json_roundtrip(ca_substrate):
@@ -117,10 +113,10 @@ def test_serialize_output_includes_genome_grid(ca_substrate):
     assert len(result["grid"][0]) == DEFAULT_GRID_SIZE
 
 
-def test_ca_has_interaction_signal_spec(ca_substrate):
-    """CA representation declares mouse_x/mouse_y interaction signals."""
-    spec = ca_substrate.signal_spec
-    assert spec.has_signal("mouse_x")
-    assert spec.has_signal("mouse_y")
-    assert spec.has_category("interaction")
-    assert len(spec.outputs) == 0
+def test_ca_has_interaction_signals_via_sensory_system(ca_substrate):
+    """CA representation declares mouse_x/mouse_y via sensory_system (SensorySystem)."""
+    env = ca_substrate.sensory_system
+    assert env.has_signal("mouse_x")
+    assert env.has_signal("mouse_y")
+    assert env.has_category("interaction")
+    assert len(env.outputs) == 0

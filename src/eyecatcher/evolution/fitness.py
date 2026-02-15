@@ -3,7 +3,7 @@ Pluggable fitness registry for batch evolution.
 
 Researchers register fitness functions by name. Each function receives
 (individual, representation) and returns a float. Representation-specific
-fitness can use representation.express and representation.signal_spec to
+fitness can use representation.express and representation.sensory_system to
 adapt behaviour to the active representation's declared capabilities.
 """
 
@@ -95,7 +95,7 @@ def _sample_rgb_at_coords(
 # ---------------------------------------------------------------------------
 
 
-@register_fitness("color_variance", compatible_output_types=["shader", "image"])
+@register_fitness("color_variance", compatible_output_types=["field", "image"])
 def fitness_color_variance(
     individual: Any, representation: Representation[Any]
 ) -> float:
@@ -109,7 +109,7 @@ def fitness_color_variance(
     return float(np.var(samples)) * COLOR_VARIANCE_MULTIPLIER
 
 
-@register_fitness("temporal_variance", compatible_output_types=["shader", "image"])
+@register_fitness("temporal_variance", compatible_output_types=["field", "image"])
 def fitness_temporal_variance(
     individual: Any, representation: Representation[Any]
 ) -> float:
@@ -117,7 +117,7 @@ def fitness_temporal_variance(
     Variation over time at center. Non-zero for representations that vary
     output with time.  Returns 0 for representations without temporal signals.
     """
-    if not representation.signal_spec.has_category("temporal"):
+    if not representation.sensory_system.has_category("temporal"):
         return 0.0
     samples = []
     for t in TEMPORAL_SAMPLES:
@@ -129,7 +129,7 @@ def fitness_temporal_variance(
     return float(np.var(samples)) * TEMPORAL_VARIANCE_MULTIPLIER
 
 
-@register_fitness("combined", compatible_output_types=["shader", "image"])
+@register_fitness("combined", compatible_output_types=["field", "image"])
 def fitness_combined(individual: Any, representation: Representation[Any]) -> float:
     """
     Color + temporal variance; penalize mean color outside [0.1, 0.9] when sampling RGB.

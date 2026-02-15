@@ -1,11 +1,10 @@
 """
-GLSL pipeline: compile evolved CPPNs to fragment shaders for display.
+GLSL pipeline: assemble receptor contributions into rendering rules.
 
-This is the *output* side of the experiment: genome → GLSL. Evolution (genome,
-reproduction, operators) lives in evolution/; turning a genome into shader code
-lives here.
+RuleAssembler takes NetworkContribution(s) from NeatReceptor.compile() and
+produces the full rule string. Genome → contribution is in representation.receptors.
 """
 
-from .shader_compiler import ShaderCompiler
+from .rule_assembler import RuleAssembler
 
-__all__ = ["ShaderCompiler"]
+__all__ = ["RuleAssembler"]

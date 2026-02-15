@@ -5,14 +5,14 @@ Categorised primitives (SPATIAL, TEMPORAL, INTERACTION, STRUCTURAL),
 derived inputs (DISTANCE), common output sets (RGB_OUTPUTS, TIME_OUTPUT),
 and convenience presets matching the current dual-CPPN configuration.
 
-Representations pick from this catalog to build their SignalSpec.
+Representations pick from this catalog to build their SensorySystem.
 """
 
 from __future__ import annotations
 
 import math
 
-from .spec import DerivedInput, Output, Signal
+from .sensory_system import DerivedInput, Output, Signal
 
 # ------------------------------------------------------------------
 # Spatial
@@ -61,7 +61,7 @@ DISTANCE = DerivedInput(
     id="distance",
     deps=("x", "y"),
     compute=lambda x, y: math.sqrt(x * x + y * y),
-    glsl="float v_distance = sqrt(v_x * v_x + v_y * v_y);",
+    render_code="float v_distance = sqrt(v_x * v_x + v_y * v_y);",
 )
 
 # ------------------------------------------------------------------

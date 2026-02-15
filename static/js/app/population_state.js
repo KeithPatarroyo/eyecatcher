@@ -148,7 +148,7 @@
                     state.error = payload;
                     state.loading = false;
                     break;
-                case "UPDATE_PATTERN_SHADER": {
+                case "UPDATE_PATTERN_RULE": {
                     var o2 = state.organisms.find(function (x) {
                         return x.id === payload.id;
                     });

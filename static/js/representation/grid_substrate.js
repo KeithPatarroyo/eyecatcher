@@ -123,7 +123,8 @@
     class GridSubstrate extends Substrate {
         createDisplayElement(phenotype, patternPayload) {
             var stepShader =
-                (patternPayload && patternPayload.shader) ||
+                (phenotype && phenotype.behaviour && phenotype.behaviour.updateRule) ||
+                (patternPayload && patternPayload.rule) ||
                 (phenotype && phenotype.stepShader);
             if (!stepShader) {
                 var fallback = document.createElement("div");
@@ -209,11 +210,16 @@
             state.stepIntervalMs = stepIntervalMs;
             state._lastStepTime = 0;
 
-            if (phenotype && phenotype.toggleShader) {
+            var toggleShaderSource =
+                (phenotype &&
+                    phenotype.behaviour &&
+                    phenotype.behaviour.interactionRule) ||
+                (phenotype && phenotype.toggleShader);
+            if (toggleShaderSource) {
                 var toggleResult = wu.createProgram(
                     gl,
                     wu.VERTEX_SHADER_SOURCE,
-                    phenotype.toggleShader
+                    toggleShaderSource
                 );
                 if (toggleResult && !toggleResult.error) {
                     state.toggleProgram = toggleResult;

@@ -50,7 +50,7 @@
             })
                 .then(function (displayResult) {
                     var population =
-                        displayResult.population || displayResult.shaders || [];
+                        displayResult.population || displayResult.rules || [];
                     if (!population.length) {
                         window.GridRenderer.showGridError(
                             "No patterns returned from server.",

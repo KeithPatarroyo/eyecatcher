@@ -1,4 +1,4 @@
-"""Tests for signal spec, catalog, and config alignment."""
+"""Tests for sensory system (signals), catalog, and config alignment."""
 
 import json
 import os
@@ -10,7 +10,7 @@ from eyecatcher.signals import catalog, export_for_frontend
 
 
 def test_neat_config_matches_representation(representation):
-    """NEAT config num_inputs/num_outputs match socket signal counts."""
+    """NEAT config num_inputs/num_outputs match receptor signal counts."""
     assert representation.config.genome_config.num_inputs == len(
         representation.visual.inputs
     )
@@ -28,7 +28,7 @@ def test_neat_config_matches_representation(representation):
 def test_signals_export_for_frontend():
     """export_for_frontend returns expected keys (SIGNAL_GROUPS, OUTPUTS, etc.)."""
     rep = DualCPPNRepresentation()
-    data = export_for_frontend(rep.signal_spec)
+    data = export_for_frontend(rep.sensory_system)
     assert "SIGNAL_GROUPS" in data
     assert "TOGGLEABLE_SIGNALS" in data
     assert "OUTPUTS" in data
@@ -75,7 +75,7 @@ def test_frontend_signals_match_backend():
     data = config.get("signals", {})
 
     rep = DualCPPNRepresentation()
-    expected = export_for_frontend(rep.signal_spec)
+    expected = export_for_frontend(rep.sensory_system)
     assert set(data["SIGNAL_IDS"]) == set(expected["SIGNAL_IDS"])
     assert "TOGGLEABLE_SIGNALS" in data
     assert "SIGNAL_GROUPS" in data
@@ -108,57 +108,57 @@ def test_generated_signals_file_is_up_to_date():
                 break
     config = json.loads(text[start : end + 1])
     rep = DualCPPNRepresentation()
-    expected_signals = export_for_frontend(rep.signal_spec)
+    expected_signals = export_for_frontend(rep.sensory_system)
     assert (
         config.get("signals") == expected_signals
     ), "config.generated.js signals section is out of date. Run: make generate"
 
 
 # ---------------------------------------------------------------
-# SignalSpec tests
+# SensorySystem tests
 # ---------------------------------------------------------------
 
 
-class TestSignalSpec:
-    """Tests for SignalSpec and catalog."""
+class TestSensorySystem:
+    """Tests for SensorySystem and catalog."""
 
-    def test_dual_cppn_has_signal_spec(self, representation):
-        """DualCPPN declares a signal_spec with inputs and outputs."""
-        spec = representation.signal_spec
-        assert len(spec.inputs) > 0
-        assert len(spec.outputs) > 0
-        ids = spec.input_ids()
+    def test_dual_cppn_has_sensory_system(self, representation):
+        """DualCPPN declares a sensory_system with inputs and outputs."""
+        env = representation.sensory_system
+        assert len(env.inputs) > 0
+        assert len(env.outputs) > 0
+        ids = env.input_ids()
         assert "x" in ids
         assert "bias" in ids
 
-    def test_dual_cppn_spec_has_categories(self, representation):
-        """DualCPPN signal_spec has spatial and interaction categories."""
-        spec = representation.signal_spec
-        assert spec.has_category("spatial")
-        assert spec.has_category("interaction")
+    def test_dual_cppn_env_has_categories(self, representation):
+        """DualCPPN sensory_system has spatial and interaction categories."""
+        env = representation.sensory_system
+        assert env.has_category("spatial")
+        assert env.has_category("interaction")
 
-    def test_dual_cppn_spec_has_derived(self, representation):
-        """DualCPPN signal_spec has derived inputs (distance)."""
-        spec = representation.signal_spec
-        assert len(spec.derived_inputs) > 0
-        assert spec.derived_inputs[0].id == "distance"
+    def test_dual_cppn_env_has_derived(self, representation):
+        """DualCPPN sensory_system has derived inputs (distance)."""
+        env = representation.sensory_system
+        assert len(env.derived_inputs) > 0
+        assert env.derived_inputs[0].id == "distance"
 
     def test_conway_has_interaction_signals(self):
         """Conway representation declares interaction signals."""
         from eyecatcher.representation.ca import ConwayRepresentation
 
         ca = ConwayRepresentation()
-        spec = ca.signal_spec
-        assert spec.has_signal("mouse_x")
-        assert spec.has_signal("mouse_y")
-        assert spec.has_category("interaction")
+        env = ca.sensory_system
+        assert env.has_signal("mouse_x")
+        assert env.has_signal("mouse_y")
+        assert env.has_category("interaction")
 
-    def test_conway_spec_no_outputs(self):
+    def test_conway_env_no_outputs(self):
         """Conway representation currently declares no output signals."""
         from eyecatcher.representation.ca import ConwayRepresentation
 
         ca = ConwayRepresentation()
-        assert len(ca.signal_spec.outputs) == 0
+        assert len(ca.sensory_system.outputs) == 0
 
     def test_catalog_presets_consistent(self):
         """Catalog convenience presets have expected lengths and ids."""
@@ -167,9 +167,9 @@ class TestSignalSpec:
         ids = [s.id for s in catalog.DUAL_CPPN_VISUAL_INPUTS]
         assert "x" in ids and "y" in ids and "bias" in ids
 
-    def test_export_for_frontend_with_spec(self, representation):
-        """export_for_frontend(spec) returns SIGNAL_GROUPS and TOGGLEABLE_SIGNALS."""
-        data = export_for_frontend(representation.signal_spec)
+    def test_export_for_frontend_with_env(self, representation):
+        """export_for_frontend(env) returns SIGNAL_GROUPS and TOGGLEABLE_SIGNALS."""
+        data = export_for_frontend(representation.sensory_system)
         assert "SIGNAL_GROUPS" in data
         assert "TOGGLEABLE_SIGNALS" in data
         assert "SIGNAL_IDS" in data
@@ -178,12 +178,12 @@ class TestSignalSpec:
             g.get("label") in ("Spatial", "Temporal", "Interaction") for g in groups
         )
 
-    def test_signal_spec_has_signal(self):
-        """SignalSpec.has_signal works for present and absent signals."""
-        from eyecatcher.signals.socket import Socket
-        from eyecatcher.signals.spec import Signal, SignalSpec
+    def test_sensory_system_has_signal(self):
+        """SensorySystem.has_signal works for present and absent signals."""
+        from eyecatcher.signals.receptor import Receptor
+        from eyecatcher.signals.sensory_system import SensorySystem, Signal
 
-        sock = Socket("test", inputs=(Signal("a", "A"), Signal("b", "B")))
-        spec = SignalSpec(sockets=(sock,), outputs=())
-        assert spec.has_signal("a")
-        assert not spec.has_signal("c")
+        rec = Receptor("test", inputs=(Signal("a", "A"), Signal("b", "B")))
+        env = SensorySystem(receptors=(rec,), outputs=())
+        assert env.has_signal("a")
+        assert not env.has_signal("c")

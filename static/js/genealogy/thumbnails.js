@@ -69,8 +69,8 @@
                         THUMBNAIL_CANVAS_SIZE
                     );
                 }
-            } else if (pop.shader && window.WebGLUtils) {
-                const runtime = window.WebGLUtils.setupPattern(canvas, pop.shader);
+            } else if (pop.rule && window.WebGLUtils) {
+                const runtime = window.WebGLUtils.setupPattern(canvas, pop.rule);
                 if (!runtime || runtime.error) return null;
                 if (genome && typeof genome.rule === "number") {
                     runtime.caRule = genome.rule;

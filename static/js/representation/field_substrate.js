@@ -1,7 +1,7 @@
 /**
- * ShaderSubstrate: phenotype expressed on a shader surface (fullscreen quad).
+ * FieldSubstrate: phenotype expressed on a continuous field (fullscreen quad).
  * Uses WebGLUtils for WebGL setup. Maps environment signals to uniforms via TOGGLEABLE_SIGNALS.
- * No representation-specific code; any phenotype with substrate="shader" works.
+ * No representation-specific code; any phenotype with substrate.type="field" works.
  */
 (function () {
     "use strict";
@@ -56,13 +56,13 @@
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
 
-    class ShaderSubstrate extends Substrate {
+    class FieldSubstrate extends Substrate {
         createDisplayElement(phenotype, patternPayload) {
-            var shader = patternPayload && patternPayload.shader;
-            if (!shader) {
+            var rule = patternPayload && patternPayload.rule;
+            if (!rule) {
                 var fallback = document.createElement("div");
                 fallback.className = "organism-canvas-fallback";
-                fallback.textContent = "No shader";
+                fallback.textContent = "No rule";
                 return { element: fallback, state: null };
             }
             var canvas = document.createElement("canvas");
@@ -76,11 +76,11 @@
                 err.textContent = "WebGLUtils not available";
                 return { element: err, state: null };
             }
-            var state = wu.setupPattern(canvas, shader);
+            var state = wu.setupPattern(canvas, rule);
             if (state && state.error) {
                 var errEl = document.createElement("div");
                 errEl.className = "organism-canvas-fallback";
-                errEl.textContent = state.error || "Shader error";
+                errEl.textContent = state.error || "Rule error";
                 return { element: errEl, state: null };
             }
             return { element: canvas, state: state };
@@ -99,5 +99,5 @@
         }
     }
 
-    window.ShaderSubstrate = ShaderSubstrate;
+    window.FieldSubstrate = FieldSubstrate;
 })();

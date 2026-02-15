@@ -7,6 +7,7 @@ of v_* (e.g. shared time/visual signals), that would fail at WebGL compile time.
 import re
 from collections import Counter
 
+from eyecatcher.glsl.input_map import glsl_uniform_name
 from eyecatcher.representation import SingleCPPNRepresentation
 from eyecatcher.signals import catalog
 
@@ -61,7 +62,7 @@ def _assert_all_used_vars_declared(glsl: str) -> None:
 
 def _time_input_ids() -> set[str]:
     """Time network input ids that get _base in the dual shader."""
-    return {s.id for s in catalog.DUAL_CPPN_TIME_INPUTS if s._uniform()}
+    return {s.id for s in catalog.DUAL_CPPN_TIME_INPUTS if glsl_uniform_name(s)}
 
 
 def test_dual_shader_all_signal_variables_declared(
