@@ -121,8 +121,11 @@
                 };
                 if (patternRef.grid !== undefined)
                     self._fullscreenRuntime.grid = patternRef.grid;
-                if (representation) {
-                    representation.prepareRuntime(self._fullscreenRuntime, patternRef);
+                if (representation && window.RepresentationHelpers) {
+                    window.RepresentationHelpers.prepareRuntime(
+                        self._fullscreenRuntime,
+                        patternRef
+                    );
                 }
             });
         }

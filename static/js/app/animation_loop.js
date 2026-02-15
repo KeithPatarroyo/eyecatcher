@@ -143,7 +143,6 @@
                 ) {
                     var signalState = this._viewerControls.signalState;
                     var GT = window.GridTopology;
-                    var RA = window.RepresentationRegistry;
 
                     patterns.forEach(function (runtime) {
                         if (!runtime.gl) return;
@@ -157,7 +156,7 @@
                             deltaTime: deltaTime,
                             patternId: patternId,
                         };
-                        RA.renderFrameWithSignals(
+                        window.AnimationLoop.renderFrameWithSignals(
                             runtime,
                             signalState,
                             runtime.canvas,
@@ -272,6 +271,56 @@
 
         getFrameCount() {
             return this._frameCount;
+        }
+
+        /**
+         * Get signal values from the active source (or defaults), build params via current
+         * representation substrate, and render one frame. Used by the animation loop,
+         * genealogy thumbnails, and community previews.
+         * @param {Object} runtime - From WebGLUtils.setupPattern (gl, program, positionBuffer, canvas)
+         * @param {Object} signalState - Flat { signal_id: boolean } for CPPN toggles
+         * @param {HTMLCanvasElement} [contextCanvas]
+         * @param {Object} [context] - Optional { canvas, gridPosition, neighbors, patternId }
+         */
+        renderFrameWithSignals(runtime, signalState, contextCanvas, context) {
+            var getSource = window.getSignalSource;
+            var signalContext = context
+                ? {
+                      canvas: contextCanvas || (context && context.canvas),
+                      ...context,
+                  }
+                : contextCanvas != null
+                  ? { canvas: contextCanvas }
+                  : {};
+            var signalValues =
+                getSource &&
+                getSource().getValues &&
+                getSource().getValues(signalContext);
+            if (!signalValues || !Object.keys(signalValues).length) {
+                var ids =
+                    (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_IDS) || [];
+                signalValues = {};
+                ids.forEach(function (id) {
+                    signalValues[id] = id === "raw_time" ? 0.5 : 0;
+                });
+                if (!Object.keys(signalValues).length) signalValues = { raw_time: 0.5 };
+            }
+            var representation =
+                window.RepresentationRegistry &&
+                window.RepresentationRegistry.currentRepresentation &&
+                window.RepresentationRegistry.currentRepresentation();
+            var params =
+                representation && representation.substrate
+                    ? representation.substrate.buildParams
+                        ? representation.substrate.buildParams(
+                              representation.phenotype,
+                              signalValues
+                          )
+                        : {}
+                    : {};
+            if (representation && representation.substrate) {
+                representation.substrate.render(runtime, params, signalState || {});
+            }
         }
     }
 

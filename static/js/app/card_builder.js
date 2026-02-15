@@ -43,8 +43,14 @@
             var representation = resolved.representation;
             const id = pattern.id;
             const fitness = pattern.fitness !== undefined ? pattern.fitness : 0;
+            const Helpers = window.RepresentationHelpers;
             const hasCellInteraction =
-                representation && representation.supportsCellInteraction();
+                representation &&
+                Helpers &&
+                Helpers.supportsCellInteraction(
+                    representation.substrate,
+                    representation.phenotype
+                );
             const card = document.createElement("div");
             card.className =
                 "organism-card" +
@@ -56,12 +62,13 @@
             const meta = document.createElement("div");
             meta.className = "organism-meta";
             var label =
-                representation && representation.getMetaLabel
-                    ? representation.getMetaLabel(pattern)
+                representation && Helpers
+                    ? Helpers.getMetaLabel(representation.phenotype, pattern)
                     : null;
+            var idPrefix = Helpers ? Helpers.getMetaIdPrefix() : "ID: ";
             meta.textContent =
                 label != null && label !== ""
-                    ? representation.getMetaIdPrefix() + id + " | " + label
+                    ? idPrefix + id + " | " + label
                     : "ID: " +
                       id +
                       " | Nodes: " +
@@ -98,9 +105,11 @@
             };
 
             var showNetwork = representation
-                ? representation.hasCapability("network")
+                ? Helpers.hasCapability(representation.capabilities, "network")
                 : true;
-            var showSave = representation ? representation.hasCapability("save") : true;
+            var showSave = representation
+                ? Helpers.hasCapability(representation.capabilities, "save")
+                : true;
 
             const networkBtn = document.createElement("button");
             networkBtn.className = "network-btn";
@@ -140,7 +149,9 @@
                 this._attachEvents(card, id, options);
                 return { card: card, canvas: null, runtime: null };
             }
-            var result = representation.createDisplayElement(pattern, options);
+            var result =
+                Helpers &&
+                Helpers.createDisplayElement(representation, pattern, options);
             var displayEl = result && result.element;
             if (displayEl) {
                 card.appendChild(displayEl);
@@ -150,8 +161,8 @@
                 );
             }
             var runtime = result && result.runtime;
-            if (representation && runtime) {
-                representation.prepareRuntime(runtime, pattern);
+            if (Helpers && runtime) {
+                Helpers.prepareRuntime(runtime, pattern);
             }
             card.appendChild(actions);
             card.appendChild(info);
@@ -169,7 +180,11 @@
             var rep = window.RepresentationRegistry.resolve({
                 representationId: options.representationId,
             }).representation;
-            var hasCellInteraction = rep && rep.supportsCellInteraction();
+            var Helpers = window.RepresentationHelpers;
+            var hasCellInteraction =
+                rep &&
+                Helpers &&
+                Helpers.supportsCellInteraction(rep.substrate, rep.phenotype);
             var self = this;
 
             if (options.onClick) {
@@ -240,7 +255,13 @@
             var rep = window.RepresentationRegistry.resolve({
                 representationId: representationId,
             }).representation;
-            if (rep && rep.supportsCellInteraction()) {
+            var Helpers = window.RepresentationHelpers;
+            if (
+                rep &&
+                Helpers &&
+                Helpers.supportsCellInteraction(rep.substrate, rep.phenotype) &&
+                rep.substrate.handleInteraction
+            ) {
                 var coords = getClickCoordinates(event, canvas);
                 var patternsMap = window.PopulationState.patterns;
                 var runtime = null;
@@ -257,7 +278,12 @@
                         runtime = patternsMap.get(String(patternId));
                     }
                 }
-                rep.onCellInteraction(runtime, coords.x, coords.y, interactionType);
+                rep.substrate.handleInteraction(
+                    runtime,
+                    coords.x,
+                    coords.y,
+                    interactionType
+                );
             }
         }
 

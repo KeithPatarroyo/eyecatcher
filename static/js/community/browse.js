@@ -9,10 +9,12 @@
 
     async function fetchDisplayDataForList(list, toItem, getKey) {
         const RepresentationRegistry = window.RepresentationRegistry;
+        const DisplayFetcher = window.DisplayFetcher;
         if (
             !RepresentationRegistry ||
-            !RepresentationRegistry.getDisplayData ||
-            !RepresentationRegistry.findByGenome
+            !RepresentationRegistry.findByGenome ||
+            !DisplayFetcher ||
+            typeof DisplayFetcher.fetchDisplayData !== "function"
         ) {
             return {};
         }
@@ -30,7 +32,7 @@
             const representation = RepresentationRegistry.findByGenome(genome);
             if (!representation) return;
             try {
-                const result = await RepresentationRegistry.getDisplayData(
+                const result = await DisplayFetcher.fetchDisplayData(
                     representation,
                     [genome],
                     {}
@@ -117,11 +119,16 @@
             previewPatternData.length > 0
         ) {
             const signalState = viewerControls.signalState;
-            const RA = window.RepresentationRegistry;
+            const animationLoop = window.AnimationLoop;
             requestAnimationFrame(() => {
-                previewPatternData.forEach((pd) =>
-                    RA.renderFrameWithSignals(pd, signalState, null)
-                );
+                if (
+                    animationLoop &&
+                    typeof animationLoop.renderFrameWithSignals === "function"
+                ) {
+                    previewPatternData.forEach((pd) =>
+                        animationLoop.renderFrameWithSignals(pd, signalState, null)
+                    );
+                }
             });
         }
     }

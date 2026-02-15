@@ -316,13 +316,9 @@
             }
             return window.Utils.withLoading(function () {
                 self.clearGrid(self._deps.IDS);
-                return window.RepresentationRegistry.getDisplayData(
-                    representation,
-                    genomes,
-                    {
-                        colorMode: self._deps.getColorMode(),
-                    }
-                )
+                return window.DisplayFetcher.fetchDisplayData(representation, genomes, {
+                    colorMode: self._deps.getColorMode(),
+                })
                     .then(function (displayResult) {
                         var population =
                             displayResult.population || displayResult.shaders || [];
@@ -449,13 +445,9 @@
             });
             var self = this;
             return window.Utils.withLoading(function () {
-                return window.RepresentationRegistry.getDisplayData(
-                    representation,
-                    payload,
-                    {
-                        colorMode: self._deps.getColorMode(),
-                    }
-                )
+                return window.DisplayFetcher.fetchDisplayData(representation, payload, {
+                    colorMode: self._deps.getColorMode(),
+                })
                     .then(function (displayResult) {
                         var population = displayResult.population || [];
                         var newPatternsMap = new Map();

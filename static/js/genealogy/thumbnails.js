@@ -16,11 +16,13 @@
         }
 
         const RepresentationRegistry = window.RepresentationRegistry;
+        const DisplayFetcher = window.DisplayFetcher;
         const ApiClient = window.ApiClient;
         if (
             !RepresentationRegistry ||
-            !RepresentationRegistry.getDisplayData ||
             !RepresentationRegistry.findByGenome ||
+            !DisplayFetcher ||
+            typeof DisplayFetcher.fetchDisplayData !== "function" ||
             !ApiClient
         ) {
             return null;
@@ -38,7 +40,7 @@
             const representation = RepresentationRegistry.findByGenome(genome);
             if (!representation) return null;
 
-            const result = await RepresentationRegistry.getDisplayData(
+            const result = await DisplayFetcher.fetchDisplayData(
                 representation,
                 [genome],
                 {}
@@ -78,8 +80,11 @@
                     window.EvolutionConfig.getDefaultSignalState
                         ? window.EvolutionConfig.getDefaultSignalState()
                         : { time: {}, visual: {} };
-                if (window.RepresentationRegistry) {
-                    window.RepresentationRegistry.renderFrameWithSignals(
+                if (
+                    window.AnimationLoop &&
+                    window.AnimationLoop.renderFrameWithSignals
+                ) {
+                    window.AnimationLoop.renderFrameWithSignals(
                         runtime,
                         signalState,
                         canvas

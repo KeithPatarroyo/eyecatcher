@@ -34,9 +34,10 @@ Display is driven by **phenotype** (from the backend, per representation) and **
 - `shader_substrate.js` — Stateless GLSL: canvas, shader from develop(), fullscreen quad. Used by dual_cppn, single_cppn.
 - `grid_substrate.js` — FBO ping-pong: step shader, display shader, toggle interaction from phenotype. Used by ca.
 - `image_substrate.js` — Static image fallback (e.g. from backend `render_to_image()`). Used when no other substrate fits.
-- `registry.js` — Bootstraps from RepresentationConfig; creates facades that delegate to substrate + phenotype. Resolve, getDisplayData, get, findByGenome.
-- `config.generated.js` — Generated from Python representation export (do not edit).
-- `webgl_utils.js` — WebGL 2 context, shader compile, fullscreen quad setup, FBO helpers. Rendering pipeline: registry `renderFrameWithSignals()` and representation substrate `buildParams` / `render`.
+- `display_fetcher.js` — Develop/express API calls; `fetchDisplayData(representation, genomes, options)`. Depends on ApiClient only.
+- `registry.js` — Bootstraps from config; resolve, get, findByGenome. Representation records are plain { id, phenotype, substrate, capabilities, isGenomeFormat, hasSignalControls }. Use DisplayFetcher.fetchDisplayData(rep, genomes, options) for fetch; RepresentationHelpers for meta/display; call rep.substrate for render.
+- `config.generated.js` — Generated from Python (do not edit).
+- `webgl_utils.js` — WebGL 2 context, shader compile, fullscreen quad setup, FBO helpers. Per-frame render: `AnimationLoop.renderFrameWithSignals()` and substrate `buildParams` / `render`.
 
 ### Three substrates (no custom JS for standard cases)
 
@@ -137,20 +138,20 @@ Patterns are rendered by **substrates** driven by **phenotype** and **environmen
 ```
 SignalSource.getValues(canvas)   →  signal values  { raw_time, mouse_speed, ... }
       ↓
-facade.buildParams(signals)       →  params (substrate-specific, e.g. uniforms)
+rep.substrate.buildParams(rep.phenotype, signals)  →  params (substrate-specific)
       ↓
-substrate.render(state, params, signalState)
+rep.substrate.render(runtime, params, signalState)
       ↓
 gl.uniform1f / gl.drawArrays      →  pixels on canvas
 ```
 
-Each pattern card has its own display element (canvas or img). The animation loop (`app/animation_loop.js`) calls `renderWithSignals()` once per pattern per frame, which gets signal values, calls `buildParams()`, then `render()` on the facade (which delegates to the substrate).
+Each pattern card has its own display element (canvas or img). The animation loop calls `AnimationLoop.renderFrameWithSignals()` once per pattern per frame: signal values → `rep.substrate.buildParams(rep.phenotype, signalValues)` → `rep.substrate.render(...)`.
 
 ### Substrate lifecycle
 
-1. **createDisplayElement** — Substrate creates the DOM element (canvas or img) and optional state. The registry then calls `substrate.setup(state, phenotype)` if present.
-2. **prepareRuntime** — Facade copies pattern metadata onto runtime (e.g. grid, patternId).
-3. **Render loop** — Every frame, the animation loop gets signal values, calls `facade.buildParams(signalValues, context)`, then `facade.render(runtime, params, signalState)`.
+1. **createDisplayElement** — Use `RepresentationHelpers.createDisplayElement(rep, pattern, options)`; substrate creates the DOM element and state; helper calls `substrate.setup(state, phenotype)` if present.
+2. **prepareRuntime** — `RepresentationHelpers.prepareRuntime(runtime, pattern)` copies pattern metadata onto runtime (e.g. grid, patternId).
+3. **Render loop** — Animation loop gets signal values, calls `rep.substrate.buildParams(rep.phenotype, signalValues)`, then `rep.substrate.render(runtime, params, signalState)`.
 4. **Teardown** — WebGL/resources are released when the canvas is removed from the DOM; substrates may implement `teardown(state)` for explicit cleanup.
 
 ### What the renderer supports today
@@ -169,4 +170,4 @@ Each pattern card has its own display element (canvas or img). The animation loo
 ### Extension points
 
 - **New substrate:** Implement the six-method contract in a new file, register in `substrate_registry.js`, add to script list, run `make generate`.
-- **Pixel-level interaction:** Substrates implement `handleInteraction(state, x, y, type)`; the registry wires it when `phenotype.interactions` includes e.g. `"toggle"` or `"draw"`.
+- **Pixel-level interaction:** Substrates implement `handleInteraction(state, x, y, type)`; use `RepresentationHelpers.supportsCellInteraction(substrate, phenotype)` to check; card_builder calls `rep.substrate.handleInteraction(...)` when supported.
