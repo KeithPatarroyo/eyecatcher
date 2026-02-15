@@ -179,7 +179,7 @@ class NeatReceptor(Receptor):
         num_inputs = config.genome_config.num_inputs
         num_outputs = config.genome_config.num_outputs
         node_data = _extract_node_data(genome, node_order, num_outputs, input_map)
-        prefix = f"{self.name}_" if self.name != "visual" else ""
+        prefix = "" if self.role == "primary" else f"{self.name}_"
         return NetworkContribution(
             connections=tuple(connections),
             node_order=tuple(node_order),

@@ -55,6 +55,7 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
             outputs=catalog.RGB_OUTPUTS,
             derived=(catalog.DISTANCE,),
             config_path=neat_config_path or NEAT_CONFIG_PATH,
+            role="primary",
         )
         self.sensory_system = SensorySystem(
             receptors=(self.visual,),

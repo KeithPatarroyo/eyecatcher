@@ -116,8 +116,8 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
             assembler = assembler.with_color_mode(color_mode)
         contributions = self._compile_contributions(genome)
         return assembler.assemble(
-            visual=contributions["visual"],
-            time=contributions.get("time"),
+            primary=contributions["visual"],
+            modifier=contributions.get("time"),
         )
 
     @abstractmethod

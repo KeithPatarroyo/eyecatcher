@@ -18,7 +18,7 @@ class RuleAssembler:
     """
     Assembles receptor contributions into a complete rendering rule.
 
-    Built from a SensorySystem; assemble(visual, time?) produces the rule string.
+    Built from a SensorySystem; assemble(primary, modifier?) produces the rule string.
     """
 
     def __init__(
@@ -39,21 +39,29 @@ class RuleAssembler:
     def from_sensory_system(
         cls, sensory_system: SensorySystem, *, color_mode: str = "hsv"
     ) -> RuleAssembler:
-        """Build a RuleAssembler from a SensorySystem."""
-        try:
-            visual_rec = sensory_system.receptor("visual")
-        except KeyError:
-            visual_rec = (
-                sensory_system.receptors[0] if sensory_system.receptors else None
-            )
-        try:
-            time_rec = sensory_system.receptor("time")
-        except KeyError:
-            time_rec = None
+        """Build a RuleAssembler from a SensorySystem.
+
+        Uses receptor role: "primary" produces color output, "modifier" feeds
+        into primary (e.g. time network). If roles are unset, first receptor is
+        primary, second is modifier.
+        """
+        primary_rec = None
+        modifier_rec = None
+        for r in sensory_system.receptors:
+            if primary_rec is None and r.role != "modifier":
+                primary_rec = r
+            elif r.role == "modifier" or (
+                modifier_rec is None
+                and primary_rec is not None
+                and r is not primary_rec
+            ):
+                modifier_rec = r
+        if primary_rec is None and sensory_system.receptors:
+            primary_rec = sensory_system.receptors[0]
         return cls(
-            visual_signals=list(visual_rec.inputs) if visual_rec else [],
-            time_signals=list(time_rec.inputs) if time_rec else None,
-            derived_signals=list(visual_rec.derived) if visual_rec else [],
+            visual_signals=list(primary_rec.inputs) if primary_rec else [],
+            time_signals=list(modifier_rec.inputs) if modifier_rec else None,
+            derived_signals=list(primary_rec.derived) if primary_rec else [],
             color_mode=color_mode,
             substitutions=sensory_system.substitutions or None,
         )
@@ -192,36 +200,37 @@ void main() {{
 
     def assemble(
         self,
-        visual: NetworkContribution,
-        time: NetworkContribution | None = None,
+        primary: NetworkContribution,
+        modifier: NetworkContribution | None = None,
     ) -> str:
-        """Produce the full rendering rule from visual and optional time
-        contribution.
+        """Produce the full rendering rule from primary and optional modifier
+        contribution (e.g. visual + time network).
         """
-        visual_code = generate_node_code(visual)
-        time_code = generate_node_code(time) if time else None
-        num_outputs = visual.num_outputs
+        primary_code = generate_node_code(primary)
+        modifier_code = generate_node_code(modifier) if modifier else None
+        num_outputs = primary.num_outputs
 
-        if time_code is not None:
+        if modifier_code is not None and modifier is not None:
             base_scaling = self._glsl_base_scaling()
             time_gating = self._glsl_enable_gating(self.time_signals, base_vars=True)
             visual_gating = self._glsl_visual_enable_gating(use_time_from_network=True)
+            mod_out = f"{modifier.prefix}output_0"
             main_body = f"""    // Raw inputs (before enable gating)
 {base_scaling}
 
-    // === TIME SIGNAL NETWORK ===
+    // === MODIFIER NETWORK (e.g. time) ===
 {time_gating}
 
-{time_code}
+{modifier_code}
 
-    float timeFromNetwork = clamp(time_output_0, -1.0, 1.0);
+    float timeFromNetwork = clamp({mod_out}, -1.0, 1.0);
 
-    // === VISUAL NETWORK ===
+    // === PRIMARY NETWORK (color output) ===
 {self._glsl_uv_to_coord()}
 
 {visual_gating}
 
-{visual_code}"""
+{primary_code}"""
         else:
             visual_gating = self._glsl_visual_enable_gating(use_time_from_network=False)
             main_body = f"""    // Convert UV to coordinate space (-1 to 1)
@@ -229,5 +238,5 @@ void main() {{
 
 {visual_gating}
 
-{visual_code}"""
+{primary_code}"""
         return self._build_rule(main_body, num_outputs)

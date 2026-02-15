@@ -67,12 +67,14 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
             outputs=catalog.RGB_OUTPUTS,
             derived=(catalog.DISTANCE,),
             config_path=neat_config_path or NEAT_CONFIG_PATH,
+            role="primary",
         )
         self.time = NeatReceptor(
             "time",
             inputs=catalog.DUAL_CPPN_TIME_INPUTS,
             outputs=catalog.TIME_OUTPUT,
             config_path=time_config_path or NEAT_TIME_CONFIG_PATH,
+            role="modifier",
         )
         self.sensory_system = SensorySystem(
             receptors=(self.visual, self.time),
