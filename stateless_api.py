@@ -350,3 +350,117 @@ def api_open_endedness_status():
     """Check if open-endedness scoring is available."""
     available = _init_open_endedness()
     return jsonify({'available': available})
+
+
+@stateless_bp.route('/api/open-endedness/from-frames', methods=['POST'])
+def api_open_endedness_from_frames():
+    """
+    Compute open-endedness scores from pre-rendered frames (captured from WebGL).
+
+    Body: {
+        "patterns": [
+            { "genome_key": int, "frames": [base64_rgb, ...] },
+            ...
+        ],
+        "num_frames": 16,
+        "resolution": 64,
+        "generation": 0
+    }
+    Returns: {
+        "scores": [ { "genome_key": int, "score": float }, ... ],
+        "available": true
+    }
+    """
+    import os
+    import base64
+    from PIL import Image
+    import numpy as np
+
+    try:
+        if not _init_open_endedness():
+            return jsonify({
+                'error': 'Open-endedness scoring not available',
+                'available': False
+            }), 503
+
+        data = request.json or {}
+        patterns_data = data.get('patterns', [])
+        if not patterns_data:
+            return jsonify({'error': 'patterns array required'}), 400
+
+        num_frames = int(data.get('num_frames', 16))
+        resolution = int(data.get('resolution', 64))
+        generation = int(data.get('generation', 0))
+
+        from asal_metrics import calc_open_endedness_score
+
+        # Create output directory for this generation
+        output_base = os.path.join(os.path.dirname(__file__), 'oe_frames')
+        gen_dir = os.path.join(output_base, f'generation{generation}')
+        os.makedirs(gen_dir, exist_ok=True)
+
+        total = len(patterns_data)
+        print(f"\n{'='*60}")
+        print(f"Computing OE Scores from WebGL-captured frames")
+        print(f"Patterns: {total}, Resolution: {resolution}x{resolution}, Frames: {num_frames}")
+        print(f"Saving frames to: {gen_dir}")
+        print(f"{'='*60}")
+
+        results = []
+        for i, p_data in enumerate(patterns_data):
+            genome_key = p_data.get('genome_key', i)
+            frames_b64 = p_data.get('frames', [])
+
+            if not frames_b64 or len(frames_b64) == 0:
+                print(f"[{i+1}/{total}] Pattern {genome_key}: No frames provided, skipping")
+                results.append({'genome_key': genome_key, 'score': None})
+                continue
+
+            # Decode frames from base64
+            frames = []
+            pattern_dir = os.path.join(gen_dir, f'pattern{genome_key}')
+            os.makedirs(pattern_dir, exist_ok=True)
+
+            for frame_idx, frame_b64 in enumerate(frames_b64):
+                # Decode base64 RGB data
+                rgb_bytes = base64.b64decode(frame_b64)
+                rgb_array = np.frombuffer(rgb_bytes, dtype=np.uint8).reshape(resolution, resolution, 3)
+                frames.append(rgb_array)
+
+                # Save frame as PNG
+                img = Image.fromarray(rgb_array)
+                img.save(os.path.join(pattern_dir, f'frame_{frame_idx:02d}.png'))
+
+            frames = np.array(frames)  # Shape: (T, H, W, C)
+
+            # Compute CLIP embeddings for all frames (CLIPEmbedder handles normalization)
+            frame_list = [frames[t] for t in range(frames.shape[0])]
+            embeddings = _clip_embedder.embed_images(frame_list)  # Shape: (T, D)
+
+            # Compute open-endedness score
+            score = float(calc_open_endedness_score(embeddings))
+
+            results.append({
+                'genome_key': genome_key,
+                'score': score
+            })
+
+            print(f"[{i+1}/{total}] Pattern {genome_key}: OE score = {score:.4f} (frames saved)")
+
+        print(f"{'='*60}")
+        valid_scores = [r['score'] for r in results if r['score'] is not None]
+        if valid_scores:
+            print(f"Completed! Scores range: {min(valid_scores):.4f} - {max(valid_scores):.4f}")
+        print(f"Frames saved to: {gen_dir}")
+        print(f"{'='*60}\n")
+
+        return jsonify({
+            'scores': results,
+            'available': True,
+            'frames_dir': gen_dir
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
