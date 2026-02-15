@@ -1,22 +1,19 @@
-"""Signal helpers: parameterized on SignalSpec or signal lists.
+"""Signal helpers: parameterized on SensorySystem or signal lists.
 
-Canonical definitions live in spec (primitives, SignalSpec) and catalog
+Canonical definitions live in sensory_system (primitives, SensorySystem) and catalog
 (concrete instances and presets). This module provides functions that
-operate on them; all require explicit spec or signal list arguments.
+operate on them; all require explicit sensory_system or signal list arguments.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
-from .spec import (
-    DerivedInput,
-    Output,
+from .sensory_system import (
+    SensorySystem,
     Signal,
-    SignalSpec,
     _is_toggleable,
     apply_derived_inputs,
-    build_glsl_input_map,
     default_inputs,
     input_labels,
     input_names,
@@ -49,23 +46,23 @@ def parse_time_inputs(
     return out
 
 
-def get_viewer_signal_ids(spec: SignalSpec) -> list[str]:
-    """Signal ids that the viewer must supply, from the representation's spec."""
+def get_viewer_signal_ids(env: SensorySystem) -> list[str]:
+    """Signal ids from representation.sensory_system that the viewer must supply."""
     seen: set[str] = set()
-    for s in spec.inputs:
+    for s in env.inputs:
         if _is_toggleable(s) and not s._is_derived():
             seen.add(s.id)
     return sorted(seen)
 
 
 def get_default_signal_values(
-    spec: SignalSpec,
+    env: SensorySystem,
     time: float = 0.5,
     **overrides: float,
 ) -> dict[str, float]:
     """Default signal values for headless / batch rendering."""
-    result = {sid: 0.0 for sid in get_viewer_signal_ids(spec)}
-    for s in spec.inputs:
+    result = {sid: 0.0 for sid in get_viewer_signal_ids(env)}
+    for s in env.inputs:
         if s.category == "temporal" and not s._is_derived():
             result[s.id] = time
             break
@@ -78,7 +75,7 @@ def _toggleable_entry(s: Signal) -> dict:
     entry: dict = {
         "id": s.id,
         "label": s.label,
-        "uniform": s._uniform() or None,
+        "uniform": ("u_" + s.id) if _is_toggleable(s) else None,
     }
     if s._is_derived():
         entry["derived"] = True
@@ -94,15 +91,15 @@ _CATEGORY_LABELS = {
 }
 
 
-def export_for_frontend(spec: SignalSpec) -> dict:
+def export_for_frontend(env: SensorySystem) -> dict:
     """Export signal config for JS: flat TOGGLEABLE_SIGNALS and SIGNAL_GROUPS for UI.
 
     Groups are auto-derived from Signal.category (no manual groups dict needed).
     """
-    toggleable_list = [_toggleable_entry(s) for s in spec.inputs if _is_toggleable(s)]
+    toggleable_list = [_toggleable_entry(s) for s in env.inputs if _is_toggleable(s)]
 
     by_cat: dict[str, list] = {}
-    for s in spec.inputs:
+    for s in env.inputs:
         if not _is_toggleable(s):
             continue
         cat = s.category or "other"
@@ -117,19 +114,13 @@ def export_for_frontend(spec: SignalSpec) -> dict:
     return {
         "SIGNAL_GROUPS": signal_groups,
         "TOGGLEABLE_SIGNALS": toggleable_list,
-        "SIGNAL_IDS": get_viewer_signal_ids(spec),
-        "OUTPUTS": [{"id": o.id, "label": o.label} for o in spec.outputs],
+        "SIGNAL_IDS": get_viewer_signal_ids(env),
+        "OUTPUTS": [{"id": o.id, "label": o.label} for o in env.outputs],
     }
 
 
 __all__ = [
-    "Signal",
-    "Output",
-    "DerivedInput",
-    "SignalSpec",
-    "_is_toggleable",
     "apply_derived_inputs",
-    "build_glsl_input_map",
     "default_inputs",
     "export_for_frontend",
     "get_default_signal_values",

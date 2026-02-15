@@ -8,8 +8,6 @@ running simulation (frontend applies kill mask before each GOL step).
 
 from __future__ import annotations
 
-import base64
-import io
 import json
 import random
 from typing import Any, Callable
@@ -17,11 +15,12 @@ from typing import Any, Callable
 import numpy as np
 
 from ..signals import catalog
-from ..signals.socket import Socket
-from ..signals.spec import SignalSpec
+from ..signals.receptor import Receptor
+from ..signals.sensory_system import SensorySystem
+from ._image_util import rgb_to_png_base64
 from .base import RepresentationBase
 from .mixins import GridAnalyzable, Saveable
-from .protocol import Phenotype, RepresentationOutput
+from .protocol import Behaviour, Phenotype, RepresentationOutput, Substrate
 
 # Default grid size for genome and simulation (same size).
 DEFAULT_GRID_SIZE = 64
@@ -79,27 +78,13 @@ def _grid_to_nested_list(grid: np.ndarray) -> list[list[int]]:
     return grid.tolist()
 
 
-def _rgb_to_png_base64(arr: np.ndarray) -> str:
-    """Encode (H, W, 3) uint8 RGB array as PNG base64 (no data URL prefix)."""
-    from PIL import Image
-
-    arr = np.asarray(arr)
-    if arr.ndim != 3 or arr.shape[2] != 3:
-        arr = np.stack([arr, arr, arr], axis=-1) if arr.ndim == 2 else arr
-    if arr.dtype != np.uint8:
-        arr = (np.clip(arr, 0, 255)).astype(np.uint8)
-    buf = io.BytesIO()
-    Image.fromarray(arr).save(buf, format="PNG")
-    return base64.b64encode(buf.getvalue()).decode("ascii")
-
-
 def _nested_list_to_grid(data: list[list[int]] | list[list[float]]) -> np.ndarray:
     """Convert nested list to (H, W) uint8 grid."""
     arr = np.asarray(data, dtype=np.float64)
     return (arr > 0.5).astype(np.uint8)
 
 
-# Fragment shaders for grid substrate: GOL step, display (grayscale), toggle (click).
+# GLSL for grid substrate: GOL step, display (grayscale), toggle (click).
 # Frontend runs step to FBO, display to screen; toggle applies brush before step.
 _GOL_FRAGMENT_SHADER = """#version 300 es
 precision highp float;
@@ -169,7 +154,7 @@ class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
     Representation for Conway's Game of Life (2D).
     Individual = ConwayGenome (initial grid); output = grid (H×W×3 RGB).
 
-    Declares interaction signals (mouse_x, mouse_y) in its signal_spec.
+    Declares interaction signals (mouse_x, mouse_y) in its sensory_system.
     Internal routing maps these to the toggleMask / onCellInteraction
     mechanism on the frontend.
     """
@@ -181,16 +166,20 @@ class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
     }
 
     phenotype = Phenotype(
-        substrate="grid",
-        grid_size=DEFAULT_GRID_SIZE,
-        step_interval_ms=180,
-        step_shader=_GOL_FRAGMENT_SHADER,
-        display_shader=_CA_DISPLAY_SHADER,
-        toggle_shader=_CA_TOGGLE_SHADER,
-        state_format="RGBA",
-        wrap="REPEAT",
-        interactions=["toggle"],
+        substrate=Substrate(
+            type="grid",
+            grid_size=DEFAULT_GRID_SIZE,
+            state_format="RGBA",
+            wrap="REPEAT",
+        ),
+        display_rule=_CA_DISPLAY_SHADER,
         meta_template="{fingerprint} · {density} · {live_count} alive",
+        behaviour=Behaviour(
+            update_rule=_GOL_FRAGMENT_SHADER,
+            update_interval_ms=180,
+            interaction_rule=_CA_TOGGLE_SHADER,
+            interactions=("toggle",),
+        ),
     )
 
     def __init__(
@@ -202,16 +191,16 @@ class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
         self.grid_size = grid_size
         self.gol_steps = gol_steps
 
-        # -- Socket: interaction signal translation (mouse_x, mouse_y for frontend) --
-        self.interaction = Socket(
+        # -- Receptor: interaction signal translation (mouse_x, mouse_y for frontend) --
+        self.interaction = Receptor(
             name="interaction",
             inputs=catalog.CA_INTERACTION_INPUTS,
             outputs=(),
         )
 
-        # -- Public signal spec (socket-centric) --
-        self.signal_spec = SignalSpec(
-            sockets=(self.interaction,),
+        # -- Public sensory system (receptor-centric) --
+        self.sensory_system = SensorySystem(
+            receptors=(self.interaction,),
             outputs=(),
         )
 
@@ -243,12 +232,6 @@ class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
         rgb = _grid_to_rgb(grid)
         return RepresentationOutput("grid", rgb)
 
-    def develop(
-        self, genome: ConwayGenome, color_mode: str | None = None
-    ) -> str | None:
-        """GLSL for Conway GOL step. Frontend uses phenotype for display/toggle."""
-        return _GOL_FRAGMENT_SHADER
-
     def to_json(self, genome: ConwayGenome) -> dict[str, Any]:
         return {"key": genome.key, "grid": _grid_to_nested_list(genome.grid)}
 
@@ -261,31 +244,22 @@ class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
             grid = np.zeros((DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE), dtype=np.uint8)
         return ConwayGenome(grid=grid, key=key)
 
-    def get_grid_for_symmetry(self, out: RepresentationOutput) -> np.ndarray | None:
-        if out.output_type != "grid" or not hasattr(out.data, "shape"):
-            return None
-        grid = np.asarray(out.data)
-        if grid.ndim == 3:
-            grid = grid[:, :, 0]
-        return grid if grid.ndim >= 2 else None
-
     def serialize_output(
         self,
         output: RepresentationOutput,
         genome: ConwayGenome | None = None,
     ) -> dict[str, Any]:
-        """Return image (base64), shader (GOL), and grid for API.
+        """Return image (base64) and grid for API. Rules come from phenotype.behaviour.
         When genome is provided, includes genome grid for client."""
         result: dict[str, Any]
         if output.output_type != "grid" or not hasattr(output.data, "shape"):
-            result = {"image": "", "shader": _GOL_FRAGMENT_SHADER, "grid": []}
+            result = {"image": "", "grid": []}
         else:
             arr = np.asarray(output.data)
-            b64 = _rgb_to_png_base64(arr)
+            b64 = rgb_to_png_base64(arr)
             grid_01 = (arr[:, :, 0] > 127).astype(np.uint8)
             result = {
                 "image": "data:image/png;base64," + b64,
-                "shader": _GOL_FRAGMENT_SHADER,
                 "grid": _grid_to_nested_list(grid_01),
             }
         if genome is not None:
