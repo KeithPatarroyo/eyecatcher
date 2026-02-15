@@ -37,6 +37,19 @@ def _safe_parse_genome_json(value: Any) -> dict[str, Any] | None:
         return None
 
 
+def _safe_parse_metadata_json(value: Any) -> dict[str, Any]:
+    """Parse metadata_json string to dict; return {} on error."""
+    if not value:
+        return {}
+    try:
+        if isinstance(value, str):
+            out = json.loads(value)
+            return out if isinstance(out, dict) else {}
+        return value if isinstance(value, dict) else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
 def _validate_parent(
     conn: Any, parent_id: int | None, generation_num: int
 ) -> tuple[bool, dict[str, Any] | None]:
@@ -291,14 +304,7 @@ def get_population(population_id: int) -> dict[str, Any] | None:
             if genome is not None:
                 genome["fitness"] = row["fitness"]
                 genomes.append(genome)
-        metadata = {}
-        row_dict = dict(pop_row)
-        meta_raw = row_dict.get("metadata_json")
-        if meta_raw:
-            try:
-                metadata = json.loads(meta_raw) or {}
-            except (json.JSONDecodeError, TypeError):
-                pass
+        metadata = _safe_parse_metadata_json(dict(pop_row).get("metadata_json"))
         return {
             "population_id": pop_row["id"],
             "parent_id": pop_row["parent_id"],
@@ -330,12 +336,6 @@ def get_experiment_log(limit: int = 200) -> list[dict[str, Any]]:
         out = []
         for row in rows:
             row_dict = dict(row)
-            meta = {}
-            if row_dict.get("metadata_json"):
-                try:
-                    meta = json.loads(row_dict["metadata_json"]) or {}
-                except (json.JSONDecodeError, TypeError):
-                    pass
             out.append(
                 {
                     "id": row_dict["id"],
@@ -343,7 +343,9 @@ def get_experiment_log(limit: int = 200) -> list[dict[str, Any]]:
                     "branch_name": row_dict["branch_name"],
                     "generation_num": row_dict["generation_num"],
                     "population_size": row_dict["population_size"],
-                    "metadata": meta,
+                    "metadata": _safe_parse_metadata_json(
+                        row_dict.get("metadata_json")
+                    ),
                 }
             )
         return out

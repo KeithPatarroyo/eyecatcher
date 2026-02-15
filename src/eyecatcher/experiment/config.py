@@ -70,6 +70,13 @@ class ExperimentConfig:
         self._elitism_default = defaults["elitism_default"]
         self._runtime_overlay: dict = {}
 
+    _PRESET_KEYS = (
+        "population_size",
+        "max_population_size",
+        "crossover_probability",
+        "elitism_default",
+    )
+
     def apply_preset(self, preset: dict | None) -> None:
         """
         Override evolution defaults from an experiment preset.
@@ -77,20 +84,9 @@ class ExperimentConfig:
         """
         if not preset or not isinstance(preset, dict):
             return
-        if "population_size" in preset and preset["population_size"] is not None:
-            self._population_size = preset["population_size"]
-        if (
-            "max_population_size" in preset
-            and preset["max_population_size"] is not None
-        ):
-            self._max_population_size = preset["max_population_size"]
-        if (
-            "crossover_probability" in preset
-            and preset["crossover_probability"] is not None
-        ):
-            self._crossover_probability = preset["crossover_probability"]
-        if "elitism_default" in preset and preset["elitism_default"] is not None:
-            self._elitism_default = preset["elitism_default"]
+        for key in self._PRESET_KEYS:
+            if key in preset and preset[key] is not None:
+                setattr(self, f"_{key}", preset[key])
 
     def update_runtime_config(self, updates: dict | None) -> None:
         """
@@ -194,7 +190,7 @@ def get_effective_config_with_provenance() -> dict:
     defaults = _load_evolution_defaults()
     preset = _load_preset_by_name(preset_name)
 
-    def source(key: str, effective_value) -> str:
+    def source(key: str) -> str:
         if key in config._runtime_overlay:
             return "runtime (PATCH /api/config)"
         if preset and key in preset and preset.get(key) is not None:
@@ -202,34 +198,30 @@ def get_effective_config_with_provenance() -> dict:
                 return f"config/experiments.json (preset: {preset_name})"
         return "config/evolution_defaults.json"
 
-    result = {
-        "population_size": {
-            "value": config.get_population_size(),
-            "from": source("population_size", config.get_population_size()),
-        },
-        "max_population_size": {
-            "value": config.get_max_population_size(),
-            "from": source("max_population_size", config.get_max_population_size()),
-        },
-        "min_population_size": {
-            "value": config.min_population_size,
-            "from": "config/evolution_defaults.json",
-        },
-        "crossover_probability": {
-            "value": config.get_crossover_probability(),
-            "from": source("crossover_probability", config.get_crossover_probability()),
-        },
-        "elitism_default": {
-            "value": config.get_elitism_default(),
-            "from": source("elitism_default", config.get_elitism_default()),
-        },
+    getters = {
+        "population_size": config.get_population_size,
+        "max_population_size": config.get_max_population_size,
+        "crossover_probability": config.get_crossover_probability,
+        "elitism_default": config.get_elitism_default,
     }
-    rep_id = None
-    rep_from = f"config/experiments.json (preset: {preset_name})"
-    if preset and isinstance(preset, dict):
-        rep_id = preset.get("representation") or preset.get("substrate")
-    if rep_id is None:
-        rep_id = "dual_cppn"
-        rep_from = "default (no preset or key)"
-    result["representation_id"] = {"value": rep_id, "from": rep_from}
+    result = {
+        key: {"value": getter(), "from": source(key)} for key, getter in getters.items()
+    }
+    result["min_population_size"] = {
+        "value": config.min_population_size,
+        "from": "config/evolution_defaults.json",
+    }
+    rep_id = (
+        (preset.get("representation") or preset.get("substrate"))
+        if preset and isinstance(preset, dict)
+        else None
+    )
+    result["representation_id"] = {
+        "value": rep_id or "dual_cppn",
+        "from": (
+            f"config/experiments.json (preset: {preset_name})"
+            if rep_id
+            else "default (no preset or key)"
+        ),
+    }
     return result

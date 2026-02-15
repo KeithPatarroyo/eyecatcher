@@ -69,33 +69,13 @@ class GenomeVisualizer:
             view: Whether to display the plot
             figsize: (width, height). If None, auto from node count.
         """
-        # Calculate max nodes in any column for sizing
-        max_nodes_in_column = max(self.num_inputs, self.num_outputs)
-        hidden_nodes = [
-            n for n in genome.nodes.keys() if n not in range(self.num_outputs)
-        ]
-        if hidden_nodes:
-            layers = assign_layers(
-                genome, list(range(-self.num_inputs, 0)), list(range(self.num_outputs))
-            )
-            if layers:
-                layer_counts = {}
-                for layer in layers.values():
-                    layer_counts[layer] = layer_counts.get(layer, 0) + 1
-                max_nodes_in_column = max(
-                    max_nodes_in_column, max(layer_counts.values())
-                )
-
-        # Dynamic figure size: ensure enough vertical space per node
-        # With NODE_SIZE=2000, we need about 1.0 units per node vertically
+        # Calculate node positions first (also gives max nodes per column for figsize)
+        positions, max_nodes_in_column = self._calculate_positions(genome)
         if figsize is None:
             height = max(6, max_nodes_in_column * 1.0)
             figsize = (12, height)
 
         fig, ax = plt.subplots(figsize=figsize, facecolor="white")
-
-        # Calculate node positions first
-        positions = self._calculate_positions(genome)
 
         # Set axis limits based on actual node positions (auto-fit to content)
         if positions:
@@ -133,28 +113,27 @@ class GenomeVisualizer:
         else:
             plt.close()
 
-    @staticmethod
-    def _position_column(node_ids: list, x: float, node_spacing: float) -> dict:
-        """Place nodes in a column at x with vertical spacing; returns {id: (x, y)}."""
-        if not node_ids:
-            return {}
-        n = len(node_ids)
-        total_height = (n - 1) * node_spacing
-        start_y = total_height / 2
-        return {
-            node_id: (x, 0.5 + start_y - (i * node_spacing))
-            for i, node_id in enumerate(node_ids)
-        }
-
-    def _calculate_positions(self, genome: neat.DefaultGenome) -> dict:
-        """Calculate (x, y) positions for all nodes with equal spacing."""
+    def _calculate_positions(self, genome: neat.DefaultGenome) -> tuple[dict, int]:
+        """Positions for all nodes; return (positions, max_nodes_in_column)."""
         node_spacing = 0.25
-        positions = {}
 
+        def place_column(node_ids: list, x: float) -> dict:
+            if not node_ids:
+                return {}
+            n = len(node_ids)
+            total_height = (n - 1) * node_spacing
+            start_y = total_height / 2
+            return {
+                node_id: (x, 0.5 + start_y - (i * node_spacing))
+                for i, node_id in enumerate(node_ids)
+            }
+
+        positions = {}
         input_ids = list(range(-self.num_inputs, 0))
-        positions.update(self._position_column(input_ids, 0.0, node_spacing))
+        positions.update(place_column(input_ids, 0.0))
         output_ids = list(range(self.num_outputs))
-        positions.update(self._position_column(output_ids, 1.0, node_spacing))
+        positions.update(place_column(output_ids, 1.0))
+        max_in_column = max(self.num_inputs, self.num_outputs)
 
         hidden_nodes = [n for n in genome.nodes.keys() if n not in output_ids]
         if hidden_nodes:
@@ -166,11 +145,10 @@ class GenomeVisualizer:
                     layer_groups.setdefault(layer, []).append(node_id)
                 for layer, nodes_in_layer in sorted(layer_groups.items()):
                     nodes_in_layer.sort()
+                    max_in_column = max(max_in_column, len(nodes_in_layer))
                     x = 0.2 + (layer + 1) * 0.6 / (num_layers + 1)
-                    positions.update(
-                        self._position_column(nodes_in_layer, x, node_spacing)
-                    )
-        return positions
+                    positions.update(place_column(nodes_in_layer, x))
+        return positions, max_in_column
 
     def _get_node_label(
         self,
@@ -185,11 +163,8 @@ class GenomeVisualizer:
             label = input_name_list[idx] if idx < len(input_name_list) else str(node_id)
             return label, "input"
         if node_id < self.num_outputs:
-            activation = (
-                genome.nodes[node_id].activation
-                if node_id in genome.nodes
-                else "identity"
-            )
+            activation = genome.nodes.get(node_id)
+            activation = activation.activation if activation else "identity"
             name = (
                 output_name_list[node_id]
                 if node_id < len(output_name_list)
