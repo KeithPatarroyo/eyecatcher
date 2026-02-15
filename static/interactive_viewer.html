@@ -25,14 +25,12 @@
                 <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Selected:</span><span id="selected-count" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
                 <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Total Clicks:</span><span id="total-clicks" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
             </span>
-            <!-- Open-Endedness Tracking Controls -->
+            <!-- Open-Endedness Score Button -->
             <span class="oe-controls">
-                <span id="oe-toggle" class="oe-toggle" role="button" tabindex="0" title="Enable open-endedness score tracking">
+                <span id="oe-toggle" class="oe-toggle" role="button" tabindex="0" title="Compute OE scores for all patterns">
                     <span class="oe-toggle-label">OE Score</span>
                     <span id="oe-status" class="oe-status">OFF</span>
                 </span>
-                <span class="oe-tracked-info">Tracked: <span id="oe-tracked-count" class="oe-tracked-count">0</span></span>
-                <button id="oe-export-btn" class="oe-export-btn" title="Export tracked selections with scores">Export</button>
             </span>
         </div>
     </div>
@@ -600,7 +598,7 @@
             }
         }
         
-        async function clickPattern(id, card) {
+        function clickPattern(id, card) {
             const pattern = patterns.get(id);
             if (pattern) {
                 pattern.clicks = (pattern.clicks || 0) + 1;
@@ -609,18 +607,10 @@
                 clickCount.classList.remove('zero');
                 card.classList.add('selected');
                 updateStats();
-
-                // Track for open-endedness if enabled
-                if (typeof OpenEndednessTracker !== 'undefined' && OpenEndednessTracker.isTrackingEnabled()) {
-                    const genome = await getGenomeForPattern(id);
-                    if (genome) {
-                        OpenEndednessTracker.trackSelection(id, genome, currentGenerationNum);
-                    }
-                }
             }
         }
         
-        async function unclickPattern(id, card) {
+        function unclickPattern(id, card) {
             const pattern = patterns.get(id);
             if (pattern && pattern.clicks > 0) {
                 pattern.clicks--;
@@ -629,11 +619,6 @@
                 if (pattern.clicks === 0) {
                     clickCount.classList.add('zero');
                     card.classList.remove('selected');
-
-                    // Untrack from open-endedness if tracking is enabled
-                    if (typeof OpenEndednessTracker !== 'undefined') {
-                        OpenEndednessTracker.untrackSelection(id);
-                    }
                 }
                 updateStats();
             }
@@ -1008,11 +993,11 @@
         
         initTimeModeControls();
 
-        // Initialize Open-Endedness Tracker (guard against missing module)
+        // Initialize Open-Endedness Scorer (guard against missing module)
         if (typeof OpenEndednessTracker !== 'undefined') {
             OpenEndednessTracker.init();
 
-            // Toggle button
+            // OE Score button
             const oeToggle = document.getElementById('oe-toggle');
             if (oeToggle) {
                 oeToggle.addEventListener('click', OpenEndednessTracker.toggleTracking);
@@ -1022,12 +1007,6 @@
                         OpenEndednessTracker.toggleTracking();
                     }
                 });
-            }
-
-            // Export button
-            const oeExportBtn = document.getElementById('oe-export-btn');
-            if (oeExportBtn) {
-                oeExportBtn.addEventListener('click', OpenEndednessTracker.exportTrackedSelections);
             }
         }
 

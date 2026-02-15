@@ -255,7 +255,7 @@ def api_open_endedness_batch():
     Body: {
         "genomes": [ { "key", "visual", "time_signal" }, ... ],
         "num_frames": 16,
-        "resolution": 224
+        "resolution": 64
     }
     Returns: {
         "scores": [ { "genome_key": int, "score": float }, ... ],
@@ -280,8 +280,14 @@ def api_open_endedness_batch():
         from rollout import render_video_rollout, compute_video_embeddings
         from asal_metrics import calc_open_endedness_score
 
+        total = len(genomes_data)
+        print(f"\n{'='*60}")
+        print(f"Computing Open-Endedness Scores for {total} patterns")
+        print(f"Resolution: {resolution}x{resolution}, Frames: {num_frames}")
+        print(f"{'='*60}")
+
         results = []
-        for g_data in genomes_data:
+        for i, g_data in enumerate(genomes_data):
             dual = dual_genome_from_json(g_data, _engine)
             genome_key = g_data.get('key', dual.key if dual else 0)
 
@@ -298,6 +304,13 @@ def api_open_endedness_batch():
                 'genome_key': genome_key,
                 'score': score
             })
+
+            # Progress logging
+            print(f"[{i+1}/{total}] Pattern {genome_key}: OE score = {score:.4f}")
+
+        print(f"{'='*60}")
+        print(f"Completed! Scores range: {min(r['score'] for r in results):.4f} - {max(r['score'] for r in results):.4f}")
+        print(f"{'='*60}\n")
 
         return jsonify({
             'scores': results,

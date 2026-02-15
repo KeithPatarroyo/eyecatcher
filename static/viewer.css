@@ -781,6 +781,17 @@ button:disabled {
     cursor: not-allowed;
 }
 
+.oe-toggle.computing {
+    background: #2d4a5a;
+    cursor: wait;
+}
+
+.oe-status.computing {
+    background: #0066cc;
+    color: white;
+    animation: oe-pulse 1s ease-in-out infinite;
+}
+
 .oe-toggle-label {
     color: #aaa;
     font-size: 12px;
