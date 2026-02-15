@@ -227,19 +227,20 @@ def api_express():
     """
     Express genomes with the current representation and return displayable output.
 
-    Body: { "individuals": [ ... ] } (each item is representation-specific JSON).
+    Body: { "individuals": [ ... ], "inputs": { <signal_id>: value } (optional) }.
     Returns: { "results": [ { "id", "output_type", "image"?, "rule"? } ],
         "output_type" }. Grid has "image"; field has "rule" (rendering rule string).
     """
     data = request.json or {}
     individuals_data = data.get("individuals", [])
+    inputs = data.get("inputs") or {}
     if not individuals_data:
         return api_error(ERR_INDIVIDUALS_ARRAY_REQUIRED, 400)
     results = []
     for i, item_data in enumerate(individuals_data):
         ind, individual_id, _ = _parse_one_individual(item_data, i)
         rep = get_current_representation()
-        out = rep.express(ind, {})
+        out = rep.express(ind, dict(inputs))
         item = {"id": individual_id, "output_type": out.output_type}
         item.update(rep.serialize_output(out, ind))
         results.append(item)

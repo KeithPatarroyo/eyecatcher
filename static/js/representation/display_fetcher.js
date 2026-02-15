@@ -13,10 +13,11 @@
         return { population: compData.rules || [] };
     }
 
-    async function expressGenomes(genomes, _options) {
+    async function expressGenomes(genomes, options) {
         var ApiClient = window.ApiClient;
         if (!ApiClient) throw new Error("ApiClient not available");
-        var evalData = await ApiClient.express(genomes);
+        var inputs = (options && options.inputs) || {};
+        var evalData = await ApiClient.express(genomes, inputs);
         var results = evalData.results || [];
         if (typeof performance !== "undefined") {
             window.CA_ANIMATION_START_TIME = performance.now();
@@ -33,6 +34,59 @@
                     fitness: r.fitness !== undefined ? r.fitness : 0,
                 };
             }),
+        };
+    }
+
+    function mapExpressResultsToPopulation(results) {
+        return (results || []).map(function (r) {
+            return {
+                id: r.id,
+                image: r.image,
+                rule: r.rule,
+                grid: r.grid,
+                nodes: r.nodes !== undefined ? r.nodes : 0,
+                connections: r.connections !== undefined ? r.connections : 0,
+                fitness: r.fitness !== undefined ? r.fitness : 0,
+            };
+        });
+    }
+
+    /**
+     * Start polling /api/express on an interval for image substrates with capabilities.animate.
+     * Use this to show a live view of Python express() output (e.g. prototyping).
+     * @param {Object} representation - must have capabilities.animate and phenotype.substrate.type === "image"
+     * @param {Array} genomes - same format as for express
+     * @param {function(): Object} getSignalValues - returns current signal values { raw_time, ... }
+     * @param {number} intervalMs - e.g. 200
+     * @param {function(Array)} onUpdate - called with { population }-shaped array each tick
+     * @returns {function()} stop - call to clear the interval
+     */
+    function startImageAnimate(
+        representation,
+        genomes,
+        getSignalValues,
+        intervalMs,
+        onUpdate
+    ) {
+        var ApiClient = window.ApiClient;
+        if (!ApiClient) throw new Error("ApiClient not available");
+        var intervalId = null;
+        function tick() {
+            var inputs = typeof getSignalValues === "function" ? getSignalValues() : {};
+            ApiClient.express(genomes, inputs)
+                .then(function (evalData) {
+                    var results = evalData.results || [];
+                    onUpdate(mapExpressResultsToPopulation(results));
+                })
+                .catch(function () {});
+        }
+        tick();
+        intervalId = setInterval(tick, intervalMs);
+        return function stop() {
+            if (intervalId !== null) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
         };
     }
 
@@ -64,5 +118,6 @@
         developGenomes: developGenomes,
         expressGenomes: expressGenomes,
         fetchDisplayData: fetchDisplayData,
+        startImageAnimate: startImageAnimate,
     };
 })();

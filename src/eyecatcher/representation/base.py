@@ -49,6 +49,7 @@ class RepresentationBase(ABC):
             "time_output": cls.query_time_output is not base.query_time_output,
             "adjust_weight": isinstance(self, NetworkInspectable),
             "develop": cls.develop is not base.develop,
+            "animate": getattr(self.phenotype.substrate, "type", None) == "image",
         }
 
     # --- Genome operations (required) ---

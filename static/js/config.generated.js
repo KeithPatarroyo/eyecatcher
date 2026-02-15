@@ -15,7 +15,8 @@
                 "save": true,
                 "network": true,
                 "timeOutput": true,
-                "adjustWeight": true
+                "adjustWeight": true,
+                "animate": false
             },
             "sensorySystem": {
                 "inputs": [
@@ -132,7 +133,8 @@
                 "save": true,
                 "network": false,
                 "timeOutput": false,
-                "adjustWeight": false
+                "adjustWeight": false,
+                "animate": false
             },
             "sensorySystem": {
                 "inputs": [
@@ -241,7 +243,8 @@
                 "save": true,
                 "network": false,
                 "timeOutput": false,
-                "adjustWeight": false
+                "adjustWeight": false,
+                "animate": false
             },
             "sensorySystem": {
                 "inputs": [
@@ -292,7 +295,8 @@
                 "save": false,
                 "network": false,
                 "timeOutput": false,
-                "adjustWeight": false
+                "adjustWeight": false,
+                "animate": false
             },
             "sensorySystem": {
                 "inputs": [

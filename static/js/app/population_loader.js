@@ -44,6 +44,10 @@
             return Promise.resolve();
         }
         return window.Utils.withLoading(function () {
+            if (_deps.stopImageAnimate) {
+                _deps.stopImageAnimate();
+                _deps.stopImageAnimate = null;
+            }
             window.GridRenderer.clearGrid(_deps.IDS);
             return window.DisplayFetcher.fetchDisplayData(representation, genomes, {
                 colorMode: _deps.getColorMode(),
@@ -62,6 +66,15 @@
                         };
                     }
                     var patternsMap = new Map();
+                    var substrateType =
+                        (representation.phenotype &&
+                            representation.phenotype.substrate &&
+                            representation.phenotype.substrate.type) ||
+                        "image";
+                    var canAnimate =
+                        substrateType === "image" &&
+                        representation.capabilities &&
+                        representation.capabilities.animate === true;
                     window.GridRenderer.renderGridFromPopulation(
                         population,
                         _deps.IDS,
@@ -69,6 +82,31 @@
                         patternsMap,
                         resolvedRepresentationId
                     );
+                    if (canAnimate && window.DisplayFetcher.startImageAnimate) {
+                        var getSignalValues =
+                            _deps.getSignalValues ||
+                            function () {
+                                return {};
+                            };
+                        var intervalMs = _deps.imageAnimateIntervalMs || 200;
+                        _deps.stopImageAnimate =
+                            window.DisplayFetcher.startImageAnimate(
+                                representation,
+                                genomes,
+                                getSignalValues,
+                                intervalMs,
+                                function (updatedPopulation) {
+                                    var map = new Map();
+                                    window.GridRenderer.renderGridFromPopulation(
+                                        updatedPopulation,
+                                        _deps.IDS,
+                                        _deps.getGridCallbacks(),
+                                        map,
+                                        resolvedRepresentationId
+                                    );
+                                }
+                            );
+                    }
                     var branchName = window.PopulationState.branchName || "main";
                     var parentId = window.PopulationState.populationId;
                     if (saveToGenealogy) {

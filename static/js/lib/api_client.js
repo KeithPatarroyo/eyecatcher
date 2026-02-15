@@ -170,14 +170,22 @@
             );
         }
 
-        /** Express genome → phenotype (POST /api/express). */
-        async express(individuals) {
+        /** Express genome → phenotype (POST /api/express). Optional inputs for animate. */
+        async express(individuals, inputs) {
+            var body = { individuals: individuals || [] };
+            if (
+                inputs &&
+                typeof inputs === "object" &&
+                Object.keys(inputs).length > 0
+            ) {
+                body.inputs = inputs;
+            }
             return this.apiFetch(
                 this.getBase() + "/express",
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ individuals: individuals || [] }),
+                    body: JSON.stringify(body),
                 },
                 "Express failed"
             );

@@ -60,6 +60,7 @@ def _capabilities_to_frontend(caps: dict[str, bool]) -> dict[str, bool]:
         "network": caps.get("network", False),
         "timeOutput": caps.get("time_output", False),
         "adjustWeight": caps.get("adjust_weight", False),
+        "animate": caps.get("animate", False),
     }
 
 
