@@ -33,46 +33,11 @@ h1 {
     align-items: center;
 }
 
-.btn {
-    padding: 8px 16px;
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-size: 14px;
-    transition: background 0.2s;
-    text-decoration: none;
-    display: inline-block;
-}
-
-.btn:hover {
-    background: var(--color-primary-hover);
-}
-
-.btn.secondary {
-    background: var(--color-border);
-}
-
-.btn.secondary:hover {
-    background: var(--color-border-light);
-}
-
 #stats-bar {
     display: flex;
     gap: 20px;
     font-size: 13px;
     color: var(--color-text-secondary);
-}
-
-.stat {
-    display: flex;
-    gap: 6px;
-}
-
-.stat-value {
-    color: var(--color-primary);
-    font-weight: bold;
 }
 
 #main-container {

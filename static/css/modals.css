@@ -90,7 +90,11 @@
     display: block;
 }
 
-#load-list-modal {
+/* Overlay modal pattern (load list, community, admin) */
+#load-list-modal,
+#community-submit-modal,
+#community-list-modal,
+#admin-modal {
     display: none;
     position: fixed;
     top: 0;
@@ -102,7 +106,10 @@
     align-items: center;
     justify-content: center;
 }
-#load-list-modal.show {
+#load-list-modal.show,
+#community-submit-modal.show,
+#community-list-modal.show,
+#admin-modal.show {
     display: flex;
 }
 #load-list-modal .modal-content {

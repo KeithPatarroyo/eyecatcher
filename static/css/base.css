@@ -161,28 +161,37 @@ button:disabled {
     transform: none;
 }
 
-/* Shared panel/modal content (optional use by community, debug) */
-.modal-content-base {
-    background: var(--color-bg-primary);
-    padding: var(--space-xl);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-}
-.input-base {
-    width: 100%;
-    padding: var(--space-sm) 10px;
-    margin-top: var(--space-xs);
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border-light);
-    color: var(--color-text-muted);
+/* Shared .btn class (genealogy, modals) */
+.btn {
+    padding: 8px 16px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
     border-radius: var(--radius-sm);
-    box-sizing: border-box;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+    text-decoration: none;
+    display: inline-block;
 }
-.label-base {
-    display: block;
-    margin-top: 10px;
-    color: var(--color-text-zoom);
-    font-size: 13px;
+.btn:hover {
+    background: var(--color-primary-hover);
+}
+.btn.secondary {
+    background: var(--color-border);
+}
+.btn.secondary:hover {
+    background: var(--color-border-light);
+}
+
+/* Shared stat display (genealogy, viewer) */
+.stat {
+    display: flex;
+    gap: 6px;
+}
+.stat-value {
+    color: var(--color-primary);
+    font-weight: bold;
 }
 
 /* Utility: hide element (use with classList.add/remove for display toggles) */
