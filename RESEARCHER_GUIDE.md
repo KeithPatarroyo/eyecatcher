@@ -69,7 +69,7 @@ flowchart LR
 
 Standard substrates (field, grid, image) = steps 1–5, no frontend code. Custom substrate (new medium, e.g. audio): add a JS class extending `Substrate`, implement the six-method contract, register in [substrate_registry.js](static/js/representation/substrate_registry.js), add script to `REPRESENTATION_SCRIPTS` in [generate_representation_includes.py](scripts/generate_representation_includes.py), run `make generate`.
 
-**Representation types:** NEAT (CPPN): `dual_cppn`, `single_cppn`. Non-NEAT: `ca`, `trivial`. `trivial` is a minimal template: one receptor tying a signal to the “body part” that expresses it, one float genome → solid-color grid. Copy [trivial.py](src/eyecatcher/representation/trivial.py) for custom representations; see [base.py](src/eyecatcher/representation/base.py) for the protocol.
+**Representation types:** NEAT (CPPN): `dual_cppn`, `single_cppn`. Non-NEAT: `ca`, `trivial`. `trivial` is a minimal template: one receptor tying a signal to the “body part” that expresses it, one float genome → grid. For receptor inputs, use catalog presets: `STANDARD_2D_INPUTS`, `TEMPORAL_INPUTS`, or `MINIMAL_SPATIAL` (see [signals/catalog.py](src/eyecatcher/signals/catalog.py)). Copy [trivial.py](src/eyecatcher/representation/trivial.py) for custom representations; see [base.py](src/eyecatcher/representation/base.py) for the protocol.
 
 ---
 
@@ -77,7 +77,7 @@ Standard substrates (field, grid, image) = steps 1–5, no frontend code. Custom
 
 **Single source of truth:** Catalog + representation receptors. Add a signal = add to catalog (and receptor preset if needed) → run `make generate`. Codegen updates NEAT num_inputs/num_outputs from the representation and writes the frontend signal list.
 
-1. Edit [signals/catalog.py](src/eyecatcher/signals/catalog.py) — add or change `Signal` or `Output` instances and presets (e.g. `DUAL_CPPN_VISUAL_INPUTS`). Use `Signal("id", "Label")` for inputs; `Signal("id", "Label", is_spatial=True)` for per-pixel (x, y, distance); `Output("id", "Label")` for outputs. If you add a new input target, add a receptor in the representation that uses the new list.
+1. Edit [signals/catalog.py](src/eyecatcher/signals/catalog.py) — add or change `Signal` or `Output` instances and presets. **Representation-agnostic presets:** `STANDARD_2D_INPUTS`, `TEMPORAL_INPUTS`, `MINIMAL_SPATIAL` (use these for new representations). CPPN-specific: `DUAL_CPPN_VISUAL_INPUTS`, `DUAL_CPPN_TIME_INPUTS`. Use `Signal("id", "Label")` for inputs; `Signal("id", "Label", is_spatial=True)` for per-pixel (x, y, distance); `Output("id", "Label")` for outputs. If you add a new input target, add a receptor in the representation that uses the new list.
 2. Run `make generate`. This writes config.generated.js, updates HTML includes, and runs generate-neat to sync NEAT num_inputs/num_outputs. No manual edit of [config/neat/](config/neat/) needed.
 3. Restart the server and reload the app.
 

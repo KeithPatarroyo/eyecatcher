@@ -77,6 +77,14 @@ RGB_OUTPUTS = (
 TIME_OUTPUT = (Output("output", "Modified Time"),)
 
 # ------------------------------------------------------------------
+# Representation-agnostic presets (use these for new representations)
+# ------------------------------------------------------------------
+
+STANDARD_2D_INPUTS = (*SPATIAL, *TEMPORAL, *INTERACTION, *STRUCTURAL)
+TEMPORAL_INPUTS = (*TEMPORAL, mouse_speed, mouse_dist, activity, *STRUCTURAL)
+MINIMAL_SPATIAL = (*SPATIAL, *STRUCTURAL)
+
+# ------------------------------------------------------------------
 # Convenience presets (matching current dual-CPPN behaviour)
 # ------------------------------------------------------------------
 
