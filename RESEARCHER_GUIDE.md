@@ -58,16 +58,16 @@ flowchart LR
     end
 
     subgraph codegen [Code Generation]
-        Signals --> GenSignals[generate_signal_config.py]
-        RepExport[representation/export.py] --> GenRep[generate_representation_config.py]
+        Signals --> GenConfig[generate_config.py]
+        RepExport[representation/export.py] --> GenConfig
+        Defaults[evolution_defaults.json] --> GenConfig
     end
 
     subgraph frontend [Frontend]
-        GenSignals --> EvConfig[config_signals.generated.js]
-        GenRep --> SubConfig[config.generated.js]
-        EvConfig --> ViewerControls[viewer_controls.js]
-        SubConfig --> AdapterRegistry[representation/registry.js]
-        AdapterRegistry --> PatternRenderer[pattern_renderer.js]
+        GenConfig --> Unified[config.generated.js]
+        Unified --> ViewerControls[viewer_controls.js]
+        Unified --> Registry[representation/registry.js]
+        Registry --> PatternRenderer[pattern_renderer.js]
         AnimLoop[animation_loop.js] --> PatternRenderer
         API --> PatternRenderer
     end
@@ -82,7 +82,7 @@ Architecture (spec, sockets, catalog): [signals/README.md](src/eyecatcher/signal
 **Checklist (order matters):** 1) Edit [signals/catalog.py](src/eyecatcher/signals/catalog.py) (and representation sockets if you add a new input target) → 2) Run `make generate` → 3) Restart server and reload app.
 
 1. **Edit the catalog and representations:** [src/eyecatcher/signals/catalog.py](src/eyecatcher/signals/catalog.py) – add or change `Signal` or `Output` instances and presets (e.g. `DUAL_CPPN_VISUAL_INPUTS`, `DUAL_CPPN_TIME_INPUTS`). Use `Signal("id", "Label")` for inputs; use `Signal("id", "Label", is_spatial=True)` for per-pixel inputs (x, y, distance); use `Output("id", "Label")` for outputs. Representations (e.g. [representation/dual_cppn.py](src/eyecatcher/representation/dual_cppn.py)) build sockets from these presets; if you add a new input target, add a socket that uses the new list. The registry ([signals/registry.py](src/eyecatcher/signals/registry.py)) provides helpers like `export_for_frontend` and `parse_time_inputs`; it does not define the signal lists.
-2. **Run codegen:** Run `make generate` (or `make generate-signals`). This updates NEAT config num_inputs/num_outputs from the representation’s socket counts, writes [static/js/evolution/config_signals.generated.js](static/js/evolution/config_signals.generated.js), and validates. No manual edit of [config/neat/](config/neat/) needed.
+2. **Run codegen:** Run `make generate`. This writes [static/js/config.generated.js](static/js/config.generated.js) (representations, signals, defaults), updates HTML includes, and runs `generate-neat` to sync NEAT num_inputs/num_outputs from the catalog. No manual edit of [config/neat/](config/neat/) needed.
 3. Restart the server and reload the app.
 
 If you forget step 2, the frontend will still use the old signal list until you run `make generate`. The test `test_generated_signals_file_is_up_to_date` in [tests/test_signal_registry.py](tests/test_signal_registry.py) fails if the generated file does not match the current representation spec; run `make test` to catch drift.
@@ -91,7 +91,7 @@ If you forget step 2, the frontend will still use the old signal list until you 
 
 The viewer (and community/genealogy previews) get CPPN input values—`raw_time`, `mouse_speed`, `mouse_dist`, `activity`—from a **signal source**. By default this is the built-in source (mouse + time from the animation loop). You can replace it with a custom source (e.g. fixed values for static previews, or future audio/gamepad).
 
-**Interface:** A signal source is an object with `getValues(context)`. `context` is `{ canvas?: HTMLCanvasElement }` (optional; used for per-pattern `mouse_dist`). The function returns an object with keys matching the canonical signal ids (see `SIGNAL_IDS` in [config_signals.generated.js](static/js/evolution/config_signals.generated.js)); values should be in the **0–1** range.
+**Interface:** A signal source is an object with `getValues(context)`. `context` is `{ canvas?: HTMLCanvasElement }` (optional; used for per-pattern `mouse_dist`). The function returns an object with keys matching the canonical signal ids (see `SIGNAL_IDS` in `window.EyecatcherConfig.signals` from [config.generated.js](static/js/config.generated.js)); values should be in the **0–1** range.
 
 **How to plug in:** Set `window.SignalSource` to your object **before** the app loads (e.g. in a script loaded before `app.js`), or pass `signalSource` into `AnimationLoop.init()` in [app.js](static/js/app/app.js). Example for fixed values (all patterns and previews use these):
 
@@ -150,7 +150,7 @@ Shaders are how we *display* evolved genomes, not part of the evolution algorith
 2. **GLSL string:** [src/eyecatcher/glsl/glsl_fragments.py](src/eyecatcher/glsl/glsl_fragments.py) – add the GLSL snippet for the activation (e.g. in `ACTIVATION_GLSL_BLOCK` or the dict that maps names to code).
 3. **Name mapping:** [src/eyecatcher/glsl/node_code_generator.py](src/eyecatcher/glsl/node_code_generator.py) – add the name to `ACTIVATION_FUNCTIONS` so the compiler emits the correct GLSL function name.
 4. **NEAT config:** In [config/neat/](config/neat/) (e.g. neat_config_experimental.txt), add the new name to `activation_options` (and optionally `activation_default`) so genomes can use it.
-5. Restart the server and run `make generate-signals` if you changed anything that affects the signal/activation export.
+5. Restart the server and run `make generate` if you changed anything that affects the signal/activation export.
 
 ### Add or change an output mode (color mode)
 
@@ -183,7 +183,7 @@ Genealogy stores evolutionary history (populations, individuals, branches) in SQ
 
 ## Frontend
 
-**Layout and rendering:** [static/js/README.md](static/js/README.md) — folder map, script order, adapter interface, capabilities matrix.
+**Layout and rendering:** [static/js/README.md](static/js/README.md) — folder map, script order, representation interface, capabilities matrix.
 
 ### Data flow (patterns to pixels)
 
@@ -202,7 +202,7 @@ Each frame (animation_loop.js):
 
 ### Substrate contract (frontend)
 
-Display is driven by **phenotype** (from the backend) and **substrates** (framework JS). The registry builds a facade per representation from `RepresentationConfig` and the substrate chosen by `phenotype.substrate`. Researchers do not implement adapters for standard cases.
+Display is driven by **phenotype** (from the backend) and **substrates** (framework JS). The registry builds a representation record per config from `EyecatcherConfig.representations` and the substrate chosen by `phenotype.substrate`. Researchers do not implement representation JS for standard substrates.
 
 **Contract in code:** [substrate.js](static/js/representation/substrate.js) defines the base `Substrate` with six methods; only `createDisplayElement` and `render` are required; others have no-op defaults.
 
@@ -225,7 +225,7 @@ Display is driven by **phenotype** (from the backend) and **substrates** (framew
 
 ## Keeping frontend in sync
 
-Some constants exist in both Python and JavaScript; when you change them, update both sides. To verify generated files are up to date (e.g. in CI), run `make check-generate`; it exits with an error and tells you to run `make generate` if anything is stale. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/evolution_config.js](static/js/evolution/evolution_config.js) (`DEFAULT_DEV_PORT`). **Evolution defaults** (population size, max, crossover, etc.): single source is [config/evolution_defaults.json](config/evolution_defaults.json); backend loads it, and `make generate-evolution-config` (or `make generate`) produces [evolution_config_defaults.generated.js](static/js/evolution/evolution_config_defaults.generated.js) for frontend fallbacks. Population size and max are bootstrapped from `GET /api/config` at load time. **Signal toggles and outputs** come from the representation’s signal spec (catalog + sockets): run `make generate-signals` after changing [signals/catalog.py](src/eyecatcher/signals/catalog.py) or representation sockets. **Representation config** (phenotype, ids, genome format) is generated from [representation/export.py](src/eyecatcher/representation/export.py). Run `make generate` after adding or changing representations to run all codegen (signals, representation config, representation includes, evolution config). test_signal_registry checks that the generated signals file matches the registry.
+Some constants exist in both Python and JavaScript; when you change them, update both sides. To verify generated files are up to date (e.g. in CI), run `make check-generate`; it exits with an error and tells you to run `make generate` if anything is stale. Default dev port: Python uses [server.py](src/eyecatcher/server.py) (`DEFAULT_PORT`); frontend uses [static/js/evolution/config.js](static/js/evolution/config.js) (`DEFAULT_DEV_PORT`). **Evolution defaults** (population size, max, crossover, etc.): single source is [config/evolution_defaults.json](config/evolution_defaults.json); `make generate` produces [static/js/config.generated.js](static/js/config.generated.js) with a `defaults` section for frontend fallbacks. Population size and max are bootstrapped from `GET /api/config` at load time. **Signal toggles, outputs, and representation config** (phenotype, ids, genome format) are all in the same generated file; run `make generate` after changing [signals/catalog.py](src/eyecatcher/signals/catalog.py), representation sockets, or [representation/export.py](src/eyecatcher/representation/export.py). test_signal_registry checks that the generated signals section matches the registry.
 
 **Evolution config vs NEAT:** Representation-agnostic evolution params (population_size, crossover_probability, elitism_default) live in [config/evolution_defaults.json](config/evolution_defaults.json); presets in [config/experiments.json](config/experiments.json) override them. NEAT config paths and NEAT .txt file contents (mutation rates, pop_size in .txt, etc.) stay in [experiment/config.py](src/eyecatcher/experiment/config.py) and config/neat/; population size for interactive evolution is controlled by our config, not by NEAT `pop_size`. At startup, a warning is logged if NEAT `pop_size` differs from our effective population_size.
 
@@ -274,7 +274,7 @@ If your representation uses a **new medium** (e.g. audio, 3D) that has no built-
 | # | File or action | One-line description |
 |---|----------------|----------------------|
 | 8 | [static/js/app/app.js](static/js/app/app.js) | Only if load/add flow must branch on your representation: ensure `output_type`/`representation_id` is passed so grid uses express and shader uses develop. |
-| 9 | [static/js/app/population_ui.js](static/js/app/population_ui.js) | Only if import must recognise your genome shape: ensure adapter’s `isGenomeFormat` is in the resolution order, or add branch so imported individuals get correct `output_type`. |
+| 9 | [static/js/app/population_ui.js](static/js/app/population_ui.js) | Only if import must recognise your genome shape: ensure the representation's `isGenomeFormat` is in the resolution order, or add branch so imported individuals get correct `output_type`. |
 
 ### Optional
 

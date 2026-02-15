@@ -159,7 +159,9 @@
         }
 
         _bootstrapFromConfig() {
-            var config = window.RepresentationConfig;
+            var config =
+                (window.EyecatcherConfig && window.EyecatcherConfig.representations) ||
+                window.RepresentationConfig;
             var reg = window.SubstrateRegistry;
             if (!config || !Array.isArray(config)) return;
             if (reg && reg.initDefaults) reg.initDefaults();
@@ -180,7 +182,9 @@
         }
 
         findByGenome(genome) {
-            var config = window.RepresentationConfig;
+            var config =
+                (window.EyecatcherConfig && window.EyecatcherConfig.representations) ||
+                window.RepresentationConfig;
             var order =
                 config && Array.isArray(config)
                     ? config.map(function (e) {
@@ -286,7 +290,7 @@
         }
 
         /**
-         * Get signal values from the active source (or defaults), build params via current adapter, and render one frame.
+         * Get signal values from the active source (or defaults), build params via current representation substrate, and render one frame.
          * Use from animation loop, genealogy thumbnails, and community previews.
          * @param {Object} runtime - From WebGLUtils.setupPattern (gl, program, positionBuffer, canvas)
          * @param {Object} signalState - Flat { signal_id: boolean } for CPPN toggles
@@ -325,7 +329,7 @@
 
     var registry = new RepresentationRegistry();
     window.RepresentationRegistry = registry;
-    window.RepresentationAdapters = registry; // backward-compat alias
+    window.RepresentationAdapters = registry; // backward-compat alias (prefer RepresentationRegistry, get, findByGenome)
     registry.getAdapter = registry.get.bind(registry);
     registry.findAdapterByGenome = registry.findByGenome.bind(registry);
 })();

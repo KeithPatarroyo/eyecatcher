@@ -63,33 +63,17 @@ def main() -> int:
     root = _repo_root()
     stale = False
 
-    # Signals: config_signals.generated.js
+    # Unified config: static/js/config.generated.js (representations, signals, defaults)
     if _check_stale(
         root,
-        "static/js/evolution/config_signals.generated.js",
+        "static/js/config.generated.js",
         [
-            "scripts/generate_signal_config.py",
-        ],
-        dir_sources=["src/eyecatcher/signals", "src/eyecatcher/representation"],
-    ):
-        stale = True
-
-    # Representation config: config.generated.js
-    if _check_stale(
-        root,
-        "static/js/representation/config.generated.js",
-        ["scripts/generate_representation_config.py"],
-        dir_sources=["src/eyecatcher/representation"],
-    ):
-        stale = True
-
-    # Evolution config: config_defaults.generated.js
-    if _check_stale(
-        root,
-        "static/js/evolution/config_defaults.generated.js",
-        [
-            "scripts/generate_evolution_config.py",
+            "scripts/generate_config.py",
             "config/evolution_defaults.json",
+        ],
+        dir_sources=[
+            "src/eyecatcher/representation",
+            "src/eyecatcher/signals",
         ],
     ):
         stale = True

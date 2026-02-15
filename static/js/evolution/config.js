@@ -1,29 +1,28 @@
 /**
- * Evolution and viewer constants. Population defaults from config_defaults.generated.js
- * (generated from config/evolution_defaults.json; run make generate). mergeFromServer overwrites from API.
- * Load before: api_client, app_core, toolbar_ui. Load after: config_signals.generated.js, config_defaults.generated.js.
+ * Evolution and viewer constants. Population defaults from config/evolution_defaults.json
+ * (run make generate). mergeFromServer overwrites from API.
+ * Reads from window.EyecatcherConfig (single config.generated.js) or legacy globals.
  * Exposes: window.EvolutionConfig
  */
 (function () {
     "use strict";
 
-    var signals = window.EvolutionConfigSignals || null;
+    var unified = window.EyecatcherConfig;
+    var signals = (unified && unified.signals) || window.EvolutionConfigSignals || null;
     if (!signals) {
         console.warn(
-            "EvolutionConfigSignals not loaded (run scripts/generate_signal_config.py). Signal toggles will be empty."
+            "Signal config not loaded (run make generate). Signal toggles will be empty."
         );
     }
 
-    var defaults = window.EvolutionConfigDefaults;
+    var defaults = (unified && unified.defaults) || window.EvolutionConfigDefaults;
     if (!defaults) {
-        console.error(
-            "EvolutionConfigDefaults not loaded (run make generate-evolution-config)."
-        );
+        console.error("Defaults not loaded (run make generate).");
         defaults = {};
     }
 
     var EvolutionConfig = {
-        // Population (from config_defaults.generated.js; run make generate)
+        // Population (from EyecatcherConfig.defaults or config_defaults.generated.js)
         DEFAULT_POPULATION_SIZE: defaults.population_size,
         MAX_POPULATION_SIZE: defaults.max_population_size,
         MIN_POPULATION_SIZE: defaults.min_population_size,

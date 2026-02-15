@@ -90,7 +90,6 @@ class {pascal}Representation(RepresentationBase):
     frontend_metadata = {{
         "hasSignalControls": True,
         "genomeKeys": ["key"],
-        "adapterFactory": None,
     }}
 
     phenotype = Phenotype(substrate="image")

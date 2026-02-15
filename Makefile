@@ -1,7 +1,7 @@
 # Eyecatcher — common development tasks
 # Run `make` or `make help` to list targets.
 
-.PHONY: help install dev test lint format generate generate-signals generate-representation-config generate-representation-includes generate-evolution-config check-generate new-representation docker-build docker-up clean
+.PHONY: help install dev test lint format generate generate-config generate-includes generate-neat check-generate new-representation docker-build docker-up clean
 
 help:
 	@echo "Eyecatcher — development targets"
@@ -10,12 +10,11 @@ help:
 	@echo "  make dev        Run the Flask dev server (python -m eyecatcher.server)"
 	@echo "  make test       Run pytest"
 	@echo "  make lint       Run Ruff check (Python) and ESLint (JS)"
-	@echo "  make generate   Run all codegen (signals + representation config + evolution config + representation includes)"
+	@echo "  make generate   Run all codegen (unified config + representation includes + NEAT update)"
 	@echo "  make check-generate  Exit with error if generated files are stale (for CI); run make generate to fix"
-	@echo "  make generate-signals  Generate config_signals.generated.js from Python signal spec; validate NEAT"
-	@echo "  make generate-representation-config  Generate config.generated.js from Python representation export"
-	@echo "  make generate-representation-includes  Update representation script tags in HTML"
-	@echo "  make generate-evolution-config  Generate config_defaults.generated.js from config/evolution_defaults.json"
+	@echo "  make generate-config  Generate static/js/config.generated.js (representations, signals, defaults)"
+	@echo "  make generate-includes  Update representation script tags in HTML"
+	@echo "  make generate-neat  Update config/neat/*.txt num_inputs/num_outputs from catalog"
 	@echo "  make new-representation name=<snake_case>  Scaffold a new representation (Python, registry, JS adapter, includes)"
 	@echo "  make docker-build  Build Docker image"
 	@echo "  make docker-up  Start app with docker compose up"
@@ -45,22 +44,19 @@ format:
 	ruff format .
 	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npm run format; fi
 
-generate: generate-signals generate-representation-config generate-representation-includes generate-evolution-config
+generate: generate-config generate-includes generate-neat
 
 check-generate:
 	.venv/bin/python scripts/check_codegen_sync.py
 
-generate-signals:
-	.venv/bin/python scripts/generate_signal_config.py
+generate-config:
+	.venv/bin/python scripts/generate_config.py
 
-generate-representation-config:
-	.venv/bin/python scripts/generate_representation_config.py
-
-generate-representation-includes:
+generate-includes:
 	.venv/bin/python scripts/generate_representation_includes.py
 
-generate-evolution-config:
-	.venv/bin/python scripts/generate_evolution_config.py
+generate-neat:
+	.venv/bin/python scripts/update_neat_config.py
 
 new-representation:
 	@if [ -z "$(name)" ]; then echo "Usage: make new-representation name=<snake_case>"; echo "Example: make new-representation name=my_rep"; exit 1; fi

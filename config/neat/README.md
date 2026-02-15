@@ -16,6 +16,6 @@
 
 **Where paths are set:** [experiment/config.py](../../src/eyecatcher/experiment/config.py) or presets in [config/experiments.json](../experiments.json); start with `EXPERIMENT_CONFIG=preset_name` to switch without editing code.
 
-**Signal counts:** Input/output counts must match the representation’s socket spec (see [signals/catalog.py](../../src/eyecatcher/signals/catalog.py) and representation sockets). `make generate-signals` validates NEAT config against socket counts.
+**Signal counts:** Input/output counts must match the representation’s socket spec (see [signals/catalog.py](../../src/eyecatcher/signals/catalog.py) and representation sockets). `make generate` runs `generate-neat`, which updates and validates NEAT config against socket counts.
 
 **Mutation:** Gene-level mutation rates are in these .txt files. Crossover probability and population size: [config/evolution_defaults.json](../evolution_defaults.json) and [experiment/config.py](../../src/eyecatcher/experiment/config.py). See [RESEARCHER_GUIDE.md](../../RESEARCHER_GUIDE.md).

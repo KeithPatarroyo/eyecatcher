@@ -2,7 +2,7 @@
 """
 Update representation script includes in HTML templates from a single ordered list.
 
-Adding a new adapter = add one entry to REPRESENTATION_SCRIPTS below and run:
+Adding a new representation script = add one entry to REPRESENTATION_SCRIPTS and run:
   python scripts/generate_representation_includes.py
   or: make generate-representation-includes
 
@@ -17,6 +17,7 @@ import re
 
 # Single source of truth: representation script basenames in load order.
 # WebGLUtils before shader/grid substrates; substrate_registry and registry last.
+# Unified config (js/config.generated.js) is loaded earlier in the page, not here.
 REPRESENTATION_SCRIPTS = [
     "substrate.js",
     "image_substrate.js",
@@ -24,7 +25,6 @@ REPRESENTATION_SCRIPTS = [
     "shader_substrate.js",
     "grid_substrate.js",
     "substrate_registry.js",
-    "config.generated.js",
     "registry.js",
 ]
 

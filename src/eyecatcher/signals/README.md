@@ -95,4 +95,4 @@ The following read from `representation.signal_spec` or from sockets:
 3. Set `self.signal_spec = SignalSpec(sockets=(...), outputs=..., substitutions=...)` in your representation's `__init__`.
 4. Delegate expression to sockets; keep evolution (create_random, mutate, crossover, population) on the representation.
 
-After changing signal lists used by NEAT representations, run `make generate` (or `make generate-signals`): the script updates NEAT config num_inputs/num_outputs from the representation and emits the frontend signal list.
+After changing signal lists used by NEAT representations, run `make generate`: this runs generate-config (unified config.generated.js), generate-includes (HTML), and generate-neat (NEAT num_inputs/num_outputs from catalog).

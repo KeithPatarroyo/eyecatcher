@@ -77,7 +77,7 @@
         }
 
         /**
-         * Show or hide signal controls based on representation adapter.
+         * Show or hide signal controls based on representation.
          * @param {string|null} representationId - current representation id
          */
         updateForRepresentation(representationId) {
