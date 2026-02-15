@@ -144,8 +144,7 @@
 
         _bootstrapFromConfig() {
             var config =
-                (window.EyecatcherConfig && window.EyecatcherConfig.representations) ||
-                window.RepresentationConfig;
+                window.EyecatcherConfig && window.EyecatcherConfig.representations;
             var reg = window.SubstrateRegistry;
             if (!config || !Array.isArray(config)) return;
             if (reg && reg.initDefaults) reg.initDefaults();
@@ -167,8 +166,7 @@
 
         findByGenome(genome) {
             var config =
-                (window.EyecatcherConfig && window.EyecatcherConfig.representations) ||
-                window.RepresentationConfig;
+                window.EyecatcherConfig && window.EyecatcherConfig.representations;
             var order =
                 config && Array.isArray(config)
                     ? config.map(function (e) {

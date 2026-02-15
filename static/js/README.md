@@ -27,7 +27,7 @@ Script load order in the HTML: lib → evolution (config) → community → repr
 
 **Edit when you change representation types or how patterns are drawn.**
 
-Display is driven by **phenotype** (from the backend, per representation) and **substrates** (frontend framework). The registry builds a facade per representation from `RepresentationConfig` and the substrate chosen by `phenotype.substrate`. Researchers do not write JavaScript for standard substrates.
+Display is driven by **phenotype** (from the backend, per representation) and **substrates** (frontend framework). The registry builds a plain record per representation from `EyecatcherConfig.representations` (config.generated.js) and the substrate chosen by `phenotype.substrate`. Researchers do not write JavaScript for standard substrates.
 
 - **Substrate contract:** `substrate.js` — base class with six methods: `createDisplayElement`, `setup`, `teardown`, `buildParams`, `render`, `handleInteraction`. Only `createDisplayElement` and `render` are required; others have no-op defaults.
 - `substrate_registry.js` — Routes `phenotype.substrate` (e.g. `"shader"`, `"grid"`, `"image"`) to a substrate instance. Unknown names fall back to ImageSubstrate.

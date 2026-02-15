@@ -1,7 +1,7 @@
 """Export representation metadata for frontend codegen.
 
-generate_representation_config.py → config.generated.js. Uses
-frontend_metadata and representation.capabilities.
+Unified scripts/generate_config.py writes static/js/config.generated.js.
+Uses frontend_metadata and representation.capabilities.
 """
 
 from __future__ import annotations

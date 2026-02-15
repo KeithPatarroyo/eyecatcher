@@ -276,7 +276,7 @@
         if (!input || !downBtn || !upBtn) return;
         var cfg = window.EvolutionConfig || {};
         var minP = cfg.MIN_POPULATION_SIZE !== undefined ? cfg.MIN_POPULATION_SIZE : 2;
-        // Fallback must match EvolutionConfig; see evolution_config.js
+        // Fallback must match EvolutionConfig (EyecatcherConfig.defaults in config.generated.js)
         var maxP = cfg.MAX_POPULATION_SIZE !== undefined ? cfg.MAX_POPULATION_SIZE : 50;
         var defaultP =
             cfg.DEFAULT_POPULATION_SIZE !== undefined

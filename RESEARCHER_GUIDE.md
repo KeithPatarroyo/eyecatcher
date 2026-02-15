@@ -248,7 +248,7 @@ Use this checklist if you add a representation by hand (or to verify after scaff
 | 1 | [src/eyecatcher/representation/\<new\>.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `signal_spec`, `phenotype`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and `frontend_metadata` (`hasSignalControls`, `genomeKeys`). Set `phenotype = Phenotype(substrate="shader"|"grid"|"image", ...)`. Implement `develop` for shader representations; for grid, put step/display/toggle shaders and config on the phenotype; for image, implement `render_to_image()`. Optionally `serialize_output(output)` for `/api/express`. See [protocol.py](src/eyecatcher/representation/protocol.py), [trivial.py](src/eyecatcher/representation/trivial.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
 | 2 | [src/eyecatcher/representation/__init__.py](src/eyecatcher/representation/__init__.py) | Export the new representation class (and genome if needed). |
 | 3 | [src/eyecatcher/representation/registry.py](src/eyecatcher/representation/registry.py) | Add one entry to `REPRESENTATIONS` dict: `"<id>": NewRepresentation`. |
-| 4 | `make generate` | Regenerate frontend config from `frontend_metadata` (writes [static/js/representation/config.generated.js](static/js/representation/config.generated.js) and representation includes). |
+| 4 | `make generate` | Regenerate frontend config from `frontend_metadata` (writes [static/js/config.generated.js](static/js/config.generated.js) and representation includes). |
 
 ### Config
 
