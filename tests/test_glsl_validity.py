@@ -68,14 +68,14 @@ def test_dual_shader_all_signal_variables_declared(
     dual_cppn_representation, random_dual_genome
 ):
     """Dual shader: every v_* and *_base used in the output is declared/defined."""
-    glsl = dual_cppn_representation.compile_to_shader(random_dual_genome)
+    glsl = dual_cppn_representation.develop(random_dual_genome)
     assert glsl is not None and "void main()" in glsl
     _assert_all_used_vars_declared(glsl)
 
 
 def test_dual_shader_no_redefinition(dual_cppn_representation, random_dual_genome):
     """Dual shader must not declare the same v_* twice (WebGL redefinition)."""
-    glsl = dual_cppn_representation.compile_to_shader(random_dual_genome)
+    glsl = dual_cppn_representation.develop(random_dual_genome)
     assert glsl is not None
     redefs = _v_redefinitions(glsl)
     assert not redefs, f"GLSL redefines (declare float twice): {sorted(redefs)}"
@@ -85,7 +85,7 @@ def test_single_shader_all_signal_variables_declared():
     """Single CPPN shader: every v_* used is declared (no _base in single path)."""
     representation = SingleCPPNRepresentation()
     genome = representation.create_random(key=0)
-    glsl = representation.compile_to_shader(genome)
+    glsl = representation.develop(genome)
     assert glsl is not None and "void main()" in glsl
     _assert_all_used_vars_declared(glsl)
 
@@ -98,7 +98,7 @@ def test_dual_shader_base_variables_only_for_time_inputs(
     Only time network inputs get _base in the dual shader. Visual-only inputs
     (e.g. mouse_x, mouse_y) must not be referenced as mouse_x_base / mouse_y_base.
     """
-    glsl = dual_cppn_representation.compile_to_shader(random_dual_genome)
+    glsl = dual_cppn_representation.develop(random_dual_genome)
     assert glsl is not None
 
     used_base = _used_base_identifiers(glsl)
@@ -114,7 +114,7 @@ def test_dual_shader_base_variables_only_for_time_inputs(
 
 def test_glsl_validity_with_minimal_dual(representation, minimal_dual):
     """Minimal dual genome still produces GLSL with all variables declared."""
-    glsl = representation.compile_to_shader(minimal_dual)
+    glsl = representation.develop(minimal_dual)
     assert glsl is not None
     _assert_all_used_vars_declared(glsl)
 
@@ -126,6 +126,6 @@ def test_glsl_validity_dual_empty_connections(representation, random_dual_genome
         conn.enabled = False
     for conn in dual.time_signal.connections.values():
         conn.enabled = False
-    glsl = representation.compile_to_shader(dual)
+    glsl = representation.develop(dual)
     assert glsl is not None
     _assert_all_used_vars_declared(glsl)

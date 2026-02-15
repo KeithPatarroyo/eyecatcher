@@ -48,7 +48,7 @@ def test_ca_compiled_shader_valid_glsl():
     """CA representation compiled shader passes glslangValidator (if available)."""
     representation = ConwayRepresentation(grid_size=64, gol_steps=32)
     ind = representation.create_random(key=0)
-    glsl = representation.compile_to_shader(ind)
+    glsl = representation.develop(ind)
     assert glsl is not None and "void main()" in glsl
     ok, err = _validate_fragment_shader(glsl)
     if not _glslang_available():
@@ -61,7 +61,7 @@ def test_dual_cppn_compiled_shader_valid_glsl(
     dual_cppn_representation, random_dual_genome
 ):
     """Dual CPPN compiled shader passes glslangValidator (if available)."""
-    glsl = dual_cppn_representation.compile_to_shader(random_dual_genome)
+    glsl = dual_cppn_representation.develop(random_dual_genome)
     assert glsl is not None and "void main()" in glsl
     ok, err = _validate_fragment_shader(glsl)
     if not _glslang_available():

@@ -1,4 +1,4 @@
-"""Tests for representation compile stats and compile_to_shader."""
+"""Tests for representation compile stats and develop (genome → shader)."""
 
 
 def test_get_compile_stats_returns_expected_keys(
@@ -32,10 +32,8 @@ def test_get_compile_stats_matches_genome_structure(
     )
 
 
-def test_compile_to_shader_returns_valid_glsl(
-    dual_cppn_representation, random_dual_genome
-):
-    """compile_to_shader returns GLSL with void main()."""
-    shader = dual_cppn_representation.compile_to_shader(random_dual_genome)
+def test_develop_returns_valid_glsl(dual_cppn_representation, random_dual_genome):
+    """develop returns GLSL with void main()."""
+    shader = dual_cppn_representation.develop(random_dual_genome)
     assert shader is not None
     assert "void main()" in shader

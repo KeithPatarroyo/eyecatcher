@@ -24,12 +24,12 @@ def test_api_random(client):
         assert "time_signal" in g
 
 
-def test_api_evaluate(client):
-    """POST /api/evaluate returns results (shader or grid per representation)."""
+def test_api_express(client):
+    """POST /api/express returns results (shader or grid per representation)."""
     rv = client.post("/api/random", json={"size": 2})
     assert rv.status_code == 200
     individuals = rv.get_json()["individuals"]
-    rv = client.post("/api/evaluate", json={"individuals": individuals})
+    rv = client.post("/api/express", json={"individuals": individuals})
     assert rv.status_code == 200
     data = rv.get_json()
     assert "results" in data
@@ -46,12 +46,12 @@ def test_api_evaluate(client):
 
 
 @pytest.mark.slow
-def test_api_compile(client):
-    """POST /api/compile with individuals returns shaders."""
+def test_api_develop(client):
+    """POST /api/develop with individuals returns shaders."""
     rv = client.post("/api/random", json={"size": 2})
     assert rv.status_code == 200
     individuals = rv.get_json()["individuals"]
-    rv = client.post("/api/compile", json={"individuals": individuals})
+    rv = client.post("/api/develop", json={"individuals": individuals})
     assert rv.status_code == 200
     data = rv.get_json()
     assert "shaders" in data

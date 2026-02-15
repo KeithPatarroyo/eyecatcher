@@ -3,8 +3,8 @@ Stateless API Blueprint for Eyecatcher.
 
 Provides endpoints that don't depend on server-side population state.
 Representation is stored on Flask app.config["EYECATCHER_REPRESENTATION"].
-Endpoints: /api/develop (primary), /api/compile (alias), /api/express (primary),
-/api/evaluate (alias), /api/random, /api/time-output, /api/network, /api/adjust-weight.
+Endpoints: /api/develop, /api/express, /api/random, /api/time-output, /api/network,
+/api/adjust-weight. Shader endpoints use protocol develop() and capability "develop".
 """
 
 from flask import Blueprint, current_app, jsonify, request
@@ -132,18 +132,18 @@ def _parse_one_individual(payload: dict, index: int):
 
 
 def _compile_individuals(individuals_data, color_mode):
-    """Compile individual JSONs to shader response dicts via representation protocol."""
+    """Develop genome JSONs to shader response dicts via representation protocol."""
     mode = (color_mode or "").strip().lower() or None
     shaders = []
     for i, item_data in enumerate(individuals_data):
-        ind, individual_id, clicks = _parse_one_individual(item_data, i)
-        glsl = get_current_representation().compile_to_shader(ind, color_mode=mode)
+        genome, individual_id, clicks = _parse_one_individual(item_data, i)
+        glsl = get_current_representation().develop(genome, color_mode=mode)
         resp = {
             "id": individual_id,
             "shader": glsl or "",
             "clicks": clicks,
         }
-        stats = get_current_representation().get_compile_stats(ind)
+        stats = get_current_representation().get_compile_stats(genome)
         resp.update(stats)
         resp["nodes"] = sum(v for k, v in stats.items() if k.endswith("_nodes"))
         resp["connections"] = sum(
@@ -153,28 +153,27 @@ def _compile_individuals(individuals_data, color_mode):
     return shaders
 
 
-def _require_can_compile():
-    """Error if representation does not have compile capability."""
+def _require_can_develop():
+    """Error if representation does not have develop capability."""
     caps = get_current_representation().capabilities
-    if not caps.get("compile", False):
+    if not caps.get("develop", False):
         return api_error(
-            "This endpoint requires a representation with compile capability.",
+            "This endpoint requires a representation with develop capability.",
             501,
         )
     return None
 
 
 @stateless_bp.route("/api/develop", methods=["POST"])
-@stateless_bp.route("/api/compile", methods=["POST"])
 @api_try_except
-def api_compile():
+def api_develop():
     """
-    Stateless: compile individuals to shaders.
+    Stateless: develop genomes to shaders.
     Body: { "individuals": [ ... ], "color_mode": "hsv"|"rgb" (optional) }
     Returns: { "shaders": [ { "id", "shader", "clicks", "nodes", ... }, ... ] }
-    Works for any representation with compile_to_shader (dual_cppn, single_cppn, ca).
+    Works for any representation with develop (dual_cppn, single_cppn, ca).
     """
-    err = _require_can_compile()
+    err = _require_can_develop()
     if err is not None:
         return err
     data = request.json or {}
@@ -217,11 +216,10 @@ def api_random():
 
 
 @stateless_bp.route("/api/express", methods=["POST"])
-@stateless_bp.route("/api/evaluate", methods=["POST"])
 @api_try_except
-def api_evaluate():
+def api_express():
     """
-    Express individuals with the current representation and return displayable output.
+    Express genomes with the current representation and return displayable output.
 
     Body: { "individuals": [ ... ] } (each item is representation-specific JSON).
     Returns: { "results": [ { "id", "output_type", "image"?, "shader"? } ],

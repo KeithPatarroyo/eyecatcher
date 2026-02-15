@@ -70,9 +70,9 @@ def test_express_respects_kwargs(ca_substrate):
     assert out.data.shape == (64, 64, 3)
 
 
-def test_compile_to_shader_returns_gol_glsl(ca_substrate):
-    ind = ca_substrate.create_random(key=0)
-    glsl = ca_substrate.compile_to_shader(ind)
+def test_develop_returns_gol_glsl(ca_substrate):
+    genome = ca_substrate.create_random(key=0)
+    glsl = ca_substrate.develop(genome)
     assert glsl is not None
     assert "u_state" in glsl
     assert "u_texelSize" in glsl
