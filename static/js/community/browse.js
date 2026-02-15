@@ -8,11 +8,11 @@
     const PREVIEW_CANVAS_SIZE = 80;
 
     async function fetchDisplayDataForList(list, toItem, getKey) {
-        const RepresentationAdapters = window.RepresentationAdapters;
+        const RepresentationRegistry = window.RepresentationRegistry;
         if (
-            !RepresentationAdapters ||
-            !RepresentationAdapters.getDisplayData ||
-            !RepresentationAdapters.findAdapterByGenome
+            !RepresentationRegistry ||
+            !RepresentationRegistry.getDisplayData ||
+            !RepresentationRegistry.findAdapterByGenome
         ) {
             return {};
         }
@@ -27,10 +27,10 @@
                       ? payload.genome
                       : payload);
             const key = getKey(item);
-            const adapter = RepresentationAdapters.findAdapterByGenome(genome);
+            const adapter = RepresentationRegistry.findAdapterByGenome(genome);
             if (!adapter) return;
             try {
-                const result = await RepresentationAdapters.getDisplayData(
+                const result = await RepresentationRegistry.getDisplayData(
                     adapter,
                     [genome],
                     {}
@@ -81,8 +81,8 @@
         }
         li.appendChild(info);
         if (options.appendNodes) options.appendNodes(li, item);
-        if (displayItem && displayItem.shader && patternRenderer) {
-            return patternRenderer.setupPattern(canvas, displayItem.shader);
+        if (displayItem && displayItem.shader && window.WebGLUtils) {
+            return window.WebGLUtils.setupPattern(canvas, displayItem.shader);
         }
         return null;
     }
@@ -111,20 +111,16 @@
             ul.appendChild(li);
         });
         if (
-            patternRenderer &&
+            window.RepresentationRegistry &&
             viewerControls &&
             viewerControls.signalState != null &&
             previewPatternData.length > 0
         ) {
             const signalState = viewerControls.signalState;
+            const RA = window.RepresentationRegistry;
             requestAnimationFrame(() => {
                 previewPatternData.forEach((pd) =>
-                    patternRenderer.renderWithSignals(
-                        pd,
-                        patternRenderer,
-                        signalState,
-                        null
-                    )
+                    RA.renderFrameWithSignals(pd, signalState, null)
                 );
             });
         }

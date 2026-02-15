@@ -1,7 +1,7 @@
 /**
  * Genealogy tree viewer: tree UI, load population into main app, thumbnails.
- * Dependencies: vis.js, api_client (genealogy API), PatternRenderer for thumbnails.
- * Load after: pattern_renderer, api_client, toast, utils. Exposes: page-level functions.
+ * Dependencies: vis.js, api_client (genealogy API), WebGLUtils and RepresentationRegistry for thumbnails.
+ * Load after: webgl_utils, api_client, toast, utils. Exposes: page-level functions.
  */
 const API_URL = window.API_URL || "";
 

@@ -144,7 +144,6 @@
                         data.children,
                         newGenerationNum,
                         false,
-                        data.output_type,
                         data.representation_id
                     );
                 })

@@ -83,7 +83,7 @@
         updateForRepresentation(representationId) {
             var container = document.getElementById("signal-controls");
             if (!container) return;
-            var adapter = window.RepresentationAdapters.getAdapter(representationId);
+            var adapter = window.RepresentationRegistry.getAdapter(representationId);
             var show = adapter === null ? true : adapter.hasSignalControls !== false;
             container.style.display = show ? "" : "none";
         }

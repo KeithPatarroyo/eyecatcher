@@ -64,8 +64,9 @@
             return data;
         }
 
-        async compile(individuals, colorMode) {
-            var payload = individuals.map(function (g) {
+        /** Primary: develop genome → shader. Prefer over compile(). */
+        async develop(individuals, colorMode) {
+            var payload = (individuals || []).map(function (g) {
                 var copy = Object.assign({}, g);
                 copy.clicks = 0;
                 return copy;
@@ -73,14 +74,19 @@
             var body = { individuals: payload };
             if (colorMode === "hsv" || colorMode === "rgb") body.color_mode = colorMode;
             return this.apiFetch(
-                this.getBase() + "/compile",
+                this.getBase() + "/develop",
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(body),
                 },
-                "Compile failed"
+                "Develop failed"
             );
+        }
+
+        /** Alias for develop(); use develop() for biology-aligned naming. */
+        async compile(individuals, colorMode) {
+            return this.develop(individuals, colorMode);
         }
 
         async evolve(parents, populationSize, genealogy) {
@@ -168,16 +174,22 @@
             );
         }
 
-        async evaluate(individuals) {
+        /** Primary: express genome → phenotype (image/grid/shader). Prefer over evaluate(). */
+        async express(individuals) {
             return this.apiFetch(
-                this.getBase() + "/evaluate",
+                this.getBase() + "/express",
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ individuals: individuals }),
+                    body: JSON.stringify({ individuals: individuals || [] }),
                 },
-                "Evaluate failed"
+                "Express failed"
             );
+        }
+
+        /** Alias for express(); use express() for biology-aligned naming. */
+        async evaluate(individuals) {
+            return this.express(individuals);
         }
     }
 

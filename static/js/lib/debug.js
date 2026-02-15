@@ -271,7 +271,7 @@ const EyecatcherDebug = (function () {
          * @param {string|null} representationId - current representation id
          */
         updateForRepresentation: function (representationId) {
-            const adapter = window.RepresentationAdapters.getAdapter(representationId);
+            const adapter = window.RepresentationRegistry.getAdapter(representationId);
             const show =
                 adapter &&
                 adapter.capabilities &&

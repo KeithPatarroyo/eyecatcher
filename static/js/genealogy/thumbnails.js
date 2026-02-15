@@ -15,12 +15,12 @@
             return cache.get(populationId);
         }
 
-        const RepresentationAdapters = window.RepresentationAdapters;
+        const RepresentationRegistry = window.RepresentationRegistry;
         const ApiClient = window.ApiClient;
         if (
-            !RepresentationAdapters ||
-            !RepresentationAdapters.getDisplayData ||
-            !RepresentationAdapters.findAdapterByGenome ||
+            !RepresentationRegistry ||
+            !RepresentationRegistry.getDisplayData ||
+            !RepresentationRegistry.findAdapterByGenome ||
             !ApiClient
         ) {
             return null;
@@ -35,10 +35,10 @@
             const genome = data.individual != null ? data.individual : data.genome;
             if (!genome) return null;
 
-            const adapter = RepresentationAdapters.findAdapterByGenome(genome);
+            const adapter = RepresentationRegistry.findAdapterByGenome(genome);
             if (!adapter) return null;
 
-            const result = await RepresentationAdapters.getDisplayData(
+            const result = await RepresentationRegistry.getDisplayData(
                 adapter,
                 [genome],
                 {}
@@ -67,8 +67,8 @@
                         THUMBNAIL_CANVAS_SIZE
                     );
                 }
-            } else if (pop.shader && window.PatternRenderer) {
-                const patternData = PatternRenderer.setupPattern(canvas, pop.shader);
+            } else if (pop.shader && window.WebGLUtils) {
+                const patternData = window.WebGLUtils.setupPattern(canvas, pop.shader);
                 if (!patternData || patternData.error) return null;
                 if (genome && typeof genome.rule === "number") {
                     patternData.caRule = genome.rule;
@@ -78,12 +78,13 @@
                     window.EvolutionConfig.getDefaultSignalState
                         ? window.EvolutionConfig.getDefaultSignalState()
                         : { time: {}, visual: {} };
-                PatternRenderer.renderWithSignals(
-                    patternData,
-                    PatternRenderer,
-                    signalState,
-                    canvas
-                );
+                if (window.RepresentationRegistry) {
+                    window.RepresentationRegistry.renderFrameWithSignals(
+                        patternData,
+                        signalState,
+                        canvas
+                    );
+                }
             } else {
                 return null;
             }
