@@ -24,6 +24,12 @@
         _viewerControls = options.viewerControls || null;
     }
 
+    function delegate(moduleName, methodName, getContext) {
+        var M = window[moduleName];
+        if (!M) return;
+        M[methodName](getContext());
+    }
+
     function showLoading(show) {
         if (typeof window.showLoading === "function") {
             window.showLoading(show);
@@ -32,32 +38,39 @@
 
     // ----- Submit (delegate to CommunitySubmit) -----
     function openSubmitCommunityModal(patternId) {
-        const Submit = window.CommunitySubmit;
+        var Submit = window.CommunitySubmit;
         if (!Submit) return;
-        const ctx = {
+        Submit.openSubmitCommunityModal(patternId, {
             getGenomeForPattern: _getGenomeForPattern,
-            setSubmitGenome: (g) => (_submitCommunityGenome = g),
-            getSubmitGenome: () => _submitCommunityGenome,
+            setSubmitGenome: function (g) {
+                _submitCommunityGenome = g;
+            },
+            getSubmitGenome: function () {
+                return _submitCommunityGenome;
+            },
             showLoading: showLoading,
-        };
-        Submit.openSubmitCommunityModal(patternId, ctx);
+        });
     }
 
     function closeSubmitCommunityModal() {
-        const Submit = window.CommunitySubmit;
-        if (!Submit) return;
-        const ctx = { setSubmitGenome: (g) => (_submitCommunityGenome = g) };
-        Submit.closeSubmitCommunityModal(ctx);
+        delegate("CommunitySubmit", "closeSubmitCommunityModal", function () {
+            return {
+                setSubmitGenome: function (g) {
+                    _submitCommunityGenome = g;
+                },
+            };
+        });
     }
 
     function submitCommunityForm() {
-        const Submit = window.CommunitySubmit;
-        if (!Submit) return;
-        const ctx = {
-            getSubmitGenome: () => _submitCommunityGenome,
-            apiUrl: _apiUrl,
-        };
-        Submit.submitCommunityForm(ctx);
+        delegate("CommunitySubmit", "submitCommunityForm", function () {
+            return {
+                getSubmitGenome: function () {
+                    return _submitCommunityGenome;
+                },
+                apiUrl: _apiUrl,
+            };
+        });
     }
 
     // ----- Browse (delegate to CommunityBrowse) -----
@@ -200,32 +213,39 @@
 
     // ----- Admin (delegate to CommunityAdmin) -----
     function openAdminModal() {
-        const Admin = window.CommunityAdmin;
-        if (!Admin) return;
-        const ctx = {
-            setAdminKey: (k) => (_adminKey = k),
-        };
-        Admin.openAdminModal(ctx);
+        delegate("CommunityAdmin", "openAdminModal", function () {
+            return {
+                setAdminKey: function (k) {
+                    _adminKey = k;
+                },
+            };
+        });
     }
 
     function closeAdminModal() {
-        const Admin = window.CommunityAdmin;
-        if (!Admin) return;
-        const ctx = { setAdminKey: (k) => (_adminKey = k) };
-        Admin.closeAdminModal(ctx);
+        delegate("CommunityAdmin", "closeAdminModal", function () {
+            return {
+                setAdminKey: function (k) {
+                    _adminKey = k;
+                },
+            };
+        });
     }
 
     function submitAdminKey() {
-        const Admin = window.CommunityAdmin;
-        if (!Admin) return;
-        const ctx = {
-            setAdminKey: (k) => (_adminKey = k),
-            getAdminKey: () => _adminKey,
-            apiUrl: _apiUrl,
-            patternRenderer: _patternRenderer,
-            viewerControls: _viewerControls,
-        };
-        Admin.submitAdminKey(ctx);
+        delegate("CommunityAdmin", "submitAdminKey", function () {
+            return {
+                setAdminKey: function (k) {
+                    _adminKey = k;
+                },
+                getAdminKey: function () {
+                    return _adminKey;
+                },
+                apiUrl: _apiUrl,
+                patternRenderer: _patternRenderer,
+                viewerControls: _viewerControls,
+            };
+        });
     }
 
     window.CommunityUI = {

@@ -25,6 +25,19 @@
         };
     }
 
+    function createActionButton(text, className, title, ariaLabel, onClick) {
+        var btn = document.createElement("button");
+        btn.className = className;
+        btn.textContent = text;
+        btn.setAttribute("title", title);
+        btn.setAttribute("aria-label", ariaLabel);
+        btn.onclick = function (e) {
+            e.stopPropagation();
+            if (onClick) onClick();
+        };
+        return btn;
+    }
+
     class CardBuilder {
         /**
          * Create an organism card DOM element with canvas, info, action buttons, and event binding.
@@ -84,63 +97,59 @@
             const actions = document.createElement("div");
             actions.className = "organism-actions";
 
-            const fullscreenBtn = document.createElement("button");
-            fullscreenBtn.className = "fullscreen-btn";
-            fullscreenBtn.textContent = "\u26F6";
-            fullscreenBtn.setAttribute("title", "Expand to fullscreen");
-            fullscreenBtn.setAttribute("aria-label", "Expand to fullscreen");
-            fullscreenBtn.onclick = function (e) {
-                e.stopPropagation();
-                if (options.onFullscreen) options.onFullscreen(id);
-            };
-
-            const submitCommunityBtn = document.createElement("button");
-            submitCommunityBtn.className = "submit-community-btn";
-            submitCommunityBtn.setAttribute("title", "Share to Community");
-            submitCommunityBtn.setAttribute("aria-label", "Share to Community");
-            submitCommunityBtn.textContent = "\u2197";
-            submitCommunityBtn.onclick = function (e) {
-                e.stopPropagation();
-                if (options.onShare) options.onShare(id);
-            };
-
+            actions.appendChild(
+                createActionButton(
+                    "\u26F6",
+                    "fullscreen-btn",
+                    "Expand to fullscreen",
+                    "Expand to fullscreen",
+                    function () {
+                        if (options.onFullscreen) options.onFullscreen(id);
+                    }
+                )
+            );
+            actions.appendChild(
+                createActionButton(
+                    "\u2197",
+                    "submit-community-btn",
+                    "Share to Community",
+                    "Share to Community",
+                    function () {
+                        if (options.onShare) options.onShare(id);
+                    }
+                )
+            );
             var showNetwork = representation
                 ? Helpers.hasCapability(representation.capabilities, "network")
                 : true;
             var showSave = representation
                 ? Helpers.hasCapability(representation.capabilities, "save")
                 : true;
-
-            const networkBtn = document.createElement("button");
-            networkBtn.className = "network-btn";
-            networkBtn.textContent = "\uD83E\uDDE0";
-            networkBtn.setAttribute("title", "View network visualization");
-            networkBtn.setAttribute("aria-label", "View network visualization");
-            networkBtn.onclick = function (e) {
-                e.stopPropagation();
-                if (options.onNetwork) options.onNetwork(id, card);
-            };
-
-            const saveBtn = document.createElement("button");
-            saveBtn.className = "save-btn";
-            saveBtn.textContent = "\u2193";
-            saveBtn.setAttribute(
-                "title",
-                "Download organism (compiling may take a moment)"
-            );
-            saveBtn.setAttribute(
-                "aria-label",
-                "Download organism; compiling may take a moment"
-            );
-            saveBtn.onclick = function (e) {
-                e.stopPropagation();
-                if (options.onSave) options.onSave(id, saveBtn);
-            };
-
-            actions.appendChild(fullscreenBtn);
-            actions.appendChild(submitCommunityBtn);
-            if (showNetwork) actions.appendChild(networkBtn);
-            if (showSave) actions.appendChild(saveBtn);
+            if (showNetwork) {
+                actions.appendChild(
+                    createActionButton(
+                        "\uD83E\uDDE0",
+                        "network-btn",
+                        "View network visualization",
+                        "View network visualization",
+                        function () {
+                            if (options.onNetwork) options.onNetwork(id, card);
+                        }
+                    )
+                );
+            }
+            if (showSave) {
+                var saveBtn = createActionButton(
+                    "\u2193",
+                    "save-btn",
+                    "Download organism (compiling may take a moment)",
+                    "Download organism; compiling may take a moment",
+                    function () {
+                        if (options.onSave) options.onSave(id, saveBtn);
+                    }
+                );
+                actions.appendChild(saveBtn);
+            }
 
             if (!representation) {
                 card.appendChild(createErrorFallback("No representation"));

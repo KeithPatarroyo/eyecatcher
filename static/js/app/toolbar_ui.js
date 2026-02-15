@@ -5,6 +5,21 @@
 (function () {
     "use strict";
 
+    function bindButton(el, fn) {
+        if (el == null) return;
+        if (window.Utils && window.Utils.onRoleButtonKeydown) {
+            window.Utils.onRoleButtonKeydown(el, fn);
+        } else {
+            el.addEventListener("click", fn);
+            el.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    fn();
+                }
+            });
+        }
+    }
+
     function initStartFreshDropdown() {
         const btn = document.getElementById("start-fresh-btn");
         const menu = document.getElementById("start-fresh-dropdown");
@@ -39,17 +54,7 @@
                     window.PopulationUI.onLoadSavedClick();
                 close();
             }
-            if (window.Utils && window.Utils.onRoleButtonKeydown) {
-                window.Utils.onRoleButtonKeydown(item, act);
-            } else {
-                item.addEventListener("click", act);
-                item.addEventListener("keydown", function (e) {
-                    if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        act();
-                    }
-                });
-            }
+            bindButton(item, act);
         });
         document.addEventListener("click", close);
         document.addEventListener("keydown", function (e) {
@@ -68,17 +73,7 @@
                 instructions.hidden ? "Show help" : "Hide help"
             );
         }
-        if (window.Utils && window.Utils.onRoleButtonKeydown) {
-            window.Utils.onRoleButtonKeydown(helpBtn, toggleHelp);
-        } else {
-            helpBtn.addEventListener("click", toggleHelp);
-            helpBtn.addEventListener("keydown", function (e) {
-                if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    toggleHelp();
-                }
-            });
-        }
+        bindButton(helpBtn, toggleHelp);
     }
 
     /**
@@ -216,16 +211,7 @@
         }
 
         refreshFromConfig();
-        applyBtn.addEventListener("click", apply);
-        if (window.Utils && window.Utils.onRoleButtonKeydown) {
-            window.Utils.onRoleButtonKeydown(applyBtn, apply);
-        }
-        applyBtn.addEventListener("keydown", function (e) {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                apply();
-            }
-        });
+        bindButton(applyBtn, apply);
         if (toolbarUI) {
             toolbarUI.refreshExperimentParamsFromConfig = refreshFromConfig;
         }
@@ -295,25 +281,8 @@
         function stepUp() {
             update(Number(input.value) + 1);
         }
-        if (window.Utils && window.Utils.onRoleButtonKeydown) {
-            window.Utils.onRoleButtonKeydown(downBtn, stepDown);
-            window.Utils.onRoleButtonKeydown(upBtn, stepUp);
-        } else {
-            downBtn.addEventListener("click", stepDown);
-            downBtn.addEventListener("keydown", function (e) {
-                if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    stepDown();
-                }
-            });
-            upBtn.addEventListener("click", stepUp);
-            upBtn.addEventListener("keydown", function (e) {
-                if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    stepUp();
-                }
-            });
-        }
+        bindButton(downBtn, stepDown);
+        bindButton(upBtn, stepUp);
         input.addEventListener("change", function () {
             update(input.value);
         });
