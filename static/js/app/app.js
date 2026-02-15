@@ -2,8 +2,8 @@
  * Eyecatcher app entry: init and DOM wiring.
  *
  * Core modules (PopulationState, GridRenderer, AnimationLoop, FullscreenModal,
- * RepresentationAdapters) are ES6 class instances on window; wiring is via init(options).
- * Load after: those modules, api_client, pattern_renderer, viewer_controls, animation_loop,
+ * RepresentationRegistry) are ES6 class instances on window; wiring is via init(options).
+ * Load after: those modules, api_client, webgl_utils, viewer_controls, animation_loop,
  * population_ui, community, network_visualizer, toolbar_ui.
  */
 (function () {
@@ -166,16 +166,14 @@
         window.FullscreenModal.closeFullscreen(IDS);
     }
 
-    function resolveAdapterAndOutput(outputType, representationId, genomes) {
-        var resolved = window.RepresentationAdapters.safeResolve({
-            outputType: outputType,
+    function resolveAdapter(representationId, genomes) {
+        var resolved = window.RepresentationRegistry.resolve({
             representationId: representationId,
             genomes: genomes,
         });
         return {
             adapter: resolved.adapter,
-            outputType: outputType || resolved.outputType,
-            representationId: representationId || resolved.representationId,
+            representationId: resolved.representationId,
         };
     }
 
@@ -190,7 +188,6 @@
                 genomes: genomes,
                 generation: window.PopulationState.generationNum,
                 representationId: window.PopulationState.representationId,
-                outputType: window.PopulationState.outputType,
             };
         }
         return null;
@@ -209,8 +206,8 @@
 
     function updatePatternShader(individualId, newShader) {
         var pattern = window.PopulationState.patterns.get(individualId);
-        if (pattern && window.PatternRenderer) {
-            var newPatternData = window.PatternRenderer.setupPattern(
+        if (pattern && window.WebGLUtils) {
+            var newPatternData = window.WebGLUtils.setupPattern(
                 pattern.canvas,
                 newShader
             );
@@ -287,7 +284,7 @@
             );
             var genNum =
                 genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
-            var resolved = window.RepresentationAdapters.safeResolve({
+            var resolved = window.RepresentationRegistry.resolve({
                 representationId:
                     genealogyLoad.representation_id || genealogyLoad.substrate_id,
                 genomes: loadGenomes,
@@ -296,7 +293,6 @@
                 loadGenomes,
                 genNum,
                 false,
-                resolved.outputType,
                 resolved.representationId
             );
         } else {
@@ -315,7 +311,7 @@
         IDS: IDS,
         API_URL: API_URL,
         getGridCallbacks: getGridCallbacks,
-        resolveAdapterAndOutput: resolveAdapterAndOutput,
+        resolveAdapter: resolveAdapter,
         getColorMode: function () {
             var el = document.querySelector('input[name="colorMode"]:checked');
             return el && el.value === "rgb" ? "rgb" : "hsv";
@@ -339,7 +335,6 @@
                 genomes: null,
                 generationNum: 0,
                 representationId: config.representation_id,
-                outputType: config.output_type || "shader",
             },
         });
         window.ViewerControls.updateForRepresentation(config.representation_id);
@@ -371,7 +366,6 @@
 
     window.AnimationLoop.init({
         getPatterns: getPatterns,
-        patternRenderer: window.PatternRenderer || null,
         viewerControls: window.ViewerControls || null,
         signalSource: window.SignalSource,
     });
@@ -392,7 +386,6 @@
         ),
         addToGrid: window.GridRenderer.addToGrid.bind(window.GridRenderer),
         getGenomeForPattern: getGenomeForPattern,
-        patternRenderer: window.PatternRenderer || null,
         viewerControls: window.ViewerControls || null,
     });
 
@@ -409,12 +402,19 @@
     document.querySelectorAll('input[name="colorMode"]').forEach(function (radio) {
         radio.addEventListener("change", function () {
             var data = getCurrentGenomesForSave();
-            if (data && data.outputType === "shader") {
+            if (!data) return;
+            var adapter = window.RepresentationRegistry.getAdapter(
+                data.representationId
+            );
+            if (
+                adapter &&
+                adapter.phenotype &&
+                adapter.phenotype.substrate === "shader"
+            ) {
                 window.GridRenderer.loadFromStatelessGenomes(
                     data.genomes,
                     data.generation,
                     false,
-                    data.outputType,
                     data.representationId
                 );
             }
@@ -486,7 +486,7 @@
             },
             getGenomeForPattern: getGenomeForPattern,
             getAdapter: function () {
-                return window.RepresentationAdapters.getAdapter(
+                return window.RepresentationRegistry.getAdapter(
                     window.PopulationState.representationId
                 );
             },

@@ -1,24 +1,38 @@
 /**
  * PopulationState: single source of truth for current population and genealogy context.
- * No DOM; used by app.js and coordinators. Researchers extend evolution/interaction via
- * BreedCoordinator and state actions.
+ * State is a single organisms array; currentPopulation, currentGenomes, and patterns
+ * are derived for backward compatibility.
  *
  * Exposes: PopulationState.getState, PopulationState.dispatch, PopulationState.subscribe, PopulationState.init.
  */
 (function () {
     "use strict";
 
+    function payloadToOrganisms(population, genomes, patternsMap) {
+        if (!population || !genomes || population.length !== genomes.length) {
+            return [];
+        }
+        var map = patternsMap || new Map();
+        return population.map(function (p, i) {
+            var id = p.id != null ? p.id : genomes[i] && genomes[i].key;
+            return {
+                id: id,
+                genome: genomes[i],
+                phenotype: p,
+                runtime: map.get(id) || null,
+                clicks: p.clicks != null ? p.clicks : 0,
+            };
+        });
+    }
+
     class PopulationState {
         constructor() {
             this._state = {
-                currentPopulation: [],
-                currentGenomes: null,
+                organisms: [],
                 generationNum: 0,
                 populationId: null,
                 branchName: "main",
                 representationId: null,
-                outputType: "shader",
-                patterns: new Map(),
                 loading: false,
                 error: null,
             };
@@ -27,15 +41,28 @@
 
         getState() {
             var s = this._state;
+            var organisms = s.organisms;
             return {
-                currentPopulation: s.currentPopulation,
-                currentGenomes: s.currentGenomes,
+                organisms: organisms,
+                currentPopulation: organisms.map(function (o) {
+                    return o.phenotype;
+                }),
+                currentGenomes: organisms.map(function (o) {
+                    return o.genome;
+                }),
+                patterns: new Map(
+                    organisms
+                        .map(function (o) {
+                            return [o.id, o.runtime];
+                        })
+                        .filter(function (entry) {
+                            return entry[1] != null;
+                        })
+                ),
                 generationNum: s.generationNum,
                 populationId: s.populationId,
                 branchName: s.branchName,
                 representationId: s.representationId,
-                outputType: s.outputType,
-                patterns: s.patterns,
                 loading: s.loading,
                 error: s.error,
             };
@@ -44,17 +71,30 @@
         get representationId() {
             return this._state.representationId;
         }
-        get outputType() {
-            return this._state.outputType;
+        get organisms() {
+            return this._state.organisms;
         }
         get patterns() {
-            return this._state.patterns;
+            var organisms = this._state.organisms;
+            return new Map(
+                organisms
+                    .map(function (o) {
+                        return [o.id, o.runtime];
+                    })
+                    .filter(function (entry) {
+                        return entry[1] != null;
+                    })
+            );
         }
         get currentGenomes() {
-            return this._state.currentGenomes;
+            return this._state.organisms.map(function (o) {
+                return o.genome;
+            });
         }
         get currentPopulation() {
-            return this._state.currentPopulation;
+            return this._state.organisms.map(function (o) {
+                return o.phenotype;
+            });
         }
         get branchName() {
             return this._state.branchName;
@@ -72,8 +112,15 @@
 
             switch (action.type) {
                 case "LOAD_POPULATION":
-                    state.currentPopulation = payload.population || [];
-                    state.currentGenomes = payload.genomes || null;
+                    if (payload.organisms && Array.isArray(payload.organisms)) {
+                        state.organisms = payload.organisms;
+                    } else {
+                        state.organisms = payloadToOrganisms(
+                            payload.population || [],
+                            payload.genomes || [],
+                            payload.patternsMap
+                        );
+                    }
                     state.generationNum = payload.generationNum ?? state.generationNum;
                     if (payload.populationId !== undefined) {
                         state.populationId = payload.populationId;
@@ -84,44 +131,32 @@
                     if (payload.representationId !== undefined) {
                         state.representationId = payload.representationId;
                     }
-                    if (payload.outputType !== undefined) {
-                        state.outputType = payload.outputType;
-                    }
-                    state.patterns.clear();
-                    if (payload.patternsMap) {
-                        payload.patternsMap.forEach(function (v, k) {
-                            state.patterns.set(k, v);
-                        });
-                    }
                     state.loading = false;
                     state.error = null;
                     break;
                 case "ADD_TO_GRID":
-                    state.currentGenomes = (state.currentGenomes || []).concat(
-                        payload.genomes || []
-                    );
-                    state.currentPopulation = (state.currentPopulation || []).concat(
-                        payload.population || []
+                    state.organisms = state.organisms.concat(
+                        payloadToOrganisms(
+                            payload.population || [],
+                            payload.genomes || [],
+                            payload.patternsMap
+                        )
                     );
                     if (payload.representationId !== undefined) {
                         state.representationId = payload.representationId;
                     }
-                    if (payload.outputType !== undefined) {
-                        state.outputType = payload.outputType;
-                    }
-                    if (payload.patternsMap) {
-                        payload.patternsMap.forEach(function (v, k) {
-                            state.patterns.set(k, v);
-                        });
-                    }
                     state.loading = false;
                     break;
-                case "SET_PATTERN_CLICKS":
-                    if (state.patterns.has(payload.id)) {
-                        var p = state.patterns.get(payload.id);
-                        p.clicks = payload.clicks;
+                case "SET_PATTERN_CLICKS": {
+                    var o = state.organisms.find(function (x) {
+                        return x.id === payload.id;
+                    });
+                    if (o) {
+                        o.clicks = payload.clicks;
+                        if (o.runtime) o.runtime.clicks = payload.clicks;
                     }
                     break;
+                }
                 case "SET_EVOLVE_RESULT":
                     if (payload.populationId != null) {
                         state.populationId = payload.populationId;
@@ -134,33 +169,28 @@
                     state.error = payload;
                     state.loading = false;
                     break;
-                case "UPDATE_PATTERN_SHADER":
-                    if (state.patterns.has(payload.id)) {
-                        state.patterns.set(payload.id, payload.patternData);
-                    }
+                case "UPDATE_PATTERN_SHADER": {
+                    var o2 = state.organisms.find(function (x) {
+                        return x.id === payload.id;
+                    });
+                    if (o2) o2.runtime = payload.patternData;
                     break;
+                }
                 case "SET_GENEALOGY":
                     state.populationId = payload.populationId;
                     state.branchName = payload.branchName || "main";
                     break;
                 case "UPDATE_GENOME_AT_INDEX":
-                    if (
-                        state.currentGenomes &&
-                        payload.idx >= 0 &&
-                        payload.idx < state.currentGenomes.length
-                    ) {
-                        state.currentGenomes[payload.idx] = payload.genome;
+                    if (payload.idx >= 0 && payload.idx < state.organisms.length) {
+                        state.organisms[payload.idx].genome = payload.genome;
                     }
                     break;
                 case "CLEAR":
-                    state.currentPopulation = [];
-                    state.currentGenomes = null;
+                    state.organisms = [];
                     state.generationNum = 0;
                     state.populationId = null;
                     state.branchName = "main";
                     state.representationId = null;
-                    state.outputType = "shader";
-                    state.patterns.clear();
                     state.loading = false;
                     state.error = null;
                     break;
@@ -178,14 +208,11 @@
         }
 
         init() {
-            this._state.currentPopulation = [];
-            this._state.currentGenomes = null;
+            this._state.organisms = [];
             this._state.generationNum = 0;
             this._state.populationId = null;
             this._state.branchName = "main";
             this._state.representationId = null;
-            this._state.outputType = "shader";
-            this._state.patterns = new Map();
             this._state.loading = false;
             this._state.error = null;
         }

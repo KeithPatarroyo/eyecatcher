@@ -2,14 +2,13 @@
  * GridRenderer: builds and clears the pattern grid DOM; load and add population from stateless genomes.
  * Receives population and callbacks from app.js. Researchers change card layout or styling here or in CSS.
  *
- * Dependencies: window.PatternRenderer.createPatternCard, window.PopulationState, window.RepresentationAdapters, etc.
+ * Dependencies: window.PatternCardBuilder.createCard, window.PopulationState, window.RepresentationRegistry, etc.
  * Exposes: init, clearGrid, renderGridFromPopulation, appendCardsToGrid, patternCardCallbacks, loadFromStatelessGenomes, addToGrid
  */
 
 /**
  * GridTopology: tracks which pattern is at which row/col position in the grid
- * and provides neighbor lookups. Used by the animation loop to pass neighbor
- * context to adapter lifecycle hooks (onBeforeRender, onAfterRender).
+ * and provides neighbor lookups. Used by the animation loop for render context (grid position, neighbors).
  */
 (function () {
     "use strict";
@@ -213,21 +212,22 @@
             patternsMap,
             representationId
         ) {
-            var PatternRenderer = window.PatternRenderer;
-            if (!PatternRenderer || !PatternRenderer.createPatternCard) return;
-            var adapter = window.RepresentationAdapters.safeResolve({
+            var PatternCardBuilder = window.PatternCardBuilder;
+            if (
+                !PatternCardBuilder ||
+                typeof PatternCardBuilder.createCard !== "function"
+            )
+                return;
+            var adapter = window.RepresentationRegistry.resolve({
                 representationId: representationId,
             }).adapter;
             var self = this;
             population.forEach(function (pattern) {
-                var result = PatternRenderer.createPatternCard(
+                var result = PatternCardBuilder.createCard(
                     self.patternCardCallbacks(pattern, callbacks, representationId)
                 );
                 grid.appendChild(result.card);
                 var entry = self._buildPatternMapEntry(pattern, result);
-                if (adapter) {
-                    adapter.onSetup(entry, entry.gl);
-                }
                 if (pattern.id !== undefined) {
                     patternsMap.set(pattern.id, entry);
                 }
@@ -295,18 +295,12 @@
             genomes,
             generationNum,
             saveToGenealogy,
-            outputType,
             representationId
         ) {
             if (!this._deps || !genomes || !genomes.length) {
                 return Promise.resolve();
             }
-            var resolved = this._deps.resolveAdapterAndOutput(
-                outputType,
-                representationId,
-                genomes
-            );
-            var resolvedOutputType = resolved.outputType;
+            var resolved = this._deps.resolveAdapter(representationId, genomes);
             var resolvedRepresentationId = resolved.representationId;
             var adapter = resolved.adapter;
             var self = this;
@@ -326,7 +320,7 @@
             }
             return window.Utils.withLoading(function () {
                 self.clearGrid(self._deps.IDS);
-                return window.RepresentationAdapters.getDisplayData(adapter, genomes, {
+                return window.RepresentationRegistry.getDisplayData(adapter, genomes, {
                     colorMode: self._deps.getColorMode(),
                 })
                     .then(function (displayResult) {
@@ -423,7 +417,6 @@
                                 generationNum: generationNum,
                                 patternsMap: patternsMap,
                                 representationId: resolvedRepresentationId,
-                                outputType: resolvedOutputType,
                             },
                         });
                         self._notifyRepresentationChange(resolvedRepresentationId);
@@ -437,14 +430,9 @@
             });
         }
 
-        addToGrid(genomes, outputTypeOverride) {
+        addToGrid(genomes) {
             if (!this._deps || !genomes || !genomes.length) return Promise.resolve();
-            var outputType =
-                outputTypeOverride != null
-                    ? outputTypeOverride
-                    : window.PopulationState.outputType || "shader";
-            var resolved = this._deps.resolveAdapterAndOutput(
-                outputType,
+            var resolved = this._deps.resolveAdapter(
                 window.PopulationState.representationId,
                 genomes
             );
@@ -461,16 +449,17 @@
             });
             var self = this;
             return window.Utils.withLoading(function () {
-                return window.RepresentationAdapters.getDisplayData(adapter, payload, {
+                return window.RepresentationRegistry.getDisplayData(adapter, payload, {
                     colorMode: self._deps.getColorMode(),
                 })
                     .then(function (displayResult) {
                         var population = displayResult.population || [];
+                        var newPatternsMap = new Map();
                         self.appendCardsToGrid(
                             population,
                             self._deps.IDS,
                             self._deps.getGridCallbacks(),
-                            window.PopulationState.patterns,
+                            newPatternsMap,
                             window.PopulationState.representationId
                         );
                         window.PopulationState.dispatch({
@@ -478,12 +467,11 @@
                             payload: {
                                 genomes: payload,
                                 population: population,
-                                patternsMap: undefined,
+                                patternsMap: newPatternsMap,
+                                representationId: resolved.representationId,
                             },
                         });
-                        self._notifyRepresentationChange(
-                            window.PopulationState.representationId
-                        );
+                        self._notifyRepresentationChange(resolved.representationId);
                         if (self._deps.updateStats) self._deps.updateStats();
                     })
                     .catch(function (e) {

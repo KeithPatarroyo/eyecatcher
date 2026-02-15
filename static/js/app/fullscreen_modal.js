@@ -1,6 +1,6 @@
 /**
  * FullscreenModal: open/close fullscreen pattern view. Supports shader and grid/image output types.
- * Dependencies: window.PatternRenderer.setupPattern, RepresentationAdapters, EvolutionConfig (FULLSCREEN_CANVAS_*)
+ * Dependencies: window.WebGLUtils.setupPattern, RepresentationRegistry, EvolutionConfig (FULLSCREEN_CANVAS_*)
  */
 (function () {
     "use strict";
@@ -21,17 +21,6 @@
         }
 
         closeFullscreen(ids) {
-            if (
-                this._fullscreenAdapter &&
-                typeof this._fullscreenAdapter.onTeardown === "function" &&
-                this._fullscreenPatternData &&
-                this._fullscreenPatternData.gl
-            ) {
-                this._fullscreenAdapter.onTeardown(
-                    this._fullscreenPatternData,
-                    this._fullscreenPatternData.gl
-                );
-            }
             this._fullscreenPatternData = null;
             this._fullscreenAdapter = null;
             var wrapId = (ids && ids.fullscreenCanvasWrap) || "fullscreen-canvas-wrap";
@@ -53,10 +42,12 @@
             if (!pattern) return;
 
             var representationId = window.PopulationState.representationId || null;
-            var resolved = window.RepresentationAdapters.resolveForGenomes([pattern]);
+            var resolved = window.RepresentationRegistry.resolve({
+                genomes: [pattern],
+            });
             var adapter = resolved.adapter;
             if (!adapter) {
-                adapter = window.RepresentationAdapters.findAdapterByGenome(pattern);
+                adapter = window.RepresentationRegistry.findAdapterByGenome(pattern);
             }
 
             var hasShader = pattern.shader;
@@ -109,10 +100,10 @@
                 canvas.height = size;
                 wrap.appendChild(canvas);
 
-                var PatternRenderer = window.PatternRenderer;
+                var WebGLUtils = window.WebGLUtils;
                 var patternData =
-                    PatternRenderer &&
-                    PatternRenderer.setupPattern(canvas, patternRef.shader || "");
+                    WebGLUtils &&
+                    WebGLUtils.setupPattern(canvas, patternRef.shader || "");
                 if (!patternData || patternData.error) {
                     wrap.innerHTML = "";
                     modal.hidden = true;
@@ -130,12 +121,6 @@
                     self._fullscreenPatternData.grid = patternRef.grid;
                 if (adapter) {
                     adapter.preparePatternData(self._fullscreenPatternData, patternRef);
-                }
-                if (adapter && self._fullscreenPatternData.gl) {
-                    adapter.onSetup(
-                        self._fullscreenPatternData,
-                        self._fullscreenPatternData.gl
-                    );
                 }
             });
         }

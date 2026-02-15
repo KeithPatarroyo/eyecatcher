@@ -51,7 +51,6 @@
                             d.individuals || [],
                             0,
                             true,
-                            d.output_type,
                             d.representation_id
                         );
                     }
@@ -97,12 +96,11 @@
                                 .getElementById("load-list-modal")
                                 .classList.remove("show");
                             if (self._loadFromStatelessGenomes) {
-                                var r = window.RepresentationAdapters.safeResolve(pop);
+                                var r = window.RepresentationRegistry.resolve(pop);
                                 await self._loadFromStatelessGenomes(
                                     pop.genomes || [],
                                     pop.generation || 0,
                                     false,
-                                    r.outputType,
                                     r.representationId
                                 );
                             }
@@ -141,8 +139,7 @@
                     name.trim() || "Unnamed",
                     data.genomes,
                     data.generation,
-                    data.representationId,
-                    data.outputType
+                    data.representationId
                 );
                 Toast.show("Saved", "Population saved to browser storage.", "success");
             } catch (e) {
@@ -183,7 +180,7 @@
                         var genome = JSON.parse(text);
                         var accepted =
                             genome &&
-                            !!window.RepresentationAdapters.findAdapterByGenome(genome);
+                            !!window.RepresentationRegistry.findAdapterByGenome(genome);
                         if (accepted) genomes.push(genome);
                     }
                 } else {
@@ -191,12 +188,12 @@
                     genomes = json.individuals || json.genomes || [];
                     if (genomes.length && typeof EyecatcherStorage !== "undefined") {
                         await EyecatcherStorage.init();
-                        var r =
-                            window.RepresentationAdapters.resolveForGenomes(genomes);
+                        var r = window.RepresentationRegistry.resolve({
+                            genomes: genomes,
+                        });
                         var importPayload = Object.assign({}, json, {
                             representationId:
                                 json.representationId || r.representationId,
-                            outputType: json.outputType || r.outputType,
                         });
                         await EyecatcherStorage.importPopulation(importPayload);
                     }
@@ -205,9 +202,11 @@
                     Toast.error("No genomes in file");
                     return;
                 }
-                var resolved = window.RepresentationAdapters.resolveForGenomes(genomes);
+                var resolved = window.RepresentationRegistry.resolve({
+                    genomes: genomes,
+                });
                 if (this._addToGrid) {
-                    await this._addToGrid(genomes, resolved.outputType);
+                    await this._addToGrid(genomes);
                 }
             } catch (err) {
                 Toast.error("Import failed: " + (err.message || err));

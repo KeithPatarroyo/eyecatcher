@@ -1,7 +1,7 @@
 /**
  * PatternCardBuilder: builds pattern card DOM (canvas, info, actions, events).
- * Extracted from pattern_renderer.js so WebGL and card layout are separate.
- * Depends: window.RepresentationAdapters, window.PopulationState.
+ * Card layout and events; WebGL setup lives in webgl_utils.js.
+ * Depends: window.RepresentationRegistry, window.PopulationState.
  */
 (function () {
     "use strict";
@@ -36,8 +36,8 @@
             const representationId = options.representationId || null;
             var resolved =
                 pattern && pattern.id != null
-                    ? window.RepresentationAdapters.resolveForGenomes([pattern])
-                    : window.RepresentationAdapters.safeResolve({
+                    ? window.RepresentationRegistry.resolve({ genomes: [pattern] })
+                    : window.RepresentationRegistry.resolve({
                           representationId: representationId,
                       });
             var adapter = resolved.adapter;
@@ -161,7 +161,7 @@
 
         _attachEvents(card, id, options) {
             var canvas = card.querySelector("canvas");
-            var adapter = window.RepresentationAdapters.safeResolve({
+            var adapter = window.RepresentationRegistry.resolve({
                 representationId: options.representationId,
             }).adapter;
             var hasCellInteraction = adapter && adapter.supportsCellInteraction();
@@ -232,7 +232,7 @@
             interactionType
         ) {
             if (!canvas) return;
-            var adapter = window.RepresentationAdapters.safeResolve({
+            var adapter = window.RepresentationRegistry.resolve({
                 representationId: representationId,
             }).adapter;
             if (adapter && adapter.supportsCellInteraction()) {

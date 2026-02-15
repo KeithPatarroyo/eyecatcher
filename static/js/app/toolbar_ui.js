@@ -138,9 +138,9 @@
                 var current =
                     window.PopulationState.representationId ||
                     cfg.DEFAULT_SUBSTRATE_ID ||
-                    window.RepresentationAdapters.safeResolve({}).representationId ||
-                    (window.RepresentationAdapters.getDefaultRepresentationId
-                        ? window.RepresentationAdapters.getDefaultRepresentationId()
+                    window.RepresentationRegistry.resolve({}).representationId ||
+                    (window.RepresentationRegistry.getDefaultRepresentationId
+                        ? window.RepresentationRegistry.getDefaultRepresentationId()
                         : "");
                 if (
                     Array.isArray(cfg.available_substrate_ids) &&

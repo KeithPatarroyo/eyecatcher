@@ -25,7 +25,6 @@
             this._oscillatePhase = 0;
             this._animating = true;
             this._getPatterns = null;
-            this._patternRenderer = null;
             this._viewerControls = null;
             this._signalSource = null;
             this._defaultSource = null;
@@ -139,16 +138,15 @@
                 var patterns = this._getPatterns ? this._getPatterns() : null;
                 if (
                     patterns &&
-                    this._patternRenderer &&
                     this._viewerControls &&
-                    this._viewerControls.signalState != null
+                    this._viewerControls.signalState != null &&
+                    window.RepresentationRegistry
                 ) {
                     var signalState = this._viewerControls.signalState;
-                    var adapter = window.RepresentationAdapters.currentAdapter();
                     var GT = window.GridTopology;
+                    var RA = window.RepresentationRegistry;
 
                     patterns.forEach(function (patternData) {
-                        if (adapter && adapter.lifecycle === "self-managed") return;
                         if (!patternData.gl) return;
                         var patternId = patternData.patternId;
                         var renderContext = {
@@ -160,19 +158,12 @@
                             deltaTime: deltaTime,
                             patternId: patternId,
                         };
-                        if (adapter) {
-                            adapter.onBeforeRender(patternData, renderContext);
-                        }
-                        self._patternRenderer.renderWithSignals(
+                        RA.renderFrameWithSignals(
                             patternData,
-                            self._patternRenderer,
                             signalState,
                             patternData.canvas,
                             renderContext
                         );
-                        if (adapter) {
-                            adapter.onAfterRender(patternData, renderContext);
-                        }
                     });
                 }
 
@@ -196,7 +187,6 @@
 
         init(options) {
             this._getPatterns = (options && options.getPatterns) || null;
-            this._patternRenderer = (options && options.patternRenderer) || null;
             this._viewerControls = (options && options.viewerControls) || null;
             var self = this;
             this._defaultSource = {
