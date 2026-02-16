@@ -146,6 +146,12 @@
 
                     runtimes.forEach(function (runtime) {
                         if (!runtime.gl) return;
+                        if (
+                            typeof runtime.gl.isContextLost === "function" &&
+                            runtime.gl.isContextLost()
+                        ) {
+                            return;
+                        }
                         var patternId = runtime.patternId;
                         var renderContext = {
                             gl: runtime.gl,
@@ -156,12 +162,19 @@
                             deltaTime: deltaTime,
                             patternId: patternId,
                         };
-                        window.AnimationLoop.renderFrameWithSignals(
-                            runtime,
-                            signalState,
-                            runtime.canvas,
-                            renderContext
-                        );
+                        try {
+                            window.AnimationLoop.renderFrameWithSignals(
+                                runtime,
+                                signalState,
+                                runtime.canvas,
+                                renderContext
+                            );
+                        } catch (err) {
+                            console.warn(
+                                "Pattern render failed (patternId=" + patternId + "):",
+                                err
+                            );
+                        }
                     });
                 }
 
