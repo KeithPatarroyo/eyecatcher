@@ -175,31 +175,28 @@
                 (patternPayload && patternPayload.rule) ||
                 (phenotype && phenotype.stepShader);
             if (!stepShader) {
-                var fallback = document.createElement("div");
-                fallback.className = "organism-canvas-fallback";
-                fallback.textContent = "No step shader";
-                return { element: fallback, state: null };
+                return {
+                    element: this._createFallback("No step shader"),
+                    state: null,
+                };
             }
-            var canvas = document.createElement("canvas");
-            canvas.className = "organism-canvas";
-            canvas.width = 256;
-            canvas.height = 256;
+            var canvas = this._createCanvas(256, 256);
             var wu = window.WebGLUtils;
             if (!wu || !wu.setupPattern) {
-                var err = document.createElement("div");
-                err.className = "organism-canvas-fallback";
-                err.textContent = "WebGLUtils not available";
-                return { element: err, state: null };
+                return {
+                    element: this._createFallback("WebGLUtils not available"),
+                    state: null,
+                };
             }
             var shared = wu.getSharedGridContext && wu.getSharedGridContext();
             var state;
             if (shared && wu.setupPatternWithSharedGL) {
                 var compiled = wu.setupPatternWithSharedGL(shared.gl, stepShader);
                 if (compiled.error) {
-                    var errEl = document.createElement("div");
-                    errEl.className = "organism-canvas-fallback";
-                    errEl.textContent = compiled.error || "Shader error";
-                    return { element: errEl, state: null };
+                    return {
+                        element: this._createFallback(compiled.error || "Shader error"),
+                        state: null,
+                    };
                 }
                 state = {
                     gl: shared.gl,
@@ -212,10 +209,10 @@
             } else {
                 state = wu.setupPattern(canvas, stepShader);
                 if (state && state.error) {
-                    var fallbackEl = document.createElement("div");
-                    fallbackEl.className = "organism-canvas-fallback";
-                    fallbackEl.textContent = state.error || "Shader error";
-                    return { element: fallbackEl, state: null };
+                    return {
+                        element: this._createFallback(state.error || "Shader error"),
+                        state: null,
+                    };
                 }
             }
             state.canvas = canvas;
@@ -324,21 +321,6 @@
                 state.gl.deleteProgram(state.toggleProgram);
                 state.toggleProgram = null;
             }
-        }
-
-        buildParams(phenotype, signalValues) {
-            var out = {};
-            var inputs =
-                phenotype && phenotype.sensorySystem && phenotype.sensorySystem.inputs;
-            if (inputs && Array.isArray(inputs) && signalValues) {
-                inputs.forEach(function (inp) {
-                    var uname = inp.uniform || (inp.id ? "u_" + inp.id : null);
-                    if (uname && signalValues[inp.id] !== undefined) {
-                        out[uname] = signalValues[inp.id];
-                    }
-                });
-            }
-            return out;
         }
 
         render(state, params, _signalState) {

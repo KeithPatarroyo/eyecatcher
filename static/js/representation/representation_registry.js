@@ -148,7 +148,10 @@
 
             var self = this;
             config.forEach(function (entry) {
-                var phenotype = entry.phenotype || { substrate: "image" };
+                var basePhenotype = entry.phenotype || { substrate: "image" };
+                var phenotype = Object.assign({}, basePhenotype, {
+                    sensorySystem: entry.sensorySystem,
+                });
                 var substrateKey =
                     typeof phenotype.substrate === "string"
                         ? phenotype.substrate

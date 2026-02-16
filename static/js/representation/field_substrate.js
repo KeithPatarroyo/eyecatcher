@@ -1,25 +1,11 @@
 /**
  * FieldSubstrate: phenotype expressed on a continuous field (fullscreen quad).
- * Uses WebGLUtils for WebGL setup. Maps environment signals to uniforms via TOGGLEABLE_SIGNALS.
- * No representation-specific code; any phenotype with substrate.type="field" works.
+ * Uses WebGLUtils for WebGL setup. Signal-to-uniform mapping from base buildParams (phenotype.sensorySystem.inputs).
  */
 (function () {
     "use strict";
 
     var Substrate = window.Substrate;
-
-    function buildParamsFromSignals(signalValues) {
-        var out = {};
-        var list = window.EvolutionConfig && window.EvolutionConfig.TOGGLEABLE_SIGNALS;
-        if (!list || !signalValues) return out;
-        list.forEach(function (s) {
-            if (s.uniform && !s.derived) {
-                out[s.uniform] =
-                    signalValues[s.id] !== undefined ? signalValues[s.id] : 0;
-            }
-        });
-        return out;
-    }
 
     function drawFullscreenQuad(gl, program, positionBuffer, params, signalState) {
         gl.useProgram(program);
@@ -60,34 +46,27 @@
         createDisplayElement(phenotype, patternPayload) {
             var rule = patternPayload && patternPayload.rule;
             if (!rule) {
-                var fallback = document.createElement("div");
-                fallback.className = "organism-canvas-fallback";
-                fallback.textContent = "No rule";
-                return { element: fallback, state: null };
+                return {
+                    element: this._createFallback("No rule"),
+                    state: null,
+                };
             }
-            var canvas = document.createElement("canvas");
-            canvas.className = "organism-canvas";
-            canvas.width = 256;
-            canvas.height = 256;
+            var canvas = this._createCanvas(256, 256);
             var wu = window.WebGLUtils;
             if (!wu || !wu.setupPattern) {
-                var err = document.createElement("div");
-                err.className = "organism-canvas-fallback";
-                err.textContent = "WebGLUtils not available";
-                return { element: err, state: null };
+                return {
+                    element: this._createFallback("WebGLUtils not available"),
+                    state: null,
+                };
             }
             var state = wu.setupPattern(canvas, rule);
             if (state && state.error) {
-                var errEl = document.createElement("div");
-                errEl.className = "organism-canvas-fallback";
-                errEl.textContent = state.error || "Rule error";
-                return { element: errEl, state: null };
+                return {
+                    element: this._createFallback(state.error || "Rule error"),
+                    state: null,
+                };
             }
             return { element: canvas, state: state };
-        }
-
-        buildParams(phenotype, signalValues) {
-            return buildParamsFromSignals(signalValues);
         }
 
         render(state, params, signalState) {
