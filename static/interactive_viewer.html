@@ -601,8 +601,7 @@
             </div>
         </template>
 
-        <!-- Single entry: config (sets window.EyecatcherConfig) then app (loads all modules via imports). See static/js/README.md. -->
-        <script src="js/config.generated.js"></script>
+        <!-- Single entry: app loads config via ES module imports. See static/js/README.md. -->
         <script type="module" src="js/app.js"></script>
     </body>
 </html>

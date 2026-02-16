@@ -4,6 +4,8 @@
  *
  * Use RepresentationHelpers for display/meta; call rep.substrate directly for render.
  */
+import { EyecatcherConfig } from "../config.generated.js";
+import { defaultResolutionRef } from "./default_resolution_ref.js";
 import SubstrateRegistry from "./substrate_registry.js";
 import { getConfig } from "../evolution/experiment_config.js";
 import populationState from "../population/population_state.js";
@@ -17,7 +19,7 @@ const defaultCapabilities = Object.freeze({
     adjustWeight: false,
 });
 
-const getConfigRepresentations = () => window.EyecatcherConfig?.representations ?? [];
+const getConfigRepresentations = () => EyecatcherConfig?.representations ?? [];
 
 const mergeCapabilities = (entry) => {
     const caps = entry?.capabilities;
@@ -139,7 +141,7 @@ const createRepresentation = (entry, substrate, phenotype) => ({
 class RepresentationRegistry {
     constructor() {
         this._representationsById = {};
-        window.__eyecatcherDefaultResolution = {
+        defaultResolutionRef.current = {
             representationId: DEFAULT_REPRESENTATION_ID,
             representation: null,
         };
@@ -167,7 +169,7 @@ class RepresentationRegistry {
             );
 
             if (entry.id === DEFAULT_REPRESENTATION_ID) {
-                window.__eyecatcherDefaultResolution = {
+                defaultResolutionRef.current = {
                     representationId: entry.id,
                     representation: this._representationsById[entry.id],
                 };
@@ -195,7 +197,7 @@ class RepresentationRegistry {
     }
 
     getDefault() {
-        const def = window.__eyecatcherDefaultResolution;
+        const def = defaultResolutionRef.current;
         const evo = getConfig();
         const representationId =
             evo?.DEFAULT_REPRESENTATION_ID ||

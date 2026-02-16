@@ -1,7 +1,9 @@
 // experiment_config.js (replace whole file)
+import { EyecatcherConfig } from "../config.generated.js";
+import { defaultResolutionRef } from "../representation/default_resolution_ref.js";
 import populationState from "../population/population_state.js";
 
-const unified = window.EyecatcherConfig ?? {};
+const unified = EyecatcherConfig ?? {};
 const defaults = unified.defaults ?? {};
 let signalsByRepresentation = unified.signals;
 
@@ -37,7 +39,7 @@ const EvolutionConfig = {
     signalsByRepresentation,
 
     getDefaultResolution() {
-        const def = window.__eyecatcherDefaultResolution;
+        const def = defaultResolutionRef?.current;
         return {
             representationId:
                 this.DEFAULT_REPRESENTATION_ID || def?.representationId || "",
