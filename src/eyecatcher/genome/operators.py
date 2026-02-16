@@ -1,13 +1,46 @@
 """
-Mutation and crossover for NEAT genomes.
+Genome operations: create, mutate, crossover, and custom activation registration.
 
 Used by reproduction and CPPN substrates. Dual-genome operators live in
-substrate.dual_genome (used by DualCPPNSubstrate only).
+genome.dual (used by DualCPPNSubstrate only). register_custom_activations is
+called from substrate init (dual_cppn, single_cppn).
 """
+
+import math
 
 import neat
 
 from .serialization import _update_node_indexer_from_genome
+
+
+def _cos_activation(x: float) -> float:
+    """Cosine activation function."""
+    return math.cos(x)
+
+
+def register_custom_activations(config: neat.Config) -> None:
+    """Register custom activation functions with a NEAT config."""
+    activation_defs = config.genome_config.activation_defs
+    if "cos" not in activation_defs.functions:
+        activation_defs.add("cos", _cos_activation)
+
+
+def create_random_genome(
+    neat_config: neat.Config, genome_id: int = 0
+) -> neat.DefaultGenome:
+    """
+    Create a random genome with the given configuration.
+
+    Args:
+        neat_config: NEAT configuration for the genome
+        genome_id: ID for the genome
+
+    Returns:
+        Randomly initialized genome
+    """
+    genome = neat.DefaultGenome(genome_id)
+    genome.configure_new(neat_config.genome_config)
+    return genome
 
 
 def mutate_genome(

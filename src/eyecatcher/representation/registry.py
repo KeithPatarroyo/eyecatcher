@@ -14,14 +14,12 @@ from .ca import ConwayRepresentation
 from .dual_cppn import DualCPPNRepresentation
 from .protocol import Representation
 from .single_cppn import SingleCPPNRepresentation
-from .trivial import TrivialRepresentation
 
 # Concrete representation classes keyed by id; all implement Representation protocol.
 REPRESENTATIONS: dict[str, type] = {
     "dual_cppn": DualCPPNRepresentation,
     "single_cppn": SingleCPPNRepresentation,
     "ca": ConwayRepresentation,
-    "trivial": TrivialRepresentation,
 }
 
 

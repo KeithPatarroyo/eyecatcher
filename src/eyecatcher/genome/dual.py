@@ -10,7 +10,7 @@ from typing import Any
 
 import neat
 
-from .creation import create_random_genome
+from .operators import create_random_genome
 from .serialization import (
     _update_node_indexer_from_genome,
     genome_from_json,

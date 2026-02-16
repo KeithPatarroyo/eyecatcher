@@ -15,7 +15,7 @@ from typing import Any, BinaryIO
 import neat
 
 from .. import get_root_dir
-from ..genome.activation import register_custom_activations
+from ..genome.operators import register_custom_activations
 from ..glsl.input_map import build_glsl_input_map
 from ..inspection.network_data import extract_network_data as _extract_network_data
 from ..signals.receptor import Receptor

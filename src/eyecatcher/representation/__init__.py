@@ -17,7 +17,6 @@ from .mixins import (
 from .protocol import OutputType, Phenotype, Representation, RepresentationOutput
 from .registry import REPRESENTATIONS, get_representation
 from .single_cppn import SingleCPPNRepresentation
-from .trivial import TrivialGenome, TrivialRepresentation
 
 __all__ = [
     "ConwayGenome",
@@ -33,8 +32,6 @@ __all__ = [
     "Samplable",
     "Saveable",
     "SingleCPPNRepresentation",
-    "TrivialGenome",
-    "TrivialRepresentation",
     "export_representations_for_frontend",
     "get_representation",
 ]

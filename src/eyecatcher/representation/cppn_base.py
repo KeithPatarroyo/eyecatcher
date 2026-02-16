@@ -16,7 +16,7 @@ from typing import Any
 import neat
 import numpy as np
 
-from ..experiment.config import DEFAULT_RENDER_RESOLUTION
+from .. import experiment
 from ..glsl import RuleAssembler
 from ..signals.registry import get_default_signal_values
 from .base import RepresentationBase
@@ -157,7 +157,7 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
     ) -> np.ndarray:
         """Render genome to (resolution, resolution, 3) RGB image."""
         if resolution is None:
-            resolution = DEFAULT_RENDER_RESOLUTION
+            resolution = experiment.DEFAULT_RENDER_RESOLUTION
         return render_pixel_grid(
             resolution,
             self.get_base_inputs_for_render(),
@@ -182,7 +182,8 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
             return {}
         names = self.get_save_filenames(individual_id)
         rule_code = self.develop(genome) or ""
-        img = self.render_to_image(genome, resolution=DEFAULT_RENDER_RESOLUTION)
+        res = experiment.DEFAULT_RENDER_RESOLUTION
+        img = self.render_to_image(genome, resolution=res)
         json_bytes = json.dumps(self.to_json(genome), indent=2).encode("utf-8")
         return {
             names["png"]: to_png_bytes(img),

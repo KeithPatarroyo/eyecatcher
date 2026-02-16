@@ -11,7 +11,7 @@ import logging
 import random
 from typing import Any, Optional
 
-from ..experiment import config
+from .. import experiment
 from ..representation.protocol import Representation
 
 logger = logging.getLogger(__name__)
@@ -43,9 +43,9 @@ def produce_next_generation(
         List of genome (individual) JSON dicts (representation.to_json per child).
     """
     if population_size is None:
-        population_size = config.get_population_size()
+        population_size = experiment.get_population_size()
     if crossover_probability is None:
-        crossover_probability = config.get_crossover_probability()
+        crossover_probability = experiment.get_crossover_probability()
 
     parents = []
     for idx, p in enumerate(parents_data):
