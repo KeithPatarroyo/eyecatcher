@@ -1,5 +1,5 @@
 """
-Evolve API: /api/evolve and genealogy integration.
+Evolution API: /api/evolve and genealogy integration.
 
 Produces next generation (stateless) and optionally saves to genealogy DB.
 """
@@ -8,12 +8,8 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
+from .. import experiment
 from ..evolution.reproduction import produce_next_generation
-from ..experiment import (
-    get_crossover_probability,
-    get_elitism_default,
-    get_population_size,
-)
 from .api_helpers import ERR_PARENTS_ARRAY_REQUIRED, api_error, api_try_except
 from .stateless_api import get_current_representation
 
@@ -31,7 +27,7 @@ def _save_generation_to_genealogy(
 ) -> int | None:
     """Save children to genealogy DB; return new population id or None on failure."""
     try:
-        from ..data.genealogy_db import save_generation_result
+        from ..data import save_generation_result
 
         return save_generation_result(
             parent_population_id,
@@ -64,11 +60,11 @@ def evolve():
     if not parents_data:
         return api_error(ERR_PARENTS_ARRAY_REQUIRED, 400)
 
-    population_size = data.get("population_size", get_population_size())
+    population_size = data.get("population_size", experiment.get_population_size())
     crossover_probability = data.get(
-        "crossover_probability", get_crossover_probability()
+        "crossover_probability", experiment.get_crossover_probability()
     )
-    elitism = data.get("elitism", get_elitism_default())
+    elitism = data.get("elitism", experiment.get_elitism_default())
     parent_population_id = data.get("parent_population_id")
     generation_num = data.get("generation_num", 0)
     branch_name = data.get("branch_name", "main")

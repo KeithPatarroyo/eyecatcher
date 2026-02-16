@@ -14,8 +14,7 @@ import os
 from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 
-from .. import get_root_dir
-from ..experiment import get_configured_representation, warn_if_neat_pop_size_mismatch
+from .. import experiment, get_root_dir
 from ..representation.mixins import Saveable
 from .api_helpers import (
     ERR_INDIVIDUAL_REQUIRED_BODY,
@@ -25,7 +24,7 @@ from .api_helpers import (
     numpy_to_png_base64,
 )
 from .community_routes import community_bp
-from .evolve_api import evolve_bp
+from .evolution_api import evolve_bp
 from .genealogy_routes import genealogy_bp
 from .stateless_api import stateless_bp
 
@@ -39,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 ROOT_DIR = get_root_dir()
 STATIC_DIR = os.path.join(ROOT_DIR, "static")
-# Default port when running locally; frontend dev port in evolution_config.js.
+# Default port when running locally; frontend dev port in experiment_config.js.
 DEFAULT_PORT = 5001
 app = Flask(__name__, static_folder=STATIC_DIR, static_url_path="")
 
@@ -51,8 +50,8 @@ else:
     CORS(app, origins=[o.strip() for o in _cors_origins.split(",")])
 
 # Representation from experiment preset (config/experiments.json, EXPERIMENT_CONFIG)
-representation = get_configured_representation()
-warn_if_neat_pop_size_mismatch(representation)
+representation = experiment.get_configured_representation()
+experiment.warn_if_neat_pop_size_mismatch(representation)
 app.config["EYECATCHER_REPRESENTATION"] = representation
 
 # Register API blueprints
