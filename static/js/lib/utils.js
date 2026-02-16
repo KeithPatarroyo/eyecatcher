@@ -29,9 +29,8 @@ const escapeHtml = (s) => {
 };
 
 const showLoading = (show) => {
-    const loader =
-        _populationLoader?.showLoading ?? window.PopulationLoader?.showLoading;
-    if (typeof loader === "function") return loader(Boolean(show));
+    if (typeof _populationLoader?.showLoading === "function")
+        return _populationLoader.showLoading(Boolean(show));
 
     const el = document.getElementById("loading");
     if (el) el.classList.toggle("hidden", !show);
@@ -43,15 +42,14 @@ const showLoading = (show) => {
  * @param {() => Promise<any>} fn
  */
 const withLoading = async (fn) => {
-    const state = _populationState ?? window.PopulationState;
     showLoading(true);
-    state?.dispatch?.({ type: "SET_LOADING", payload: true });
+    _populationState?.dispatch?.({ type: "SET_LOADING", payload: true });
 
     try {
         return await fn();
     } finally {
         showLoading(false);
-        state?.dispatch?.({ type: "SET_LOADING", payload: false });
+        _populationState?.dispatch?.({ type: "SET_LOADING", payload: false });
     }
 };
 
