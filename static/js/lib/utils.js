@@ -8,6 +8,14 @@
 const BYTES_KB = 1024;
 const BYTES_MB = 1024 * 1024;
 
+let _populationLoader = null;
+let _populationState = null;
+
+function setPopulationRefs(loader, state) {
+    _populationLoader = loader ?? null;
+    _populationState = state ?? null;
+}
+
 const formatBytes = (n) => {
     if (n >= BYTES_MB) return `${(n / BYTES_MB).toFixed(1)} MB`;
     if (n >= BYTES_KB) return `${(n / BYTES_KB).toFixed(1)} KB`;
@@ -21,8 +29,8 @@ const escapeHtml = (s) => {
 };
 
 const showLoading = (show) => {
-    // Prefer PopulationLoader's loading UI if present; fall back to #loading.
-    const loader = window.PopulationLoader?.showLoading;
+    const loader =
+        _populationLoader?.showLoading ?? window.PopulationLoader?.showLoading;
     if (typeof loader === "function") return loader(Boolean(show));
 
     const el = document.getElementById("loading");
@@ -35,14 +43,15 @@ const showLoading = (show) => {
  * @param {() => Promise<any>} fn
  */
 const withLoading = async (fn) => {
+    const state = _populationState ?? window.PopulationState;
     showLoading(true);
-    window.PopulationState?.dispatch?.({ type: "SET_LOADING", payload: true });
+    state?.dispatch?.({ type: "SET_LOADING", payload: true });
 
     try {
         return await fn();
     } finally {
         showLoading(false);
-        window.PopulationState?.dispatch?.({ type: "SET_LOADING", payload: false });
+        state?.dispatch?.({ type: "SET_LOADING", payload: false });
     }
 };
 
@@ -157,7 +166,7 @@ const onRoleButtonKeydown = (el, fn) => {
     });
 };
 
-window.Utils = {
+const Utils = {
     formatBytes,
     escapeHtml,
     showLoading,
@@ -169,11 +178,19 @@ window.Utils = {
     createListEmptyEl,
     onId,
     onRoleButtonKeydown,
+    setPopulationRefs,
     BYTES_KB,
     BYTES_MB,
 };
 
-export { formatBytes, escapeHtml, showLoading, withLoading, runTask };
+export {
+    formatBytes,
+    escapeHtml,
+    showLoading,
+    withLoading,
+    runTask,
+    setPopulationRefs,
+};
 export default Utils;
 
 window.Utils = Utils;
