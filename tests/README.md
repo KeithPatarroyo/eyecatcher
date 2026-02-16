@@ -6,24 +6,23 @@
 
 | File | Covers |
 |------|--------|
-| test_cppn_engine.py | Dual-CPPN representation: create_random, evaluate (query), mutate, crossover. |
-| test_substrate_compile.py | Representation develop and get_develop_stats (GLSL, node/connection counts). |
-| test_genome_serialization.py | Dual-genome serialization: dual_genome_to_json/from_json round-trip, extract_network_data, query consistency. |
-| test_shader_compiler.py | RuleAssembler + representation.develop(): GLSL output (main, activations, empty connections, single hidden node). |
-| test_glsl_validity.py | Generated GLSL sanity: every v_* and *_base used is declared/defined; no redefinition of v_* (shared time/visual signals); dual-CPPN rule uses _base only for time inputs (catches WebGL compile-time regressions). |
-| test_signal_registry.py | Signals module: NEAT config matches representation receptors; config.generated.js signals match Python (catalog, toggleable inputs). |
-| test_api.py | Flask API: /api/random, /api/develop, /api/express, /api/evolve, /api/save, /api/adjust-weight; uses test client and representation fixtures. |
-| test_genealogy_routes.py | Genealogy API: save/load population, tree, branches, export, reset, stats. |
+| test_api.py | Flask API: /api/random, /api/develop, /api/express, /api/evolve, /api/save, /api/adjust-weight. |
+| test_ca_substrate.py | Conway (CA) representation: create_random, mutate, crossover, express, serialize. |
 | test_community_routes.py | Community API: submit, list, admin approve/reject. |
-| test_visualization.py | Genome visualizer PDF and render_image (single-CPPN). |
+| test_cppn_engine.py | Dual-CPPN: create_random, query, mutate, crossover. |
+| test_genome_serialization.py | Dual-genome JSON round-trip, extract_network_data. |
+| test_glsl_validity.py | Generated GLSL sanity (slow). |
+| test_nca.py | NCA representation: create_random, express, develop, serialize, network inspection. |
+| test_representation_refactor.py | NeatEvolvable, GridRepresentationBase, parse_express_options. |
+| test_shader_compiler.py | RuleAssembler + develop(): GLSL output. |
+| test_signal_registry.py | Signals vs NEAT config and config.generated.js. |
+| test_substrate_compile.py | develop() and get_develop_stats (GLSL, node/connection counts). |
+| test_visualization.py | Genome visualizer PDF and render_image. |
+| test_genealogy_routes.py | Genealogy API: save/load population, tree, export, stats. |
 
 ## Fixtures (conftest.py)
 
-- **client** – Flask test client (app.test_client() with TESTING=True).
-- **representation** – Dual-CPPN representation instance (mutation, crossover, evaluate).
-- **random_dual_genome** – One random dual genome (genome_id=0).
-- **minimal_dual** – Dual genome with one hidden node in visual CPPN (deterministic).
-- **genealogy_db** – Temp DB for genealogy routes; no real data touched.
-- **community_db** – Temp DB for community routes; no real data touched.
-
-All DB fixtures use in-memory or temp paths; the real data/ directory is not modified.
+- **client** — Flask test client (TESTING=True).
+- **representation** — DualCPPN instance (for mutation, crossover, query tests).
+- **random_dual_genome**, **minimal_dual** — Dual genomes for CPPN tests.
+- **genealogy_db**, **community_db** — Temp DBs; real data/ not modified.

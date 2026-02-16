@@ -1,21 +1,13 @@
-# Config and NEAT
+# NEAT config
 
-**Config overview**
+This directory holds NEAT algorithm config files (topology, mutation rates). Experiment presets live in [config/experiments.json](../experiments.json): each preset sets `representation`, and for CPPN/NCA the relevant NEAT path(s). Use `EXPERIMENT_CONFIG=preset_name` (e.g. `default`, `dual`, `nca`) to switch preset; one restart per change.
 
-- **neat/** – NEAT algorithm config files (topology, mutation rates). This directory.
-- **experiments.json** – Experiment presets. Each preset sets `neat_config_path`, `neat_time_config_path`, `population_size`, `max_population_size`, `crossover_probability`. Start the server with `EXPERIMENT_CONFIG=preset_name` (e.g. `experiment_a`) to use that preset. One restart per experiment.
+**Files:**
 
----
+- **neat_config_experimental.txt**, **neat_config_time_experimental.txt** — dual-CPPN (visual + time).
+- **neat_config_nca.txt** — NCA (default representation).
+- **neat_config.txt**, **neat_config_time.txt** — single-CPPN.
 
-# NEAT config files
+**Where paths are set:** [experiment.py](../../src/eyecatcher/experiment.py) and presets in [config/experiments.json](../experiments.json).
 
-**Default configs:** The app uses by default:
-
-- `neat_config_experimental.txt` – visual CPPN (8 inputs, 3 outputs)
-- `neat_config_time_experimental.txt` – time CPPN (5 inputs, 1 output)
-
-**Where paths are set:** [experiment/config.py](../../src/eyecatcher/experiment/config.py) or presets in [config/experiments.json](../experiments.json); start with `EXPERIMENT_CONFIG=preset_name` to switch without editing code.
-
-**Signal counts:** Input/output counts must match the representation’s receptors (see [signals/catalog.py](../../src/eyecatcher/signals/catalog.py) and representation receptors). `make generate` runs `generate-neat`, which updates and validates NEAT config against receptor input/output counts.
-
-**Mutation:** Gene-level mutation rates are in these .txt files. Crossover probability and population size: [config/evolution_defaults.json](../evolution_defaults.json) and [experiment/config.py](../../src/eyecatcher/experiment/config.py). See [RESEARCHER_GUIDE.md](../../RESEARCHER_GUIDE.md).
+**Signal counts:** Input/output counts must match the representation's receptors ([signals/catalog.py](../../src/eyecatcher/signals/catalog.py)). Run `make generate` to sync NEAT config and frontend. Population size and crossover: [config/evolution_defaults.json](../evolution_defaults.json). See [RESEARCHER_GUIDE.md](../../RESEARCHER_GUIDE.md).

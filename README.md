@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-Time-varying CPPN evolution system. Like Picbreeder, but patterns change over time and react to user input. For researcher tasks (add representation, add signal, change config): [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md).
+Interactive evolution of patterns: NEAT-evolved patterns (CPPN, NCA) and Conway-style CA. Click to select favorites, evolve the next generation. Default representation is NCA (grid). For adding representations, signals, or changing config: [RESEARCHER_GUIDE.md](RESEARCHER_GUIDE.md).
 
 ## Quick Start
 
@@ -43,7 +43,7 @@ Optional: copy [.env.example](.env.example) to `.env`; Docker Compose loads it. 
 The system follows a simple biological model:
 
 - **Genome** — evolvable data (e.g. NEAT networks, grid). Created by `create_random`, evolved by `mutate` / `crossover`.
-- **Development** — `express(genome)` produces a displayable output (image/grid); `develop(genome)` produces a GLSL **rule** for real-time rendering. Representations with a field substrate implement `develop`; grid ones use phenotype behaviour rules.
+- **Development** — `express(genome)` produces a displayable output (image/grid); `develop(genome)` produces a GLSL **rule** for real-time rendering. Field substrates (CPPN) implement `develop`; grid (NCA, CA) use phenotype behaviour rules.
 - **Phenotype** — declarative description: **Substrate** (field, grid, or image) and optional **Behaviour** (update/interaction rules for grids). The frontend picks a renderer by `phenotype.substrate.type`.
 - **Sensory system** — each representation has a `sensory_system` (receptors + signals). Receptors bind signals to input targets (e.g. visual CPPN, time CPPN); the rule assembler uses them to build GLSL.
 
