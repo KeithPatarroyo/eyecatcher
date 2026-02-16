@@ -52,11 +52,13 @@ def create_random_dual_genome(
     visual_config: neat.Config,
     time_config: neat.Config,
     genome_id: int = 0,
+    key: int | None = None,
 ) -> DualGenome:
     """Create a random dual genome (visual + time signal CPPNs)."""
-    visual_genome = create_random_genome(visual_config, genome_id)
-    time_genome = create_random_genome(time_config, genome_id)
-    return DualGenome(visual=visual_genome, time_signal=time_genome, key=genome_id)
+    k = key if key is not None else genome_id
+    visual_genome = create_random_genome(visual_config, genome_id=k, key=k)
+    time_genome = create_random_genome(time_config, genome_id=k, key=k)
+    return DualGenome(visual=visual_genome, time_signal=time_genome, key=k)
 
 
 def dual_genome_to_json(dual: DualGenome) -> dict[str, Any]:
@@ -113,8 +115,8 @@ def mutate_dual_genome(
     """Create a mutated copy of a dual genome (both visual and time signal)."""
     from .operators import mutate_genome
 
-    visual_child = mutate_genome(dual_genome.visual, visual_config)
-    time_child = mutate_genome(dual_genome.time_signal, time_config)
+    visual_child = mutate_genome(dual_genome.visual, visual_config, key=new_key)
+    time_child = mutate_genome(dual_genome.time_signal, time_config, key=new_key)
     return DualGenome(visual=visual_child, time_signal=time_child, key=new_key)
 
 
@@ -128,6 +130,10 @@ def crossover_dual_genomes(
     """Create offspring from two dual genomes."""
     from .operators import crossover_genomes
 
-    visual_child = crossover_genomes(dual1.visual, dual2.visual, visual_config)
-    time_child = crossover_genomes(dual1.time_signal, dual2.time_signal, time_config)
+    visual_child = crossover_genomes(
+        dual1.visual, dual2.visual, visual_config, key=new_key
+    )
+    time_child = crossover_genomes(
+        dual1.time_signal, dual2.time_signal, time_config, key=new_key
+    )
     return DualGenome(visual=visual_child, time_signal=time_child, key=new_key)
