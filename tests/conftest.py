@@ -7,7 +7,7 @@ data modified.
 
 from unittest.mock import patch
 
-import eyecatcher.data.genealogy_db as genealogy_db_module
+import eyecatcher.data as genealogy_db_module
 import pytest
 from eyecatcher.genome import create_random_dual_genome, dual_genome_from_json
 from eyecatcher.representation import DualCPPNRepresentation

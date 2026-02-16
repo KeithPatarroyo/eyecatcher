@@ -74,7 +74,7 @@ def test_web_imports():
 
 def test_data_imports():
     """Test that data layer imports work."""
-    from eyecatcher.data.genealogy_db import (
+    from eyecatcher.data import (
         save_generation_result,
         save_population,
     )
