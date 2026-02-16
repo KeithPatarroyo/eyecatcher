@@ -71,6 +71,12 @@
             img.alt = "";
             previewWrap.innerHTML = "";
             previewWrap.appendChild(img);
+        } else if (displayItem && displayItem.rule) {
+            previewWrap.innerHTML = "";
+            const placeholder = document.createElement("div");
+            placeholder.className = "preview-placeholder";
+            placeholder.textContent = "Preview";
+            previewWrap.appendChild(placeholder);
         }
         li.appendChild(previewWrap);
         const info = document.createElement("div");
@@ -83,9 +89,6 @@
         }
         li.appendChild(info);
         if (options.appendNodes) options.appendNodes(li, item);
-        if (displayItem && displayItem.rule && window.WebGLUtils) {
-            return window.WebGLUtils.setupPattern(canvas, displayItem.rule);
-        }
         return null;
     }
 
