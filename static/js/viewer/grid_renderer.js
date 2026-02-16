@@ -116,11 +116,12 @@ function attachGridDelegatedListeners(grid, self) {
     if (!grid || grid.dataset.delegationBound === "true") return;
     grid.dataset.delegationBound = "true";
 
+    const getRuntime = (id) => self.getRuntime(id);
     DOM.delegate(grid, "click", ".organism-card", (ev, card) => {
         const isCanvasClick =
             ev.target?.nodeName === "CANVAS" && card?.contains?.(ev.target) === true;
         if (isCanvasClick) {
-            CardBuilder.runCellInteraction?.(ev, card);
+            CardBuilder.runCellInteraction?.(ev, card, getRuntime);
             return;
         }
         const id = parseCardId(card.dataset.id);
@@ -132,7 +133,7 @@ function attachGridDelegatedListeners(grid, self) {
         const isCanvasClick =
             ev.target?.nodeName === "CANVAS" && card?.contains?.(ev.target) === true;
         if (isCanvasClick) {
-            CardBuilder.runCellInteraction?.(ev, card);
+            CardBuilder.runCellInteraction?.(ev, card, getRuntime);
             return;
         }
         const id = parseCardId(card.dataset.id);

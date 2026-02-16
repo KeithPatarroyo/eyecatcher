@@ -235,16 +235,16 @@ class CardBuilder {
         // Only ensure data attributes are set; no per-card listeners for those.
     }
 
-    /** Instance delegate so window.CardBuilder.runCellInteraction works (static lives on the class). */
-    runCellInteraction(ev, card) {
-        return this.constructor.runCellInteraction(ev, card);
+    /** Instance delegate for runCellInteraction (static lives on the class). */
+    runCellInteraction(ev, card, getRuntime) {
+        return this.constructor.runCellInteraction(ev, card, getRuntime);
     }
 
     /**
      * Run FBO/cell interaction for a canvas click. Called by grid when ev.target is canvas and card.contains(ev.target).
-     * No return value; grid already decided not to trigger fitness.
+     * @param {(id: string) => object|null} [getRuntime] - from GridRenderer.getRuntime when called from grid
      */
-    static runCellInteraction(ev, card) {
+    static runCellInteraction(ev, card, getRuntime) {
         const canvas = ev.target?.nodeName === "CANVAS" ? ev.target : null;
         if (!canvas) return;
 
@@ -263,7 +263,7 @@ class CardBuilder {
 
         const coords = getClickCoordinates(ev, canvas);
         const runtime =
-            window.GridRenderer?.getRuntime?.(id) ??
+            (typeof getRuntime === "function" ? getRuntime(id) : null) ??
             getOrganismFlexible(id)?.runtime ??
             null;
         rep.substrate.handleInteraction(
