@@ -70,6 +70,11 @@ class RepresentationBase(ABC):
         ...
 
     # --- Development (genome → phenotype; required) ---
+
+    def parse_express_options(self, raw_options: dict[str, Any]) -> dict[str, Any]:
+        """Parse request options into kwargs for express(). Default: none."""
+        return {}
+
     @abstractmethod
     def express(
         self, genome: Any, inputs: dict[str, float], **kwargs: Any

@@ -230,20 +230,13 @@ def api_express():
     individuals_data = data.get("individuals", [])
     inputs = data.get("inputs") or {}
     raw_options = data.get("options") or {}
-    # Allowlist for express() kwargs (nca_steps, nca_preview_grid_size)
-    express_kwargs = {}
-    if isinstance(raw_options.get("nca_steps"), (int, float)):
-        express_kwargs["nca_steps"] = max(1, int(raw_options["nca_steps"]))
-    if isinstance(raw_options.get("nca_preview_grid_size"), (int, float)):
-        express_kwargs["nca_preview_grid_size"] = max(
-            8, int(raw_options["nca_preview_grid_size"])
-        )
+    rep = get_current_representation()
+    express_kwargs = rep.parse_express_options(raw_options)
     if not individuals_data:
         return api_error(ERR_INDIVIDUALS_ARRAY_REQUIRED, 400)
     results = []
     for i, item_data in enumerate(individuals_data):
         ind, individual_id, _ = _parse_one_individual(item_data, i)
-        rep = get_current_representation()
         out = rep.express(ind, dict(inputs), **express_kwargs)
         item = {"id": individual_id, "output_type": out.output_type}
         item.update(rep.serialize_output(out, ind))

@@ -123,6 +123,10 @@ class Representation(Protocol[GenomeT]):
         ...
 
     # --- Development (genome → phenotype) ---
+    def parse_express_options(self, raw_options: dict[str, Any]) -> dict[str, Any]:
+        """Parse request options into kwargs for express(). Default: {}."""
+        ...
+
     def express(
         self, genome: GenomeT, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
