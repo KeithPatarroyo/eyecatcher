@@ -21,7 +21,7 @@ def test_get_enabled_connections_returns_only_enabled(
     assert len(conns) == len(keys)
     for src, dst, w in conns:
         assert (src, dst) in keys
-        assert isinstance(w, (int, float))
+        assert isinstance(w, int | float)
 
 
 def test_get_enabled_connections_empty_when_all_disabled(random_dual_genome):

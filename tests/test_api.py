@@ -202,7 +202,7 @@ def test_api_time_output(client):
     assert rv.status_code == 200
     data = rv.get_json()
     assert "timeOutput" in data
-    assert isinstance(data["timeOutput"], (int, float))
+    assert isinstance(data["timeOutput"], int | float)
     assert "inputs" in data
     assert data["inputs"]["raw_time"] == 0.5
 

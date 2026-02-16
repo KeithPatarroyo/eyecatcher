@@ -5,8 +5,6 @@ Maps signals to variable/uniform names used in generated code.
 Domain-agnostic Signal type is used; this module encapsulates GLSL naming convention.
 """
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 
 from ..signals.sensory_system import Signal

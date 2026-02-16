@@ -9,7 +9,7 @@ Works with any representation (dual_cppn, ca, etc.).
 
 import logging
 import random
-from typing import Any, Optional
+from typing import Any
 
 from .. import experiment
 from ..representation.protocol import Representation
@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 def produce_next_generation(
     representation: Representation[Any],
     parents_data: list[dict[str, Any]],
-    population_size: Optional[int] = None,
+    population_size: int | None = None,
     elitism: bool = False,
-    crossover_probability: Optional[float] = None,
+    crossover_probability: float | None = None,
 ) -> list:
     """
     Produce next generation from parent payloads (stateless).

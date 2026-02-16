@@ -5,8 +5,6 @@ Expression and signal translation are delegated to a NeatReceptor.
 Evolution (population, mutation, crossover) from FieldRepresentationBase/NeatEvolvable.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 import neat
@@ -84,12 +82,7 @@ class SingleCPPNRepresentation(NetworkInspectable, FieldRepresentationBase):
     def _sample_inputs(
         self, x: float, y: float, time: float, base: dict[str, float]
     ) -> dict[str, float]:
-        return {
-            **base,
-            "x": x,
-            "y": y,
-            catalog.time.id: time * 2.0 - 1.0,
-        }
+        return base | {"x": x, "y": y, catalog.time.id: time * 2.0 - 1.0}
 
     def get_base_inputs_for_render(self) -> dict[str, float]:
         base = self.visual.default_values()

@@ -4,8 +4,6 @@ Dual-genome type and operations: visual + time_signal NEAT genomes.
 Used by DualCPPNRepresentation. Generic NEAT genome types live in this package.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 import neat

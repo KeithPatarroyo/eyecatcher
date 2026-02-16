@@ -10,6 +10,7 @@ contents for client-side download (Railway / no server filesystem). Representati
 import base64
 import logging
 import os
+from pathlib import Path
 
 from flask import Flask, request, send_from_directory
 from flask_cors import CORS
@@ -37,7 +38,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 ROOT_DIR = get_root_dir()
-STATIC_DIR = os.path.join(ROOT_DIR, "static")
+STATIC_DIR = str(Path(ROOT_DIR) / "static")
 # Default port when running locally; frontend dev port in experiment_config.js.
 DEFAULT_PORT = 5001
 app = Flask(__name__, static_folder=STATIC_DIR, static_url_path="")
@@ -111,11 +112,10 @@ def save_individual():
         return api_error("Save not implemented for this representation.", 501)
     names = representation.get_save_filenames(ind_id)
     if os.environ.get("SAVE_TO_DISK", "").strip() in ("1", "true", "yes"):
-        saved_dir = os.path.join(ROOT_DIR, "output", "saved")
-        os.makedirs(saved_dir, exist_ok=True)
+        saved_dir = Path(ROOT_DIR) / "output" / "saved"
+        saved_dir.mkdir(parents=True, exist_ok=True)
         for name, content in assets.items():
-            with open(os.path.join(saved_dir, name), "wb") as f:
-                f.write(content)
+            (saved_dir / name).write_bytes(content)
     return build_save_zip_response(ind_id, assets, names["zip"])
 
 
@@ -125,12 +125,12 @@ def _serve_saved_asset(individual_id: int, asset_key: str, mimetype: str):
     names = representation.get_save_filenames(individual_id)
     if asset_key not in names:
         return api_error("Asset not found", 404)
-    path = os.path.join(ROOT_DIR, "output", "saved", names[asset_key])
-    if not os.path.isfile(path):
+    path = Path(ROOT_DIR) / "output" / "saved" / names[asset_key]
+    if not path.is_file():
         return api_error("File not found", 404)
     return send_from_directory(
-        os.path.dirname(path),
-        os.path.basename(path),
+        str(path.parent),
+        path.name,
         mimetype=mimetype,
         as_attachment=False,
     )

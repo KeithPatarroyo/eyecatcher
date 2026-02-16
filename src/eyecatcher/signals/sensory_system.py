@@ -9,18 +9,16 @@ Helper functions (inputs_array, default_inputs, apply_derived_inputs)
 operate on sequences of these primitives.
 """
 
-from __future__ import annotations
-
 import math  # noqa: F401 – used by DerivedInput.compute lambdas
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .receptor import Receptor
 
 
-def _is_toggleable(s: Signal) -> bool:
+def _is_toggleable(s: "Signal") -> bool:
     """True if this signal has a value uniform (not spatial, not constant)."""
     return not s.is_spatial and not s.is_constant
 
@@ -71,7 +69,7 @@ class DerivedInput:
 # ------------------------------------------------------------------
 
 
-def _dedup_inputs(receptors: Sequence[Receptor]) -> tuple[Signal, ...]:
+def _dedup_inputs(receptors: Sequence["Receptor"]) -> tuple[Signal, ...]:
     """Union of all receptor inputs, deduped by signal id (first occurrence wins)."""
     seen: set[str] = set()
     out: list[Signal] = []
@@ -83,7 +81,7 @@ def _dedup_inputs(receptors: Sequence[Receptor]) -> tuple[Signal, ...]:
     return tuple(out)
 
 
-def _dedup_derived(receptors: Sequence[Receptor]) -> tuple[DerivedInput, ...]:
+def _dedup_derived(receptors: Sequence["Receptor"]) -> tuple[DerivedInput, ...]:
     """Union of all receptor derived inputs, deduped by id."""
     seen: set[str] = set()
     out: list[DerivedInput] = []
@@ -104,7 +102,7 @@ class SensorySystem:
     substitutions are representation-level.
     """
 
-    receptors: tuple[Receptor, ...] = ()
+    receptors: tuple["Receptor", ...] = ()
     outputs: tuple[Output, ...] = ()
     substitutions: dict[str, str] = field(default_factory=dict)
 
@@ -118,7 +116,7 @@ class SensorySystem:
         """Signals computed from other inputs (union of receptor derived, deduped)."""
         return _dedup_derived(self.receptors)
 
-    def receptor(self, name: str) -> Receptor:
+    def receptor(self, name: str) -> "Receptor":
         """Look up receptor by name. Raises KeyError if not found."""
         for r in self.receptors:
             if r.name == name:

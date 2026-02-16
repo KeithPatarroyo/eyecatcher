@@ -8,8 +8,6 @@ State: 4 channels (RGB + alpha). FBO ping-pong on the frontend; CPU simulation
 for express() thumbnails.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 import neat
@@ -278,9 +276,9 @@ class NCARepresentation(NeatEvolvable, NetworkInspectable, GridRepresentationBas
     def parse_express_options(self, raw_options: dict[str, Any]) -> dict[str, Any]:
         """Allowlist nca_steps and nca_preview_grid_size for express()."""
         out: dict[str, Any] = {}
-        if isinstance(raw_options.get("nca_steps"), (int, float)):
+        if isinstance(raw_options.get("nca_steps"), int | float):
             out["nca_steps"] = max(1, int(raw_options["nca_steps"]))
-        if isinstance(raw_options.get("nca_preview_grid_size"), (int, float)):
+        if isinstance(raw_options.get("nca_preview_grid_size"), int | float):
             out["nca_preview_grid_size"] = max(
                 MIN_PREVIEW_GRID_SIZE, int(raw_options["nca_preview_grid_size"])
             )

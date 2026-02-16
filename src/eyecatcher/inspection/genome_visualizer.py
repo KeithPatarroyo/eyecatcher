@@ -6,7 +6,7 @@ Produces PDFs of network structure; used by save (visualize=True) and tests.
 
 import io
 import logging
-from typing import BinaryIO, Optional, Union
+from typing import BinaryIO
 
 import matplotlib
 
@@ -56,9 +56,9 @@ class GenomeVisualizer:
     def visualize_genome(
         self,
         genome: neat.DefaultGenome,
-        output: Union[str, BinaryIO],
+        output: str | BinaryIO,
         view: bool = False,
-        figsize: Optional[tuple] = None,
+        figsize: tuple | None = None,
     ):
         """
         Create a visualization of the genome network structure.
@@ -294,10 +294,10 @@ class GenomeVisualizer:
 def render_genome_network_pdf(
     genome: neat.DefaultGenome,
     neat_config: neat.Config,
-    output: Union[str, BinaryIO],
+    output: str | BinaryIO,
     signals_in: list[Signal],
     signals_out: list[Output],
-) -> Optional[bytes]:
+) -> bytes | None:
     """
     Render a genome network to PDF (optional matplotlib).
 

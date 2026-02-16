@@ -5,8 +5,6 @@ Canonical definitions live in sensory_system (primitives, SensorySystem) and cat
 operate on them; all require explicit sensory_system or signal list arguments.
 """
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 
 from .sensory_system import (

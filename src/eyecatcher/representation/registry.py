@@ -6,8 +6,6 @@ Experiment presets in config/experiments.json can set
 representation from the preset.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 from .ca import ConwayRepresentation

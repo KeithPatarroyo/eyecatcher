@@ -5,10 +5,9 @@ get_grid_for_symmetry for CA and NCA. Subclasses set grid_size and implement
 create_random, mutate, crossover, express, to_json, from_json.
 """
 
-from __future__ import annotations
-
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 

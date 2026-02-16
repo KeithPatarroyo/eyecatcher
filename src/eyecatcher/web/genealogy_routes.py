@@ -50,16 +50,15 @@ def save_population_route():
     fitness_data = data.get("fitness_data", [])
     metadata = data.get("metadata") or {}
     if data.get("representation_id") is not None:
-        metadata = dict(metadata, representation_id=data.get("representation_id"))
+        metadata = metadata | {"representation_id": data.get("representation_id")}
     representation = experiment.get_configured_representation()
-    metadata = dict(
-        metadata,
-        experiment_config={
+    metadata = metadata | {
+        "experiment_config": {
             "representation_id": representation.id,
             "population_size": experiment.get_population_size(),
             "crossover_probability": experiment.get_crossover_probability(),
-        },
-    )
+        }
+    }
 
     if not individuals:
         return api_error(ERR_INDIVIDUALS_ARRAY_REQUIRED, 400)

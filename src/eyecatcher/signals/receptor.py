@@ -9,8 +9,6 @@ This is the base type; NeatReceptor (in representation/receptors.py) adds NEAT
 network query, GLSL input mapping, and network stats for CPPN representations.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from .sensory_system import (

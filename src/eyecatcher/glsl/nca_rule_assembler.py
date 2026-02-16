@@ -5,8 +5,6 @@ Produces a complete fragment shader: Sobel perception, NEAT network evaluation,
 stochastic update, alive masking, and state clamp. Used by NCARepresentation.develop().
 """
 
-from __future__ import annotations
-
 from ..representation.receptors import NetworkContribution
 from ..signals import catalog
 from .activation_registry import build_shader_preamble

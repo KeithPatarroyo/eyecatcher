@@ -4,8 +4,6 @@ Unified scripts/generate_config.py writes static/js/config.generated.js.
 Uses frontend_metadata and representation.capabilities.
 """
 
-from __future__ import annotations
-
 from ..signals.sensory_system import SensorySystem, _is_toggleable
 from .protocol import Behaviour, Phenotype, Substrate
 from .registry import REPRESENTATIONS, get_representation

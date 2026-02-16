@@ -5,7 +5,7 @@ Takes NetworkContribution(s) from NeatReceptor.compile() and produces
 the full rule string. No genome or NEAT types in the public API.
 """
 
-from __future__ import annotations
+from typing import Self
 
 from ..representation.receptors import NetworkContribution
 from ..signals.sensory_system import SensorySystem, Signal
@@ -38,7 +38,7 @@ class RuleAssembler:
     @classmethod
     def from_sensory_system(
         cls, sensory_system: SensorySystem, *, color_mode: str = "hsv"
-    ) -> RuleAssembler:
+    ) -> Self:
         """Build a RuleAssembler from a SensorySystem.
 
         Uses receptor role: "primary" produces color output, "modifier" feeds
@@ -66,7 +66,7 @@ class RuleAssembler:
             substitutions=sensory_system.substitutions or None,
         )
 
-    def with_color_mode(self, color_mode: str) -> RuleAssembler:
+    def with_color_mode(self, color_mode: str) -> Self:
         """Return a new assembler with the same signals but different color_mode."""
         return RuleAssembler(
             self.visual_signals,

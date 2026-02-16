@@ -6,7 +6,7 @@ Used by substrate get_network_data, genome_visualizer.
 """
 
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any
 
 import neat
 
@@ -35,7 +35,7 @@ def _append_nodes_for_layer(
     layer_type: str,
     id_label_list: list[tuple[int, str]],
     x_pos: float,
-    extra_per_node: Optional[list[dict[str, Any]]] = None,
+    extra_per_node: list[dict[str, Any]] | None = None,
 ) -> None:
     """Append one layer of nodes (input, hidden, or output) with vertical spacing."""
     n = len(id_label_list)

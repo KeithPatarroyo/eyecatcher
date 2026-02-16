@@ -6,8 +6,6 @@ configuration. Output = grid (H×W×3 RGB). Click-to-kill zeroes cells in the
 running simulation (frontend applies kill mask before each GOL step).
 """
 
-from __future__ import annotations
-
 import random
 from typing import Any
 

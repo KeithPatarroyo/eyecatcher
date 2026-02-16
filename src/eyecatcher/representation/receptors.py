@@ -6,10 +6,8 @@ For grid representations (e.g. CA), use the base Receptor from signals.receptor
 with interaction inputs (e.g. mouse_x, mouse_y); no grid-specific subclass needed.
 """
 
-from __future__ import annotations
-
-import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, BinaryIO
 
 import neat
@@ -148,12 +146,12 @@ class NeatReceptor(Receptor):
     @property
     def config(self) -> neat.Config:
         """Lazy-load and return NEAT config (cached by resolved path)."""
-        root = get_root_dir()
-        resolved = self.config_path
-        if not os.path.isabs(resolved):
-            resolved = os.path.join(root, resolved)
+        root = Path(get_root_dir())
+        resolved = Path(self.config_path)
+        if not resolved.is_absolute():
+            resolved = root / resolved
         return _load_neat_config(
-            resolved,
+            str(resolved),
             list(self.inputs),
             list(self.outputs),
             self.name,

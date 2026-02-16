@@ -5,8 +5,6 @@ Takes opaque NetworkContribution (from NeatReceptor.compile) and produces
 the node computation code string. Used by RuleAssembler.
 """
 
-from __future__ import annotations
-
 from ..representation.receptors import NetworkContribution
 from .activation_registry import get_activation_names
 

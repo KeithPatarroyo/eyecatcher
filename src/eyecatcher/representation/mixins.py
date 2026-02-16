@@ -5,8 +5,6 @@ expressed as mixins. API and fitness code check capabilities via
 isinstance(rep, Saveable) etc., instead of introspecting method identity.
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from typing import Any
 

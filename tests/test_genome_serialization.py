@@ -41,7 +41,7 @@ def test_dual_genome_round_trip_query_consistency(representation, random_dual_ge
     inputs = {"x": 0.5, "y": 0.5, "raw_time": 0.3}
     r0, g0, b0 = representation.query_rgb(random_dual_genome, inputs)
     r1, g1, b1 = representation.query_rgb(restored, inputs)
-    assert isinstance(r0, (int, float)) and isinstance(r1, (int, float))
+    assert isinstance(r0, int | float) and isinstance(r1, int | float)
     assert 0 <= r0 <= 1 and 0 <= r1 <= 1
     assert 0 <= g0 <= 1 and 0 <= g1 <= 1
     assert 0 <= b0 <= 1 and 0 <= b1 <= 1

@@ -8,8 +8,6 @@ and convenience presets matching the current dual-CPPN configuration.
 Representations pick from this catalog to build their SensorySystem.
 """
 
-from __future__ import annotations
-
 import math
 
 from .sensory_system import DerivedInput, Output, Signal

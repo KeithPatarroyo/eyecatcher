@@ -10,7 +10,7 @@ Provides endpoints for community pattern submissions and admin moderation:
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 
 from flask import Blueprint, jsonify, request
@@ -144,7 +144,7 @@ def api_community_submit():
             """INSERT INTO submissions
                (name, creator, genome_json, status, submitted_at)
                VALUES (?, ?, ?, 'pending', ?)""",
-            (name, creator, genome_json, datetime.now(timezone.utc).isoformat()),
+            (name, creator, genome_json, datetime.now(UTC).isoformat()),
         )
         conn.commit()
         sid = cur.lastrowid
@@ -209,7 +209,7 @@ def _admin_moderate(action):
             "UPDATE submissions SET status = 'approved', approved_at = ? "
             "WHERE id = ? AND status = 'pending'"
         )
-        params = (datetime.now(timezone.utc).isoformat(), submission_id)
+        params = (datetime.now(UTC).isoformat(), submission_id)
         status_val = "approved"
     else:
         sql = (

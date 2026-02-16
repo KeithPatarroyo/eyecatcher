@@ -12,7 +12,8 @@ import os
 import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 
@@ -28,7 +29,7 @@ def default_db_path(filename: str) -> str:
     """
     from . import get_root_dir
 
-    return os.path.join(get_root_dir(), "data", filename)
+    return str(Path(get_root_dir()) / "data" / filename)
 
 
 def sqlite_connection(
@@ -49,9 +50,9 @@ def sqlite_connection(
     Returns:
         Open connection (caller must close it).
     """
-    parent = os.path.dirname(path) or "."
-    os.makedirs(parent, exist_ok=True)
-    conn = sqlite3.connect(path)
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(p)
     conn.row_factory = sqlite3.Row
     for stmt in pragmas:
         conn.execute(stmt)
@@ -207,7 +208,7 @@ def _insert_population_with_individuals(
         (
             parent_id,
             generation_num,
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(UTC).isoformat(),
             branch_name,
             description,
             user_id,
@@ -231,7 +232,7 @@ def _insert_population_with_individuals(
                 genome_key,
                 genome_json,
                 fitness,
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
             ),
         )
         individual_ids.append(cur.lastrowid)
@@ -551,9 +552,7 @@ def export_genealogy_data(branch_name: str | None = None) -> dict[str, Any] | No
             d["genome_json"] = parsed if parsed is not None else d["genome_json"]
             individuals.append(d)
         return {
-            "exported_at": datetime.now(timezone.utc)
-            .isoformat()
-            .replace("+00:00", "Z"),
+            "exported_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "version": 1,
             "branch_name": branch_name,
             "populations": populations,

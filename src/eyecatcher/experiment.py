@@ -10,6 +10,7 @@ Provides get_configured_representation() and NEAT config paths for CPPN represen
 import json
 import logging
 import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +31,11 @@ def _get_root_dir() -> str:
 
 def _load_evolution_defaults() -> dict:
     """Load config/evolution_defaults.json. Raises if file or keys missing."""
-    root = _get_root_dir()
-    path = os.path.join(root, "config", "evolution_defaults.json")
-    if not os.path.isfile(path):
+    root = Path(_get_root_dir())
+    path = root / "config" / "evolution_defaults.json"
+    if not path.is_file():
         raise FileNotFoundError(f"Missing config/evolution_defaults.json at {path}")
-    with open(path, encoding="utf-8") as f:
+    with path.open(encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
         raise ValueError("evolution_defaults.json must be a JSON object")
@@ -101,7 +102,7 @@ class ExperimentConfig:
             if key not in _ALLOWED_OVERLAY_KEYS:
                 continue
             if key == "crossover_probability":
-                if isinstance(value, (int, float)) and 0 <= value <= 1:
+                if isinstance(value, int | float) and 0 <= value <= 1:
                     self._runtime_overlay[key] = float(value)
             elif key in ("population_size", "max_population_size"):
                 if isinstance(value, int) and value >= 1:
@@ -169,12 +170,12 @@ def update_runtime_config(updates: dict | None) -> None:
 
 def _load_preset_by_name(preset_name: str) -> dict | None:
     """Load a single preset from config/experiments.json. Used for provenance only."""
-    root = _get_root_dir()
-    path = os.path.join(root, "config", "experiments.json")
-    if not os.path.isfile(path):
+    root = Path(_get_root_dir())
+    path = root / "config" / "experiments.json"
+    if not path.is_file():
         return None
     try:
-        with open(path, encoding="utf-8") as f:
+        with path.open(encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError):
         return None
@@ -245,14 +246,16 @@ def _load_experiment_preset() -> dict | None:
     preset_name = os.environ.get("EXPERIMENT_CONFIG", "default").strip()
     if not preset_name:
         return None
-    root = _get_root_dir()
-    path = os.path.join(root, "config", "experiments.json")
-    if not os.path.isfile(path):
+    root = Path(_get_root_dir())
+    path = root / "config" / "experiments.json"
+    if not path.is_file():
         return None
     try:
-        with open(path, encoding="utf-8") as f:
+        with path.open(encoding="utf-8") as f:
             data = json.load(f)
-    except (Exception, OSError):
+    except OSError:
+        return None
+    except json.JSONDecodeError:
         return None
     return data.get(preset_name) if isinstance(data, dict) else None
 

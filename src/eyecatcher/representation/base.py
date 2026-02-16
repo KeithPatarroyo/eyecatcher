@@ -4,8 +4,6 @@ Subclass RepresentationBase to add a new representation; implement the
 abstract methods and override only what differs from the defaults.
 """
 
-from __future__ import annotations
-
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, cast

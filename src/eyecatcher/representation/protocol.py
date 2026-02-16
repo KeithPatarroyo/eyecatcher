@@ -7,10 +7,8 @@ Concrete implementations subclass RepresentationBase (base.py), which provides
 optional defaults and auto-derived capabilities.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
-from typing import Any, Literal, Protocol, TypeVar, Union
+from typing import Any, Literal, Protocol, TypeVar
 
 import numpy as np
 
@@ -21,7 +19,7 @@ GenomeT = TypeVar("GenomeT")
 OutputType = Literal["field", "image", "grid", "audio"]
 
 # Data for each output type: field=str (GLSL), image/grid/audio=ndarray
-RepresentationOutputData = Union[str, np.ndarray]
+RepresentationOutputData = str | np.ndarray
 
 
 @dataclass(frozen=True)

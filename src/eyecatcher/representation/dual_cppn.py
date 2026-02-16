@@ -5,12 +5,11 @@ Expression and signal translation are delegated to NeatReceptor instances.
 Evolution (populations, mutation, crossover) is owned by the representation.
 """
 
-from __future__ import annotations
-
 import io
 import json
 import pickle
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import neat
 import numpy as np
@@ -152,16 +151,13 @@ class DualCPPNRepresentation(NetworkInspectable, FieldRepresentationBase):
         self, genome: DualGenome, inputs: dict[str, float]
     ) -> tuple[float, float, float]:
         modified_time = self._query_time_signal(genome.time_signal, inputs)
-        visual_inputs = {
-            **inputs,
-            catalog.time.id: modified_time,
-        }
+        visual_inputs = inputs | {catalog.time.id: modified_time}
         return self._query_visual_rgb(genome, visual_inputs)
 
     def _sample_inputs(
         self, x: float, y: float, time: float, base: dict[str, float]
     ) -> dict[str, float]:
-        return {**base, "x": x, "y": y}
+        return base | {"x": x, "y": y}
 
     def get_base_inputs_for_render(self) -> dict[str, float]:
         return self.time.default_values()

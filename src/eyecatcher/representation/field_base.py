@@ -7,8 +7,6 @@ Subclasses set self.visual (and optionally self.time), self.sensory_system,
 then call super().__init__(color_mode=...).
 """
 
-from __future__ import annotations
-
 import json
 from abc import abstractmethod
 from collections.abc import Callable as Cb
