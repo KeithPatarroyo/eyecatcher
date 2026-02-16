@@ -77,7 +77,7 @@
         }
 
         /**
-         * Show or hide signal controls based on representation.
+         * Show or hide signal controls and grid-specific help based on representation.
          * @param {string|null} representationId - current representation id
          */
         updateForRepresentation(representationId) {
@@ -89,6 +89,15 @@
                     ? true
                     : representation.hasSignalControls !== false;
             container.style.display = show ? "" : "none";
+            var gridHint = document.getElementById("instructions-grid-hint");
+            if (gridHint) {
+                var sub =
+                    representation &&
+                    representation.phenotype &&
+                    representation.phenotype.substrate;
+                var isGrid = sub && (sub.type === "grid" || sub === "grid");
+                gridHint.hidden = !isGrid;
+            }
         }
 
         init() {
