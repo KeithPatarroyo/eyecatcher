@@ -96,3 +96,77 @@ DUAL_CPPN_TIME_INPUTS = (raw_time, mouse_speed, mouse_dist, activity, bias)
 
 # CA interaction: mouse position for cell toggling
 CA_INTERACTION_INPUTS = (mouse_x, mouse_y)
+
+# NCA: time and mouse for dynamic, responsive growth (global inputs to update shader)
+NCA_GLOBAL_INPUTS = (raw_time, mouse_x, mouse_y, mouse_speed, activity)
+
+# ------------------------------------------------------------------
+# NCA NEAT inputs (14: 12 perception computed in-shader + 2 signals)
+# ------------------------------------------------------------------
+
+# 12 perception signals: Sobel in NCA step shader (is_spatial, no uniform)
+nca_self_r = Signal(
+    "nca_self_r", "NCA self R", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_self_g = Signal(
+    "nca_self_g", "NCA self G", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_self_b = Signal(
+    "nca_self_b", "NCA self B", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_self_a = Signal(
+    "nca_self_a", "NCA self A", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_dx_r = Signal(
+    "nca_dx_r", "NCA grad_x R", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_dx_g = Signal(
+    "nca_dx_g", "NCA grad_x G", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_dx_b = Signal(
+    "nca_dx_b", "NCA grad_x B", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_dx_a = Signal(
+    "nca_dx_a", "NCA grad_x A", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_dy_r = Signal(
+    "nca_dy_r", "NCA grad_y R", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_dy_g = Signal(
+    "nca_dy_g", "NCA grad_y G", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_dy_b = Signal(
+    "nca_dy_b", "NCA grad_y B", 0.0, is_spatial=True, category="nca_perception"
+)
+nca_dy_a = Signal(
+    "nca_dy_a", "NCA grad_y A", 0.0, is_spatial=True, category="nca_perception"
+)
+
+# Per-cell distance from mouse (computed in-shader from u_mouse_x, u_mouse_y)
+mouse_cell_dist = Signal(
+    "mouse_cell_dist", "Mouse cell dist", 0.0, is_spatial=True, category="interaction"
+)
+
+NCA_PERCEPTION_INPUTS = (
+    nca_self_r,
+    nca_self_g,
+    nca_self_b,
+    nca_self_a,
+    nca_dx_r,
+    nca_dx_g,
+    nca_dx_b,
+    nca_dx_a,
+    nca_dy_r,
+    nca_dy_g,
+    nca_dy_b,
+    nca_dy_a,
+)
+NCA_NEAT_INPUTS = (*NCA_PERCEPTION_INPUTS, raw_time, mouse_cell_dist)
+
+# NCA update rule outputs: state delta (dR, dG, dB, dAlpha)
+NCA_STATE_DELTA_OUTPUTS = (
+    Output("delta_r", "Delta R"),
+    Output("delta_g", "Delta G"),
+    Output("delta_b", "Delta B"),
+    Output("delta_a", "Delta A"),
+)

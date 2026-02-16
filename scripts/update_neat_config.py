@@ -59,7 +59,7 @@ def main() -> None:
     sys.path.insert(0, os.path.join(root, "src"))
 
     from eyecatcher import experiment
-    from eyecatcher.representation import DualCPPNRepresentation
+    from eyecatcher.representation import DualCPPNRepresentation, NCARepresentation
 
     rep = DualCPPNRepresentation(
         neat_config_path=experiment.NEAT_CONFIG_PATH,
@@ -75,6 +75,10 @@ def main() -> None:
     time_in_count = len(time_inputs)
     time_out_count = len(time_outputs)
 
+    nca_rep = NCARepresentation()
+    nca_in_count = len(nca_rep.receptor.inputs)
+    nca_out_count = len(nca_rep.receptor.outputs)
+
     neat_dir = os.path.join(root, "config", "neat")
     for filename in sorted(os.listdir(neat_dir)):
         if not filename.endswith(".txt"):
@@ -82,13 +86,23 @@ def main() -> None:
         path = os.path.join(neat_dir, filename)
         if not os.path.isfile(path):
             continue
-        is_time = "time" in filename.lower()
+        fname_lower = filename.lower()
+        is_time = "time" in fname_lower
+        is_nca = "nca" in fname_lower
         if is_time:
             updated = _update_neat_counts(path, time_in_count, time_out_count)
             if updated:
                 print(
                     f"Updated {path} num_inputs={time_in_count} "
                     f"num_outputs={time_out_count}",
+                    file=sys.stderr,
+                )
+        elif is_nca:
+            updated = _update_neat_counts(path, nca_in_count, nca_out_count)
+            if updated:
+                print(
+                    f"Updated {path} num_inputs={nca_in_count} "
+                    f"num_outputs={nca_out_count}",
                     file=sys.stderr,
                 )
         else:
@@ -103,6 +117,7 @@ def main() -> None:
     # Validate NEAT files match representation
     visual_path = os.path.join(root, experiment.NEAT_CONFIG_PATH)
     time_path = os.path.join(root, experiment.NEAT_TIME_CONFIG_PATH)
+    nca_path = os.path.join(root, "config", "neat", "neat_config_nca.txt")
     errors = []
     v_path = experiment.NEAT_CONFIG_PATH
     t_path = experiment.NEAT_TIME_CONFIG_PATH
@@ -130,6 +145,19 @@ def main() -> None:
             f"NEAT config mismatch: num_outputs in {t_path} is {t_out}, "
             f"representation has {time_out_count}."
         )
+    if os.path.isfile(nca_path):
+        n_in = _neat_value(nca_path, "num_inputs")
+        n_out = _neat_value(nca_path, "num_outputs")
+        if n_in is not None and n_in != nca_in_count:
+            errors.append(
+                f"NEAT config mismatch: num_inputs in neat_config_nca.txt is {n_in}, "
+                f"NCA representation has {nca_in_count}."
+            )
+        if n_out is not None and n_out != nca_out_count:
+            errors.append(
+                f"NEAT config mismatch: num_outputs in neat_config_nca.txt is {n_out}, "
+                f"NCA representation has {nca_out_count}."
+            )
     if errors:
         for e in errors:
             print(e, file=sys.stderr)

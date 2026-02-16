@@ -12,6 +12,7 @@ from typing import Any
 
 from .ca import ConwayRepresentation
 from .dual_cppn import DualCPPNRepresentation
+from .nca import NCARepresentation
 from .protocol import Representation
 from .single_cppn import SingleCPPNRepresentation
 
@@ -20,6 +21,7 @@ REPRESENTATIONS: dict[str, type] = {
     "dual_cppn": DualCPPNRepresentation,
     "single_cppn": SingleCPPNRepresentation,
     "ca": ConwayRepresentation,
+    "nca": NCARepresentation,
 }
 
 

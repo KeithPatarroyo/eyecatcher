@@ -163,3 +163,61 @@ def fitness_ca_symmetry(individual: Any, representation: Representation[Any]) ->
     diff = left.astype(float) - np.flip(right, axis=1).astype(float)
     symmetry = 1.0 - np.mean(np.abs(diff))
     return float(np.clip(symmetry, 0, 1))
+
+
+# ---------------------------------------------------------------------------
+# NCA fitness functions
+# ---------------------------------------------------------------------------
+
+
+@register_fitness("nca_alive_count", compatible_output_types=["grid"])
+def fitness_nca_alive_count(
+    individual: Any, representation: Representation[Any]
+) -> float:
+    """
+    Reward NCA/grid for having a moderate number of alive cells.
+    Penalize collapse (too few) and explosion (too many).
+    """
+    out = representation.express(individual, {})
+    grid = representation.get_grid_for_symmetry(out)
+    if grid is None:
+        return 0.0
+    alive = np.sum(grid > 0)
+    total = grid.size
+    if total == 0:
+        return 0.0
+    ratio = alive / total
+    if ratio < 0.01:
+        return 0.0
+    if ratio > 0.95:
+        return 0.0
+    return float(ratio * (1.0 - ratio))
+
+
+@register_fitness("nca_growth_stability", compatible_output_types=["grid"])
+def fitness_nca_growth_stability(
+    individual: Any, representation: Representation[Any]
+) -> float:
+    """
+    Reward NCA that produce similar patterns at different step counts (stable growth).
+    """
+    steps_short = 24
+    steps_long = 48
+    out_short = representation.express(individual, {}, nca_steps=steps_short)
+    out_long = representation.express(individual, {}, nca_steps=steps_long)
+    g_short = representation.get_grid_for_symmetry(out_short)
+    g_long = representation.get_grid_for_symmetry(out_long)
+    if g_short is None or g_long is None:
+        return 0.0
+    g_short = np.asarray(g_short).astype(float)
+    g_long = np.asarray(g_long).astype(float)
+    if g_short.shape != g_long.shape:
+        return 0.0
+    diff = np.mean(np.abs(g_short - g_long))
+    return float(np.clip(1.0 - diff, 0, 1))
+
+
+@register_fitness("nca_symmetry", compatible_output_types=["grid"])
+def fitness_nca_symmetry(individual: Any, representation: Representation[Any]) -> float:
+    """Same as ca_symmetry: prefer symmetric patterns (NCA or CA)."""
+    return fitness_ca_symmetry(individual, representation)

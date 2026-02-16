@@ -26,6 +26,7 @@ REPRESENTATION_SCRIPTS = [
     "grid_substrate.js",
     "substrate_registry.js",
     "representation_registry.js",
+    "display_fetcher.js",
 ]
 
 SCRIPT_PREFIX = "js/representation/"

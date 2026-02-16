@@ -14,6 +14,7 @@ from .mixins import (
     Samplable,
     Saveable,
 )
+from .nca import NCARepresentation
 from .protocol import OutputType, Phenotype, Representation, RepresentationOutput
 from .registry import REPRESENTATIONS, get_representation
 from .single_cppn import SingleCPPNRepresentation
@@ -22,6 +23,7 @@ __all__ = [
     "ConwayGenome",
     "ConwayRepresentation",
     "DualCPPNRepresentation",
+    "NCARepresentation",
     "GridAnalyzable",
     "NetworkInspectable",
     "OutputType",
