@@ -96,11 +96,13 @@
      * @param {number} mouseSpd - Mouse speed signal
      * @param {number} mouseDist - Mouse distance to canvas (0–1)
      * @param {number} inact - Inactivity/activity level
-     * @param {Object} signalState - { time: {...}, visual: {...} } for CPPN signal toggles
+     * @param {Object} signalState - { time: {...}, visual: {...}, effects: {...} } for CPPN signal toggles
+     * @param {Object} mousePos - { x, y } mouse position on canvas (0–1 each)
      */
-    function renderPattern(patternData, time, mouseSpd, mouseDist, inact, signalState) {
+    function renderPattern(patternData, time, mouseSpd, mouseDist, inact, signalState, mousePos) {
         const { gl, program, positionBuffer } = patternData;
-        const sig = signalState || { time: {}, visual: {} };
+        const sig = signalState || { time: {}, visual: {}, effects: {} };
+        const mPos = mousePos || { x: 0.5, y: 0.5 };
 
         gl.useProgram(program);
 
@@ -108,6 +110,12 @@
         gl.uniform1f(gl.getUniformLocation(program, 'uMouseSpeed'), mouseSpd);
         gl.uniform1f(gl.getUniformLocation(program, 'uMouseDist'), mouseDist);
         gl.uniform1f(gl.getUniformLocation(program, 'uInactivity'), inact);
+
+        // Mouse position and perturbation strength for ripple effect
+        gl.uniform1f(gl.getUniformLocation(program, 'uMouseX'), mPos.x);
+        gl.uniform1f(gl.getUniformLocation(program, 'uMouseY'), mPos.y);
+        gl.uniform1f(gl.getUniformLocation(program, 'uPerturbStrength'),
+            sig.effects && sig.effects.mouseRipple ? 1.0 : 0.0);
 
         gl.uniform1f(gl.getUniformLocation(program, 'uTimeEnableRawTime'),
             sig.time.rawTime ? 1.0 : 0.0);

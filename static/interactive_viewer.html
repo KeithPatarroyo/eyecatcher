@@ -171,6 +171,16 @@
                 </div>
             </div>
         </div>
+        <div class="signal-flow">|</div>
+        <div class="signal-group">
+            <div class="signal-group-title">Effects</div>
+            <div class="signal-checkboxes">
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="effect-mouseRipple">
+                    <label for="effect-mouseRipple">Mouse Ripple <span class="signal-hint">(local distortion)</span></label>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div id="grid" style="min-height:280px;padding:10px;background:#0d0d0d;"></div>
@@ -270,6 +280,9 @@
                 mouseSpeed: true,
                 mouseDist: true,
                 inactivity: true
+            },
+            effects: {
+                mouseRipple: false  // Off by default
             }
         };
         
@@ -304,6 +317,14 @@
                     });
                 }
             });
+            // Effects
+            const mouseRippleCheckbox = document.getElementById('effect-mouseRipple');
+            if (mouseRippleCheckbox) {
+                mouseRippleCheckbox.addEventListener('change', (e) => {
+                    signalState.effects.mouseRipple = e.target.checked;
+                    console.log('🌊 Mouse Ripple:', e.target.checked ? 'ON' : 'OFF');
+                });
+            }
             // Zoom controls
             document.getElementById('zoom-in').addEventListener('click', () => {
                 patternZoom = Math.min(ZOOM_MAX, patternZoom + ZOOM_STEP);
@@ -368,15 +389,24 @@
             // Normalize: 0 = on center, 1 = far away
             return Math.min(1.0, dist / MOUSE_DIST_SCALE);
         }
+
+        // Compute mouse position within a canvas (normalized 0-1)
+        function getMousePositionOnCanvas(canvas) {
+            const rect = canvas.getBoundingClientRect();
+            // Normalize to 0-1, clamped
+            const x = Math.max(0, Math.min(1, (mouseX - rect.left) / rect.width));
+            const y = Math.max(0, Math.min(1, (mouseY - rect.top) / rect.height));
+            return { x, y };
+        }
         
         // Pattern grid and WebGL (setup/render delegate to PatternRenderer)
         const patterns = new Map();
         function setupPattern(canvas, shaderCode) {
             return window.PatternRenderer && PatternRenderer.setupPattern(canvas, shaderCode);
         }
-        function renderPattern(patternData, time, mouseSpd, mouseDist, inact) {
+        function renderPattern(patternData, time, mouseSpd, mouseDist, inact, mousePos) {
             if (window.PatternRenderer) {
-                PatternRenderer.renderPattern(patternData, time, mouseSpd, mouseDist, inact, signalState);
+                PatternRenderer.renderPattern(patternData, time, mouseSpd, mouseDist, inact, signalState, mousePos);
             }
         }
         
@@ -838,8 +868,10 @@
                 patterns.forEach((patternData) => {
                     // Compute distance from mouse to this pattern's canvas center
                     const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
+                    // Compute mouse position on this canvas (for ripple effect)
+                    const mousePos = getMousePositionOnCanvas(patternData.canvas);
                     // Pass normalized time (0-1) to shader
-                    renderPattern(patternData, normalizedTime, mouseSpeed, mouseDist, activity);
+                    renderPattern(patternData, normalizedTime, mouseSpeed, mouseDist, activity, mousePos);
                 });
                 
                 // Update debug overlay (guard against missing debug.js)
