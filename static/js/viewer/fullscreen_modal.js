@@ -1,6 +1,6 @@
 /**
  * FullscreenModal: open/close fullscreen pattern view. Supports shader and grid/image output types.
- * Dependencies: window.RepresentationRegistry, window.EvolutionConfig
+ * Depends on: RepresentationRegistry, getConfig (experiment_config).
  */
 import DOM from "../lib/dom.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
