@@ -1,145 +1,133 @@
 /**
- * Community browse: fetch list, display data, render list with previews.
- * Used by community.js. Exposes: CommunityBrowse.
+ * CommunityBrowse: preview helpers for community/admin lists.
+ * Exposes: CommunityBrowse.fetchDisplayDataForList, buildPatternListEntry, renderListWithPreviews.
  */
-(function () {
+(() => {
     "use strict";
 
     const PREVIEW_CANVAS_SIZE = 80;
 
-    async function fetchDisplayDataForList(list, toItem, getKey) {
-        const RepresentationRegistry = window.RepresentationRegistry;
-        const DisplayFetcher = window.DisplayFetcher;
-        if (
-            !RepresentationRegistry ||
-            !RepresentationRegistry.findByGenome ||
-            !DisplayFetcher ||
-            typeof DisplayFetcher.fetchDisplayData !== "function"
-        ) {
-            return {};
-        }
-        const displayByKey = {};
-        const promises = list.map(async (item) => {
-            const payload = toItem(item);
-            const genome =
-                payload &&
-                (payload.individual !== undefined
-                    ? payload.individual
-                    : payload.genome !== undefined
-                      ? payload.genome
-                      : payload);
-            const key = getKey(item);
-            const representation = RepresentationRegistry.findByGenome(genome);
-            if (!representation) return;
-            try {
-                const result = await DisplayFetcher.fetchDisplayData(
-                    representation,
-                    [genome],
-                    {}
-                );
-                const pop = result && result.population && result.population[0];
-                if (pop) displayByKey[key] = pop;
-            } catch (e) {
-                console.warn("Could not fetch preview for item " + key + ":", e);
-            }
-        });
-        await Promise.all(promises);
-        return displayByKey;
-    }
+    const getGenome = (payload) => {
+        if (!payload) return null;
+        if (payload.individual !== undefined) return payload.individual;
+        if (payload.genome !== undefined) return payload.genome;
+        return payload;
+    };
 
-    function buildPatternListEntry(
-        li,
-        item,
-        canvas,
-        displayItem,
-        options,
-        patternRenderer
-    ) {
+    const fetchDisplayDataForList = async (list, toPayload, getKey) => {
+        const RR = window.RepresentationRegistry;
+        const DF = window.DisplayFetcher;
+
+        if (!RR?.findByGenome || typeof DF?.fetchDisplayData !== "function") return {};
+
+        const entries = await Promise.all(
+            (list || []).map(async (item) => {
+                const payload = toPayload(item);
+                const genome = getGenome(payload);
+                const key = getKey(item);
+                const rep = genome ? RR.findByGenome(genome) : null;
+                if (!rep) return [key, null];
+
+                try {
+                    const r = await DF.fetchDisplayData(rep, [genome], {});
+                    return [key, r?.population?.[0] || null];
+                } catch {
+                    return [key, null];
+                }
+            })
+        );
+
+        const byKey = Object.create(null);
+        for (const [k, v] of entries) if (v) byKey[k] = v;
+        return byKey;
+    };
+
+    const buildPatternListEntry = (li, item, canvas, displayItem, options = {}) => {
         li.className = options.itemClass || "";
-        if (options.dataset) {
-            Object.keys(options.dataset).forEach((k) => {
-                li.dataset[k] = options.dataset[k];
-            });
-        }
-        if (options.prependNodes) options.prependNodes(li, item);
+        if (options.dataset) Object.assign(li.dataset, options.dataset);
+
+        options.prependNodes?.(li, item);
+
         const previewWrap = canvas.parentElement;
-        if (displayItem && displayItem.image) {
+        previewWrap.innerHTML = "";
+
+        if (displayItem?.image) {
             const img = document.createElement("img");
             img.className = "preview-img";
             img.src = displayItem.image;
             img.width = PREVIEW_CANVAS_SIZE;
+            img.height = PREVIEW_CANVAS_SIZE;
             img.alt = "";
-            previewWrap.innerHTML = "";
             previewWrap.appendChild(img);
-        } else if (displayItem && displayItem.rule) {
-            previewWrap.innerHTML = "";
+        } else if (displayItem?.rule) {
             const placeholder = document.createElement("div");
             placeholder.className = "preview-placeholder";
             placeholder.textContent = "Preview";
             previewWrap.appendChild(placeholder);
+        } else {
+            previewWrap.appendChild(canvas);
         }
+
         li.appendChild(previewWrap);
+
         const info = document.createElement("div");
         info.className = "info";
-        const content = options.infoContent ? options.infoContent(item) : "";
-        if (typeof content === "string") {
-            info.textContent = content;
-        } else if (content) {
-            info.appendChild(content);
-        }
+        const content = options.infoContent?.(item) ?? "";
+        if (typeof content === "string") info.textContent = content;
+        else if (content) info.appendChild(content);
         li.appendChild(info);
-        if (options.appendNodes) options.appendNodes(li, item);
-        return null;
-    }
 
-    function renderListWithPreviews(
+        options.appendNodes?.(li, item);
+        return null;
+    };
+
+    const renderListWithPreviews = (
         ul,
         list,
         displayByKey,
         getItemKey,
         buildLiContent,
-        patternRenderer,
+        _patternRenderer,
         viewerControls
-    ) {
+    ) => {
         const previewPatternData = [];
-        list.forEach((item) => {
+        ul.innerHTML = "";
+
+        (list || []).forEach((item) => {
             const li = document.createElement("li");
-            const previewWrap = document.createElement("div");
-            previewWrap.className = "preview-wrap";
+            const wrap = document.createElement("div");
+            wrap.className = "preview-wrap";
+
             const canvas = document.createElement("canvas");
             canvas.width = PREVIEW_CANVAS_SIZE;
             canvas.height = PREVIEW_CANVAS_SIZE;
-            previewWrap.appendChild(canvas);
-            const displayItem = displayByKey[getItemKey(item)];
+            wrap.appendChild(canvas);
+
+            const displayItem = displayByKey?.[getItemKey(item)];
             const pd = buildLiContent(li, item, canvas, displayItem);
             if (pd) previewPatternData.push(pd);
+
             ul.appendChild(li);
         });
+
+        const signalState = viewerControls?.signalState;
+        const renderFrame = window.AnimationLoop?.renderFrameWithSignals;
         if (
-            window.RepresentationRegistry &&
-            viewerControls &&
-            viewerControls.signalState != null &&
-            previewPatternData.length > 0
-        ) {
-            const signalState = viewerControls.signalState;
-            const animationLoop = window.AnimationLoop;
-            requestAnimationFrame(() => {
-                if (
-                    animationLoop &&
-                    typeof animationLoop.renderFrameWithSignals === "function"
-                ) {
-                    previewPatternData.forEach((pd) =>
-                        animationLoop.renderFrameWithSignals(pd, signalState, null)
-                    );
-                }
-            });
-        }
-    }
+            !signalState ||
+            typeof renderFrame !== "function" ||
+            !previewPatternData.length
+        )
+            return;
+
+        requestAnimationFrame(() =>
+            previewPatternData.forEach((pd) => renderFrame(pd, signalState, null))
+        );
+    };
 
     window.CommunityBrowse = {
-        PREVIEW_CANVAS_SIZE: PREVIEW_CANVAS_SIZE,
-        fetchDisplayDataForList: fetchDisplayDataForList,
-        buildPatternListEntry: buildPatternListEntry,
-        renderListWithPreviews: renderListWithPreviews,
+        PREVIEW_CANVAS_SIZE,
+        fetchDisplayDataForList,
+        buildPatternListEntry,
+        renderListWithPreviews,
     };
 })();

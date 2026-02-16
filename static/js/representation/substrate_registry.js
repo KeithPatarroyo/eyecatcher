@@ -1,45 +1,38 @@
 /**
- * Substrate registry: routes phenotype.substrate to a Substrate instance.
- * Unknown substrate names fall back to ImageSubstrate (static image from backend).
+ * Substrate registry: routes phenotype.substrate.type to a Substrate instance.
+ * Unknown names fall back to ImageSubstrate (static image from backend).
  */
-(function () {
+(() => {
     "use strict";
 
-    var substrates = {};
-    var defaultSubstrate = null;
+    const substrates = Object.create(null);
+    let defaultSubstrate = null;
 
-    function getSubstrate(name) {
-        if (!name) return defaultSubstrate;
-        return substrates[name] || defaultSubstrate;
-    }
+    const getSubstrate = (name) => (name ? substrates[name] : null) || defaultSubstrate;
 
-    function registerSubstrate(name, substrate) {
-        if (substrate) substrates[name] = substrate;
-    }
+    const registerSubstrate = (name, substrate) => {
+        if (name && substrate) substrates[name] = substrate;
+    };
 
-    function setDefaultSubstrate(substrate) {
-        defaultSubstrate = substrate;
-    }
+    const setDefaultSubstrate = (substrate) => {
+        defaultSubstrate = substrate || defaultSubstrate;
+    };
 
-    function initDefaults() {
-        if (window.ImageSubstrate && !defaultSubstrate) {
+    const initDefaults = () => {
+        if (window.ImageSubstrate && !defaultSubstrate)
             defaultSubstrate = new window.ImageSubstrate();
-        }
-        if (window.FieldSubstrate && !substrates.field) {
+        if (window.FieldSubstrate && !substrates.field)
             registerSubstrate("field", new window.FieldSubstrate());
-        }
-        if (window.GridSubstrate && !substrates.grid) {
+        if (window.GridSubstrate && !substrates.grid)
             registerSubstrate("grid", new window.GridSubstrate());
-        }
-        if (window.ImageSubstrate && !substrates.image) {
+        if (window.ImageSubstrate && !substrates.image)
             registerSubstrate("image", new window.ImageSubstrate());
-        }
-    }
+    };
 
     window.SubstrateRegistry = {
-        getSubstrate: getSubstrate,
-        registerSubstrate: registerSubstrate,
-        setDefaultSubstrate: setDefaultSubstrate,
-        initDefaults: initDefaults,
+        getSubstrate,
+        registerSubstrate,
+        setDefaultSubstrate,
+        initDefaults,
     };
 })();

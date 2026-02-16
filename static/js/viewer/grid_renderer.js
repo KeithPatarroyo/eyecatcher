@@ -8,48 +8,62 @@
  * GridTopology: tracks which pattern is at which row/col position in the grid
  * and provides neighbor lookups. Used by the animation loop for render context (grid position, neighbors).
  */
-(function () {
+(() => {
     "use strict";
+
+    const toKey = (id) => {
+        const n = parseInt(id, 10);
+        return Number.isNaN(n) ? id : n;
+    };
+
+    const coordKey = (row, col) => `${row}:${col}`;
 
     class GridTopology {
         constructor() {
             /** @type {Map<number|string, { row: number, col: number }>} */
             this._positions = new Map();
+            /** @type {Map<string, number|string>} */
+            this._coordToId = new Map();
             this._columns = 0;
         }
 
         rebuild(gridElement) {
             this._positions.clear();
+            this._coordToId.clear();
             this._columns = 0;
             if (!gridElement) return;
 
-            var cards = gridElement.querySelectorAll(".organism-card");
+            const cards = gridElement.querySelectorAll(".organism-card");
             if (!cards.length) return;
 
-            var style = window.getComputedStyle(gridElement);
-            var templateCols = style.getPropertyValue("grid-template-columns");
+            const style = window.getComputedStyle(gridElement);
+            const templateCols = style.getPropertyValue("grid-template-columns");
+
             if (templateCols && templateCols !== "none") {
                 this._columns = templateCols.split(/\s+/).filter(Boolean).length;
             }
+
+            // Fallback: infer column count by scanning first row offsets
             if (this._columns === 0) {
-                var firstTop = cards[0].getBoundingClientRect().top;
-                for (var c = 0; c < cards.length; c++) {
+                const firstTop = cards[0].getBoundingClientRect().top;
+                for (let c = 0; c < cards.length; c++) {
                     if (cards[c].getBoundingClientRect().top !== firstTop) break;
                     this._columns++;
                 }
             }
+
             if (this._columns === 0) this._columns = 1;
 
-            for (var i = 0; i < cards.length; i++) {
-                var id = cards[i].dataset.id;
-                if (id !== undefined) {
-                    var numId = parseInt(id, 10);
-                    var key = isNaN(numId) ? id : numId;
-                    this._positions.set(key, {
-                        row: Math.floor(i / this._columns),
-                        col: i % this._columns,
-                    });
-                }
+            for (let i = 0; i < cards.length; i++) {
+                const idAttr = cards[i].dataset.id;
+                if (idAttr === undefined) continue;
+
+                const id = toKey(idAttr);
+                const row = Math.floor(i / this._columns);
+                const col = i % this._columns;
+
+                this._positions.set(id, { row, col });
+                this._coordToId.set(coordKey(row, col), id);
             }
         }
 
@@ -58,16 +72,16 @@
         }
 
         getNeighbors(patternId) {
-            var pos = this._positions.get(patternId);
+            const pos = this._positions.get(patternId);
             if (!pos) return null;
-            var result = { top: null, bottom: null, left: null, right: null };
-            this._positions.forEach(function (p, id) {
-                if (p.col === pos.col && p.row === pos.row - 1) result.top = id;
-                if (p.col === pos.col && p.row === pos.row + 1) result.bottom = id;
-                if (p.row === pos.row && p.col === pos.col - 1) result.left = id;
-                if (p.row === pos.row && p.col === pos.col + 1) result.right = id;
-            });
-            return result;
+
+            const { row, col } = pos;
+            return {
+                top: this._coordToId.get(coordKey(row - 1, col)) ?? null,
+                bottom: this._coordToId.get(coordKey(row + 1, col)) ?? null,
+                left: this._coordToId.get(coordKey(row, col - 1)) ?? null,
+                right: this._coordToId.get(coordKey(row, col + 1)) ?? null,
+            };
         }
 
         getAll() {
@@ -82,8 +96,21 @@
     window.GridTopology = new GridTopology();
 })();
 
-(function () {
+(() => {
     "use strict";
+
+    const getEl = (id) => (id ? document.getElementById(id) : null);
+
+    const getGridEl = (ids) => getEl(ids?.grid);
+
+    const safeCall = (fn, ...args) => {
+        try {
+            return fn?.(...args);
+        } catch (e) {
+            console.warn("GridRenderer callback failed:", e);
+            return undefined;
+        }
+    };
 
     class GridRenderer {
         constructor() {
@@ -95,76 +122,82 @@
         }
 
         clearGrid(ids) {
-            var grid = ids && ids.grid ? document.getElementById(ids.grid) : null;
+            const grid = getGridEl(ids);
             if (grid) grid.innerHTML = "";
             window.GridTopology.rebuild(null);
         }
 
         showGridError(message, showRetry) {
-            var IDS = this._deps && this._deps.IDS;
+            const IDS = this._deps?.IDS;
             if (!IDS) return;
+
             this.clearGrid(IDS);
-            var grid = document.getElementById(IDS.grid);
-            var tpl = document.getElementById(IDS.gridErrorTpl);
-            if (!tpl || !tpl.content) {
-                if (grid) {
-                    var wrap = document.createElement("div");
-                    wrap.className = "grid-error";
-                    var msg = document.createElement("div");
-                    msg.className = "grid-error__message";
-                    msg.textContent = message;
-                    wrap.appendChild(msg);
-                    grid.appendChild(wrap);
-                }
-                if (this._deps.showLoading) this._deps.showLoading(false);
-                return;
+            const grid = getEl(IDS.grid);
+            const tpl = getEl(IDS.gridErrorTpl);
+
+            const finish = () => safeCall(this._deps?.showLoading, false);
+
+            if (!grid) return finish();
+
+            // Simple fallback if the template is missing
+            if (!tpl?.content) {
+                const wrap = document.createElement("div");
+                wrap.className = "grid-error";
+                const msg = document.createElement("div");
+                msg.className = "grid-error__message";
+                msg.textContent = message;
+                wrap.appendChild(msg);
+                grid.appendChild(wrap);
+                return finish();
             }
-            var devPort = window.DEFAULT_DEV_PORT || 5001;
-            var localUrl = "http://localhost:" + devPort;
-            var fragment = tpl.content.cloneNode(true);
-            var root = fragment.querySelector(".grid-error");
-            fragment.querySelector(".grid-error__message").textContent = message;
-            var link = fragment.querySelector("#grid-error-link");
+
+            const devPort = window.DEFAULT_DEV_PORT || 5001;
+            const localUrl = `http://localhost:${devPort}`;
+
+            const fragment = tpl.content.cloneNode(true);
+            const root = fragment.querySelector(".grid-error");
+            const msgEl = fragment.querySelector(".grid-error__message");
+            if (msgEl) msgEl.textContent = message;
+
+            const link = fragment.querySelector("#grid-error-link");
             if (link) {
                 link.href = localUrl;
                 link.textContent = localUrl;
             }
-            if (showRetry) {
-                var retryBtn = document.createElement("button");
+
+            if (showRetry && root) {
+                const retryBtn = document.createElement("button");
                 retryBtn.type = "button";
                 retryBtn.className = "retry-btn";
-                retryBtn.id = "grid-retry-btn";
+                retryBtn.id = IDS.gridRetryBtn || "grid-retry-btn";
                 retryBtn.textContent = "New random population";
                 root.appendChild(retryBtn);
             }
+
             this.clearGrid(IDS);
-            grid = document.getElementById(IDS.grid);
-            if (grid) grid.appendChild(fragment);
-            if (this._deps.showLoading) this._deps.showLoading(false);
+            const freshGrid = getEl(IDS.grid);
+            if (freshGrid) freshGrid.appendChild(fragment);
+
+            finish();
+
             if (showRetry) {
-                var retryEl = document.getElementById(IDS.gridRetryBtn);
+                const retryEl = getEl(IDS.gridRetryBtn);
                 if (retryEl) {
-                    retryEl.onclick = function () {
-                        window.PopulationUI.startNewRandomPopulation();
-                    };
+                    retryEl.onclick = () =>
+                        window.PopulationUI?.startNewRandomPopulation?.();
                 }
             }
         }
 
         _notifyRepresentationChange(representationId) {
-            window.ViewerControls.updateForRepresentation(representationId);
-            if (
-                window.EyecatcherDebug &&
-                window.EyecatcherDebug.updateForRepresentation
-            ) {
-                window.EyecatcherDebug.updateForRepresentation(representationId);
-            }
+            window.ViewerControls?.updateForRepresentation?.(representationId);
+            window.EyecatcherDebug?.updateForRepresentation?.(representationId);
         }
 
         patternCardCallbacks(pattern, callbacks, representationId) {
-            var c = callbacks || {};
-            var opts = {
-                pattern: pattern,
+            const c = callbacks || {};
+            const opts = {
+                pattern,
                 onShare: c.onShare,
                 onNetwork: c.onNetwork,
                 onSave: c.onSave,
@@ -179,20 +212,25 @@
         }
 
         _buildPatternMapEntry(pattern, result) {
-            var rt = result.runtime || {};
-            var entry = {
-                canvas: result.canvas,
-                gl: rt.gl || null,
-                program: rt.program || null,
-                positionBuffer: rt.positionBuffer || null,
-                fitness: pattern.fitness !== undefined ? pattern.fitness : 0,
-                patternId: pattern.id,
+            const rt = result?.runtime || {};
+            const entry = {
+                canvas: result?.canvas ?? null,
+                gl: rt.gl ?? null,
+                program: rt.program ?? null,
+                positionBuffer: rt.positionBuffer ?? null,
+                fitness: pattern?.fitness ?? 0,
+                patternId: pattern?.id,
             };
+
+            // Prefer runtime-provided values, but keep pattern-provided grid as a fallback.
             if (rt.caRule !== undefined) entry.caRule = rt.caRule;
             if (rt.grid !== undefined) entry.grid = rt.grid;
             if (rt.toggleMask !== undefined) entry.toggleMask = rt.toggleMask;
-            if (pattern.grid !== undefined) entry.grid = pattern.grid;
-            for (var k in rt) {
+            if (pattern?.grid !== undefined && entry.grid === undefined)
+                entry.grid = pattern.grid;
+
+            // Copy through any extra runtime keys without overwriting the explicit ones above.
+            for (const k in rt) {
                 if (
                     Object.prototype.hasOwnProperty.call(rt, k) &&
                     entry[k] === undefined
@@ -210,42 +248,39 @@
             patternsMap,
             representationId
         ) {
-            var CardBuilder = window.CardBuilder;
+            const CardBuilder = window.CardBuilder;
             if (!CardBuilder || typeof CardBuilder.createCard !== "function") return;
-            var self = this;
-            var displayFailureCount = 0;
-            population.forEach(function (pattern, index) {
-                if (pattern.id === undefined || pattern.id === null) {
+
+            let displayFailureCount = 0;
+
+            population.forEach((pattern, index) => {
+                if (pattern?.id === undefined || pattern?.id === null) {
                     console.warn(
-                        "appendCardsToGrid: pattern at index " +
-                            index +
-                            " has no id – will not be in patternsMap"
+                        `appendCardsToGrid: pattern at index ${index} has no id, will not be in patternsMap`
                     );
                 }
-                var result = CardBuilder.createCard(
-                    self.patternCardCallbacks(pattern, callbacks, representationId)
+
+                const result = CardBuilder.createCard(
+                    this.patternCardCallbacks(pattern, callbacks, representationId)
                 );
+
                 grid.appendChild(result.card);
-                var entry = self._buildPatternMapEntry(pattern, result);
-                if (pattern.id !== undefined) {
-                    patternsMap.set(pattern.id, entry);
-                }
+
+                const entry = this._buildPatternMapEntry(pattern, result);
+                if (pattern?.id !== undefined) patternsMap.set(pattern.id, entry);
+
                 if (entry && !entry.gl) {
                     displayFailureCount++;
                     console.warn(
-                        "appendCardsToGrid: card at index " +
-                            index +
-                            " (id=" +
-                            pattern.id +
-                            ") has no WebGL context – display may be broken"
+                        `appendCardsToGrid: card at index ${index} (id=${pattern?.id}) has no WebGL context, display may be broken`
                     );
                 }
             });
-            if (displayFailureCount > 0 && window.Toast && window.Toast.show) {
-                window.Toast.show(
+
+            if (displayFailureCount > 0) {
+                window.Toast?.show?.(
                     "Add from community",
-                    displayFailureCount +
-                        " organism(s) could not be displayed (missing rule or WebGL limit).",
+                    `${displayFailureCount} organism(s) could not be displayed (missing rule or WebGL limit).`,
                     "error"
                 );
             }
@@ -258,11 +293,15 @@
             patternsMap,
             representationId
         ) {
-            var map = patternsMap || new Map();
+            const map = patternsMap || new Map();
             map.clear();
+
             this.clearGrid(ids);
-            var grid = ids && ids.grid ? document.getElementById(ids.grid) : null;
-            if (!grid || !population || !population.length) return map;
+
+            const grid = getGridEl(ids);
+            if (!grid || !Array.isArray(population) || population.length === 0)
+                return map;
+
             this._appendPatternCards(
                 population,
                 grid,
@@ -271,12 +310,20 @@
                 representationId
             );
             window.GridTopology.rebuild(grid);
+
             return map;
         }
 
         appendCardsToGrid(population, ids, callbacks, patternsMap, representationId) {
-            var grid = ids && ids.grid ? document.getElementById(ids.grid) : null;
-            if (!grid || !population || !population.length || !patternsMap) return;
+            const grid = getGridEl(ids);
+            if (
+                !grid ||
+                !Array.isArray(population) ||
+                population.length === 0 ||
+                !patternsMap
+            )
+                return;
+
             this._appendPatternCards(
                 population,
                 grid,

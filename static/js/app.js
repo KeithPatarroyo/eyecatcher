@@ -2,11 +2,12 @@
  * Eyecatcher app entry: init and DOM wiring.
  *
  * Core modules (PopulationState, GridRenderer, AnimationLoop, FullscreenModal,
- * RepresentationRegistry) are ES6 class instances on window; wiring is via init(options).
+ * RepresentationRegistry) are instances on window; wiring is via init(options).
+ *
  * Load after: those modules, api_client, webgl_utils, viewer_controls, animation_loop,
  * population_ui, community, genome_visualizer, toolbar_ui.
  */
-(function () {
+(() => {
     "use strict";
 
     if (typeof vis === "undefined") {
@@ -15,8 +16,9 @@
         );
     }
 
-    var API_URL = window.API_URL || "";
-    var IDS = {
+    const API_URL = window.API_URL || "";
+
+    const IDS = {
         grid: "grid",
         fullscreenModal: "fullscreen-modal",
         fullscreenCanvasWrap: "fullscreen-canvas-wrap",
@@ -48,308 +50,279 @@
         importFile: "import-file",
     };
 
-    var EVENT_BINDINGS = [
-        ["fullscreenClose", "closeFullscreen"],
-        ["fullscreenBackdrop", "closeFullscreen"],
-        ["evolveBtn", "evolveGeneration", true],
-        ["loadModalClose", "closeLoadModal"],
-        ["communitySubmitDo", "submitCommunityForm"],
-        ["communitySubmitCancel", "closeSubmitCommunityModal"],
-        ["communityListClose", "closeCommunityListModal"],
-        ["communityLoadSelectedBtn", "onCommunityLoadSelected"],
-        ["communityLoad12Btn", "onCommunityLoad12"],
-        ["communitySelectAllBtn", "onCommunitySelectAll"],
-        ["communityDeselectAllBtn", "onCommunityDeselectAll"],
-        ["newFromCommunityBtn", "onNewFromCommunityClick", true],
-        ["adminKeySubmit", "submitAdminKey"],
-        ["adminModalCancel", "closeAdminModal"],
-        ["adminListClose", "closeAdminModal"],
-        ["saveCurrentBtn", "onSaveCurrentClick"],
-        ["importBtn", "onImportClick"],
-    ];
+    const getEl = (id) => (id ? document.getElementById(id) : null);
 
-    function onRoleButtonKeydownForBindings(e, onClick) {
-        if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClick();
-        }
-    }
+    const onId =
+        window.Utils?.onId ??
+        ((id, fn) => {
+            const el = getEl(id);
+            if (el) fn(el);
+        });
 
-    function applyEventBindings(IDS, handlers) {
-        var onIdFn =
-            window.Utils && window.Utils.onId
-                ? window.Utils.onId
-                : function (id, fn) {
-                      var el = document.getElementById(id);
-                      if (el) fn(el);
-                  };
-        EVENT_BINDINGS.forEach(function (b) {
-            var idKey = b[0];
-            var handlerKey = b[1];
-            var withRoleKeydown = b[2];
-            var id = IDS[idKey];
-            var handler = handlers[handlerKey];
-            if (!id || !handler) return;
-            onIdFn(id, function (el) {
-                el.addEventListener("click", handler);
-                if (withRoleKeydown) {
-                    el.addEventListener("keydown", function (e) {
-                        onRoleButtonKeydownForBindings(e, handler);
-                    });
+    const bindClick = (id, handler) => {
+        if (!id || !handler) return;
+        onId(id, (el) => el.addEventListener("click", handler));
+    };
+
+    const bindRoleButton = (id, handler) => {
+        if (!id || !handler) return;
+        onId(id, (el) => {
+            el.addEventListener("click", handler);
+            if (window.Utils?.onRoleButtonKeydown) {
+                window.Utils.onRoleButtonKeydown(el, handler);
+                return;
+            }
+            el.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handler();
                 }
             });
         });
-    }
+    };
 
-    function updateStats() {
-        var totalFitness = 0;
-        var hasFitness = false;
-        window.PopulationState.organisms.forEach(function (o) {
-            totalFitness += o.fitness || 0;
-            if (o.fitness > 0) hasFitness = true;
-        });
-        var totalEl = document.getElementById(IDS.totalFitness);
-        if (totalEl) totalEl.textContent = totalFitness;
-        var evolveEl = document.getElementById(IDS.evolveBtn);
-        if (evolveEl) {
-            if (hasFitness) {
-                evolveEl.classList.remove("disabled");
-                evolveEl.setAttribute("aria-disabled", "false");
-            } else {
-                evolveEl.classList.add("disabled");
-                evolveEl.setAttribute("aria-disabled", "true");
-            }
-        }
-    }
+    const getColorMode = () => {
+        const el = document.querySelector('input[name="colorMode"]:checked');
+        return el?.value === "rgb" ? "rgb" : "hsv";
+    };
 
-    function getGridCallbacks() {
-        return {
-            onShare: function (id) {
-                window.CommunityUI.openSubmitCommunityModal(id);
-            },
-            onNetwork: function (id, card) {
-                window.NetworkVisualizer.toggle(id, card);
-            },
-            onSave: window.OrganismActions.savePattern,
-            onFullscreen: openFullscreen,
-            onClick: function (id, card) {
-                window.OrganismActions.clickPattern(id, card, updateStats);
-            },
-            onUnclick: function (id, card) {
-                window.OrganismActions.unclickPattern(id, card, updateStats);
-            },
-            onMouseEnter: function (id) {
-                if (typeof window.EyecatcherDebug !== "undefined") {
-                    window.EyecatcherDebug.setHoveredPatternId(id);
-                }
-            },
-            onMouseLeave: function (id) {
-                if (
-                    typeof window.EyecatcherDebug !== "undefined" &&
-                    window.EyecatcherDebug.getHoveredPatternId() === id
-                ) {
-                    window.EyecatcherDebug.setHoveredPatternId(null);
-                }
-            },
-        };
-    }
+    const showLoading = (show) => window.PopulationLoader?.showLoading?.(show);
 
-    function openFullscreen(id) {
+    const closeModalById = (id) => {
+        const m = getEl(id);
+        if (m) m.classList.remove("show");
+    };
+
+    const openFullscreen = (id) => {
         window.FullscreenModal.openFullscreen(
             id,
             window.PopulationState.getPhenotypes(),
             IDS
         );
-    }
+    };
 
-    function closeFullscreen() {
+    const closeFullscreen = () => {
         window.FullscreenModal.closeFullscreen(IDS);
-    }
+    };
 
-    function resolveRepresentation(representationId, genomes) {
-        var resolved = window.RepresentationRegistry.resolve({
-            representationId: representationId,
-            genomes: genomes,
+    const resolveRepresentation = (representationId, genomes) => {
+        const resolved = window.RepresentationRegistry.resolve({
+            representationId,
+            genomes,
         });
         return {
             representation: resolved.representation,
             representationId: resolved.representationId,
         };
-    }
+    };
 
-    function evolveGeneration() {
+    const evolveGeneration = () => {
         window.EvolutionCoordinator.evolve();
-    }
+    };
 
-    function getCurrentGenomesForSave() {
-        var genomes = window.PopulationState.getGenomes();
+    const getCurrentGenomesForSave = () => {
+        const genomes = window.PopulationState.getGenomes();
         if (genomes && genomes.length) {
             return {
-                genomes: genomes,
+                genomes,
                 generation: window.PopulationState.generationNum,
                 representationId: window.PopulationState.representationId,
             };
         }
         return null;
-    }
+    };
 
-    function getGenomeForPattern(patternId) {
-        var org = window.PopulationState.getOrganism(patternId);
+    const getGenomeForPattern = (patternId) => {
+        const org = window.PopulationState.getOrganism(patternId);
         return Promise.resolve(org ? org.genome : null);
-    }
+    };
 
-    function updatePatternRule(individualId, newRule) {
-        var org = window.PopulationState.getOrganism(individualId);
-        var pattern = org && org.runtime;
-        if (pattern && window.WebGLUtils) {
-            var newRuntime = window.WebGLUtils.setupPattern(pattern.canvas, newRule);
-            if (newRuntime && !newRuntime.error) {
-                window.PopulationState.dispatch({
-                    type: "UPDATE_PATTERN_RULE",
-                    payload: {
-                        id: individualId,
-                        runtime: {
-                            canvas: pattern.canvas,
-                            gl: newRuntime.gl,
-                            program: newRuntime.program,
-                            positionBuffer: newRuntime.positionBuffer,
-                            fitness: pattern.fitness || 0,
-                        },
-                    },
-                });
-            }
-        }
-    }
+    const updatePatternRule = (individualId, newRule) => {
+        const org = window.PopulationState.getOrganism(individualId);
+        const runtime = org?.runtime;
+        if (!runtime || !window.WebGLUtils) return;
 
-    function getPatterns() {
-        var list = window.PopulationState.organisms
-            .filter(function (o) {
-                return o.runtime != null;
-            })
-            .map(function (o) {
-                return o.runtime;
-            });
-        var fullscreen = window.FullscreenModal.getFullscreenRuntime();
-        if (fullscreen) list.push(fullscreen);
-        return list;
-    }
+        const newRuntime = window.WebGLUtils.setupPattern(runtime.canvas, newRule);
+        if (!newRuntime || newRuntime.error) return;
 
-    function getCurrentPopulation() {
-        return window.PopulationState.getPhenotypes();
-    }
-
-    function onGenomeUpdated(individualId, idx, genome) {
         window.PopulationState.dispatch({
-            type: "UPDATE_GENOME_AT_INDEX",
-            payload: { idx: idx, genome: genome },
-        });
-    }
-
-    function setGenealogyState(populationId, branchName) {
-        window.PopulationState.dispatch({
-            type: "SET_GENEALOGY",
+            type: "UPDATE_PATTERN_RULE",
             payload: {
-                populationId: populationId,
-                branchName: branchName || "main",
+                id: individualId,
+                runtime: {
+                    canvas: runtime.canvas,
+                    gl: newRuntime.gl,
+                    program: newRuntime.program,
+                    positionBuffer: newRuntime.positionBuffer,
+                    fitness: runtime.fitness || 0,
+                },
             },
         });
-        window.GenealogySync.syncCurrentPopulationIdToStorage(populationId);
-    }
+    };
 
-    function initGenealogyLoad(setGenealogyStateFn) {
-        var genealogyLoad = null;
-        var raw = window.Utils.safeGetItem(localStorage, "genealogy_load", null);
-        if (raw) {
-            try {
-                genealogyLoad = JSON.parse(raw);
-                try {
-                    localStorage.removeItem("genealogy_load");
-                } catch (_e) {
-                    /* ignore */
-                }
-            } catch (e) {
-                console.warn("Genealogy load parse failed:", e);
-            }
-        }
-        var loadGenomes =
-            genealogyLoad && (genealogyLoad.individuals || genealogyLoad.genomes);
-        if (loadGenomes && loadGenomes.length) {
-            setGenealogyStateFn(
-                genealogyLoad.population_id != null
-                    ? genealogyLoad.population_id
-                    : null,
-                genealogyLoad.branch_name || "main"
-            );
-            var genNum =
-                genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
-            var resolved = window.RepresentationRegistry.resolve({
-                representationId:
-                    genealogyLoad.representation_id || genealogyLoad.substrate_id,
-                genomes: loadGenomes,
-            });
-            window.PopulationLoader.loadPopulation(
-                loadGenomes,
-                genNum,
-                resolved.representationId,
-                { saveToGenealogy: false }
-            );
-        } else {
-            window.PopulationUI.startNewRandomPopulation();
-        }
-    }
+    const getPatterns = () => {
+        const list = window.PopulationState.organisms
+            .filter((o) => o.runtime != null)
+            .map((o) => o.runtime);
 
-    function getPatternsMap() {
-        var organisms = window.PopulationState.organisms;
-        var map = new Map();
-        organisms.forEach(function (o) {
+        const fullscreen = window.FullscreenModal.getFullscreenRuntime();
+        if (fullscreen) list.push(fullscreen);
+
+        return list;
+    };
+
+    const getPatternsMap = () => {
+        const map = new Map();
+        window.PopulationState.organisms.forEach((o) => {
             if (o.runtime != null) map.set(o.id, o.runtime);
         });
         return map;
-    }
-
-    window.PopulationState.init();
-    window.ApiClient.init(API_URL);
-
-    var gridDeps = {
-        IDS: IDS,
-        API_URL: API_URL,
-        getGridCallbacks: getGridCallbacks,
-        resolveRepresentation: resolveRepresentation,
-        getColorMode: function () {
-            var el = document.querySelector('input[name="colorMode"]:checked');
-            return el && el.value === "rgb" ? "rgb" : "hsv";
-        },
-        showLoading: showLoading,
-        updateStats: updateStats,
     };
-    window.GridRenderer.init(gridDeps);
-    window.PopulationLoader.init(gridDeps);
+
+    const getCurrentPopulation = () => window.PopulationState.getPhenotypes();
+
+    const onGenomeUpdated = (individualId, idx, genome) => {
+        window.PopulationState.dispatch({
+            type: "UPDATE_GENOME_AT_INDEX",
+            payload: { idx, genome },
+        });
+    };
+
+    const updateStats = () => {
+        let totalFitness = 0;
+        let hasFitness = false;
+
+        window.PopulationState.organisms.forEach((o) => {
+            const f = o.fitness || 0;
+            totalFitness += f;
+            if (f > 0) hasFitness = true;
+        });
+
+        const totalEl = getEl(IDS.totalFitness);
+        if (totalEl) totalEl.textContent = String(totalFitness);
+
+        const evolveEl = getEl(IDS.evolveBtn);
+        if (!evolveEl) return;
+
+        evolveEl.classList.toggle("disabled", !hasFitness);
+        evolveEl.setAttribute("aria-disabled", hasFitness ? "false" : "true");
+    };
+
+    const getGridCallbacks = () => ({
+        onShare: (id) => window.CommunityUI.openSubmitCommunityModal(id),
+        onNetwork: (id, card) => window.NetworkVisualizer.toggle(id, card),
+        onSave: window.OrganismActions.savePattern,
+        onFullscreen: openFullscreen,
+        onClick: (id, card) =>
+            window.OrganismActions.clickPattern(id, card, updateStats),
+        onUnclick: (id, card) =>
+            window.OrganismActions.unclickPattern(id, card, updateStats),
+        onMouseEnter: (id) => window.EyecatcherDebug?.setHoveredPatternId?.(id),
+        onMouseLeave: (id) => {
+            if (window.EyecatcherDebug?.getHoveredPatternId?.() === id) {
+                window.EyecatcherDebug.setHoveredPatternId(null);
+            }
+        },
+    });
+
+    const setGenealogyState = (populationId, branchName) => {
+        window.PopulationState.dispatch({
+            type: "SET_GENEALOGY",
+            payload: { populationId, branchName: branchName || "main" },
+        });
+        window.GenealogySync.syncCurrentPopulationIdToStorage(populationId);
+    };
+
+    const initGenealogyLoad = (setGenealogyStateFn) => {
+        const raw =
+            window.Utils?.safeGetItem?.(localStorage, "genealogy_load", null) ?? null;
+        if (!raw) {
+            window.PopulationUI.startNewRandomPopulation();
+            return;
+        }
+
+        let genealogyLoad = null;
+        try {
+            genealogyLoad = JSON.parse(raw);
+            try {
+                localStorage.removeItem("genealogy_load");
+            } catch (_e) {
+                /* ignore */
+            }
+        } catch (e) {
+            console.warn("Genealogy load parse failed:", e);
+            window.PopulationUI.startNewRandomPopulation();
+            return;
+        }
+
+        const loadGenomes = genealogyLoad?.individuals || genealogyLoad?.genomes;
+        if (!Array.isArray(loadGenomes) || loadGenomes.length === 0) {
+            window.PopulationUI.startNewRandomPopulation();
+            return;
+        }
+
+        setGenealogyStateFn(
+            genealogyLoad.population_id != null ? genealogyLoad.population_id : null,
+            genealogyLoad.branch_name || "main"
+        );
+
+        const genNum =
+            genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
+
+        const resolved = window.RepresentationRegistry.resolve({
+            representationId:
+                genealogyLoad.representation_id || genealogyLoad.substrate_id,
+            genomes: loadGenomes,
+        });
+
+        window.PopulationLoader.loadPopulation(
+            loadGenomes,
+            genNum,
+            resolved.representationId,
+            {
+                saveToGenealogy: false,
+            }
+        );
+    };
 
     /** Wrapper for UI that expects (genomes, generationNum, saveToGenealogy, representationId). */
-    function loadFromStatelessGenomes(
+    const loadFromStatelessGenomes = (
         genomes,
         generationNum,
         saveToGenealogy,
         representationId
-    ) {
-        return window.PopulationLoader.loadPopulation(
+    ) =>
+        window.PopulationLoader.loadPopulation(
             genomes,
             generationNum,
             representationId,
             {
-                saveToGenealogy: saveToGenealogy,
+                saveToGenealogy,
             }
         );
-    }
 
-    window.EvolutionCoordinator.init({
-        IDS: IDS,
-        showLoading: showLoading,
-        updateStats: updateStats,
-    });
+    // ---------- Boot sequence ----------
+    window.PopulationState.init();
+    window.ApiClient.init(API_URL);
 
-    window.onRepresentationSwitched = function (config) {
+    const gridDeps = {
+        IDS,
+        API_URL,
+        getGridCallbacks,
+        resolveRepresentation,
+        getColorMode,
+        showLoading,
+        updateStats,
+    };
+
+    window.GridRenderer.init(gridDeps);
+    window.PopulationLoader.init(gridDeps);
+
+    window.EvolutionCoordinator.init({ IDS, showLoading, updateStats });
+
+    window.onRepresentationSwitched = (config) => {
         window.GridRenderer.clearGrid(IDS);
+
         window.PopulationState.dispatch({
             type: "LOAD_POPULATION",
             payload: {
@@ -359,33 +332,31 @@
                 representationId: config.representation_id,
             },
         });
+
         window.ViewerControls.updateForRepresentation(config.representation_id);
         window.GridTopology.rebuild(null);
-        if (window.Toast && window.Toast.show) {
-            window.Toast.show(
-                "Representation changed",
-                "Use Start Fresh to get a population for " +
-                    (config.representation_id || "the new substrate") +
-                    ".",
-                "info"
-            );
-        }
+
+        window.Toast?.show?.(
+            "Representation changed",
+            `Use Start Fresh to get a population for ${config.representation_id || "the new substrate"}.`,
+            "info"
+        );
     };
 
     window.ApiClient.fetchConfig()
-        .then(function (c) {
+        .then((c) => {
             window.EvolutionConfig.mergeFromServer(c);
-            if (c && c.representation_id && window.__eyecatcherDefaultResolution) {
+
+            if (c?.representation_id && window.__eyecatcherDefaultResolution) {
                 window.__eyecatcherDefaultResolution.representationId =
                     c.representation_id;
             }
-            if (
-                window.PopulationState &&
-                (window.PopulationState.representationId == null ||
-                    window.PopulationState.organisms.length === 0) &&
-                c &&
-                c.representation_id
-            ) {
+
+            const needsRep =
+                window.PopulationState.representationId == null ||
+                window.PopulationState.organisms.length === 0;
+
+            if (needsRep && c?.representation_id) {
                 window.PopulationState.dispatch({
                     type: "LOAD_POPULATION",
                     payload: {
@@ -396,154 +367,140 @@
                     },
                 });
             }
-            if (
-                window.ToolbarUI &&
-                window.ToolbarUI.syncToolbarPopulationSizeFromConfig
-            ) {
-                window.ToolbarUI.syncToolbarPopulationSizeFromConfig();
-            }
-            if (
-                window.ViewerControls &&
-                window.ViewerControls.updateForRepresentation &&
-                c &&
-                c.representation_id
-            ) {
-                window.ViewerControls.updateForRepresentation(c.representation_id);
-            }
+
+            window.ToolbarUI?.syncToolbarPopulationSizeFromConfig?.();
+            if (c?.representation_id)
+                window.ViewerControls?.updateForRepresentation?.(c.representation_id);
         })
-        .catch(function () {
+        .catch(() => {
             /* keep in-app defaults if server config fetch fails */
         });
 
     window.AnimationLoop.init({
-        getPatterns: getPatterns,
+        getPatterns,
         viewerControls: window.ViewerControls || null,
         signalSource: window.SignalSource,
     });
 
     window.PopulationUI.init({
         apiUrl: API_URL,
-        loadFromStatelessGenomes: loadFromStatelessGenomes,
+        loadFromStatelessGenomes,
         addToGrid: window.PopulationLoader.addToPopulation.bind(
             window.PopulationLoader
         ),
-        getCurrentGenomesForSave: getCurrentGenomesForSave,
+        getCurrentGenomesForSave,
     });
 
     window.CommunityUI.init({
         apiUrl: API_URL,
-        loadFromStatelessGenomes: loadFromStatelessGenomes,
+        loadFromStatelessGenomes,
         addToGrid: window.PopulationLoader.addToPopulation.bind(
             window.PopulationLoader
         ),
-        getGenomeForPattern: getGenomeForPattern,
+        getGenomeForPattern,
         viewerControls: window.ViewerControls || null,
     });
 
     window.NetworkVisualizer.init({
         apiUrl: API_URL,
-        getGenomeForPattern: getGenomeForPattern,
-        updatePatternRule: updatePatternRule,
-        getCurrentPopulation: getCurrentPopulation,
-        onGenomeUpdated: onGenomeUpdated,
+        getGenomeForPattern,
+        updatePatternRule,
+        getCurrentPopulation,
+        onGenomeUpdated,
     });
 
     window.ToolbarUI.init();
+    window.ViewerControls.init();
 
-    document.querySelectorAll('input[name="colorMode"]').forEach(function (radio) {
-        radio.addEventListener("change", function () {
-            var data = getCurrentGenomesForSave();
+    // Color mode switch reload: only relevant for field substrates (shader).
+    document.querySelectorAll('input[name="colorMode"]').forEach((radio) => {
+        radio.addEventListener("change", () => {
+            const data = getCurrentGenomesForSave();
             if (!data) return;
-            var representation = window.RepresentationRegistry.get(
+
+            const representation = window.RepresentationRegistry.get(
                 data.representationId
             );
-            var st =
-                representation &&
-                representation.phenotype &&
-                representation.phenotype.substrate;
-            var isField =
+            const st = representation?.phenotype?.substrate;
+            const isField =
                 (typeof st === "string" && st === "field") ||
                 (st && st.type === "field");
-            if (representation && representation.phenotype && isField) {
+
+            if (representation?.phenotype && isField) {
                 window.PopulationLoader.loadPopulation(
                     data.genomes,
                     data.generation,
                     data.representationId,
-                    { saveToGenealogy: false }
+                    {
+                        saveToGenealogy: false,
+                    }
                 );
             }
         });
     });
 
-    document.addEventListener("keydown", function (e) {
+    document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") closeFullscreen();
     });
 
-    var closeLoadModal = function () {
-        var m = document.getElementById(IDS.loadListModal);
-        if (m) m.classList.remove("show");
-    };
-    var closeCommunityListModal = function () {
-        var m = document.getElementById(IDS.communityListModal);
-        if (m) m.classList.remove("show");
-    };
-    applyEventBindings(IDS, {
-        closeFullscreen: closeFullscreen,
-        evolveGeneration: evolveGeneration,
-        closeLoadModal: closeLoadModal,
-        closeCommunityListModal: closeCommunityListModal,
-        submitCommunityForm: window.CommunityUI.submitCommunityForm,
-        closeSubmitCommunityModal: window.CommunityUI.closeSubmitCommunityModal,
-        onCommunityLoadSelected: window.CommunityUI.onCommunityLoadSelected,
-        onCommunityLoad12: window.CommunityUI.onCommunityLoad12,
-        onCommunitySelectAll: window.CommunityUI.onCommunitySelectAll,
-        onCommunityDeselectAll: window.CommunityUI.onCommunityDeselectAll,
-        onNewFromCommunityClick: window.CommunityUI.onNewFromCommunityClick,
-        submitAdminKey: window.CommunityUI.submitAdminKey,
-        closeAdminModal: window.CommunityUI.closeAdminModal,
-        onSaveCurrentClick: window.PopulationUI.onSaveCurrentClick,
-        onImportClick: window.PopulationUI.onImportClick,
-    });
-    var onId =
-        window.Utils && window.Utils.onId
-            ? window.Utils.onId
-            : function (id, fn) {
-                  var el = document.getElementById(id);
-                  if (el) fn(el);
-              };
-    onId(IDS.adminKeyInput, function (el) {
-        el.addEventListener("keydown", function (e) {
+    // Modal closers (kept as tiny helpers so applyEventBindings can stay simple).
+    const closeLoadModal = () => closeModalById(IDS.loadListModal);
+    const closeCommunityListModal = () => closeModalById(IDS.communityListModal);
+
+    // Centralised button wiring
+    bindClick(IDS.fullscreenClose, closeFullscreen);
+    bindClick(IDS.fullscreenBackdrop, closeFullscreen);
+
+    bindRoleButton(IDS.evolveBtn, evolveGeneration);
+    bindClick(IDS.loadModalClose, closeLoadModal);
+
+    bindClick(IDS.communitySubmitDo, window.CommunityUI.submitCommunityForm);
+    bindClick(IDS.communitySubmitCancel, window.CommunityUI.closeSubmitCommunityModal);
+    bindClick(IDS.communityListClose, closeCommunityListModal);
+
+    bindClick(IDS.communityLoadSelectedBtn, window.CommunityUI.onCommunityLoadSelected);
+    bindClick(IDS.communityLoad12Btn, window.CommunityUI.onCommunityLoad12);
+    bindClick(IDS.communitySelectAllBtn, window.CommunityUI.onCommunitySelectAll);
+    bindClick(IDS.communityDeselectAllBtn, window.CommunityUI.onCommunityDeselectAll);
+
+    bindRoleButton(IDS.newFromCommunityBtn, window.CommunityUI.onNewFromCommunityClick);
+
+    bindClick(IDS.adminKeySubmit, window.CommunityUI.submitAdminKey);
+    bindClick(IDS.adminModalCancel, window.CommunityUI.closeAdminModal);
+    bindClick(IDS.adminListClose, window.CommunityUI.closeAdminModal);
+
+    bindClick(IDS.saveCurrentBtn, window.PopulationUI.onSaveCurrentClick);
+    bindClick(IDS.importBtn, window.PopulationUI.onImportClick);
+
+    // Admin key input: Enter submits
+    onId(IDS.adminKeyInput, (el) => {
+        el.addEventListener("keydown", (e) => {
             if (e.key === "Enter") window.CommunityUI.submitAdminKey();
         });
     });
-    onId(IDS.importFile, function (el) {
-        el.addEventListener("change", function (e) {
-            var file = e.target.files && e.target.files[0];
+
+    // Import file input: consume once, then reset
+    onId(IDS.importFile, (el) => {
+        el.addEventListener("change", (e) => {
+            const file = e.target.files && e.target.files[0];
             e.target.value = "";
-            if (file && window.PopulationUI.handleImportFile) {
-                window.PopulationUI.handleImportFile(file);
-            }
+            if (file) window.PopulationUI.handleImportFile?.(file);
         });
     });
 
-    window.ViewerControls.init();
-
-    if (typeof window.EyecatcherDebug !== "undefined") {
+    if (window.EyecatcherDebug) {
         window.EyecatcherDebug.init({
             apiUrl: API_URL,
             getMouseDistance: window.AnimationLoop.getMouseDistance.bind(
                 window.AnimationLoop
             ),
             getPatterns: getPatternsMap,
-            getSignalState: function () {
-                return window.ViewerControls.signalState;
-            },
-            getGenomeForPattern: getGenomeForPattern,
-            getRepresentation: function () {
-                return window.RepresentationRegistry.get(
+            getSignalState: () => window.ViewerControls.signalState,
+            getGenomeForPattern,
+            getRepresentation: () =>
+                window.RepresentationRegistry.get(
                     window.PopulationState.representationId
-                );
-            },
+                ),
         });
     }
 

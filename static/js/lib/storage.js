@@ -3,98 +3,115 @@
  * Stores populations (genomes + generation) for the stateless client.
  *
  * Database: "eyecatcher"
- * Object store: populations: { id, name, genomes, generation, representationId, created, modified }
+ * Store: populations: { id, name, genomes, generation, representationId, created, modified }
  */
-const EyecatcherStorage = (function () {
+(() => {
+    "use strict";
+
     const DB_NAME = "eyecatcher";
     const DB_VERSION = 1;
-    const POPULATIONS_STORE = "populations";
+    const STORE = "populations";
+    const INDEX_MODIFIED = "modified";
 
-    let db = null;
+    let openPromise = null;
 
-    function open() {
-        return new Promise((resolve, reject) => {
-            if (db) {
-                resolve(db);
-                return;
-            }
+    const openDB = () => {
+        if (openPromise) return openPromise;
+
+        openPromise = new Promise((resolve, reject) => {
             const req = indexedDB.open(DB_NAME, DB_VERSION);
+
             req.onerror = () => reject(req.error);
-            req.onsuccess = () => {
-                db = req.result;
-                resolve(db);
-            };
+
             req.onupgradeneeded = (e) => {
-                const database = e.target.result;
-                if (!database.objectStoreNames.contains(POPULATIONS_STORE)) {
-                    const pop = database.createObjectStore(POPULATIONS_STORE, {
+                const db = e.target.result;
+
+                if (!db.objectStoreNames.contains(STORE)) {
+                    const store = db.createObjectStore(STORE, {
                         keyPath: "id",
                         autoIncrement: true,
                     });
-                    pop.createIndex("modified", "modified", { unique: false });
+                    store.createIndex(INDEX_MODIFIED, INDEX_MODIFIED, {
+                        unique: false,
+                    });
+                } else {
+                    // Future-proof: ensure index exists if version bumps later.
+                    const tx = e.target.transaction;
+                    const store = tx.objectStore(STORE);
+                    if (!store.indexNames.contains(INDEX_MODIFIED)) {
+                        store.createIndex(INDEX_MODIFIED, INDEX_MODIFIED, {
+                            unique: false,
+                        });
+                    }
                 }
             };
-        });
-    }
 
-    return {
+            req.onsuccess = () => resolve(req.result);
+        });
+
+        return openPromise;
+    };
+
+    const runStore = async (mode, fn) => {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, mode);
+            const store = tx.objectStore(STORE);
+
+            let result;
+            try {
+                result = fn(store);
+            } catch (e) {
+                reject(e);
+                return;
+            }
+
+            result.onsuccess = () => resolve(result.result);
+            result.onerror = () => reject(result.error);
+        });
+    };
+
+    const isoNow = () => new Date().toISOString();
+
+    const EyecatcherStorage = {
         async init() {
-            await open();
-            return db;
+            return openDB();
         },
 
         async savePopulation(name, genomes, generation, representationId) {
-            const database = await open();
-            const now = new Date().toISOString();
+            const now = isoNow();
             const record = {
                 name: name || "Unnamed",
-                genomes: genomes,
-                generation: generation,
+                genomes: genomes || [],
+                generation: generation ?? 0,
+                representationId: representationId ?? null,
                 created: now,
                 modified: now,
             };
-            if (representationId != null) record.representationId = representationId;
-            return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, "readwrite");
-                const store = tx.objectStore(POPULATIONS_STORE);
-                const req = store.add(record);
-                req.onsuccess = () => resolve(req.result);
-                req.onerror = () => reject(req.error);
-            });
+
+            return runStore("readwrite", (store) => store.add(record));
         },
 
         async loadPopulation(id) {
-            const database = await open();
-            return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, "readonly");
-                const req = tx.objectStore(POPULATIONS_STORE).get(id);
-                req.onsuccess = () => resolve(req.result || null);
-                req.onerror = () => reject(req.error);
-            });
+            const record = await runStore("readonly", (store) => store.get(id));
+            return record || null;
         },
 
         async listPopulations() {
-            const database = await open();
-            return new Promise((resolve, reject) => {
-                const tx = database.transaction(POPULATIONS_STORE, "readonly");
-                const req = tx.objectStore(POPULATIONS_STORE).getAll();
-                req.onsuccess = () => {
-                    const list = (req.result || []).sort(
-                        (a, b) => new Date(b.modified) - new Date(a.modified)
-                    );
-                    resolve(list);
-                };
-                req.onerror = () => reject(req.error);
-            });
+            const list = await runStore("readonly", (store) => store.getAll());
+            return (list || []).sort(
+                (a, b) => new Date(b.modified) - new Date(a.modified)
+            );
         },
 
         async importPopulation(json) {
-            const name = json.name || "Imported";
-            const genomes = json.genomes || [];
-            const generation = json.generation != null ? json.generation : 0;
-            const representationId =
-                json.representationId != null ? json.representationId : null;
-            if (!genomes.length) return null;
+            const name = json?.name || "Imported";
+            const genomes = json?.genomes || [];
+            const generation = json?.generation ?? 0;
+            const representationId = json?.representationId ?? null;
+
+            if (!Array.isArray(genomes) || genomes.length === 0) return null;
+
             const id = await this.savePopulation(
                 name,
                 genomes,
@@ -104,12 +121,9 @@ const EyecatcherStorage = (function () {
             return { id, name, generation, count: genomes.length };
         },
     };
-})();
 
-// Ensure global in browser (works even if script runs in strict mode or before DOM)
-if (typeof window !== "undefined") {
-    window.EyecatcherStorage = EyecatcherStorage;
-}
-if (typeof module !== "undefined" && module.exports) {
-    module.exports = EyecatcherStorage;
-}
+    // Globals / CommonJS
+    if (typeof window !== "undefined") window.EyecatcherStorage = EyecatcherStorage;
+    if (typeof module !== "undefined" && module.exports)
+        module.exports = EyecatcherStorage;
+})();

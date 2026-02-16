@@ -1,9 +1,55 @@
 /**
  * FullscreenModal: open/close fullscreen pattern view. Supports shader and grid/image output types.
- * Dependencies: window.WebGLUtils.setupPattern, RepresentationRegistry, EvolutionConfig (FULLSCREEN_CANVAS_*)
+ * Dependencies: window.WebGLUtils.setupPattern, window.RepresentationRegistry, window.RepresentationHelpers, window.EvolutionConfig
  */
-(function () {
+(() => {
     "use strict";
+
+    const getCfg = () => {
+        const cfg = window.EvolutionConfig || {};
+        return {
+            max: cfg.FULLSCREEN_CANVAS_MAX ?? 1024,
+            def: cfg.FULLSCREEN_CANVAS_DEFAULT ?? 800,
+            min: cfg.FULLSCREEN_CANVAS_MIN ?? 64,
+        };
+    };
+
+    const getIds = (ids) => ({
+        modalId: ids?.fullscreenModal ?? "fullscreen-modal",
+        wrapId: ids?.fullscreenCanvasWrap ?? "fullscreen-canvas-wrap",
+    });
+
+    const getEls = (ids) => {
+        const { modalId, wrapId } = getIds(ids);
+        return {
+            modal: document.getElementById(modalId),
+            wrap: document.getElementById(wrapId),
+        };
+    };
+
+    const setAspectRatio = (wrap, representation) => {
+        const ratio = representation?.preferredAspectRatio ?? 1;
+        wrap.style.setProperty("--pattern-aspect-ratio", String(ratio));
+    };
+
+    const clearWrap = (wrap) => {
+        wrap.innerHTML = "";
+        wrap.style.setProperty("--pattern-aspect-ratio", "1");
+    };
+
+    const renderImage = (wrap, pattern, id, cfg) => {
+        const img = document.createElement("img");
+        img.className = "organism-canvas organism-image fullscreen-organism-image";
+        img.src = pattern.image;
+        img.alt = `Pattern ${id}`;
+
+        const maxW = Math.min(wrap.clientWidth || cfg.def, cfg.max);
+        const maxH = Math.min(wrap.clientHeight || cfg.def, cfg.max);
+        img.style.maxWidth = `${maxW}px`;
+        img.style.maxHeight = `${maxH}px`;
+
+        wrap.appendChild(img);
+    };
 
     class FullscreenModal {
         constructor() {
@@ -11,120 +57,98 @@
             this._fullscreenRepresentation = null;
         }
 
-        _getConfig() {
-            var cfg = window.EvolutionConfig || {};
-            return {
-                max: cfg.FULLSCREEN_CANVAS_MAX || 1024,
-                default: cfg.FULLSCREEN_CANVAS_DEFAULT || 800,
-                min: cfg.FULLSCREEN_CANVAS_MIN || 64,
-            };
-        }
-
         closeFullscreen(ids) {
             this._fullscreenRuntime = null;
             this._fullscreenRepresentation = null;
-            var wrapId = (ids && ids.fullscreenCanvasWrap) || "fullscreen-canvas-wrap";
-            var modalId = (ids && ids.fullscreenModal) || "fullscreen-modal";
-            var wrap = document.getElementById(wrapId);
-            var modal = document.getElementById(modalId);
-            if (wrap) {
-                wrap.innerHTML = "";
-                wrap.style.setProperty("--pattern-aspect-ratio", "1");
-            }
+
+            const { modal, wrap } = getEls(ids);
+            if (wrap) clearWrap(wrap);
             if (modal) modal.hidden = true;
         }
 
         openFullscreen(id, population, ids) {
             if (!population || !id) return;
-            var pattern = population.find(function (p) {
-                return p.id === id;
-            });
+
+            const pattern = population.find((p) => p.id === id);
             if (!pattern) return;
 
-            var representationId = window.PopulationState.representationId || null;
-            var resolved = window.RepresentationRegistry.resolve({
+            const { modal, wrap } = getEls(ids);
+            if (!modal || !wrap) return;
+
+            // Resolve representation from the genome if possible.
+            const resolved = window.RepresentationRegistry?.resolve?.({
                 genomes: [pattern],
             });
-            var representation = resolved.representation;
+            let representation = resolved?.representation ?? null;
             if (!representation) {
-                representation = window.RepresentationRegistry.findByGenome(pattern);
+                representation =
+                    window.RepresentationRegistry?.findByGenome?.(pattern) ?? null;
             }
 
-            var hasRule = pattern.rule;
-            var hasImage = pattern.image != null;
-            var useLiveCanvas = !!representation;
-            if (!hasRule && !hasImage && !useLiveCanvas) return;
+            const hasImage = pattern.image != null;
+            const hasRule = Boolean(pattern.rule);
+            const canLiveRender = Boolean(representation);
 
-            var modalId = (ids && ids.fullscreenModal) || "fullscreen-modal";
-            var wrapId = (ids && ids.fullscreenCanvasWrap) || "fullscreen-canvas-wrap";
-            var modal = document.getElementById(modalId);
-            var wrap = document.getElementById(wrapId);
-            if (!modal || !wrap) return;
+            // If we can't show anything meaningful, bail early.
+            if (!hasImage && !hasRule && !canLiveRender) return;
 
             this.closeFullscreen(ids);
             modal.hidden = false;
             wrap.innerHTML = "";
 
-            var aspectRatio =
-                (representation && representation.preferredAspectRatio) || 1;
-            wrap.style.setProperty("--pattern-aspect-ratio", String(aspectRatio));
+            setAspectRatio(wrap, representation);
 
-            var config = this._getConfig();
-            var patternRef = pattern;
-            var self = this;
+            const cfg = getCfg();
 
-            if (hasImage && !useLiveCanvas) {
-                var img = document.createElement("img");
-                img.className =
-                    "organism-canvas organism-image fullscreen-organism-image";
-                img.src = patternRef.image;
-                img.alt = "Pattern " + id;
-                var maxW = Math.min(wrap.clientWidth || config.default, config.max);
-                var maxH = Math.min(wrap.clientHeight || config.default, config.max);
-                img.style.maxWidth = maxW + "px";
-                img.style.maxHeight = maxH + "px";
-                wrap.appendChild(img);
+            // Image-only fullscreen (no live canvas).
+            if (hasImage && !canLiveRender) {
+                renderImage(wrap, pattern, id, cfg);
                 return;
             }
 
+            // Live canvas fullscreen (shader / NCA / whatever the representation supports).
             this._fullscreenRepresentation = representation;
-            requestAnimationFrame(function () {
+
+            requestAnimationFrame(() => {
                 if (modal.hidden) return;
-                var size = Math.min(
-                    wrap.clientWidth || config.default,
-                    wrap.clientHeight || config.default,
-                    config.max
+
+                let size = Math.min(
+                    wrap.clientWidth || cfg.def,
+                    wrap.clientHeight || cfg.def,
+                    cfg.max
                 );
-                if (size < config.min) size = config.default;
-                var canvas = document.createElement("canvas");
+                if (size < cfg.min) size = cfg.def;
+
+                const canvas = document.createElement("canvas");
                 canvas.className = "organism-canvas";
                 canvas.width = size;
                 canvas.height = size;
                 wrap.appendChild(canvas);
 
-                var WebGLUtils = window.WebGLUtils;
-                var runtime =
-                    WebGLUtils &&
-                    WebGLUtils.setupPattern(canvas, patternRef.rule || "");
+                const runtime = window.WebGLUtils?.setupPattern?.(
+                    canvas,
+                    pattern.rule || ""
+                );
                 if (!runtime || runtime.error) {
                     wrap.innerHTML = "";
                     modal.hidden = true;
-                    self._fullscreenRepresentation = null;
+                    this._fullscreenRepresentation = null;
                     return;
                 }
-                self._fullscreenRuntime = {
-                    canvas: canvas,
+
+                this._fullscreenRuntime = {
+                    canvas,
                     gl: runtime.gl,
                     program: runtime.program,
                     positionBuffer: runtime.positionBuffer,
                     patternId: id,
+                    ...(pattern.grid !== undefined ? { grid: pattern.grid } : null),
                 };
-                if (patternRef.grid !== undefined)
-                    self._fullscreenRuntime.grid = patternRef.grid;
+
                 if (representation && window.RepresentationHelpers) {
                     window.RepresentationHelpers.prepareRuntime(
-                        self._fullscreenRuntime,
-                        patternRef
+                        this._fullscreenRuntime,
+                        pattern
                     );
                 }
             });

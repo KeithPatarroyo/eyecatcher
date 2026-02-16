@@ -1,60 +1,67 @@
 /**
- * Representation registry. Bootstraps from config; stores plain representation records
+ * Representation registry. Bootstraps from EyecatcherConfig; stores plain representation records:
  * { id, isGenomeFormat, hasSignalControls, capabilities, phenotype, substrate }.
+ *
  * Use RepresentationHelpers for display/meta; call rep.substrate directly for render.
  */
-(function () {
+(() => {
     "use strict";
 
-    var DEFAULT_REPRESENTATION_ID = "nca";
+    const DEFAULT_REPRESENTATION_ID = "nca";
 
-    function buildIsGenomeFormatFromConfig(entry) {
-        var genomeKeys = entry.genomeKeys || [];
-        var excludeKeys = entry.excludeKeys || [];
-        return function (obj) {
-            if (!obj) return false;
-            for (var i = 0; i < genomeKeys.length; i++) {
-                var k = genomeKeys[i];
-                if (k === "rule") {
-                    if (typeof obj.rule !== "number") return false;
-                } else if (!obj[k]) return false;
-            }
-            for (var j = 0; j < excludeKeys.length; j++) {
-                if (obj[excludeKeys[j]]) return false;
-            }
-            return true;
-        };
-    }
-
-    var defaultCapabilities = {
+    const defaultCapabilities = Object.freeze({
         save: true,
         network: true,
         timeOutput: false,
         adjustWeight: false,
-    };
+    });
 
-    function mergeCapabilities(entry) {
-        var caps = entry && entry.capabilities;
-        if (!caps) return defaultCapabilities;
+    const getConfigRepresentations = () =>
+        window.EyecatcherConfig?.representations ?? [];
+
+    const mergeCapabilities = (entry) => {
+        const caps = entry?.capabilities;
+        if (!caps) return { ...defaultCapabilities };
         return {
             save: caps.save !== false,
             network: caps.network !== false,
             timeOutput: caps.timeOutput === true,
             adjustWeight: caps.adjustWeight !== false,
         };
-    }
+    };
 
-    function interpolateMetaTemplate(template, data) {
-        if (!template) return "";
-        return template.replace(/\{(\w+)\}/g, function (_, key) {
-            return data[key] !== undefined ? String(data[key]) : "";
-        });
-    }
+    const buildIsGenomeFormatFromConfig = (entry) => {
+        const genomeKeys = entry?.genomeKeys ?? [];
+        const excludeKeys = entry?.excludeKeys ?? [];
 
-    // --- Standalone helpers (use rep.phenotype, rep.substrate, rep.capabilities) ---
-    function getMetaLabel(phenotype, pattern) {
-        var template = (phenotype && phenotype.metaTemplate) || "";
-        var data = pattern || {};
+        return (obj) => {
+            if (!obj) return false;
+
+            for (const k of genomeKeys) {
+                if (k === "rule") {
+                    if (typeof obj.rule !== "number") return false;
+                } else if (!obj[k]) {
+                    return false;
+                }
+            }
+
+            for (const k of excludeKeys) {
+                if (obj[k]) return false;
+            }
+
+            return true;
+        };
+    };
+
+    const interpolateMetaTemplate = (template, data) =>
+        (template || "").replace(/\{(\w+)\}/g, (_, key) =>
+            data[key] !== undefined ? String(data[key]) : ""
+        );
+
+    // ---- RepresentationHelpers (kept as window global to minimise churn elsewhere) ----
+    const getMetaLabel = (phenotype, pattern) => {
+        const template = phenotype?.metaTemplate || "";
+        const data = pattern || {};
         return interpolateMetaTemplate(template, {
             nodes: data.nodes,
             connections: data.connections,
@@ -62,72 +69,66 @@
             density: data.density,
             live_count: data.live_count,
         });
-    }
-
-    function prepareRuntime(runtime, pattern) {
-        if (pattern && runtime) {
-            runtime.patternPayload = runtime.patternPayload || {};
-            runtime.patternPayload.grid = pattern.grid;
-            runtime.patternId = pattern.id;
-        }
-    }
-
-    function supportsCellInteraction(substrate, phenotype) {
-        if (!phenotype || typeof substrate.handleInteraction !== "function")
-            return false;
-        var interactions =
-            phenotype.interactions ||
-            (phenotype.behaviour && phenotype.behaviour.interactions);
-        return Array.isArray(interactions) && interactions.indexOf("toggle") >= 0;
-    }
-
-    function hasCapability(capabilities, name) {
-        return capabilities && capabilities[name] !== false;
-    }
-
-    function getMetaIdPrefix() {
-        return "ID: ";
-    }
-
-    function createDisplayElement(rep, pattern, options) {
-        var substrate = rep.substrate;
-        var phenotype = rep.phenotype || {};
-        var result = substrate.createDisplayElement(phenotype, pattern, options);
-        if (result && result.state) {
-            result.state.patternPayload = result.state.patternPayload || {};
-            result.state.patternPayload.grid = pattern && pattern.grid;
-            result.state.patternId = pattern && pattern.id;
-            if (typeof substrate.setup === "function") {
-                substrate.setup(result.state, phenotype);
-            }
-        }
-        return {
-            element: result ? result.element : null,
-            runtime: result ? result.state : null,
-        };
-    }
-
-    window.RepresentationHelpers = {
-        getMetaLabel: getMetaLabel,
-        prepareRuntime: prepareRuntime,
-        supportsCellInteraction: supportsCellInteraction,
-        hasCapability: hasCapability,
-        getMetaIdPrefix: getMetaIdPrefix,
-        createDisplayElement: createDisplayElement,
     };
 
-    function createRepresentation(entry, substrate, phenotype) {
-        var isGenomeFormat = buildIsGenomeFormatFromConfig(entry);
-        var capabilities = mergeCapabilities(entry);
+    const prepareRuntime = (runtime, pattern) => {
+        if (!pattern || !runtime) return;
+        runtime.patternPayload = runtime.patternPayload || {};
+        runtime.patternPayload.grid = pattern.grid;
+        runtime.patternId = pattern.id;
+    };
+
+    const supportsCellInteraction = (substrate, phenotype) => {
+        if (!phenotype || typeof substrate?.handleInteraction !== "function")
+            return false;
+        const interactions =
+            phenotype.interactions || phenotype.behaviour?.interactions;
+        return Array.isArray(interactions) && interactions.includes("toggle");
+    };
+
+    const hasCapability = (capabilities, name) =>
+        capabilities ? capabilities[name] !== false : false;
+
+    const getMetaIdPrefix = () => "ID: ";
+
+    const createDisplayElement = (rep, pattern, options) => {
+        const substrate = rep.substrate;
+        const phenotype = rep.phenotype || {};
+        const result = substrate.createDisplayElement(phenotype, pattern, options);
+
+        // If a substrate returns runtime state, give it a chance to finalise setup.
+        if (result?.state) {
+            result.state.patternPayload = result.state.patternPayload || {};
+            result.state.patternPayload.grid = pattern?.grid;
+            result.state.patternId = pattern?.id;
+
+            if (typeof substrate.setup === "function")
+                substrate.setup(result.state, phenotype);
+        }
+
         return {
-            id: entry.id,
-            isGenomeFormat: isGenomeFormat,
-            hasSignalControls: entry.hasSignalControls !== false,
-            capabilities: capabilities,
-            phenotype: phenotype || {},
-            substrate: substrate,
+            element: result?.element ?? null,
+            runtime: result?.state ?? null,
         };
-    }
+    };
+
+    window.RepresentationHelpers = {
+        getMetaLabel,
+        prepareRuntime,
+        supportsCellInteraction,
+        hasCapability,
+        getMetaIdPrefix,
+        createDisplayElement,
+    };
+
+    const createRepresentation = (entry, substrate, phenotype) => ({
+        id: entry.id,
+        isGenomeFormat: buildIsGenomeFormatFromConfig(entry),
+        hasSignalControls: entry.hasSignalControls !== false,
+        capabilities: mergeCapabilities(entry),
+        phenotype: phenotype || {},
+        substrate,
+    });
 
     class RepresentationRegistry {
         constructor() {
@@ -140,27 +141,33 @@
         }
 
         _bootstrapFromConfig() {
-            var config =
-                window.EyecatcherConfig && window.EyecatcherConfig.representations;
-            var reg = window.SubstrateRegistry;
-            if (!config || !Array.isArray(config)) return;
-            if (reg && reg.initDefaults) reg.initDefaults();
+            // Ensure substrates exist before we bind phenotypes to them.
+            window.SubstrateRegistry?.initDefaults?.();
 
-            var self = this;
-            config.forEach(function (entry) {
-                var basePhenotype = entry.phenotype || { substrate: "image" };
-                var phenotype = Object.assign({}, basePhenotype, {
-                    sensorySystem: entry.sensorySystem,
-                });
-                var substrateKey =
-                    typeof phenotype.substrate === "string"
-                        ? phenotype.substrate
-                        : (phenotype.substrate && phenotype.substrate.type) || "image";
-                var substrate = (reg && reg.getSubstrate(substrateKey)) || null;
-                if (!substrate) return;
-                var representation = createRepresentation(entry, substrate, phenotype);
-                self._representationsById[entry.id] = representation;
-            });
+            const config = getConfigRepresentations();
+            if (!Array.isArray(config) || config.length === 0) return;
+
+            for (const entry of config) {
+                if (!entry?.id) continue;
+                const phenotype = entry.phenotype || {};
+                const substrateType =
+                    phenotype?.substrate?.type || phenotype?.substrate;
+                const substrate = window.SubstrateRegistry.getSubstrate(substrateType);
+
+                // If substrate is missing, we still register, but the UI will fall back to ImageSubstrate.
+                this._representationsById[entry.id] = createRepresentation(
+                    entry,
+                    substrate,
+                    phenotype
+                );
+
+                if (entry.id === DEFAULT_REPRESENTATION_ID) {
+                    window.__eyecatcherDefaultResolution = {
+                        representationId: entry.id,
+                        representation: this._representationsById[entry.id],
+                    };
+                }
+            }
         }
 
         get(representationId) {
@@ -169,38 +176,32 @@
         }
 
         findByGenome(genome) {
-            var config =
-                window.EyecatcherConfig && window.EyecatcherConfig.representations;
-            var order =
-                config && Array.isArray(config)
-                    ? config.map(function (e) {
-                          return e.id;
-                      })
+            const config = getConfigRepresentations();
+            const order =
+                Array.isArray(config) && config.length
+                    ? config.map((e) => e.id)
                     : [DEFAULT_REPRESENTATION_ID, "single_cppn", "ca"];
-            for (var i = 0; i < order.length; i++) {
-                var rep = this._representationsById[order[i]];
-                if (rep && rep.isGenomeFormat && rep.isGenomeFormat(genome)) {
-                    return rep;
-                }
+
+            for (const id of order) {
+                const rep = this._representationsById[id];
+                if (rep?.isGenomeFormat?.(genome)) return rep;
             }
             return null;
         }
 
         getDefault() {
-            var def = window.__eyecatcherDefaultResolution;
-            var evo = window.EvolutionConfig;
-            var representationId =
-                (evo && evo.DEFAULT_REPRESENTATION_ID) ||
-                (def && def.representationId) ||
+            const def = window.__eyecatcherDefaultResolution;
+            const evo = window.EvolutionConfig;
+            const representationId =
+                evo?.DEFAULT_REPRESENTATION_ID ||
+                def?.representationId ||
                 DEFAULT_REPRESENTATION_ID;
-            return {
-                representationId: representationId,
-                representation: this.get(representationId),
-            };
+
+            return { representationId, representation: this.get(representationId) };
         }
 
         getDefaultResolution() {
-            return window.EvolutionConfig && window.EvolutionConfig.getDefaultResolution
+            return window.EvolutionConfig?.getDefaultResolution
                 ? window.EvolutionConfig.getDefaultResolution()
                 : { representationId: this.getDefault().representationId };
         }
@@ -209,36 +210,27 @@
             return this.getDefault().representationId;
         }
 
-        resolve(opts) {
-            opts = opts || {};
-            var representation = null;
-            if (opts.representationId) {
-                representation = this.get(opts.representationId);
-            }
-            if (!representation && opts.genomes && opts.genomes.length) {
+        resolve(opts = {}) {
+            let representation = null;
+
+            if (opts.representationId) representation = this.get(opts.representationId);
+            if (!representation && opts.genomes?.length)
                 representation = this.findByGenome(opts.genomes[0]);
-            }
-            if (!representation) {
-                representation = this.getDefault().representation;
-            }
+            if (!representation) representation = this.getDefault().representation;
+
             return {
                 representationId:
-                    (representation && representation.id) ||
-                    this.getDefault().representationId,
-                representation: representation,
+                    representation?.id || this.getDefault().representationId,
+                representation,
             };
         }
 
         currentRepresentation() {
-            var state =
-                window.PopulationState &&
-                window.PopulationState.getState &&
-                window.PopulationState.getState();
-            var repId = state && state.representationId;
+            const state = window.PopulationState?.getState?.();
+            const repId = state?.representationId;
             return this.resolve({ representationId: repId }).representation;
         }
     }
 
-    var registry = new RepresentationRegistry();
-    window.RepresentationRegistry = registry;
+    window.RepresentationRegistry = new RepresentationRegistry();
 })();

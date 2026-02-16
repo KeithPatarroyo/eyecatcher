@@ -2,108 +2,113 @@
  * Organism interaction handlers: save, click, unclick.
  * Used by app.js grid callbacks. Depends on window.PopulationState, ApiClient, Toast.
  */
-(function () {
+(() => {
     "use strict";
+
+    const showError = (title, message) => window.Toast?.show?.(title, message, "error");
+
+    const showSuccess = (title, message, opts) =>
+        window.Toast?.show?.(title, message, "success", opts);
+
+    const withBusyButton = (buttonEl, busyText, fn) => {
+        if (!buttonEl) return fn();
+
+        const originalText = buttonEl.textContent;
+        buttonEl.textContent = busyText;
+        buttonEl.classList.add("saving");
+
+        return Promise.resolve()
+            .then(fn)
+            .finally(() => {
+                buttonEl.textContent = originalText;
+                buttonEl.classList.remove("saving");
+            });
+    };
+
+    const getGenomeOrNull = (id) => {
+        const org = window.PopulationState?.getOrganism?.(id) ?? null;
+        return org?.genome ?? null;
+    };
+
+    const setFitnessUI = (card, fitness) => {
+        const badge = card?.querySelector?.(".fitness-badge") ?? null;
+        if (!badge) return;
+
+        badge.textContent = String(fitness);
+        badge.classList.toggle("zero", fitness === 0);
+        card?.classList.toggle?.("selected", fitness > 0);
+    };
+
+    const updateFitness = (id, card, delta, updateStats) => {
+        const org = window.PopulationState?.getOrganism?.(id);
+        if (!org) return;
+
+        const current = org.fitness || 0;
+        const next = Math.max(0, current + delta);
+        if (next === current) return;
+
+        window.PopulationState.dispatch({
+            type: "SET_ORGANISM_FITNESS",
+            payload: { id, fitness: next },
+        });
+
+        setFitnessUI(card, next);
+        if (typeof updateStats === "function") updateStats();
+    };
 
     class OrganismActions {
         savePattern(id, buttonEl) {
-            if (!window.PopulationState.organisms.length) {
-                window.Toast.show(
+            const organisms = window.PopulationState?.organisms;
+            if (!Array.isArray(organisms) || organisms.length === 0) {
+                showError(
                     "Cannot save",
-                    "No organism data. Start with New random population or Load population.",
-                    "error"
+                    "No organism data. Start with New random population or Load population."
                 );
                 return;
             }
-            var org = window.PopulationState.getOrganism(id);
-            var genome = org ? org.genome : null;
+
+            const genome = getGenomeOrNull(id);
             if (!genome) {
-                window.Toast.show(
-                    "Cannot save",
-                    "Could not get organism data.",
-                    "error"
-                );
+                showError("Cannot save", "Could not get organism data.");
                 return;
             }
-            var originalText = buttonEl ? buttonEl.textContent : null;
-            if (buttonEl) {
-                buttonEl.textContent = "Compiling...";
-                buttonEl.classList.add("saving");
-            }
-            window.ApiClient.save(id, genome)
-                .then(function (data) {
-                    if (Array.isArray(data.downloads) && data.downloads.length) {
-                        var file = data.downloads[0];
-                        var blob = file.content_base64
+
+            return withBusyButton(buttonEl, "Compiling...", () =>
+                window.ApiClient.save(id, genome)
+                    .then((data) => {
+                        const downloads = data?.downloads;
+                        if (!Array.isArray(downloads) || downloads.length === 0) {
+                            showSuccess("Organism saved!", "No download in response.");
+                            return;
+                        }
+
+                        const file = downloads[0];
+                        const blob = file.content_base64
                             ? window.Toast.base64ToBlob(file.content_base64, file.mime)
                             : new Blob([file.content], { type: file.mime });
+
                         window.Toast.triggerDownload(blob, file.filename);
-                        window.Toast.show(
+                        showSuccess(
                             "Organism saved!",
                             "Zip downloaded to your computer.",
-                            "success",
-                            { duration: 5000 }
+                            {
+                                duration: 5000,
+                            }
                         );
-                    } else {
-                        window.Toast.show(
-                            "Organism saved!",
-                            "No download in response.",
-                            "success"
-                        );
-                    }
-                })
-                .catch(function (error) {
-                    console.error("Error saving:", error);
-                    window.Toast.show(
-                        "Save failed",
-                        error.message || "Network error",
-                        "error"
-                    );
-                })
-                .then(function () {
-                    if (buttonEl) {
-                        buttonEl.textContent = originalText;
-                        buttonEl.classList.remove("saving");
-                    }
-                });
+                    })
+                    .catch((error) => {
+                        console.error("Error saving:", error);
+                        showError("Save failed", error?.message || "Network error");
+                    })
+            );
         }
 
         clickPattern(id, card, updateStats) {
-            var org = window.PopulationState.getOrganism(id);
-            if (org) {
-                var fitness = (org.fitness || 0) + 1;
-                window.PopulationState.dispatch({
-                    type: "SET_ORGANISM_FITNESS",
-                    payload: { id: id, fitness: fitness },
-                });
-                var fitnessBadge = card.querySelector(".fitness-badge");
-                if (fitnessBadge) {
-                    fitnessBadge.textContent = fitness;
-                    fitnessBadge.classList.remove("zero");
-                }
-                card.classList.add("selected");
-                if (typeof updateStats === "function") updateStats();
-            }
+            updateFitness(id, card, +1, updateStats);
         }
 
         unclickPattern(id, card, updateStats) {
-            var org = window.PopulationState.getOrganism(id);
-            if (org && (org.fitness || 0) > 0) {
-                var fitness = org.fitness - 1;
-                window.PopulationState.dispatch({
-                    type: "SET_ORGANISM_FITNESS",
-                    payload: { id: id, fitness: fitness },
-                });
-                var fitnessBadge = card.querySelector(".fitness-badge");
-                if (fitnessBadge) {
-                    fitnessBadge.textContent = fitness;
-                    if (fitness === 0) {
-                        fitnessBadge.classList.add("zero");
-                        card.classList.remove("selected");
-                    }
-                }
-                if (typeof updateStats === "function") updateStats();
-            }
+            updateFitness(id, card, -1, updateStats);
         }
     }
 

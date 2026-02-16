@@ -1,11 +1,11 @@
 /**
- * Vis.js network options for the genealogy tree. Extracted from genealogy_viewer.js.
- * Depends on: DOM (physics sliders, node-size, etc.). Exposes: GenealogyNetworkConfig.buildNetworkOptions.
+ * GenealogyNetworkConfig: vis.js network options (physics vs hierarchical).
+ * Exposes: GenealogyNetworkConfig.buildNetworkOptions(hierarchicalLayout)
  */
-(function () {
+(() => {
     "use strict";
 
-    const PHYSICS_DEFAULTS = {
+    const DEFAULTS = {
         repelForce: 5000,
         centerForce: 0.1,
         linkDistance: 300,
@@ -13,7 +13,19 @@
         damping: 0.09,
     };
 
-    function buildNetworkOptions(hierarchicalLayout) {
+    const num = (id, fallback) =>
+        parseFloat(document.getElementById(id)?.value || fallback);
+
+    const buildNetworkOptions = (hierarchicalLayout) => {
+        const barnesHut = {
+            gravitationalConstant: -num("repel-force", DEFAULTS.repelForce),
+            centralGravity: num("center-force", DEFAULTS.centerForce),
+            springLength: num("link-distance", DEFAULTS.linkDistance),
+            springConstant: num("link-force", DEFAULTS.linkForce),
+            damping: num("damping", DEFAULTS.damping),
+            avoidOverlap: 0.15,
+        };
+
         return {
             layout: {
                 hierarchical: hierarchicalLayout
@@ -37,29 +49,7 @@
                     updateInterval: 1,
                     fit: false,
                 },
-                barnesHut: {
-                    gravitationalConstant: -parseFloat(
-                        document.getElementById("repel-force")?.value ||
-                            PHYSICS_DEFAULTS.repelForce
-                    ),
-                    centralGravity: parseFloat(
-                        document.getElementById("center-force")?.value ||
-                            PHYSICS_DEFAULTS.centerForce
-                    ),
-                    springLength: parseFloat(
-                        document.getElementById("link-distance")?.value ||
-                            PHYSICS_DEFAULTS.linkDistance
-                    ),
-                    springConstant: parseFloat(
-                        document.getElementById("link-force")?.value ||
-                            PHYSICS_DEFAULTS.linkForce
-                    ),
-                    damping: parseFloat(
-                        document.getElementById("damping")?.value ||
-                            PHYSICS_DEFAULTS.damping
-                    ),
-                    avoidOverlap: 0.15,
-                },
+                barnesHut,
                 solver: "barnesHut",
                 adaptiveTimestep: true,
                 timestep: 0.35,
@@ -80,7 +70,7 @@
             nodes: {
                 font: { face: "monospace", size: 11 },
                 chosen: {
-                    node: function (values, id, selected, hovering) {
+                    node(values, _id, selected, hovering) {
                         if (hovering) {
                             values.size += 5;
                             values.borderWidth += 1;
@@ -106,13 +96,10 @@
                 },
                 length: hierarchicalLayout
                     ? undefined
-                    : parseFloat(
-                          document.getElementById("link-distance")?.value ||
-                              PHYSICS_DEFAULTS.linkDistance
-                      ),
+                    : num("link-distance", DEFAULTS.linkDistance),
             },
         };
-    }
+    };
 
-    window.GenealogyNetworkConfig = { buildNetworkOptions: buildNetworkOptions };
+    window.GenealogyNetworkConfig = { buildNetworkOptions };
 })();

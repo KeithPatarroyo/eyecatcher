@@ -2,15 +2,23 @@
  * Animation loop: mouse tracking, time modes (loop/oscillate/infinite), and per-frame pattern rendering.
  * Signal values come from a pluggable SignalSource. Set window.SignalSource before init, or pass signalSource in init().
  */
-(function () {
+(() => {
     "use strict";
 
-    var ANIMATION_SPEED = 0.005;
-    var MOUSE_SPEED_DECAY = 0.95;
-    var MOUSE_SPEED_SCALE = 0.005;
-    var MOUSE_DIST_SCALE = 300;
-    var ACTIVITY_DECAY = 0.985;
-    var ACTIVITY_BOOST = 0.15;
+    const ANIMATION_SPEED = 0.005;
+    const MOUSE_SPEED_DECAY = 0.95;
+    const MOUSE_SPEED_SCALE = 0.005;
+    const MOUSE_DIST_SCALE = 300;
+    const ACTIVITY_DECAY = 0.985;
+    const ACTIVITY_BOOST = 0.15;
+
+    const clamp01 = (x) => Math.min(1, Math.max(0, x));
+
+    const getSignalIdsForCurrentRep = () =>
+        window.EvolutionConfig?.getSignalIdsForCurrentRep?.() ?? [];
+
+    const getTimeMode = () =>
+        document.querySelector('input[name="timeMode"]:checked')?.value ?? "oscillate";
 
     class AnimationLoop {
         constructor() {
@@ -21,61 +29,69 @@
             this._lastMouseY = 0;
             this._lastMouseTime = 0;
             this._activity = 0;
+
             this._animationTime = 0;
             this._oscillatePhase = 0;
+
             this._animating = true;
             this._getPatterns = null;
             this._viewerControls = null;
+
             this._signalSource = null;
             this._defaultSource = null;
+
             this._frameCount = 0;
             this._lastFrameTime = 0;
+
+            this._rafId = null;
+            this._animate = this._animate.bind(this);
         }
 
         _getMouseDistanceToCanvas(canvas) {
-            var rect = canvas.getBoundingClientRect();
-            var centerX = rect.left + rect.width / 2;
-            var centerY = rect.top + rect.height / 2;
-            var dx = this._mouseX - centerX;
-            var dy = this._mouseY - centerY;
-            var dist = Math.sqrt(dx * dx + dy * dy);
-            return Math.min(1.0, dist / MOUSE_DIST_SCALE);
+            const rect = canvas.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const dx = this._mouseX - centerX;
+            const dy = this._mouseY - centerY;
+            return Math.min(1, Math.hypot(dx, dy) / MOUSE_DIST_SCALE);
         }
 
-        _buildDefaultSignalValues(context) {
-            var canvas = context && context.canvas;
-            var mouse_dist = canvas ? this._getMouseDistanceToCanvas(canvas) : 0;
-            var rect = canvas ? canvas.getBoundingClientRect() : null;
-            var mouse_x = rect
-                ? Math.min(1.0, Math.max(0.0, (this._mouseX - rect.left) / rect.width))
+        _defaultSignalValues(context = {}) {
+            const canvas = context.canvas;
+            const rect = canvas?.getBoundingClientRect?.() ?? null;
+
+            const mouse_dist = canvas ? this._getMouseDistanceToCanvas(canvas) : 0;
+            const mouse_x = rect
+                ? clamp01((this._mouseX - rect.left) / rect.width)
                 : 0.5;
-            var mouse_y = rect
-                ? Math.min(1.0, Math.max(0.0, (this._mouseY - rect.top) / rect.height))
+            const mouse_y = rect
+                ? clamp01((this._mouseY - rect.top) / rect.height)
                 : 0.5;
-            var computed = {
+
+            const computed = {
                 raw_time: this._animationTime,
                 mouse_speed: this._mouseSpeed,
-                mouse_dist: mouse_dist,
+                mouse_dist,
                 activity: this._activity,
-                mouse_x: mouse_x,
-                mouse_y: mouse_y,
+                mouse_x,
+                mouse_y,
             };
-            if (context && context.gridPosition) {
-                var pos = context.gridPosition;
-                var GT = window.GridTopology;
-                var cols = (GT && GT.getColumns && GT.getColumns()) || 1;
-                var total = GT && GT.getAll && GT.getAll() ? GT.getAll().size : 1;
-                var rows = cols > 0 ? Math.ceil(total / cols) : 1;
+
+            if (context.gridPosition) {
+                const pos = context.gridPosition;
+                const GT = window.GridTopology;
+                const cols = GT?.getColumns?.() ?? 1;
+                const total = GT?.getAll?.()?.size ?? 1;
+                const rows = cols > 0 ? Math.ceil(total / cols) : 1;
                 computed.grid_row = rows > 1 ? pos.row / (rows - 1) : 0;
                 computed.grid_col = cols > 1 ? pos.col / (cols - 1) : 0;
             }
-            var signalIds =
-                (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_IDS) ||
-                Object.keys(computed);
-            var out = {};
-            signalIds.forEach(function (id) {
-                out[id] = computed[id] !== undefined ? computed[id] : 0.0;
-            });
+
+            const ids = getSignalIdsForCurrentRep();
+            const requested = ids.length ? ids : Object.keys(computed);
+
+            const out = {};
+            for (const id of requested) out[id] = computed[id] ?? 0.0;
             return out;
         }
 
@@ -83,87 +99,74 @@
             return this._signalSource || this._defaultSource;
         }
 
-        getSignalValues(canvas) {
-            var source = this.getActiveSignalSource();
-            if (source && typeof source.getValues === "function") {
-                return source.getValues({ canvas: canvas || undefined });
+        _getSignalValues(signalContext) {
+            const source = this.getActiveSignalSource();
+            const values = source?.getValues?.(signalContext);
+
+            if (values && Object.keys(values).length) return values;
+
+            const ids = getSignalIdsForCurrentRep();
+            if (!ids.length) return { raw_time: 0.5 };
+
+            const fallback = {};
+            for (const id of ids) fallback[id] = id === "raw_time" ? 0.5 : 0;
+            return fallback;
+        }
+
+        _advanceTime() {
+            const timeMode = getTimeMode();
+            switch (timeMode) {
+                case "loop":
+                    this._animationTime = (this._animationTime + ANIMATION_SPEED) % 1.0;
+                    break;
+                case "oscillate":
+                    this._oscillatePhase += ANIMATION_SPEED;
+                    this._animationTime =
+                        (Math.sin(this._oscillatePhase * Math.PI * 2) + 1) * 0.5;
+                    break;
+                case "infinite":
+                    this._animationTime += ANIMATION_SPEED;
+                    break;
+                default:
+                    this._animationTime = (this._animationTime + ANIMATION_SPEED) % 1.0;
             }
-            var ids =
-                (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_IDS) || [];
-            var out = {};
-            ids.forEach(function (id) {
-                out[id] = id === "raw_time" ? 0.5 : 0;
-            });
-            return Object.keys(out).length ? out : { raw_time: 0.5 };
         }
 
         _animate() {
-            var self = this;
             if (this._animating) {
-                var timeMode =
-                    (document.querySelector('input[name="timeMode"]:checked') &&
-                        document.querySelector('input[name="timeMode"]:checked')
-                            .value) ||
-                    "oscillate";
-
-                switch (timeMode) {
-                    case "loop":
-                        this._animationTime =
-                            (this._animationTime + ANIMATION_SPEED) % 1.0;
-                        break;
-                    case "oscillate":
-                        this._oscillatePhase += ANIMATION_SPEED;
-                        this._animationTime =
-                            (Math.sin(this._oscillatePhase * Math.PI * 2) + 1) * 0.5;
-                        break;
-                    case "infinite":
-                        this._animationTime += ANIMATION_SPEED;
-                        break;
-                    default:
-                        this._animationTime =
-                            (this._animationTime + ANIMATION_SPEED) % 1.0;
-                }
-
-                var normalizedTime = this._animationTime;
+                this._advanceTime();
                 this._mouseSpeed *= MOUSE_SPEED_DECAY;
                 this._activity *= ACTIVITY_DECAY;
 
-                var now = performance.now();
-                var deltaTime =
-                    this._lastFrameTime > 0 ? (now - this._lastFrameTime) / 1000 : 0;
+                const now = performance.now();
+                const deltaTime = this._lastFrameTime
+                    ? (now - this._lastFrameTime) / 1000
+                    : 0;
                 this._lastFrameTime = now;
                 this._frameCount++;
 
-                var runtimes = this._getPatterns ? this._getPatterns() : null;
-                if (
-                    runtimes &&
-                    this._viewerControls &&
-                    this._viewerControls.signalState != null &&
-                    window.RepresentationRegistry
-                ) {
-                    var signalState = this._viewerControls.signalState;
-                    var GT = window.GridTopology;
+                const runtimes = this._getPatterns?.() ?? null;
+                const signalState = this._viewerControls?.signalState;
 
-                    runtimes.forEach(function (runtime) {
-                        if (!runtime.gl) return;
-                        if (
-                            typeof runtime.gl.isContextLost === "function" &&
-                            runtime.gl.isContextLost()
-                        ) {
-                            return;
-                        }
-                        var patternId = runtime.patternId;
-                        var renderContext = {
+                if (runtimes && signalState != null && window.RepresentationRegistry) {
+                    const GT = window.GridTopology;
+                    for (const runtime of runtimes) {
+                        if (!runtime?.gl) continue;
+                        if (runtime.gl.isContextLost?.()) continue;
+
+                        const patternId = runtime.patternId;
+                        const renderContext = {
                             gl: runtime.gl,
                             canvas: runtime.canvas,
-                            gridPosition: GT ? GT.getPosition(patternId) : null,
-                            neighbors: GT ? GT.getNeighbors(patternId) : null,
-                            frameCount: self._frameCount,
-                            deltaTime: deltaTime,
-                            patternId: patternId,
+                            gridPosition: GT?.getPosition?.(patternId) ?? null,
+                            neighbors: GT?.getNeighbors?.(patternId) ?? null,
+                            frameCount: this._frameCount,
+                            deltaTime,
+                            patternId,
                         };
+
                         try {
-                            window.AnimationLoop.renderFrameWithSignals(
+                            this.renderFrameWithSignals(
                                 runtime,
                                 signalState,
                                 runtime.canvas,
@@ -171,79 +174,70 @@
                             );
                         } catch (err) {
                             console.warn(
-                                "Pattern render failed (patternId=" + patternId + "):",
+                                `Pattern render failed (patternId=${patternId}):`,
                                 err
                             );
                         }
-                    });
+                    }
                 }
 
-                if (
-                    typeof window.EyecatcherDebug !== "undefined" &&
-                    window.EyecatcherDebug.update
-                ) {
-                    window.EyecatcherDebug.update({
-                        time: normalizedTime,
-                        mouseSpeed: this._mouseSpeed,
-                        activity: this._activity,
-                        mouseX: this._mouseX,
-                        mouseY: this._mouseY,
-                    });
-                }
+                window.EyecatcherDebug?.update?.({
+                    time: this._animationTime,
+                    mouseSpeed: this._mouseSpeed,
+                    activity: this._activity,
+                    mouseX: this._mouseX,
+                    mouseY: this._mouseY,
+                });
             }
-            requestAnimationFrame(function () {
-                self._animate();
-            });
+
+            this._rafId = requestAnimationFrame(this._animate);
         }
 
-        init(options) {
-            this._getPatterns = (options && options.getPatterns) || null;
-            this._viewerControls = (options && options.viewerControls) || null;
-            var self = this;
+        init(options = {}) {
+            this._getPatterns = options.getPatterns ?? null;
+            this._viewerControls = options.viewerControls ?? null;
+
             this._defaultSource = {
-                getValues: function (context) {
-                    return self._buildDefaultSignalValues(context || {});
-                },
+                getValues: (ctx) => this._defaultSignalValues(ctx),
             };
             this._signalSource =
-                (options && options.signalSource) ||
-                window.SignalSource ||
-                this._defaultSource;
+                options.signalSource ?? window.SignalSource ?? this._defaultSource;
+
             window.getSignalSource = this.getActiveSignalSource.bind(this);
+
             this._lastMouseTime = performance.now();
 
-            document.addEventListener("mousemove", function (e) {
-                var now = performance.now();
-                var dt = now - self._lastMouseTime;
+            document.addEventListener("mousemove", (e) => {
+                const now = performance.now();
+                const dt = now - this._lastMouseTime;
 
-                self._mouseX = e.clientX;
-                self._mouseY = e.clientY;
+                this._mouseX = e.clientX;
+                this._mouseY = e.clientY;
 
                 if (dt > 0) {
-                    var dx = e.clientX - self._lastMouseX;
-                    var dy = e.clientY - self._lastMouseY;
-                    var distance = Math.sqrt(dx * dx + dy * dy);
-                    var instantSpeed = distance / dt;
-                    self._mouseSpeed = Math.min(
+                    const dx = e.clientX - this._lastMouseX;
+                    const dy = e.clientY - this._lastMouseY;
+                    const instantSpeed = Math.hypot(dx, dy) / dt;
+                    this._mouseSpeed = Math.min(
                         1.0,
-                        self._mouseSpeed * 0.7 + instantSpeed * MOUSE_SPEED_SCALE * 0.3
+                        this._mouseSpeed * 0.7 + instantSpeed * MOUSE_SPEED_SCALE * 0.3
                     );
                 }
 
-                self._lastMouseX = e.clientX;
-                self._lastMouseY = e.clientY;
-                self._lastMouseTime = now;
-                self._activity = Math.min(
+                this._lastMouseX = e.clientX;
+                this._lastMouseY = e.clientY;
+                this._lastMouseTime = now;
+
+                this._activity = Math.min(
                     1.0,
-                    self._activity + self._mouseSpeed * ACTIVITY_BOOST
+                    this._activity + this._mouseSpeed * ACTIVITY_BOOST
                 );
             });
 
-            var timeModeRadios = document.querySelectorAll('input[name="timeMode"]');
-            timeModeRadios.forEach(function (radio) {
-                radio.addEventListener("change", function () {
-                    self._animationTime = 0;
-                    self._oscillatePhase = 0;
+            document.querySelectorAll('input[name="timeMode"]').forEach((radio) => {
+                radio.addEventListener("change", () => {
+                    this._animationTime = 0;
+                    this._oscillatePhase = 0;
                 });
             });
         }
@@ -251,7 +245,7 @@
         start() {
             this._animating = true;
             this._lastFrameTime = performance.now();
-            this._animate();
+            if (this._rafId == null) this._rafId = requestAnimationFrame(this._animate);
         }
 
         stop() {
@@ -261,19 +255,15 @@
         getMouseSpeed() {
             return this._mouseSpeed;
         }
-
         getMouseDistance(canvas) {
             return this._getMouseDistanceToCanvas(canvas);
         }
-
         getActivity() {
             return this._activity;
         }
-
         getMouseX() {
             return this._mouseX;
         }
-
         getMouseY() {
             return this._mouseY;
         }
@@ -285,47 +275,23 @@
          * @param {Object} runtime - From WebGLUtils.setupPattern (gl, program, positionBuffer, canvas)
          * @param {Object} signalState - Flat { signal_id: boolean } for CPPN toggles
          * @param {HTMLCanvasElement} [contextCanvas]
-         * @param {Object} [context] - Optional { canvas, gridPosition, neighbors, patternId }
+         * @param {Object} [context] - Optional { canvas, gridPosition, neighbors, patternId, ... }
          */
-        renderFrameWithSignals(runtime, signalState, contextCanvas, context) {
-            var getSource = window.getSignalSource;
-            var signalContext = context
-                ? {
-                      canvas: contextCanvas || (context && context.canvas),
-                      ...context,
-                  }
-                : contextCanvas != null
-                  ? { canvas: contextCanvas }
-                  : {};
-            var signalValues =
-                getSource &&
-                getSource().getValues &&
-                getSource().getValues(signalContext);
-            if (!signalValues || !Object.keys(signalValues).length) {
-                var ids =
-                    (window.EvolutionConfig && window.EvolutionConfig.SIGNAL_IDS) || [];
-                signalValues = {};
-                ids.forEach(function (id) {
-                    signalValues[id] = id === "raw_time" ? 0.5 : 0;
-                });
-                if (!Object.keys(signalValues).length) signalValues = { raw_time: 0.5 };
-            }
-            var representation =
-                window.RepresentationRegistry &&
-                window.RepresentationRegistry.currentRepresentation &&
-                window.RepresentationRegistry.currentRepresentation();
-            var params =
-                representation && representation.substrate
-                    ? representation.substrate.buildParams
-                        ? representation.substrate.buildParams(
-                              representation.phenotype,
-                              signalValues
-                          )
-                        : {}
-                    : {};
-            if (representation && representation.substrate) {
-                representation.substrate.render(runtime, params, signalState || {});
-            }
+        renderFrameWithSignals(runtime, signalState, contextCanvas, context = {}) {
+            const signalContext =
+                contextCanvas != null || context.canvas != null
+                    ? { ...context, canvas: contextCanvas ?? context.canvas }
+                    : { ...context };
+
+            const signalValues = this._getSignalValues(signalContext);
+
+            const representation =
+                window.RepresentationRegistry?.currentRepresentation?.();
+            const substrate = representation?.substrate;
+            const phenotype = representation?.phenotype;
+
+            const params = substrate?.buildParams?.(phenotype, signalValues) ?? {};
+            substrate?.render?.(runtime, params, signalState || {});
         }
     }
 

@@ -1,147 +1,150 @@
 /**
  * Shared pure helpers for the frontend.
- * Exposes: formatBytes, escapeHtml, showLoading, safeGetItem, safeSetItem,
- * formatApiError, createListEmptyEl, onId, and constants BYTES_KB, BYTES_MB.
+ * Exposes: formatBytes, escapeHtml, showLoading, withLoading,
+ * safeGetItem, safeSetItem, formatApiError, createListEmptyEl, onId, onRoleButtonKeydown,
+ * and constants BYTES_KB, BYTES_MB.
  */
-(function () {
+(() => {
     "use strict";
 
-    var BYTES_KB = 1024;
-    var BYTES_MB = 1024 * 1024;
+    const BYTES_KB = 1024;
+    const BYTES_MB = 1024 * 1024;
 
-    function formatBytes(n) {
-        if (n >= BYTES_MB) return (n / BYTES_MB).toFixed(1) + " MB";
-        if (n >= BYTES_KB) return (n / BYTES_KB).toFixed(1) + " KB";
-        return n + " B";
-    }
+    const formatBytes = (n) => {
+        if (n >= BYTES_MB) return `${(n / BYTES_MB).toFixed(1)} MB`;
+        if (n >= BYTES_KB) return `${(n / BYTES_KB).toFixed(1)} KB`;
+        return `${n} B`;
+    };
 
-    function escapeHtml(s) {
-        var div = document.createElement("div");
-        div.textContent = s;
+    const escapeHtml = (s) => {
+        const div = document.createElement("div");
+        div.textContent = String(s ?? "");
         return div.innerHTML;
-    }
+    };
 
-    function showLoading(show) {
-        var el = document.getElementById("loading");
+    const showLoading = (show) => {
+        // Prefer PopulationLoader's loading UI if present; fall back to #loading.
+        const loader = window.PopulationLoader?.showLoading;
+        if (typeof loader === "function") return loader(Boolean(show));
+
+        const el = document.getElementById("loading");
         if (el) el.classList.toggle("hidden", !show);
-    }
+    };
 
     /**
-     * Run an async function with loading state (UI + PopulationState). Clears loading in finally.
-     * @param {function(): Promise<*>} fn - Async work to run
-     * @returns {Promise<*>} Result of fn()
+     * Run an async function with loading state (UI + PopulationState).
+     * Clears loading in finally, even on errors.
+     * @param {() => Promise<any>} fn
      */
-    async function withLoading(fn) {
+    const withLoading = async (fn) => {
         showLoading(true);
-        window.PopulationState.dispatch({ type: "SET_LOADING", payload: true });
+        window.PopulationState?.dispatch?.({ type: "SET_LOADING", payload: true });
+
         try {
             return await fn();
         } finally {
             showLoading(false);
-            window.PopulationState.dispatch({
-                type: "SET_LOADING",
-                payload: false,
-            });
+            window.PopulationState?.dispatch?.({ type: "SET_LOADING", payload: false });
         }
-    }
+    };
 
     /**
      * Safe storage get. Returns value or fallback on error or missing.
-     * @param {Storage} storage - localStorage or sessionStorage
+     * @param {Storage} storage
      * @param {string} key
      * @param {string|null} fallback
-     * @returns {string|null}
      */
-    function safeGetItem(storage, key, fallback) {
+    const safeGetItem = (storage, key, fallback) => {
         try {
-            if (typeof storage === "undefined" || !storage) return fallback;
-            var v = storage.getItem(key);
+            const v = storage?.getItem?.(key);
             return v != null ? v : fallback;
-        } catch (_e) {
+        } catch {
             return fallback;
         }
-    }
+    };
 
     /**
      * Safe storage set. Ignores errors (e.g. private mode).
-     * @param {Storage} storage - localStorage or sessionStorage
+     * @param {Storage} storage
      * @param {string} key
      * @param {string} value
      */
-    function safeSetItem(storage, key, value) {
+    const safeSetItem = (storage, key, value) => {
         try {
-            if (typeof storage !== "undefined" && storage) storage.setItem(key, value);
-        } catch (_e) {
+            storage?.setItem?.(key, value);
+        } catch {
             /* ignore */
         }
-    }
+    };
 
     /**
-     * Get a user-facing error message from an API error (supports e.data.error and e.message).
-     * @param {Error|{data?:{error?:string}, message?:string}} e
+     * Get a user-facing error message from an API error.
+     * Supports e.data.error and e.message.
+     * @param {any} e
      * @param {string} fallback
-     * @returns {string}
      */
-    function formatApiError(e, fallback) {
+    const formatApiError = (e, fallback) => {
         if (!e) return fallback;
-        if (e.data && typeof e.data.error === "string") return e.data.error;
-        if (typeof e.message === "string") return e.message;
+        const apiError = e?.data?.error;
+        if (typeof apiError === "string") return apiError;
+        if (typeof e?.message === "string") return e.message;
         return fallback;
-    }
+    };
 
     /**
      * Create an empty-state element (e.g. "No items yet") with class list-empty.
-     * @param {string} tag - "li" or "div"
-     * @param {string} text - Message text
-     * @returns {HTMLElement}
+     * @param {"li"|"div"|"p"|string} tag
+     * @param {string} text
      */
-    function createListEmptyEl(tag, text) {
-        var el = document.createElement(tag);
+    const createListEmptyEl = (tag, text) => {
+        const el = document.createElement(tag);
         el.className = "list-empty";
         el.textContent = text;
         return el;
-    }
+    };
 
     /**
      * Run a callback with the element for the given id, if present.
-     * @param {string} id - Element id
-     * @param {function(HTMLElement): void} fn - Callback given the element
+     * @param {string} id
+     * @param {(el: HTMLElement) => void} fn
      */
-    function onId(id, fn) {
-        var el = document.getElementById(id);
+    const onId = (id, fn) => {
+        const el = document.getElementById(id);
         if (el) fn(el);
-    }
+    };
 
     /**
-     * Attach click and keydown (Enter/Space) to a button-like element so it activates on click or keyboard.
-     * @param {HTMLElement} el - Button or role="button" element
-     * @param {function(): void} fn - Callback to run on activate
+     * Attach click and keydown (Enter/Space) to a button-like element.
+     * @param {HTMLElement} el
+     * @param {() => void} fn
      */
-    function onRoleButtonKeydown(el, fn) {
+    const onRoleButtonKeydown = (el, fn) => {
         if (!el) return;
         el.addEventListener("click", fn);
-        el.addEventListener("keydown", function (e) {
+        el.addEventListener("keydown", (e) => {
             if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 fn();
             }
         });
-    }
+    };
 
     window.Utils = {
-        formatBytes: formatBytes,
-        escapeHtml: escapeHtml,
-        showLoading: showLoading,
-        withLoading: withLoading,
-        safeGetItem: safeGetItem,
-        safeSetItem: safeSetItem,
-        formatApiError: formatApiError,
-        createListEmptyEl: createListEmptyEl,
-        onId: onId,
-        onRoleButtonKeydown: onRoleButtonKeydown,
-        BYTES_KB: BYTES_KB,
-        BYTES_MB: BYTES_MB,
+        formatBytes,
+        escapeHtml,
+        showLoading,
+        withLoading,
+        safeGetItem,
+        safeSetItem,
+        formatApiError,
+        createListEmptyEl,
+        onId,
+        onRoleButtonKeydown,
+        BYTES_KB,
+        BYTES_MB,
     };
+
+    // Backwards-compatible globals (used in a few older modules)
     window.formatBytes = formatBytes;
     window.escapeHtml = escapeHtml;
     window.showLoading = showLoading;

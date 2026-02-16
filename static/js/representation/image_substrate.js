@@ -3,27 +3,26 @@
  * Used when phenotype.substrate has no registered substrate (e.g. "audio" before AudioSubstrate exists).
  * Backend render_to_image() provides the display.
  */
-(function () {
+(() => {
     "use strict";
 
-    var Substrate = window.Substrate;
+    const Substrate = window.Substrate;
 
     class ImageSubstrate extends Substrate {
         createDisplayElement(phenotype, patternPayload) {
-            if (patternPayload && patternPayload.image) {
-                var img = document.createElement("img");
-                img.className = "organism-canvas organism-image";
-                img.src = patternPayload.image;
-                img.width = 256;
-                img.height = 256;
-                img.alt =
-                    "Pattern " + (patternPayload.id != null ? patternPayload.id : "");
-                return { element: img, state: null };
-            }
-            var fallback = document.createElement("div");
-            fallback.className = "organism-canvas-fallback";
-            fallback.textContent = "No image";
-            return { element: fallback, state: null };
+            const src = patternPayload?.image;
+            if (!src) return { element: this._createFallback("No image"), state: null };
+
+            const size = phenotype?.displaySize ?? 256;
+
+            const img = document.createElement("img");
+            img.className = "organism-canvas organism-image";
+            img.src = src;
+            img.width = size;
+            img.height = size;
+            img.alt = `Pattern ${patternPayload?.id ?? ""}`;
+
+            return { element: img, state: null };
         }
     }
 
