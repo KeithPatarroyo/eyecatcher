@@ -2,6 +2,7 @@
  * GenealogyExport: export modal + download.
  * Exposes: GenealogyExport.bindExportModalEvents(showToast, apiUrl)
  */
+import { API_URL as DEFAULT_API_URL } from "../lib/env.js";
 import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
 import Toast from "../lib/toast.js";
@@ -24,7 +25,7 @@ const downloadJson = (obj, filename) => {
     Toast.triggerDownload(blob, filename);
 };
 
-const bindExportModalEvents = (showToast, apiUrl = window.API_URL || "") => {
+const bindExportModalEvents = (showToast, apiUrl = DEFAULT_API_URL) => {
     const modal = () => DOM.byId("export-genealogy-modal");
     const hide = () => DOM.setHidden(modal(), true);
     const show = () => DOM.setHidden(modal(), false);

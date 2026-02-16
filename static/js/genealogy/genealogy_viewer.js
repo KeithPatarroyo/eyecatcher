@@ -10,8 +10,7 @@ import GenealogyNetworkConfig from "./network_config.js";
 import GenealogyPhysics from "./physics.js";
 import GenealogyExport from "./export.js";
 import GenealogyThumbnails from "./thumbnails.js";
-
-const API_URL = window.API_URL || "";
+import { API_URL, API_BASE_PATH, getVis, getGenealogyBridge } from "../lib/env.js";
 
 let treeNetwork = null;
 let selectedNodeId = null;
@@ -218,7 +217,7 @@ async function updateCurrentPopulationInfo(popId) {
 }
 
 async function loadPopulation(popId) {
-    const loader = window.GenealogyBridge?.loadPopulationById;
+    const loader = getGenealogyBridge()?.loadPopulationById;
     if (typeof loader === "function") {
         await loader(popId);
         currentPopulationId = popId;
@@ -261,8 +260,7 @@ async function loadPopulation(popId) {
             );
             return;
         }
-        const baseUrl = window.API_BASE_PATH != null ? window.API_BASE_PATH : "/";
-        window.location.href = baseUrl.replace(/\/+$/, "") || "/";
+        window.location.href = API_BASE_PATH.replace(/\/+$/, "") || "/";
     } catch (e) {
         console.error("Load population failed:", e);
         showGenealogyToast(
@@ -275,16 +273,13 @@ async function loadPopulation(popId) {
 
 function visualizeTree(data) {
     const container = DOM.byId("tree-visualization");
-    if (!container || !window.vis) return;
+    const vis = getVis();
+    if (!container || !vis) return;
 
-    const nodes = new window.vis.DataSet(buildVisNodes(data));
-    const edges = new window.vis.DataSet(buildVisEdges(data));
+    const nodes = new vis.DataSet(buildVisNodes(data));
+    const edges = new vis.DataSet(buildVisEdges(data));
 
-    treeNetwork = new window.vis.Network(
-        container,
-        { nodes, edges },
-        buildNetworkOptions()
-    );
+    treeNetwork = new vis.Network(container, { nodes, edges }, buildNetworkOptions());
     attachNetworkHandlers();
     updateControlsVisibility();
 

@@ -2,6 +2,7 @@
  * GenealogyThumbnails: renders thumbnails for vis.js nodes.
  * Exposes: GenealogyThumbnails.renderThumbnail / renderAllThumbnails
  */
+import { API_URL as DEFAULT_API_URL } from "../lib/env.js";
 import api from "../lib/api_client.js";
 import DisplayFetcher from "../representation/display_fetcher.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
@@ -27,7 +28,7 @@ const loadImg = (src) =>
         img.src = src;
     });
 
-const renderThumbnail = async (populationId, cache, apiUrl = window.API_URL || "") => {
+const renderThumbnail = async (populationId, cache, apiUrl = DEFAULT_API_URL) => {
     if (cache?.has(populationId)) return cache.get(populationId);
 
     if (
@@ -89,7 +90,7 @@ const renderAllThumbnails = async (visNodes, cache, options = {}) => {
         document.getElementById("node-size")?.value || defaultNodeSize,
         10
     );
-    const apiUrl = options.apiUrl || window.API_URL || "";
+    const apiUrl = options.apiUrl || DEFAULT_API_URL;
 
     const nodes = visNodes.get();
     for (let i = 0; i < nodes.length; i += BATCH) {
