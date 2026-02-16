@@ -100,9 +100,12 @@
                 const color = nodeColors[node.type];
                 const network = node.network || networkTypes[0] || "main";
                 const opacity = opacityForNetwork(network);
-                let label = node.label;
+                const groupPrefix =
+                    node.group && node.type !== "hidden" ? "[" + node.group + "] " : "";
+                let label = groupPrefix + (node.label || node.id);
                 if (node.type === "hidden") {
-                    label += "\nBias: " + node.bias.toFixed(2);
+                    label +=
+                        "\nBias: " + (node.bias != null ? node.bias.toFixed(2) : "0");
                     if (node.activation) label += "\n" + node.activation;
                 }
                 label += "\n[" + network + "]";
@@ -117,6 +120,12 @@
                         border: color.highlight.border + hex,
                     },
                 };
+                const hoverTitle =
+                    (node.group ? node.group + ": " : "") +
+                    (node.label ? node.label.split("\n")[0] : node.id) +
+                    " (" +
+                    node.type +
+                    ")";
                 nodes.add({
                     id: node.id,
                     label: label,
@@ -127,13 +136,7 @@
                     physics: false,
                     x: node.x || undefined,
                     y: node.y || undefined,
-                    title:
-                        network.toUpperCase() +
-                        " Node " +
-                        node.id +
-                        " (" +
-                        node.type +
-                        ")",
+                    title: hoverTitle,
                 });
             });
 

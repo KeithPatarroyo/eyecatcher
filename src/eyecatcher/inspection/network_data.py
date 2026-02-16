@@ -13,6 +13,21 @@ import neat
 from ..signals.sensory_system import Output, Signal, input_labels, output_labels
 
 
+def _signal_category_to_group(category: str) -> str:
+    """Map signal category to short display group for network viz (e.g. NCA inputs)."""
+    if not category:
+        return "Input"
+    if category == "nca_perception":
+        return "Perception"
+    if category in ("temporal", "interaction"):
+        return "Env"
+    if category == "spatial":
+        return "Perception"
+    if category == "structural":
+        return "Bias"
+    return category.replace("_", " ").title()
+
+
 def _append_nodes_for_layer(
     nodes: list[dict[str, Any]],
     node_id_map: dict[int, str],
@@ -74,6 +89,12 @@ def extract_network_data(
         (-(i + 1), input_label_list[i] if i < len(input_label_list) else f"Input {i}")
         for i in range(num_inputs)
     ]
+    input_extras = [
+        {"group": _signal_category_to_group(signals[i].category)}
+        if i < len(signals)
+        else {}
+        for i in range(num_inputs)
+    ]
     _append_nodes_for_layer(
         nodes,
         node_id_map,
@@ -81,6 +102,7 @@ def extract_network_data(
         "input",
         input_list,
         -400 + x_offset,
+        input_extras,
     )
 
     hidden_list = sorted(genome.nodes.keys())
@@ -107,6 +129,7 @@ def extract_network_data(
         (i, output_label_list[i] if i < len(output_label_list) else f"Output {i}")
         for i in range(num_outputs)
     ]
+    output_extras = [{"group": "State Δ"} for _ in range(num_outputs)]
     _append_nodes_for_layer(
         nodes,
         node_id_map,
@@ -114,6 +137,7 @@ def extract_network_data(
         "output",
         output_list,
         400 + x_offset,
+        output_extras,
     )
 
     connections = []
