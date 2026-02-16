@@ -17,7 +17,8 @@
         var ApiClient = window.ApiClient;
         if (!ApiClient) throw new Error("ApiClient not available");
         var inputs = (options && options.inputs) || {};
-        var evalData = await ApiClient.express(genomes, inputs);
+        var expressOptions = (options && options.expressOptions) || null;
+        var evalData = await ApiClient.express(genomes, inputs, expressOptions);
         var results = evalData.results || [];
         if (typeof performance !== "undefined") {
             window.CA_ANIMATION_START_TIME = performance.now();
@@ -111,7 +112,19 @@
         if (substrateType === "field") {
             return developGenomes(genomes, options);
         }
-        return expressGenomes(genomes, options);
+        var opts = options
+            ? { inputs: options.inputs, expressOptions: options.expressOptions }
+            : {};
+        if (representation && representation.id === "nca") {
+            opts.expressOptions = opts.expressOptions || {};
+            if (opts.expressOptions.nca_steps === undefined) {
+                opts.expressOptions.nca_steps = 8;
+            }
+            if (opts.expressOptions.nca_preview_grid_size === undefined) {
+                opts.expressOptions.nca_preview_grid_size = 32;
+            }
+        }
+        return expressGenomes(genomes, opts);
     }
 
     window.DisplayFetcher = {

@@ -282,6 +282,76 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "nca",
+            "outputType": "grid",
+            "hasSignalControls": true,
+            "genomeKeys": [
+                "nodes",
+                "connections",
+                "key"
+            ],
+            "capabilities": {
+                "save": true,
+                "network": true,
+                "timeOutput": false,
+                "adjustWeight": true,
+                "animate": false
+            },
+            "sensorySystem": {
+                "inputs": [
+                    {
+                        "id": "raw_time",
+                        "label": "Raw Time",
+                        "default": 0.0,
+                        "uniform": "u_raw_time"
+                    },
+                    {
+                        "id": "mouse_x",
+                        "label": "Mouse X",
+                        "default": 0.0,
+                        "uniform": "u_mouse_x"
+                    },
+                    {
+                        "id": "mouse_y",
+                        "label": "Mouse Y",
+                        "default": 0.0,
+                        "uniform": "u_mouse_y"
+                    },
+                    {
+                        "id": "mouse_speed",
+                        "label": "Mouse Speed",
+                        "default": 0.0,
+                        "uniform": "u_mouse_speed"
+                    },
+                    {
+                        "id": "activity",
+                        "label": "Activity",
+                        "default": 0.0,
+                        "uniform": "u_activity"
+                    }
+                ],
+                "outputs": [],
+                "derivedInputs": []
+            },
+            "phenotype": {
+                "substrate": {
+                    "type": "grid",
+                    "gridSize": 64,
+                    "stateFormat": "RGBA16F",
+                    "wrap": "CLAMP"
+                },
+                "displayRule": "#version 300 es\nprecision highp float;\nuniform sampler2D u_state;\nin vec2 vUV;\nout vec4 fragColor;\nvoid main() {\n    vec4 s = texture(u_state, vUV);\n    float alive = step(0.1, s.a);\n    vec3 color = clamp(s.rgb * 0.5 + 0.5, 0.0, 1.0);\n    fragColor = vec4(color * alive, 1.0);\n}\n",
+                "metaTemplate": "Nodes: {nodes} | Connections: {connections} \u00b7 NCA",
+                "behaviour": {
+                    "updateIntervalMs": 33,
+                    "interactionRule": "#version 300 es\nprecision highp float;\nuniform sampler2D u_state;\nuniform vec2 u_gridSize;\nuniform int u_toggleCount;\nuniform float u_brushRadius;\nuniform vec2 u_toggles[64];\nin vec2 vUV;\nout vec4 fragColor;\nvoid main() {\n    vec4 s = texture(u_state, vUV);\n    vec2 cell = min(floor(vUV * u_gridSize), u_gridSize - 1.0);\n    for (int i = 0; i < 64; i++) {\n        if (i >= u_toggleCount) break;\n        vec2 tc = u_toggles[i];\n        vec2 toggleCell = min(floor(vec2(tc.x, 1.0 - tc.y) * u_gridSize), u_gridSize - 1.0);\n        float dist = max(abs(cell.x - toggleCell.x), abs(cell.y - toggleCell.y));\n        if (dist <= u_brushRadius) {\n            if (s.a > 0.1) {\n                s = vec4(0.0, 0.0, 0.0, 0.0);\n            } else {\n                s = vec4(0.0, 0.0, 0.0, 1.0);\n            }\n            break;\n        }\n    }\n    fragColor = s;\n}\n",
+                    "interactions": [
+                        "toggle"
+                    ]
+                }
+            }
         }
     ],
     "signals": {

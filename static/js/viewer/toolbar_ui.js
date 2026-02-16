@@ -132,17 +132,17 @@
             if (substrateSelect) {
                 var current =
                     window.PopulationState.representationId ||
-                    cfg.DEFAULT_SUBSTRATE_ID ||
+                    cfg.DEFAULT_REPRESENTATION_ID ||
                     window.RepresentationRegistry.resolve({}).representationId ||
                     (window.RepresentationRegistry.getDefaultRepresentationId
                         ? window.RepresentationRegistry.getDefaultRepresentationId()
                         : "");
                 if (
-                    Array.isArray(cfg.available_substrate_ids) &&
-                    cfg.available_substrate_ids.length > 0
+                    Array.isArray(cfg.available_representation_ids) &&
+                    cfg.available_representation_ids.length > 0
                 ) {
                     substrateSelect.innerHTML = "";
-                    cfg.available_substrate_ids.forEach(function (id) {
+                    cfg.available_representation_ids.forEach(function (id) {
                         var opt = document.createElement("option");
                         opt.value = id;
                         opt.textContent = id;

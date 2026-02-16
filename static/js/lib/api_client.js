@@ -170,8 +170,8 @@
             );
         }
 
-        /** Express genome → phenotype (POST /api/express). Optional inputs for animate. */
-        async express(individuals, inputs) {
+        /** Express genome → phenotype (POST /api/express). Optional inputs and options (e.g. nca_steps for faster NCA load). */
+        async express(individuals, inputs, options) {
             var body = { individuals: individuals || [] };
             if (
                 inputs &&
@@ -179,6 +179,13 @@
                 Object.keys(inputs).length > 0
             ) {
                 body.inputs = inputs;
+            }
+            if (
+                options &&
+                typeof options === "object" &&
+                Object.keys(options).length > 0
+            ) {
+                body.options = options;
             }
             return this.apiFetch(
                 this.getBase() + "/express",

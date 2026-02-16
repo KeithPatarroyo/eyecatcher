@@ -73,12 +73,12 @@
     }
 
     function supportsCellInteraction(substrate, phenotype) {
-        return (
-            typeof substrate.handleInteraction === "function" &&
-            phenotype &&
-            phenotype.interactions &&
-            phenotype.interactions.indexOf("toggle") >= 0
-        );
+        if (!phenotype || typeof substrate.handleInteraction !== "function")
+            return false;
+        var interactions =
+            phenotype.interactions ||
+            (phenotype.behaviour && phenotype.behaviour.interactions);
+        return Array.isArray(interactions) && interactions.indexOf("toggle") >= 0;
     }
 
     function hasCapability(capabilities, name) {
