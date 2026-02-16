@@ -608,12 +608,7 @@
         <script type="module" src="js/config.generated.js"></script>
         <script type="module" src="js/evolution/experiment_config.js"></script>
         <script type="module" src="js/lib/storage.js"></script>
-        <script type="module" src="js/population/population_ui.js"></script>
-        <script type="module" src="js/community/browse.js"></script>
-        <script type="module" src="js/community/submit.js"></script>
-        <script type="module" src="js/community/admin.js"></script>
-        <script type="module" src="js/community/index.js"></script>
-        <script type="module" src="js/lib/debug.js"></script>
+        <!-- Representation stack must run before any module that imports RepresentationRegistry (population_ui, browse, etc.). -->
         <script type="module" src="js/lib/toast.js"></script>
         <script type="module" src="js/representation/substrate.js"></script>
         <script type="module" src="js/representation/image_substrate.js"></script>
@@ -623,6 +618,12 @@
         <script type="module" src="js/representation/substrate_registry.js"></script>
         <script type="module" src="js/representation/representation_registry.js"></script>
         <script type="module" src="js/representation/display_fetcher.js"></script>
+        <script type="module" src="js/population/population_ui.js"></script>
+        <script type="module" src="js/community/browse.js"></script>
+        <script type="module" src="js/community/submit.js"></script>
+        <script type="module" src="js/community/admin.js"></script>
+        <script type="module" src="js/community/index.js"></script>
+        <script type="module" src="js/lib/debug.js"></script>
         <script type="module" src="js/population/population_state.js"></script>
         <script type="module" src="js/viewer/card_builder.js"></script>
         <script type="module" src="js/genealogy/sync.js"></script>

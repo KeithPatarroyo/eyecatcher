@@ -4,6 +4,8 @@
  *
  * Use RepresentationHelpers for display/meta; call rep.substrate directly for render.
  */
+import SubstrateRegistry from "./substrate_registry.js";
+
 const DEFAULT_REPRESENTATION_ID = "nca";
 
 const defaultCapabilities = Object.freeze({
@@ -86,8 +88,14 @@ const hasCapability = (capabilities, name) =>
 const getMetaIdPrefix = () => "ID: ";
 
 const createDisplayElement = (rep, pattern, options) => {
-    const substrate = rep.substrate;
-    const phenotype = rep.phenotype || {};
+    const substrate = rep?.substrate ?? SubstrateRegistry.getSubstrate();
+    const phenotype = rep?.phenotype || {};
+    if (!substrate?.createDisplayElement) {
+        const fallback = document.createElement("div");
+        fallback.className = "organism-canvas-fallback";
+        fallback.textContent = "No display";
+        return { element: fallback, runtime: null };
+    }
     const result = substrate.createDisplayElement(phenotype, pattern, options);
 
     // If a substrate returns runtime state, give it a chance to finalise setup.
@@ -136,7 +144,7 @@ class RepresentationRegistry {
 
     _bootstrapFromConfig() {
         // Ensure substrates exist before we bind phenotypes to them.
-        window.SubstrateRegistry?.initDefaults?.();
+        SubstrateRegistry?.initDefaults?.();
 
         const config = getConfigRepresentations();
         if (!Array.isArray(config) || config.length === 0) return;
@@ -145,7 +153,7 @@ class RepresentationRegistry {
             if (!entry?.id) continue;
             const phenotype = entry.phenotype || {};
             const substrateType = phenotype?.substrate?.type || phenotype?.substrate;
-            const substrate = window.SubstrateRegistry.getSubstrate(substrateType);
+            const substrate = SubstrateRegistry.getSubstrate(substrateType);
 
             // If substrate is missing, we still register, but the UI will fall back to ImageSubstrate.
             this._representationsById[entry.id] = createRepresentation(
@@ -224,4 +232,6 @@ class RepresentationRegistry {
     }
 }
 
-window.RepresentationRegistry = new RepresentationRegistry();
+const representationRegistry = new RepresentationRegistry();
+export default representationRegistry;
+window.RepresentationRegistry = representationRegistry;

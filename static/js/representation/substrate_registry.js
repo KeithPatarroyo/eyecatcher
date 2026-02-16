@@ -26,9 +26,12 @@ const initDefaults = () => {
         registerSubstrate("image", new window.ImageSubstrate());
 };
 
-window.SubstrateRegistry = {
+const SubstrateRegistry = {
     getSubstrate,
     registerSubstrate,
     setDefaultSubstrate,
     initDefaults,
 };
+
+export default SubstrateRegistry;
+window.SubstrateRegistry = SubstrateRegistry;
