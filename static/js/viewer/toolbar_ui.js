@@ -187,9 +187,9 @@ const initExperimentParamsPanel = (toolbarUI) => {
                 if (
                     updates.representation_id &&
                     config?.representation_id !== previousRepresentationId &&
-                    typeof window.onRepresentationSwitched === "function"
+                    typeof toolbarUI?.onRepresentationSwitched === "function"
                 ) {
-                    window.onRepresentationSwitched(config);
+                    toolbarUI.onRepresentationSwitched(config);
                 }
             },
             () => refreshFromConfig()
@@ -266,9 +266,11 @@ function bindToolbarDelegation() {
 class ToolbarUI {
     constructor() {
         this.refreshExperimentParamsFromConfig = () => {};
+        this.onRepresentationSwitched = null;
     }
 
-    init() {
+    init(options = {}) {
+        this.onRepresentationSwitched = options.onRepresentationSwitched ?? null;
         initStartFreshDropdown();
         initHelpToggle();
         initSettingsPanel(this);

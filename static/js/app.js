@@ -313,7 +313,7 @@ populationLoader.init(gridDeps);
 
 evolutionCoordinator.init(ctx);
 
-window.onRepresentationSwitched = (config) => {
+const onRepresentationSwitched = (config) => {
     GridRenderer.clearGrid(IDS);
 
     populationState.dispatch({
@@ -398,7 +398,7 @@ NetworkVisualizer.init({
     onGenomeUpdated,
 });
 
-toolbarUI.init();
+toolbarUI.init({ onRepresentationSwitched });
 viewerControls.init();
 
 // Color mode switch reload: only relevant for field substrates (shader).
