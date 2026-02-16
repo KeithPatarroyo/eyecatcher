@@ -1,10 +1,14 @@
 /* global EyecatcherStorage: readonly */
 /**
  * PopulationUI: save/load/import populations (IndexedDB) + start random population.
- * Depends on: EyecatcherStorage, Utils, ApiClient, RepresentationRegistry, EvolutionConfig.
+ * Depends on: EyecatcherStorage, RepresentationRegistry, EvolutionConfig.
  */
+import Toast from "../lib/toast.js";
+import Utils from "../lib/utils.js";
+import api from "../lib/api_client.js";
+
 const toast = (title, message, type = "info", opts) =>
-    window.Toast?.show?.(title, message, type, opts);
+    Toast.show(title, message, type, opts);
 
 const ensureStorage = async () => {
     if (typeof EyecatcherStorage === "undefined") {
@@ -77,11 +81,11 @@ class PopulationUI {
 
     async startNewRandomPopulation() {
         try {
-            await window.Utils.withLoading(async () => {
+            await Utils.withLoading(async () => {
                 clearSessionPopulationFlags();
 
                 const size = window.EvolutionConfig?.DEFAULT_POPULATION_SIZE || 12;
-                const d = await window.ApiClient.randomPopulation(size);
+                const d = await api.randomPopulation(size);
 
                 if (this._loadFromStatelessGenomes) {
                     await this._loadFromStatelessGenomes(
@@ -110,9 +114,7 @@ class PopulationUI {
             ul.innerHTML = "";
 
             if (!list.length) {
-                ul.appendChild(
-                    window.Utils.createListEmptyEl("li", "No saved populations")
-                );
+                ul.appendChild(Utils.createListEmptyEl("li", "No saved populations"));
             } else {
                 for (const pop of list) {
                     const li = document.createElement("li");

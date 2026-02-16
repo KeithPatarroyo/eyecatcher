@@ -5,6 +5,8 @@
  * Depends on: optional Api endpoint POST {apiUrl}/time-output
  * Uses template: #debug-overlay-tpl, and ids dbg-* inside it.
  */
+import api from "./api_client.js";
+
 const SAMPLE_INTERVAL_MS = 400;
 
 const getEl = (id) => document.getElementById(id);
@@ -17,7 +19,6 @@ const nowMs = () =>
         : Date.now();
 
 const postJson = async (url, body, timeoutMs = 20_000) => {
-    const api = window.ApiClient;
     if (api) {
         const result = await api.request(url, {
             method: "POST",

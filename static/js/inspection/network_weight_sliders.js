@@ -1,4 +1,7 @@
 // network_weight_sliders.js (replace whole file)
+import Toast from "../lib/toast.js";
+import api from "../lib/api_client.js";
+
 const WEIGHT_MIN = -5;
 const WEIGHT_MAX = 5;
 const DEBOUNCE_MS = 120;
@@ -7,7 +10,7 @@ let _deps = null;
 /** Debounce cache: key -> timeoutId (not canonical state). */
 const pending = new Map();
 
-const toastError = (title, msg) => window.Toast?.show?.(title, msg, "error");
+const toastError = (title, msg) => Toast.show(title, msg, "error");
 
 const debounceKey = (individualId, networkType, source, target) =>
     `${individualId}::${networkType}::${source}::${target}`;
@@ -22,7 +25,7 @@ const applyWeightChange = async (individualId, connection, networkType, newWeigh
     }
 
     try {
-        const data = await window.ApiClient.apiFetch(
+        const data = await api.apiFetch(
             `${_deps.apiUrl}/api/adjust-weight`,
             {
                 method: "POST",

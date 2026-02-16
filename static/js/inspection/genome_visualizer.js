@@ -1,4 +1,7 @@
 // genome_visualizer.js (minimal rewrite, replace whole file)
+import Toast from "../lib/toast.js";
+import api from "../lib/api_client.js";
+
 let _apiUrl = "";
 let _getGenomeForPattern = null;
 let _updatePatternRule = null;
@@ -91,7 +94,7 @@ const updateNetworkEdgeWeight = (
 
 const visualizeNetworkInline = (individualId, data, sidebar) => {
     if (typeof vis === "undefined") {
-        window.Toast?.show?.("Visualization error", "vis.js not loaded", "error");
+        Toast.show("Visualization error", "vis.js not loaded", "error");
         return;
     }
 
@@ -252,13 +255,13 @@ const toggle = async (individualId) => {
     currentId = individualId;
 
     if (typeof _getGenomeForPattern !== "function") {
-        window.Toast?.show?.("Network error", "Not initialized", "error");
+        Toast.show("Network error", "Not initialized", "error");
         return;
     }
 
     const genome = await _getGenomeForPattern(individualId);
     if (!genome) {
-        window.Toast?.show?.(
+        Toast.show(
             "Network error",
             "Could not find genome data for this pattern",
             "error"
@@ -267,7 +270,7 @@ const toggle = async (individualId) => {
     }
 
     try {
-        const data = await window.ApiClient.apiFetch(
+        const data = await api.apiFetch(
             `${_apiUrl}/api/network`,
             {
                 method: "POST",
@@ -306,11 +309,7 @@ const toggle = async (individualId) => {
         visualizeNetworkInline(individualId, data, sidebar);
         DOM.toggleClass(sidebar, "open", true);
     } catch (err) {
-        window.Toast?.show?.(
-            "Network error",
-            err?.message || "Failed to load network",
-            "error"
-        );
+        Toast.show("Network error", err?.message || "Failed to load network", "error");
     }
 };
 

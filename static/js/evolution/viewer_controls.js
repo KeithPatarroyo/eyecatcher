@@ -1,4 +1,6 @@
 // viewer_controls.js (replace whole file)
+import Utils from "../lib/utils.js";
+
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.1;
@@ -143,7 +145,6 @@ class ViewerControls {
             this._signalsBound = true;
         }
 
-        const Utils = window.Utils;
         const zoomIn = DOM.byId("zoom-in");
         const zoomOut = DOM.byId("zoom-out");
 

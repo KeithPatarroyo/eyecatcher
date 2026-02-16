@@ -2,10 +2,13 @@
  * Organism interaction handlers: save, click, unclick.
  * Used by app.js grid callbacks. Depends on window.PopulationState, ApiClient, Toast.
  */
-const showError = (title, message) => window.Toast?.show?.(title, message, "error");
+import Toast from "../lib/toast.js";
+import api from "../lib/api_client.js";
+
+const showError = (title, message) => Toast.show(title, message, "error");
 
 const showSuccess = (title, message, opts) =>
-    window.Toast?.show?.(title, message, "success", opts);
+    Toast.show(title, message, "success", opts);
 
 const withBusyButton = (buttonEl, busyText, fn) => {
     if (!buttonEl) return fn();
@@ -78,7 +81,8 @@ class OrganismActions {
         }
 
         return withBusyButton(buttonEl, "Compiling...", () =>
-            window.ApiClient.save(id, genome)
+            api
+                .save(id, genome)
                 .then((data) => {
                     const downloads = data?.downloads;
                     if (!Array.isArray(downloads) || downloads.length === 0) {
@@ -88,10 +92,10 @@ class OrganismActions {
 
                     const file = downloads[0];
                     const blob = file.content_base64
-                        ? window.Toast.base64ToBlob(file.content_base64, file.mime)
+                        ? Toast.base64ToBlob(file.content_base64, file.mime)
                         : new Blob([file.content], { type: file.mime });
 
-                    window.Toast.triggerDownload(blob, file.filename);
+                    Toast.triggerDownload(blob, file.filename);
                     showSuccess("Organism saved!", "Zip downloaded to your computer.", {
                         duration: 5000,
                     });

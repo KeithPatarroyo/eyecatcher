@@ -2,11 +2,13 @@
  * PopulationLoader: orchestrates loading and adding population
  * (fetch display data, render grid, dispatch state, optional genealogy save).
  *
- * Depends on: GridRenderer, DisplayFetcher, PopulationState, GenealogySync, ApiClient
+ * Depends on: GridRenderer, DisplayFetcher, PopulationState, GenealogySync
  * and RepresentationRegistry via deps.resolveRepresentation.
  *
  * Exposes: init, loadPopulation, addToPopulation.
  */
+import Utils from "../lib/utils.js";
+
 let _deps = null;
 
 const noop = () => {};
@@ -219,7 +221,7 @@ const loadPopulation = async (
 
     if (!representation) return showNoRepresentationError(repId);
 
-    await window.Utils.withLoading(async () => {
+    await Utils.withLoading(async () => {
         stopImageAnimateIfAny();
         window.GridRenderer.clearGrid(_deps.IDS);
 
@@ -321,7 +323,7 @@ const addToPopulation = async (genomes) => {
     let nextKey = computeNextNumericId();
     const payload = genomes.map((g) => ({ ...g, key: nextKey++, fitness: 0 }));
 
-    await window.Utils.withLoading(async () => {
+    await Utils.withLoading(async () => {
         const displayResult = await window.DisplayFetcher.fetchDisplayData(
             representation,
             payload,

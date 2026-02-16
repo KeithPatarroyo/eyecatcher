@@ -1,4 +1,5 @@
-// coordinator.js (replace whole file)
+import Utils from "../lib/utils.js";
+
 const clampInt = (value, min, max, fallback) => {
     const n = Number.parseInt(value, 10);
     const v = Number.isFinite(n) ? n : fallback;
@@ -35,7 +36,7 @@ class EvolutionCoordinator {
 
         if (evolveEl?.classList.contains("disabled")) return;
 
-        await window.Utils?.runTask?.({
+        await Utils?.runTask?.({
             button: evolveEl,
             setLoading: this.#ctx?.showLoading,
             task: async () => {

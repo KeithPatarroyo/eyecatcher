@@ -2,6 +2,10 @@
  * Community UI: entry point. Delegates to CommunityBrowse, CommunitySubmit, CommunityAdmin.
  * Exposes: CommunityUI.init + handler functions used by HTML onclick.
  */
+import Toast from "../lib/toast.js";
+import Utils from "../lib/utils.js";
+import api from "../lib/api_client.js";
+
 let apiUrl = "";
 let addToGrid = null;
 let getGenomeForPattern = null;
@@ -13,7 +17,7 @@ let submitGenome = null;
 let adminKey = "";
 
 const showLoading = (show) => window.showLoading?.(Boolean(show));
-const toast = (t, m, type) => window.Toast?.show?.(t, m, type);
+const toast = (t, m, type) => Toast.show(t, m, type);
 
 const init = (options) => {
     apiUrl = options.apiUrl || "";
@@ -84,12 +88,10 @@ const onCommunityDeselectAll = () => setAllChecks(false);
 
 const onNewFromCommunityClick = async () => {
     const Browse = window.CommunityBrowse;
-    const Utils = window.Utils;
     if (!Browse) return;
 
     showLoading(true);
     try {
-        const api = window.ApiClient;
         const result = api
             ? await api.request(`${apiUrl}/api/community`)
             : { ok: false, error: "No API client" };

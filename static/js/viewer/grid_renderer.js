@@ -3,6 +3,7 @@
  * Receives population and callbacks from app. Load/add is in PopulationLoader.
  * Exposes: init, clearGrid, showGridError, renderGridFromPopulation, appendCardsToGrid, patternCardCallbacks.
  */
+import Toast from "../lib/toast.js";
 
 /**
  * GridTopology: tracks which pattern is at which row/col position in the grid
@@ -313,7 +314,7 @@ class GridRenderer {
         });
 
         if (displayFailureCount > 0) {
-            window.Toast?.show?.(
+            Toast.show(
                 "Add from community",
                 `${displayFailureCount} organism(s) could not be displayed (missing rule or WebGL limit).`,
                 "error"

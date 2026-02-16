@@ -2,6 +2,8 @@
  * GenealogyThumbnails: renders thumbnails for vis.js nodes.
  * Exposes: GenealogyThumbnails.renderThumbnail / renderAllThumbnails
  */
+import api from "../lib/api_client.js";
+
 const THUMBNAIL_CANVAS_SIZE = 128;
 const MAX_CACHE = 200;
 const BATCH = 8;
@@ -29,7 +31,6 @@ const renderThumbnail = async (populationId, cache, apiUrl = window.API_URL || "
     if (!RR?.findByGenome || typeof DF?.fetchDisplayData !== "function") return null;
 
     try {
-        const api = window.ApiClient;
         const result = api
             ? await api.request(
                   `${apiUrl}/api/genealogy/population-thumbnail/${populationId}`

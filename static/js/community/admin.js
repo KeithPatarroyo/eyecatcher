@@ -3,9 +3,13 @@
  * Exposes: CommunityAdmin.openAdminModal / closeAdminModal / submitAdminKey / renderAdminPendingList
  * Uses one delegated click handler on #admin-pending-list for .approve-btn and .reject-btn.
  */
+import Toast from "../lib/toast.js";
+import Utils from "../lib/utils.js";
+import api from "../lib/api_client.js";
+
 let _adminCtx = null;
 
-const toast = (t, m, type) => window.Toast?.show?.(t, m, type);
+const toast = (t, m, type) => Toast.show(t, m, type);
 
 const showKeyError = (msg) => {
     const el = DOM.byId("admin-key-error");
@@ -33,13 +37,13 @@ const closeAdminModal = (ctx) => {
 const adminModerate = async (id, action, rowEl, ctx) => {
     const key = ctx.getAdminKey?.() || "";
     try {
-        if (window.ApiClient?.communityAdminDelete && action === "delete") {
-            await window.ApiClient.communityAdminDelete(key, [id]);
+        if (api?.communityAdminDelete && action === "delete") {
+            await api.communityAdminDelete(key, [id]);
         } else {
             const endpoint =
                 action === "approve" ? "/api/admin/approve" : "/api/admin/reject";
             const url = `${ctx.apiUrl || ""}${endpoint}`;
-            const result = await window.ApiClient?.request?.(url, {
+            const result = await api?.request?.(url, {
                 method: "POST",
                 headers: { "X-Admin-Key": key },
                 body: { id },
@@ -74,7 +78,6 @@ const renderAdminPendingList = async (submissions, ctx) => {
         });
     }
 
-    const Utils = window.Utils;
     const Browse = window.CommunityBrowse;
 
     ul.innerHTML = "";
@@ -141,7 +144,6 @@ const submitAdminKey = async (ctx) => {
     const key = (DOM.byId("admin-key-input")?.value || "").trim();
     if (!key) return showKeyError("Please enter the API key.");
 
-    const api = window.ApiClient;
     const result = api
         ? await api.request(`${ctx.apiUrl || ""}/api/admin/submissions`, {
               method: "GET",

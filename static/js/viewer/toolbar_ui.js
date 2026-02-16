@@ -3,6 +3,8 @@
  * Call ToolbarUI.init() after DOM and PopulationUI / CommunityUI are available.
  * Uses one delegated click/keydown handler on document for [data-action] elements.
  */
+import api from "../lib/api_client.js";
+
 const $ = (id) => (id ? document.getElementById(id) : null);
 
 /** @type {Record<string, (ev: Event) => void>} */
@@ -172,7 +174,7 @@ const initExperimentParamsPanel = (toolbarUI) => {
         const previousRepresentationId =
             window.PopulationState?.representationId ?? null;
 
-        window.ApiClient?.patchConfig?.(updates).then(
+        api?.patchConfig?.(updates).then(
             (config) => {
                 window.EvolutionConfig?.mergeFromServer?.(config);
                 toolbarUI?.syncToolbarPopulationSizeFromConfig?.();

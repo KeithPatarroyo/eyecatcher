@@ -1,7 +1,11 @@
 /**
  * Genealogy tree viewer (vis.js). Keeps legacy globals initialize()/runWhenReady().
- * Depends on: vis.js, DOM, Utils, Toast, GenealogyNetworkConfig, GenealogyPhysics, GenealogyThumbnails, GenealogyExport
+ * Depends on: vis.js, DOM, GenealogyNetworkConfig, GenealogyPhysics, GenealogyThumbnails, GenealogyExport
  */
+import Toast from "../lib/toast.js";
+import Utils from "../lib/utils.js";
+import api from "../lib/api_client.js";
+
 const API_URL = window.API_URL || "";
 
 let treeNetwork = null;
@@ -17,11 +21,10 @@ const TOAST_DURATION_MS = 5000;
 const DEFAULT_NODE_SIZE = 90;
 
 function showGenealogyToast(title, body, type = "success") {
-    window.Toast?.show?.(title, body, type, { duration: TOAST_DURATION_MS });
+    Toast.show(title, body, type, { duration: TOAST_DURATION_MS });
 }
 
 async function apiGet(url, fallback) {
-    const api = window.ApiClient;
     const result = api
         ? await api.request(url)
         : { ok: false, error: fallback || "No API client" };
@@ -59,7 +62,7 @@ async function loadBranches() {
         const branches = d.branches || [];
 
         if (!branches.length) {
-            list.appendChild(window.Utils.createListEmptyEl("div", "No branches yet"));
+            list.appendChild(Utils.createListEmptyEl("div", "No branches yet"));
             return;
         }
 
@@ -88,9 +91,7 @@ async function loadBranches() {
             list.appendChild(row);
         });
     } catch (e) {
-        list.appendChild(
-            window.Utils.createListEmptyEl("div", "Failed to load branches")
-        );
+        list.appendChild(Utils.createListEmptyEl("div", "Failed to load branches"));
     }
 }
 
@@ -308,11 +309,7 @@ async function loadTree(branchName = null) {
         visualizeTree(data);
 
         // Focus current population if known
-        const stored = window.Utils.safeGetItem(
-            sessionStorage,
-            "current_population_id",
-            null
-        );
+        const stored = Utils.safeGetItem(sessionStorage, "current_population_id", null);
         currentPopulationId = stored ? parseInt(stored, 10) : null;
         if (
             currentPopulationId != null &&
@@ -363,10 +360,7 @@ function bindLayoutEvents() {
 async function resetGenealogy() {
     if (!confirm("Clear all genealogy data? This cannot be undone.")) return;
     try {
-        const result = await window.ApiClient?.post?.(
-            `${API_URL}/api/genealogy/reset`,
-            {}
-        );
+        const result = await api?.post?.(`${API_URL}/api/genealogy/reset`, {});
         if (!result?.ok) {
             throw new Error(result?.error || "Reset failed");
         }
@@ -436,7 +430,7 @@ function attachEventListeners() {
 }
 
 function initialize() {
-    currentPopulationId = window.Utils.safeGetItem(
+    currentPopulationId = Utils.safeGetItem(
         sessionStorage,
         "current_population_id",
         null
