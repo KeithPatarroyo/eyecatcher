@@ -3,11 +3,11 @@
  * Uses WebGLUtils for WebGL setup. Toggleable signals come from EvolutionConfig.
  */
 import WebGLUtils from "./webgl_utils.js";
-
-const Substrate = window.Substrate;
+import Substrate from "./substrate.js";
+import { getConfig } from "../evolution/experiment_config.js";
 
 const getToggleableSignals = () => {
-    const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+    const cfg = getConfig?.() ?? getConfig();
     return (
         (cfg &&
             cfg.getToggleableSignalsForCurrentRep &&

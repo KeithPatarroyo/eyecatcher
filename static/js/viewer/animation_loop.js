@@ -4,6 +4,7 @@
  */
 import RepresentationRegistry from "../representation/representation_registry.js";
 import { gridTopology } from "./grid_renderer.js";
+import { getConfig } from "../evolution/experiment_config.js";
 
 const ANIMATION_SPEED = 0.005;
 const MOUSE_SPEED_DECAY = 0.95;
@@ -15,7 +16,7 @@ const ACTIVITY_BOOST = 0.15;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
 const getSignalIdsForCurrentRep = () => {
-    const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+    const cfg = getConfig?.() ?? getConfig();
     return (
         (cfg && cfg.getSignalIdsForCurrentRep && cfg.getSignalIdsForCurrentRep()) ?? []
     );

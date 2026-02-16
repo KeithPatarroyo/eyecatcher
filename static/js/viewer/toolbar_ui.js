@@ -6,6 +6,7 @@
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
+import { getConfig } from "../evolution/experiment_config.js";
 
 const $ = (id) => (id ? document.getElementById(id) : null);
 
@@ -28,7 +29,7 @@ const clamp = (v, min, max, fallback) => {
 };
 
 const getCfgNumbers = () => {
-    const cfg = window.EvolutionConfig || {};
+    const cfg = getConfig() || {};
     const minP = cfg.MIN_POPULATION_SIZE ?? 2;
     const maxP = cfg.MAX_POPULATION_SIZE ?? 50; // should match defaults in config.generated.js
     const defaultP = cfg.DEFAULT_POPULATION_SIZE ?? 12;
@@ -178,7 +179,7 @@ const initExperimentParamsPanel = (toolbarUI) => {
 
         api?.patchConfig?.(updates).then(
             (config) => {
-                window.EvolutionConfig?.mergeFromServer?.(config);
+                getConfig()?.mergeFromServer?.(config);
                 toolbarUI?.syncToolbarPopulationSizeFromConfig?.();
 
                 if (

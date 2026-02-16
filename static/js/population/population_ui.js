@@ -8,6 +8,7 @@ import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
+import { getConfig } from "../evolution/experiment_config.js";
 
 const toast = (title, message, type = "info", opts) =>
     Toast.show(title, message, type, opts);
@@ -86,7 +87,7 @@ class PopulationUI {
             await Utils.withLoading(async () => {
                 clearSessionPopulationFlags();
 
-                const size = window.EvolutionConfig?.DEFAULT_POPULATION_SIZE || 12;
+                const size = getConfig()?.DEFAULT_POPULATION_SIZE || 12;
                 const d = await api.randomPopulation(size);
 
                 if (this._loadFromStatelessGenomes) {

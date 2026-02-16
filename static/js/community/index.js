@@ -6,6 +6,7 @@ import Toast from "../lib/toast.js";
 import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
+import { getConfig } from "../evolution/experiment_config.js";
 
 let apiUrl = "";
 let addToGrid = null;
@@ -69,7 +70,7 @@ const onCommunityLoadSelected = () => {
 };
 
 const onCommunityLoad12 = () => {
-    const n = window.EvolutionConfig?.DEFAULT_POPULATION_SIZE || 12;
+    const n = getConfig()?.DEFAULT_POPULATION_SIZE || 12;
     const genomes = (communityPatterns || [])
         .slice(0, n)
         .map((p) => ({ ...(p.individual || p.genome), key: p.id }));

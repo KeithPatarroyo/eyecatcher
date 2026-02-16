@@ -6,9 +6,10 @@ import DOM from "../lib/dom.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
 import { RepresentationHelpers } from "../representation/representation_registry.js";
 import WebGLUtils from "../representation/webgl_utils.js";
+import { getConfig } from "../evolution/experiment_config.js";
 
 const getCfg = () => {
-    const cfg = window.getConfig?.() ?? window.EvolutionConfig ?? {};
+    const cfg = getConfig?.() ?? getConfig() ?? {};
     return {
         max: cfg.FULLSCREEN_CANVAS_MAX ?? 1024,
         def: cfg.FULLSCREEN_CANVAS_DEFAULT ?? 800,

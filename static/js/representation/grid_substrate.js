@@ -4,8 +4,7 @@
  * Built-in interaction "toggle": click to flip cells.
  */
 import WebGLUtils from "./webgl_utils.js";
-
-const Substrate = window.Substrate;
+import Substrate from "./substrate.js";
 
 const MAX_TOGGLES_PER_PASS = 64;
 const TOGGLE_BRUSH_RADIUS = 1;

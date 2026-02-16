@@ -41,4 +41,6 @@ class Substrate {
     handleInteraction(_runtime, _x, _y, _interactionType) {}
 }
 
+export default Substrate;
+export { Substrate };
 window.Substrate = Substrate;

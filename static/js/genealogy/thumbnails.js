@@ -6,6 +6,7 @@ import api from "../lib/api_client.js";
 import DisplayFetcher from "../representation/display_fetcher.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
 import WebGLUtils from "../representation/webgl_utils.js";
+import { getConfig } from "../evolution/experiment_config.js";
 
 const THUMBNAIL_CANVAS_SIZE = 128;
 const MAX_CACHE = 200;
@@ -66,9 +67,8 @@ const renderThumbnail = async (populationId, cache, apiUrl = window.API_URL || "
             const runtime = WebGLUtils.setupPattern(canvas, pop.rule);
             if (!runtime || runtime.error) return null;
 
-            const repId = window.EvolutionConfig?.getCurrentRepresentationId?.() ?? "";
-            const signalState =
-                window.EvolutionConfig?.getDefaultSignalState?.(repId) ?? {};
+            const repId = getConfig()?.getCurrentRepresentationId?.() ?? "";
+            const signalState = getConfig()?.getDefaultSignalState?.(repId) ?? {};
             window.AnimationLoop?.renderFrameWithSignals?.(
                 runtime,
                 signalState,

@@ -2,6 +2,7 @@
 import Utils from "../lib/utils.js";
 import DOM from "../lib/dom.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
+import { getConfig } from "./experiment_config.js";
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
@@ -82,7 +83,7 @@ class ViewerControls {
     }
 
     _syncCheckboxes(representationId) {
-        const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+        const cfg = getConfig?.() ?? getConfig();
         const toggles =
             (cfg &&
                 cfg.getToggleableSignals &&
@@ -113,7 +114,7 @@ class ViewerControls {
                 : representation?.hasSignalControls !== false;
         container.style.display = show ? "" : "none";
 
-        const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+        const cfg = getConfig?.() ?? getConfig();
         const signalGroups =
             (cfg && cfg.getSignalGroups && cfg.getSignalGroups(representationId)) ?? [];
         renderSignalControls(signalGroups);
@@ -128,7 +129,7 @@ class ViewerControls {
     }
 
     init() {
-        const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+        const cfg = getConfig?.() ?? getConfig();
         const representationId =
             (cfg &&
                 cfg.getCurrentRepresentationId &&

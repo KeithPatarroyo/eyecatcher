@@ -3,7 +3,7 @@
  * Used when phenotype.substrate has no registered substrate (e.g. "audio" before AudioSubstrate exists).
  * Backend render_to_image() provides the display.
  */
-const Substrate = window.Substrate;
+import Substrate from "./substrate.js";
 
 class ImageSubstrate extends Substrate {
     createDisplayElement(phenotype, patternPayload) {

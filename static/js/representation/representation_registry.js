@@ -5,6 +5,7 @@
  * Use RepresentationHelpers for display/meta; call rep.substrate directly for render.
  */
 import SubstrateRegistry from "./substrate_registry.js";
+import { getConfig } from "../evolution/experiment_config.js";
 
 const DEFAULT_REPRESENTATION_ID = "nca";
 
@@ -195,7 +196,7 @@ class RepresentationRegistry {
 
     getDefault() {
         const def = window.__eyecatcherDefaultResolution;
-        const evo = window.EvolutionConfig;
+        const evo = getConfig();
         const representationId =
             evo?.DEFAULT_REPRESENTATION_ID ||
             def?.representationId ||
@@ -205,8 +206,8 @@ class RepresentationRegistry {
     }
 
     getDefaultResolution() {
-        return window.EvolutionConfig?.getDefaultResolution
-            ? window.EvolutionConfig.getDefaultResolution()
+        return getConfig()?.getDefaultResolution
+            ? getConfig().getDefaultResolution()
             : { representationId: this.getDefault().representationId };
     }
 

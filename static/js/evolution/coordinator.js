@@ -1,5 +1,6 @@
 import Utils from "../lib/utils.js";
 import GenealogySync from "../genealogy/sync.js";
+import { getConfig } from "./experiment_config.js";
 
 const clampInt = (value, min, max, fallback) => {
     const n = Number.parseInt(value, 10);
@@ -8,7 +9,7 @@ const clampInt = (value, min, max, fallback) => {
 };
 
 const getPopLimits = () => {
-    const cfg = window.getConfig?.() ?? window.EvolutionConfig ?? {};
+    const cfg = getConfig?.() ?? getConfig() ?? {};
     return {
         min: cfg.MIN_POPULATION_SIZE ?? 2,
         max: cfg.MAX_POPULATION_SIZE ?? 50,
