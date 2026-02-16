@@ -25,6 +25,7 @@ module.exports = [
                 ViewerControls: "readonly",
                 Community: "readonly",
                 NetworkVisualizer: "readonly",
+                DOM: "readonly",
                 Debug: "readonly",
                 JSZip: "readonly",
                 vis: "readonly",

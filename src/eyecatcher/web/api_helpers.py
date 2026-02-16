@@ -17,6 +17,7 @@ from flask import Response, jsonify
 
 # Shared API error messages (validation / required fields)
 # Individual = genome + metadata (key, fitness); the unit of evolution in the API.
+# Request body may use "individual" or "genome"; evolve accepts both in parent.
 ERR_INDIVIDUAL_REQUIRED = "individual required"
 ERR_INDIVIDUAL_REQUIRED_BODY = "individual required in request body"
 ERR_INDIVIDUALS_ARRAY_REQUIRED = "individuals array required"

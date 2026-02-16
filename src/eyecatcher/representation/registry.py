@@ -16,6 +16,9 @@ from .nca import NCARepresentation
 from .protocol import Representation
 from .single_cppn import SingleCPPNRepresentation
 
+# Default when no preset or representation_id is set (single source of truth).
+DEFAULT_REPRESENTATION_ID = "nca"
+
 # Concrete representation classes keyed by id; all implement Representation protocol.
 REPRESENTATIONS: dict[str, type] = {
     "dual_cppn": DualCPPNRepresentation,
@@ -32,7 +35,7 @@ def get_representation(
     Return a representation instance.
 
     Args:
-        representation_id: Representation key (e.g. "nca"). None => "nca".
+        representation_id: Representation key (e.g. "nca"). None => default.
         **kwargs: Passed to representation constructor (e.g. neat_config_path).
 
     Returns:
@@ -41,7 +44,7 @@ def get_representation(
     Raises:
         KeyError: If representation_id is not in REPRESENTATIONS.
     """
-    rid = representation_id or "nca"
+    rid = representation_id or DEFAULT_REPRESENTATION_ID
     if rid not in REPRESENTATIONS:
         raise KeyError(f"Unknown representation: {rid}. Known: {list(REPRESENTATIONS)}")
     return REPRESENTATIONS[rid](**kwargs)

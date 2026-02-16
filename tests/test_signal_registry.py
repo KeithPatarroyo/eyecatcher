@@ -49,17 +49,17 @@ def test_signals_export_for_frontend():
     }
 
 
-def test_frontend_signals_match_backend():
-    """Unified config.generated.js signals section matches representation spec."""
+def _load_generated_config():
+    """Parse config.generated.js and return the config object."""
     root = get_root_dir()
     js_path = os.path.join(root, "static", "js", "config.generated.js")
     if not os.path.isfile(js_path):
-        pytest.skip("run make generate to create generated file")
+        return None
     with open(js_path, encoding="utf-8") as f:
         text = f.read()
-
     start = text.find("window.EyecatcherConfig = ")
-    assert start >= 0, "Generated file should assign EyecatcherConfig"
+    if start < 0:
+        return None
     start = text.index("{", start)
     depth = 0
     end = start
@@ -71,9 +71,18 @@ def test_frontend_signals_match_backend():
             if depth == 0:
                 end = i
                 break
-    config = json.loads(text[start : end + 1])
-    data = config.get("signals", {})
+    return json.loads(text[start : end + 1])
 
+
+def test_frontend_signals_match_backend():
+    """Generated config has signals by representation id; dual_cppn matches backend."""
+    config = _load_generated_config()
+    if config is None:
+        pytest.skip("run make generate to create generated file")
+    signals = config.get("signals", {})
+    assert isinstance(signals, dict), "signals should be keyed by representation id"
+    assert "dual_cppn" in signals
+    data = signals["dual_cppn"]
     rep = DualCPPNRepresentation()
     expected = export_for_frontend(rep.sensory_system)
     assert set(data["SIGNAL_IDS"]) == set(expected["SIGNAL_IDS"])
@@ -82,35 +91,22 @@ def test_frontend_signals_match_backend():
 
 
 def test_generated_signals_file_is_up_to_date():
-    """Unified config.generated.js signals section matches current representation spec.
+    """Generated config signals: one entry per representation, each matching backend.
 
-    If this fails, run `make generate` and commit the updated file.
+    If this fails, run `make generate` and commit.
     """
-    root = get_root_dir()
-    js_path = os.path.join(root, "static", "js", "config.generated.js")
-    if not os.path.isfile(js_path):
-        pytest.skip("run make generate to create generated file")
+    from eyecatcher.representation.registry import REPRESENTATIONS, get_representation
 
-    with open(js_path, encoding="utf-8") as f:
-        text = f.read()
-    start = text.find("window.EyecatcherConfig = ")
-    assert start >= 0
-    start = text.index("{", start)
-    depth = 0
-    end = start
-    for i, c in enumerate(text[start:], start):
-        if c == "{":
-            depth += 1
-        elif c == "}":
-            depth -= 1
-            if depth == 0:
-                end = i
-                break
-    config = json.loads(text[start : end + 1])
-    rep = DualCPPNRepresentation()
-    expected_signals = export_for_frontend(rep.sensory_system)
+    config = _load_generated_config()
+    if config is None:
+        pytest.skip("run make generate to create generated file")
+    generated = config.get("signals", {})
+    expected = {}
+    for rid in REPRESENTATIONS:
+        rep = get_representation(rid)
+        expected[rid] = export_for_frontend(rep.sensory_system)
     assert (
-        config.get("signals") == expected_signals
+        generated == expected
     ), "config.generated.js signals section is out of date. Run: make generate"
 
 

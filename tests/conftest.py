@@ -66,8 +66,9 @@ def minimal_dual_genome_one_hidden_visual(representation):
 
 @pytest.fixture
 def client():
-    """Flask test client with TESTING enabled."""
+    """Flask test client with TESTING enabled. DualCPPN for stable representation."""
     app.config["TESTING"] = True
+    app.config["EYECATCHER_REPRESENTATION"] = DualCPPNRepresentation()
     with app.test_client() as c:
         yield c
 
