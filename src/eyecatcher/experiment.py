@@ -220,8 +220,10 @@ def get_effective_config_with_provenance() -> dict:
         if preset and isinstance(preset, dict)
         else None
     )
+    from .representation.registry import DEFAULT_REPRESENTATION_ID
+
     result["representation_id"] = {
-        "value": rep_id or "nca",
+        "value": rep_id or DEFAULT_REPRESENTATION_ID,
         "from": (
             f"config/experiments.json (preset: {preset_name})"
             if rep_id
@@ -276,18 +278,18 @@ def get_configured_representation():
     """
     Return the representation instance for the current experiment preset.
 
-    Uses EXPERIMENT_CONFIG / config/experiments.json; preset must set "representation"
-    (e.g. "nca"). Defaults to "nca" if no preset or key.
+    Uses EXPERIMENT_CONFIG / config/experiments.json; preset must set "representation".
+    Defaults to DEFAULT_REPRESENTATION_ID if no preset or key.
     """
-    from .representation import get_representation
+    from .representation.registry import DEFAULT_REPRESENTATION_ID, get_representation
 
     preset = _load_experiment_preset()
     if preset and isinstance(preset, dict):
         representation_id = preset.get("representation")
         if representation_id is None:
-            representation_id = "nca"
+            representation_id = DEFAULT_REPRESENTATION_ID
         return get_representation(representation_id, **preset)
-    return get_representation("nca")
+    return get_representation(DEFAULT_REPRESENTATION_ID)
 
 
 def warn_if_neat_pop_size_mismatch(representation) -> None:

@@ -26,6 +26,9 @@ from .receptors import NeatReceptor
 
 DEFAULT_GRID_SIZE = 64
 DEFAULT_NCA_STEPS = 48
+MIN_PREVIEW_GRID_SIZE = 8
+DEFAULT_MOUSE_XY = 0.5
+NCA_STOCHASTIC_APPLY_PROB = 0.5
 
 
 def _sobel_perception(state: np.ndarray) -> np.ndarray:
@@ -64,8 +67,8 @@ def _nca_step_cpu_neat(
     h, w, _ = state.shape
     perc = _sobel_perception(state)
     rng = np.random.default_rng(step_index)
-    mouse_x = float(signal_values[1]) if signal_values.size >= 2 else 0.5
-    mouse_y = float(signal_values[2]) if signal_values.size >= 3 else 0.5
+    mouse_x = float(signal_values[1]) if signal_values.size >= 2 else DEFAULT_MOUSE_XY
+    mouse_y = float(signal_values[2]) if signal_values.size >= 3 else DEFAULT_MOUSE_XY
     raw_time = float(signal_values[0]) if signal_values.size >= 1 else 0.0
 
     new_state = np.zeros_like(state)
@@ -93,7 +96,7 @@ def _nca_step_cpu_neat(
             }
             inputs_arr = receptor.to_array(cell_values)
             ds = np.array(network.activate(inputs_arr), dtype=np.float64)
-            if rng.random() < 0.5:
+            if rng.random() < NCA_STOCHASTIC_APPLY_PROB:
                 ds *= 0.0
             new_state[r, c] = state[r, c] + ds
 
@@ -279,7 +282,7 @@ class NCARepresentation(NeatEvolvable, NetworkInspectable, GridRepresentationBas
             out["nca_steps"] = max(1, int(raw_options["nca_steps"]))
         if isinstance(raw_options.get("nca_preview_grid_size"), (int, float)):
             out["nca_preview_grid_size"] = max(
-                8, int(raw_options["nca_preview_grid_size"])
+                MIN_PREVIEW_GRID_SIZE, int(raw_options["nca_preview_grid_size"])
             )
         return out
 
@@ -292,15 +295,17 @@ class NCARepresentation(NeatEvolvable, NetworkInspectable, GridRepresentationBas
         steps = kwargs.get("nca_steps", self.nca_steps)
         preview_size = kwargs.get("nca_preview_grid_size")
         if preview_size is not None:
-            preview_size = max(8, min(int(preview_size), self.grid_size))
+            preview_size = max(
+                MIN_PREVIEW_GRID_SIZE, min(int(preview_size), self.grid_size)
+            )
             if preview_size >= self.grid_size:
                 preview_size = None
         grid_size = preview_size if preview_size is not None else self.grid_size
         sig = np.array(
             [
                 inputs.get("raw_time", 0.0),
-                inputs.get("mouse_x", 0.5),
-                inputs.get("mouse_y", 0.5),
+                inputs.get("mouse_x", DEFAULT_MOUSE_XY),
+                inputs.get("mouse_y", DEFAULT_MOUSE_XY),
                 inputs.get("mouse_speed", 0.0),
             ],
             dtype=np.float64,

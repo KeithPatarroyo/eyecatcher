@@ -48,7 +48,7 @@ def evolve():
     Produce next generation (stateless). Selection, crossover, mutation.
     Body: {
         "parents": [ { "individual": {...}, "fitness"?: N } ],
-        "population_size": 12,  (optional, default from config)
+        "population_size": (optional, default from config),
         "elitism": false  (optional; if true, best parent is copied unchanged)
     }
     Returns { "children": [individual JSONs] }.

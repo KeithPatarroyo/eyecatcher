@@ -13,6 +13,11 @@ from .activation_registry import build_shader_preamble
 from .codegen import generate_node_code
 from .input_map import glsl_uniform_name
 
+# Alpha below this: cell considered dead; state zeroed (alive masking).
+NCA_ALPHA_DEAD_THRESHOLD = 0.1
+# Stochastic update: apply delta only when rand >= this (50% per cell).
+STOCHASTIC_APPLY_THRESHOLD = 0.5
+
 
 def assemble_nca_step_shader(contribution: NetworkContribution) -> str:
     """Produce a complete NCA step shader from a compiled NEAT network contribution.
@@ -66,7 +71,7 @@ void main() {{
 
     // Stochastic update mask
     float rand = fract(sin(dot(vUV + u_raw_time, vec2(12.9898, 78.233))) * 43758.5453);
-    ds *= step(0.5, rand);
+    ds *= step({STOCHASTIC_APPLY_THRESHOLD}, rand);
 
     vec4 newState = self_ + ds;
 
@@ -74,7 +79,7 @@ void main() {{
     float maxAlpha = max(
         max(max(max(tl.a, tc.a), max(tr.a, ml.a)), max(mr.a, max(bl.a, bc.a))),
         max(br.a, self_.a));
-    if (maxAlpha < 0.1) newState = vec4(0.0);
+    if (maxAlpha < {NCA_ALPHA_DEAD_THRESHOLD}) newState = vec4(0.0);
 
     fragColor = clamp(newState, -1.0, 1.0);
 }}
