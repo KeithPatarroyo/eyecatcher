@@ -1,13 +1,8 @@
 /**
  * Display data fetching: develop (rule) and express (image/grid) via ApiClient.
  * No state, no DOM. Used by grid load/append, community preview, genealogy thumbnails.
- * Depends on window.ApiClient.
  */
-const getApi = () => {
-    const api = window.ApiClient;
-    if (!api) throw new Error("ApiClient not available");
-    return api;
-};
+import api from "../lib/api_client.js";
 
 const normalizeResult = (r) => ({
     id: r.id,
@@ -22,13 +17,11 @@ const normalizeResult = (r) => ({
 const normalizePopulation = (results) => (results || []).map(normalizeResult);
 
 const developGenomes = async (genomes, options = {}) => {
-    const api = getApi();
     const compData = await api.develop(genomes, options.colorMode);
     return { population: compData.rules || [] };
 };
 
 const expressGenomes = async (genomes, options = {}) => {
-    const api = getApi();
     const inputs = options.inputs || {};
     const expressOptions = options.expressOptions || null;
 
@@ -68,7 +61,6 @@ const startImageAnimate = (
     intervalMs,
     onUpdate
 ) => {
-    const api = getApi();
     let intervalId = null;
     let stopped = false;
 

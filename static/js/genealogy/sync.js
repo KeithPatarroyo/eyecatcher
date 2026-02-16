@@ -3,7 +3,8 @@
  * Exposes: GenealogySync.getGenealogyBranchCounter / setGenealogyBranchCounter /
  *          syncCurrentPopulationIdToStorage / getStoredPopulationId / saveCurrentPopulationToGenealogy
  */
-const Utils = window.Utils;
+import Utils from "../lib/utils.js";
+import api from "../lib/api_client.js";
 
 const BRANCH_COUNTER_KEY = "genealogy_branch_counter";
 const POPULATION_ID_KEY = "current_population_id";
@@ -62,31 +63,12 @@ const saveCurrentPopulationToGenealogy = async (
         ...(representationId != null ? { representation_id: representationId } : {}),
     };
 
-    const api = window.ApiClient;
-    if (api) {
-        const result = await api.request(`${apiUrl}/api/genealogy/save-population`, {
-            method: "POST",
-            body,
-        });
-        if (!result.ok) throw new Error(result.error || "Save failed");
-        return result.data;
-    }
-    const res = await fetch(`${apiUrl}/api/genealogy/save-population`, {
+    const result = await api.request(`${apiUrl}/api/genealogy/save-population`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body,
     });
-    const text = await res.text();
-    const data = text ? JSON.parse(text) : null;
-    if (!res.ok) {
-        const err = new Error(
-            data?.error || data?.message || `Save failed (${res.status})`
-        );
-        err.status = res.status;
-        err.data = data;
-        throw err;
-    }
-    return data;
+    if (!result.ok) throw new Error(result.error || "Save failed");
+    return result.data;
 };
 
 window.GenealogySync = {

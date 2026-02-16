@@ -1,6 +1,8 @@
 /**
  * ApiClient: wrapper around backend REST API.
  */
+import Toast from "./toast.js";
+
 const DEFAULT_TIMEOUT_MS = 45_000;
 
 const joinUrl = (base, path) => {
@@ -170,7 +172,7 @@ class ApiClient {
     toastError(result, title = "Error") {
         if (result?.ok) return;
         const msg = result?.error ?? "Request failed";
-        if (window.Toast?.show) window.Toast.show(title, msg, "error");
+        Toast.show(title, msg, "error");
         console.warn(`[ApiClient] ${title}:`, msg);
     }
 
@@ -316,5 +318,7 @@ class ApiClient {
     }
 }
 
-export default ApiClient;
-window.ApiClient = new ApiClient();
+export { ApiClient };
+const apiInstance = new ApiClient();
+export default apiInstance;
+window.ApiClient = apiInstance;

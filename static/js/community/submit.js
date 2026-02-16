@@ -2,7 +2,11 @@
  * CommunitySubmit: modal + POST submit.
  * Exposes: CommunitySubmit.openSubmitCommunityModal / closeSubmitCommunityModal / submitCommunityForm
  */
-const toast = (t, m, type) => window.Toast?.show?.(t, m, type);
+import Toast from "../lib/toast.js";
+import api from "../lib/api_client.js";
+import DOM from "../lib/dom.js";
+
+const toast = (t, m, type) => Toast.show(t, m, type);
 
 const openSubmitCommunityModal = async (patternId, ctx) => {
     ctx.showLoading?.(true);
@@ -33,14 +37,11 @@ const submitCommunityForm = async (ctx) => {
     const creator =
         (DOM.byId("community-submit-creator")?.value || "").trim() || "Anonymous";
 
-    const api = window.ApiClient;
     const url = `${ctx.apiUrl || ""}/api/community/submit`;
-    const result = api
-        ? await api.request(url, {
-              method: "POST",
-              body: { individual: genome, name, creator },
-          })
-        : { ok: false, error: "No API client" };
+    const result = await api.request(url, {
+        method: "POST",
+        body: { individual: genome, name, creator },
+    });
 
     if (!result.ok) {
         toast("Submit failed", result.error || "Request failed", "error");

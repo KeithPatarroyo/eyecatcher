@@ -2,6 +2,8 @@
  * GenealogyPhysics: slider bindings and a couple of toggles.
  * Exposes: GenealogyPhysics.initPhysicsControls(getNetwork, getHierarchicalLayout, updateControlsVisibility)
  */
+import Utils from "../lib/utils.js";
+
 const bindSlider = (inputId, valueSpanId, fmt, onChange) => {
     const input = document.getElementById(inputId);
     const valueSpan = document.getElementById(valueSpanId);
@@ -61,7 +63,6 @@ const initPhysicsControls = (
         (v) => setBarnes("damping", v)
     );
 
-    const Utils = window.Utils;
     Utils?.onId?.("show-arrows", (el) => {
         el.addEventListener("change", (e) => {
             const net = getNetwork();
