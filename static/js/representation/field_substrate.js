@@ -146,4 +146,6 @@ class FieldSubstrate extends Substrate {
     }
 }
 
+export default FieldSubstrate;
+export { FieldSubstrate };
 window.FieldSubstrate = FieldSubstrate;

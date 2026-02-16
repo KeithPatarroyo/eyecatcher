@@ -492,4 +492,6 @@ class GridSubstrate extends Substrate {
     }
 }
 
+export default GridSubstrate;
+export { GridSubstrate };
 window.GridSubstrate = GridSubstrate;

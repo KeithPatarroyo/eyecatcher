@@ -23,4 +23,6 @@ class ImageSubstrate extends Substrate {
     }
 }
 
+export default ImageSubstrate;
+export { ImageSubstrate };
 window.ImageSubstrate = ImageSubstrate;
