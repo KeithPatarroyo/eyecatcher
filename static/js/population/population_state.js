@@ -121,7 +121,7 @@ const init = () => {
     state = initialState();
 };
 
-window.PopulationState = {
+const populationState = {
     init,
     dispatch,
     getState,
@@ -139,3 +139,6 @@ window.PopulationState = {
         return state.representationId;
     },
 };
+
+export default populationState;
+window.PopulationState = populationState;

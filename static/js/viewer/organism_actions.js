@@ -1,10 +1,11 @@
 /**
  * Organism interaction handlers: save, click, unclick.
- * Used by app.js grid callbacks. Depends on window.PopulationState.
+ * Used by app.js grid callbacks.
  */
 import Toast from "../lib/toast.js";
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
+import populationState from "../population/population_state.js";
 
 const showError = (title, message) => Toast.show(title, message, "error");
 
@@ -27,7 +28,7 @@ const withBusyButton = (buttonEl, busyText, fn) => {
 };
 
 const getOrganismFlexible = (id) => {
-    const PS = window.PopulationState;
+    const PS = populationState;
     if (!PS?.getOrganism) return null;
     if (PS.getOrganism(id)) return PS.getOrganism(id);
     const s = id != null ? String(id) : "";
@@ -55,7 +56,7 @@ const updateFitness = (id, card, delta, updateStats) => {
     if (next === current) return;
 
     const payloadId = typeof org.id !== "undefined" ? org.id : id;
-    window.PopulationState.dispatch({
+    populationState.dispatch({
         type: "SET_ORGANISM_FITNESS",
         payload: { id: payloadId, fitness: next },
     });
@@ -66,7 +67,7 @@ const updateFitness = (id, card, delta, updateStats) => {
 
 class OrganismActions {
     savePattern(id, buttonEl) {
-        const organisms = window.PopulationState?.organisms;
+        const organisms = populationState?.organisms;
         if (!Array.isArray(organisms) || organisms.length === 0) {
             showError(
                 "Cannot save",

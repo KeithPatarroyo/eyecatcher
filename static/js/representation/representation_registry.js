@@ -6,6 +6,7 @@
  */
 import SubstrateRegistry from "./substrate_registry.js";
 import { getConfig } from "../evolution/experiment_config.js";
+import populationState from "../population/population_state.js";
 
 const DEFAULT_REPRESENTATION_ID = "nca";
 
@@ -230,7 +231,7 @@ class RepresentationRegistry {
     }
 
     currentRepresentation() {
-        const state = window.PopulationState?.getState?.();
+        const state = populationState?.getState?.();
         const repId = state?.representationId;
         return this.resolve({ representationId: repId }).representation;
     }

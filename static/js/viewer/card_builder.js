@@ -1,10 +1,10 @@
 /**
  * CardBuilder: builds organism card DOM (display element, info, actions, events).
  * WebGL setup lives in webgl_utils.js.
- * Depends: window.PopulationState.
  */
 import RepresentationRegistry from "../representation/representation_registry.js";
 import { RepresentationHelpers } from "../representation/representation_registry.js";
+import populationState from "../population/population_state.js";
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
@@ -44,7 +44,7 @@ const createActionButton = ({ text, className, title, ariaLabel, onClick }) => {
 };
 
 const getOrganismFlexible = (patternId) => {
-    const PS = window.PopulationState;
+    const PS = populationState;
     if (!PS?.getOrganism) return null;
 
     // Try as-is, as string, as int, and back again, since ids sometimes drift types.

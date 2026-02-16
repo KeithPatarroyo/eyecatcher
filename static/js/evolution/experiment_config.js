@@ -1,4 +1,6 @@
 // experiment_config.js (replace whole file)
+import populationState from "../population/population_state.js";
+
 const unified = window.EyecatcherConfig ?? {};
 const defaults = unified.defaults ?? {};
 let signalsByRepresentation = unified.signals;
@@ -43,7 +45,7 @@ const EvolutionConfig = {
     },
 
     getCurrentRepresentationId() {
-        const state = window.PopulationState?.getState?.();
+        const state = populationState?.getState?.();
         return (
             state?.representationId ||
             this.getDefaultResolution().representationId ||
