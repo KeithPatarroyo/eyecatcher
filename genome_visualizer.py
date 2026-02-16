@@ -15,9 +15,6 @@ from typing import Dict, List, Tuple, Optional, Set
 class GenomeVisualizer:
     """Visualizes NEAT genome network structure."""
     
-    # Node size for all circles
-    NODE_SIZE = 2000
-    
     # Color scheme
     COLORS = {
         'input': '#4A90E2',      # Blue
@@ -39,7 +36,7 @@ class GenomeVisualizer:
                         genome: neat.DefaultGenome, 
                         filepath: str,
                         view: bool = False,
-                        figsize: Tuple[int, int] = None):
+                        figsize: Tuple[int, int] = (12, 8)):
         """
         Create a visualization of the genome network structure.
         
@@ -47,42 +44,15 @@ class GenomeVisualizer:
             genome: NEAT genome to visualize
             filepath: Output file path (PDF)
             view: Whether to display the plot
-            figsize: Figure size (width, height). If None, auto-calculated based on node count.
+            figsize: Figure size (width, height)
         """
-        # Calculate max nodes in any column for sizing
-        max_nodes_in_column = max(self.num_inputs, self.num_outputs)
-        hidden_nodes = [n for n in genome.nodes.keys() if n not in range(self.num_outputs)]
-        if hidden_nodes:
-            layers = self._assign_layers(genome, list(range(-self.num_inputs, 0)), list(range(self.num_outputs)))
-            if layers:
-                layer_counts = {}
-                for layer in layers.values():
-                    layer_counts[layer] = layer_counts.get(layer, 0) + 1
-                max_nodes_in_column = max(max_nodes_in_column, max(layer_counts.values()))
-        
-        # Dynamic figure size: ensure enough vertical space per node
-        # With NODE_SIZE=2000, we need about 1.0 units per node vertically
-        if figsize is None:
-            height = max(6, max_nodes_in_column * 1.0)
-            figsize = (12, height)
-        
         fig, ax = plt.subplots(figsize=figsize, facecolor='white')
-        
-        # Calculate node positions first
-        positions = self._calculate_positions(genome)
-        
-        # Set axis limits based on actual node positions (auto-fit to content)
-        if positions:
-            y_values = [pos[1] for pos in positions.values()]
-            y_min, y_max = min(y_values), max(y_values)
-            # Add small padding for node radius (about 0.15 units for NODE_SIZE=2000)
-            padding = 0.18
-            ax.set_xlim(-0.3, 1.3)
-            ax.set_ylim(y_min - padding, y_max + padding)
-        else:
-            ax.set_xlim(-0.3, 1.3)
-            ax.set_ylim(0, 1)
+        ax.set_xlim(-0.5, 1.5)
+        ax.set_ylim(-0.5, 1.5)
         ax.axis('off')
+        
+        # Calculate node positions
+        positions = self._calculate_positions(genome)
         
         # Draw connections first (so they appear behind nodes)
         self._draw_connections(ax, genome, positions)
@@ -93,8 +63,9 @@ class GenomeVisualizer:
         # Add title and legend
         self._add_title_and_legend(ax, genome)
         
-        # Save as vector PDF - bbox_inches='tight' auto-crops whitespace
-        plt.savefig(filepath, format='pdf', bbox_inches='tight', pad_inches=0.05, facecolor='white')
+        # Save as vector PDF
+        plt.tight_layout()
+        plt.savefig(filepath, format='pdf', bbox_inches='tight', facecolor='white')
         
         if view:
             plt.show()
@@ -102,59 +73,43 @@ class GenomeVisualizer:
             plt.close()
     
     def _calculate_positions(self, genome: neat.DefaultGenome) -> Dict[int, Tuple[float, float]]:
-        """Calculate (x, y) positions for all nodes with equal spacing."""
+        """Calculate (x, y) positions for all nodes."""
         positions = {}
         
-        # Calculate vertical spacing based on number of nodes
-        # Each node needs about 0.25 units of vertical space to avoid overlap
-        node_spacing = 0.25
-        
-        # Input nodes on left (x = 0)
+        # Input nodes on left
         input_ids = list(range(-self.num_inputs, 0))
-        total_input_height = (self.num_inputs - 1) * node_spacing
-        start_y = total_input_height / 2  # Center around y=0.5
+        input_names = ['x', 'y', 'distance', 'angle', 'sin(a)', 'cos(a)', 'time', 'bias']
         for i, node_id in enumerate(input_ids):
-            y = 0.5 + start_y - (i * node_spacing)
+            y = 1.0 - (i / max(1, self.num_inputs - 1)) if self.num_inputs > 1 else 0.5
             positions[node_id] = (0.0, y)
         
-        # Output nodes on right (x = 1)
+        # Output nodes on right
         output_ids = list(range(self.num_outputs))
-        total_output_height = (self.num_outputs - 1) * node_spacing
-        start_y = total_output_height / 2
+        output_names = ['R', 'G', 'B']
         for i, node_id in enumerate(output_ids):
-            y = 0.5 + start_y - (i * node_spacing)
+            y = 1.0 - (i / max(1, self.num_outputs - 1)) if self.num_outputs > 1 else 0.5
             positions[node_id] = (1.0, y)
         
-        # Hidden nodes in middle (layered with equal spacing)
-        hidden_nodes = [n for n in genome.nodes.keys() if n not in output_ids]
+        # Hidden nodes in middle (layered)
+        hidden_nodes = list(genome.nodes.keys())
         if hidden_nodes:
             # Use simple layering based on connectivity
             layers = self._assign_layers(genome, input_ids, output_ids)
             
-            if layers:
-                num_layers = max(layers.values()) + 1 if layers else 1
+            for node_id, layer in layers.items():
+                nodes_in_layer = [n for n, l in layers.items() if l == layer]
+                idx = nodes_in_layer.index(node_id)
                 
-                # Group nodes by layer
-                layer_groups = {}
-                for node_id, layer in layers.items():
-                    if layer not in layer_groups:
-                        layer_groups[layer] = []
-                    layer_groups[layer].append(node_id)
+                # X position based on layer
+                x = 0.3 + (layer * 0.4 / max(1, max(layers.values())))
                 
-                for layer, nodes_in_layer in layer_groups.items():
-                    # Sort nodes for consistent ordering
-                    nodes_in_layer.sort()
-                    
-                    # X position: evenly space layers between input (0) and output (1)
-                    x = 0.2 + (layer + 1) * 0.6 / (num_layers + 1)
-                    
-                    # Y position: use same spacing as input/output nodes
-                    n = len(nodes_in_layer)
-                    total_height = (n - 1) * node_spacing
-                    start_y = total_height / 2
-                    for idx, node_id in enumerate(nodes_in_layer):
-                        y = 0.5 + start_y - (idx * node_spacing)
-                        positions[node_id] = (x, y)
+                # Y position distributed evenly
+                if len(nodes_in_layer) == 1:
+                    y = 0.5
+                else:
+                    y = 1.0 - (idx / (len(nodes_in_layer) - 1))
+                
+                positions[node_id] = (x, y)
         
         return positions
     
@@ -265,7 +220,7 @@ class GenomeVisualizer:
             # Line width based on weight magnitude
             linewidth = min(3, 0.5 + abs(conn.weight) / 5)
             
-            # Draw straight arrow
+            # Draw arrow
             arrow = FancyArrowPatch(
                 src_pos, dst_pos,
                 arrowstyle='->,head_width=0.3,head_length=0.3',
@@ -273,7 +228,7 @@ class GenomeVisualizer:
                 linewidth=linewidth,
                 alpha=alpha,
                 linestyle=linestyle,
-                connectionstyle='arc3,rad=0'  # rad=0 for straight lines
+                connectionstyle='arc3,rad=0.1'
             )
             ax.add_patch(arrow)
     
@@ -282,7 +237,7 @@ class GenomeVisualizer:
                    genome: neat.DefaultGenome,
                    positions: Dict[int, Tuple[float, float]]):
         """Draw nodes."""
-        input_names = ['x', 'y', 'distance', 'time', 'mouse_speed', 'mouse_dist', 'inactivity', 'bias']
+        input_names = ['x', 'y', 'distance', 'angle', 'sin(a)', 'cos(a)', 'time', 'bias']
         output_names = ['R', 'G', 'B']
         
         # Identify which nodes are connected to outputs (active nodes)
@@ -296,11 +251,13 @@ class GenomeVisualizer:
             if node_id < 0:
                 # Input node
                 color = self.COLORS['input']
+                size = 800
                 idx = node_id + self.num_inputs
                 label = input_names[idx] if idx < len(input_names) else str(node_id)
             elif node_id < self.num_outputs:
                 # Output node
                 color = self.COLORS['output']
+                size = 800
                 # Check if output node has custom config or use default
                 if node_id in genome.nodes:
                     activation = genome.nodes[node_id].activation
@@ -311,6 +268,7 @@ class GenomeVisualizer:
             else:
                 # Hidden node
                 color = self.COLORS['hidden']
+                size = 700
                 node = genome.nodes[node_id]
                 label = f"{node_id}\n{node.activation}"
             
@@ -318,34 +276,35 @@ class GenomeVisualizer:
             alpha = 0.9 if is_active else 0.2
             
             # Draw node circle
-            ax.scatter(x, y, s=self.NODE_SIZE, c=color, edgecolors='white', 
+            ax.scatter(x, y, s=size, c=color, edgecolors='white', 
                       linewidths=2, zorder=10, alpha=alpha)
             
             # Add label with appropriate transparency
             label_alpha = 1.0 if is_active else 0.3
             ax.text(x, y, label, ha='center', va='center',
-                   fontsize=10, fontweight='bold', color='black', zorder=11, alpha=label_alpha)
+                   fontsize=10, fontweight='bold', color='white', zorder=11, alpha=label_alpha)
     
     def _add_title_and_legend(self, ax, genome: neat.DefaultGenome):
         """Add title and legend to the plot."""
         # Count statistics
-        num_hidden = len(genome.nodes) - self.num_outputs
+        num_hidden = len(genome.nodes)
         num_connections = len([c for c in genome.connections.values() if c.enabled])
         num_disabled = len([c for c in genome.connections.values() if not c.enabled])
         
-        # Title - positioned closer to plot
-        title = f"CPPN Genome #{genome.key}  |  "
-        title += f"Nodes: {self.num_inputs}in + {num_hidden}hidden + {self.num_outputs}out  |  "
+        # Title
+        title = f"CPPN Genome #{genome.key}\n"
+        title += f"Nodes: {self.num_inputs} inputs + {num_hidden} hidden + {self.num_outputs} outputs\n"
         title += f"Connections: {num_connections} enabled, {num_disabled} disabled"
-        ax.set_title(title, fontsize=10, fontweight='bold', pad=10)
+        ax.text(0.5, 1.05, title, transform=ax.transAxes,
+               ha='center', fontsize=11, fontweight='bold')
         
-        # Legend - positioned closer to plot
+        # Legend
         legend_elements = [
-            mpatches.Patch(color=self.COLORS['input'], label='Input'),
-            mpatches.Patch(color=self.COLORS['hidden'], label='Hidden'),
-            mpatches.Patch(color=self.COLORS['output'], label='Output'),
-            mpatches.Patch(color=self.COLORS['positive'], label='+Weight'),
-            mpatches.Patch(color=self.COLORS['negative'], label='-Weight'),
+            mpatches.Patch(color=self.COLORS['input'], label='Input Nodes'),
+            mpatches.Patch(color=self.COLORS['hidden'], label='Hidden Nodes'),
+            mpatches.Patch(color=self.COLORS['output'], label='Output Nodes'),
+            mpatches.Patch(color=self.COLORS['positive'], label='Positive Weight'),
+            mpatches.Patch(color=self.COLORS['negative'], label='Negative Weight'),
         ]
-        ax.legend(handles=legend_elements, loc='upper center', 
-                 bbox_to_anchor=(0.5, -0.02), ncol=5, frameon=False, fontsize=9)
+        ax.legend(handles=legend_elements, loc='upper left', 
+                 bbox_to_anchor=(0, -0.05), ncol=5, frameon=False)
