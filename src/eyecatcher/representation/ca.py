@@ -8,18 +8,15 @@ running simulation (frontend applies kill mask before each GOL step).
 
 from __future__ import annotations
 
-import json
 import random
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
 from ..signals import catalog
 from ..signals.receptor import Receptor
 from ..signals.sensory_system import SensorySystem
-from ._image_util import rgb_to_png_base64
-from .base import RepresentationBase
-from .mixins import GridAnalyzable, Saveable
+from .grid_base import GridRepresentationBase
 from .protocol import Behaviour, Phenotype, RepresentationOutput, Substrate
 
 # Default grid size for genome and simulation (same size).
@@ -149,7 +146,7 @@ void main() {
 """
 
 
-class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
+class ConwayRepresentation(GridRepresentationBase):
     """
     Representation for Conway's Game of Life (2D).
     Individual = ConwayGenome (initial grid); output = grid (H×W×3 RGB).
@@ -244,49 +241,6 @@ class ConwayRepresentation(Saveable, GridAnalyzable, RepresentationBase):
             grid = np.zeros((DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE), dtype=np.uint8)
         return ConwayGenome(grid=grid, key=key)
 
-    def serialize_output(
-        self,
-        output: RepresentationOutput,
-        genome: ConwayGenome | None = None,
-    ) -> dict[str, Any]:
-        """Return image (base64) and grid for API. Rules come from phenotype.behaviour.
-        When genome is provided, includes genome grid for client."""
-        result: dict[str, Any]
-        if output.output_type != "grid" or not hasattr(output.data, "shape"):
-            result = {"image": "", "grid": []}
-        else:
-            arr = np.asarray(output.data)
-            b64 = rgb_to_png_base64(arr)
-            grid_01 = (arr[:, :, 0] > 127).astype(np.uint8)
-            result = {
-                "image": "data:image/png;base64," + b64,
-                "grid": _grid_to_nested_list(grid_01),
-            }
-        if genome is not None:
-            result["grid"] = _grid_to_nested_list(genome.grid)
-        return result
-
-    def get_save_filenames(self, individual_id: int) -> dict[str, str]:
-        return {
-            "png": f"pattern_{individual_id}.png",
-            "genome_json": f"genome_{individual_id}.json",
-            "zip": f"pattern_{individual_id}.zip",
-        }
-
-    def build_save_assets(
-        self, genome: ConwayGenome, individual_id: int, **kwargs: Any
-    ) -> dict[str, bytes]:
-        to_png_bytes: Callable[[np.ndarray], bytes] = kwargs.get("to_png_bytes")
-        if not callable(to_png_bytes):
-            return {}
-        out = self.express(genome, {})
-        if out.output_type != "grid" or not hasattr(out.data, "shape"):
-            return {}
-        arr = np.asarray(out.data)
-        names = self.get_save_filenames(individual_id)
-        return {
-            names["png"]: to_png_bytes(arr),
-            names["genome_json"]: json.dumps(self.to_json(genome), indent=2).encode(
-                "utf-8"
-            ),
-        }
+    def _serialize_genome_extras(self, genome: ConwayGenome) -> dict[str, Any]:
+        """Include genome grid for client when genome is provided."""
+        return {"grid": _grid_to_nested_list(genome.grid)}
