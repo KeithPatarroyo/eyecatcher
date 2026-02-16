@@ -375,11 +375,40 @@
     window.ApiClient.fetchConfig()
         .then(function (c) {
             window.EvolutionConfig.mergeFromServer(c);
+            if (c && c.representation_id && window.__eyecatcherDefaultResolution) {
+                window.__eyecatcherDefaultResolution.representationId =
+                    c.representation_id;
+            }
+            if (
+                window.PopulationState &&
+                (window.PopulationState.representationId == null ||
+                    window.PopulationState.organisms.length === 0) &&
+                c &&
+                c.representation_id
+            ) {
+                window.PopulationState.dispatch({
+                    type: "LOAD_POPULATION",
+                    payload: {
+                        population: [],
+                        genomes: null,
+                        generationNum: 0,
+                        representationId: c.representation_id,
+                    },
+                });
+            }
             if (
                 window.ToolbarUI &&
                 window.ToolbarUI.syncToolbarPopulationSizeFromConfig
             ) {
                 window.ToolbarUI.syncToolbarPopulationSizeFromConfig();
+            }
+            if (
+                window.ViewerControls &&
+                window.ViewerControls.updateForRepresentation &&
+                c &&
+                c.representation_id
+            ) {
+                window.ViewerControls.updateForRepresentation(c.representation_id);
             }
         })
         .catch(function () {

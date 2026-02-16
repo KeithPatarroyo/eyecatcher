@@ -6,7 +6,7 @@
 (function () {
     "use strict";
 
-    var DEFAULT_REPRESENTATION_ID = "dual_cppn";
+    var DEFAULT_REPRESENTATION_ID = "nca";
 
     function buildIsGenomeFormatFromConfig(entry) {
         var genomeKeys = entry.genomeKeys || [];
