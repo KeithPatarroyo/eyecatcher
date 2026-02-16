@@ -1,51 +1,55 @@
 /**
- * Thumbnail rendering for genealogy tree nodes. Extracted from genealogy_viewer.js.
- * Exposes: GenealogyThumbnails.renderThumbnail, GenealogyThumbnails.renderAllThumbnails.
+ * GenealogyThumbnails: renders thumbnails for vis.js nodes.
+ * Exposes: GenealogyThumbnails.renderThumbnail / renderAllThumbnails
  */
-(function () {
+(() => {
     "use strict";
 
     const THUMBNAIL_CANVAS_SIZE = 128;
-    const MAX_THUMBNAIL_CACHE = 200;
-    const THUMBNAIL_BATCH_SIZE = 8;
+    const MAX_CACHE = 200;
+    const BATCH = 8;
 
-    async function renderThumbnail(populationId, cache, apiUrl) {
-        apiUrl = apiUrl || window.API_URL || "";
-        if (cache && cache.has(populationId)) {
-            return cache.get(populationId);
-        }
+    const cachePut = (cache, key, value) => {
+        if (!cache) return;
+        if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value);
+        cache.set(key, value);
+    };
 
-        const RepresentationRegistry = window.RepresentationRegistry;
-        const DisplayFetcher = window.DisplayFetcher;
-        const ApiClient = window.ApiClient;
-        if (
-            !RepresentationRegistry ||
-            !RepresentationRegistry.findByGenome ||
-            !DisplayFetcher ||
-            typeof DisplayFetcher.fetchDisplayData !== "function" ||
-            !ApiClient
-        ) {
+    const loadImg = (src) =>
+        new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+        });
+
+    const renderThumbnail = async (
+        populationId,
+        cache,
+        apiUrl = window.API_URL || ""
+    ) => {
+        if (cache?.has(populationId)) return cache.get(populationId);
+
+        const RR = window.RepresentationRegistry;
+        const DF = window.DisplayFetcher;
+
+        if (!RR?.findByGenome || typeof DF?.fetchDisplayData !== "function")
             return null;
-        }
 
         try {
-            const data = await ApiClient.apiFetch(
-                `${apiUrl}/genealogy/population-thumbnail/${populationId}`,
-                {},
-                "No thumbnail"
+            const res = await fetch(
+                `${apiUrl}/api/genealogy/population-thumbnail/${populationId}`
             );
-            const genome = data.individual != null ? data.individual : data.genome;
+            const data = await res.json();
+            if (!res.ok) return null;
+
+            const genome = data.individual ?? data.genome;
             if (!genome) return null;
 
-            const representation = RepresentationRegistry.findByGenome(genome);
-            if (!representation) return null;
+            const rep = RR.findByGenome(genome);
+            if (!rep) return null;
 
-            const result = await DisplayFetcher.fetchDisplayData(
-                representation,
-                [genome],
-                {}
-            );
-            const pop = result && result.population && result.population[0];
+            const pop = (await DF.fetchDisplayData(rep, [genome], {}))?.population?.[0];
             if (!pop) return null;
 
             const canvas = document.createElement("canvas");
@@ -53,77 +57,53 @@
             canvas.height = THUMBNAIL_CANVAS_SIZE;
 
             if (pop.image) {
-                const img = new Image();
-                await new Promise((resolve, reject) => {
-                    img.onload = resolve;
-                    img.onerror = reject;
-                    img.src = pop.image;
-                });
-                const ctx = canvas.getContext("2d");
-                if (ctx) {
-                    ctx.drawImage(
+                const img = await loadImg(pop.image);
+                canvas
+                    .getContext("2d")
+                    ?.drawImage(
                         img,
                         0,
                         0,
                         THUMBNAIL_CANVAS_SIZE,
                         THUMBNAIL_CANVAS_SIZE
                     );
-                }
-            } else if (pop.rule && window.WebGLUtils) {
+            } else if (pop.rule && window.WebGLUtils?.setupPattern) {
                 const runtime = window.WebGLUtils.setupPattern(canvas, pop.rule);
                 if (!runtime || runtime.error) return null;
-                if (genome && typeof genome.rule === "number") {
-                    runtime.caRule = genome.rule;
-                }
+
+                const repId =
+                    window.EvolutionConfig?.getCurrentRepresentationId?.() ?? "";
                 const signalState =
-                    window.EvolutionConfig &&
-                    window.EvolutionConfig.getDefaultSignalState
-                        ? window.EvolutionConfig.getDefaultSignalState()
-                        : { time: {}, visual: {} };
-                if (
-                    window.AnimationLoop &&
-                    window.AnimationLoop.renderFrameWithSignals
-                ) {
-                    window.AnimationLoop.renderFrameWithSignals(
-                        runtime,
-                        signalState,
-                        canvas
-                    );
-                }
+                    window.EvolutionConfig?.getDefaultSignalState?.(repId) ?? {};
+                window.AnimationLoop?.renderFrameWithSignals?.(
+                    runtime,
+                    signalState,
+                    canvas
+                );
             } else {
                 return null;
             }
 
-            const dataUrl = canvas.toDataURL("image/png");
-            if (cache) {
-                if (cache.size >= MAX_THUMBNAIL_CACHE) {
-                    const firstKey = cache.keys().next().value;
-                    if (firstKey !== undefined) cache.delete(firstKey);
-                }
-                cache.set(populationId, dataUrl);
-            }
-            return dataUrl;
-        } catch (error) {
-            console.warn(
-                "Thumbnail failed for population " + populationId + ":",
-                error
-            );
+            const url = canvas.toDataURL("image/png");
+            cachePut(cache, populationId, url);
+            return url;
+        } catch {
             return null;
         }
-    }
+    };
 
-    async function renderAllThumbnails(visNodes, cache, options) {
-        options = options || {};
+    const renderAllThumbnails = async (visNodes, cache, options = {}) => {
         const defaultNodeSize = options.defaultNodeSize || 90;
         const nodeSize = parseInt(
             document.getElementById("node-size")?.value || defaultNodeSize,
             10
         );
-        const nodes = visNodes.get();
+        const apiUrl = options.apiUrl || window.API_URL || "";
 
-        for (let i = 0; i < nodes.length; i += THUMBNAIL_BATCH_SIZE) {
-            const batch = nodes.slice(i, i + THUMBNAIL_BATCH_SIZE);
-            const apiUrl = options.apiUrl || window.API_URL || "";
+        const nodes = visNodes.get();
+        for (let i = 0; i < nodes.length; i += BATCH) {
+            const batch = nodes.slice(i, i + BATCH);
+
             const results = await Promise.all(
                 batch.map(async (node) => ({
                     id: node.id,
@@ -131,30 +111,22 @@
                     thumbnail: await renderThumbnail(node.id, cache, apiUrl),
                 }))
             );
+
             results.forEach((r) => {
-                if (r.thumbnail) {
-                    visNodes.update({
-                        id: r.id,
-                        shape: "circularImage",
-                        image: r.thumbnail,
-                        size: nodeSize / 2,
-                        borderWidth: 3,
-                        mass: 2,
-                        color: {
-                            border: r.color.border,
-                            background: "transparent",
-                        },
-                        shapeProperties: {
-                            useBorderWithImage: true,
-                        },
-                    });
-                }
+                if (!r.thumbnail) return;
+                visNodes.update({
+                    id: r.id,
+                    shape: "circularImage",
+                    image: r.thumbnail,
+                    size: nodeSize / 2,
+                    borderWidth: 3,
+                    mass: 2,
+                    color: { border: r.color.border, background: "transparent" },
+                    shapeProperties: { useBorderWithImage: true },
+                });
             });
         }
-    }
-
-    window.GenealogyThumbnails = {
-        renderThumbnail: renderThumbnail,
-        renderAllThumbnails: renderAllThumbnails,
     };
+
+    window.GenealogyThumbnails = { renderThumbnail, renderAllThumbnails };
 })();

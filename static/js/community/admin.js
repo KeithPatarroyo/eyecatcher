@@ -1,185 +1,183 @@
 /**
- * Community admin: key step, pending list, approve/reject.
- * Used by community.js. Exposes: CommunityAdmin.
+ * CommunityAdmin: key step + pending list + approve/reject.
+ * Exposes: CommunityAdmin.openAdminModal / closeAdminModal / submitAdminKey / renderAdminPendingList
  */
-(function () {
+(() => {
     "use strict";
 
-    function openAdminModal(ctx) {
-        if (ctx.setAdminKey) ctx.setAdminKey("");
+    const toast = (t, m, type) => window.Toast?.show?.(t, m, type);
+
+    const showKeyError = (msg) => {
+        const el = document.getElementById("admin-key-error");
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.toggle("hidden", !msg);
+    };
+
+    const openAdminModal = (ctx) => {
+        ctx.setAdminKey?.("");
         const keyInput = document.getElementById("admin-key-input");
         if (keyInput) keyInput.value = "";
-        const errEl = document.getElementById("admin-key-error");
-        if (errEl) {
-            errEl.classList.add("hidden");
-            errEl.textContent = "";
-        }
-        const stepKey = document.getElementById("admin-step-key");
-        const stepList = document.getElementById("admin-step-list");
-        if (stepKey) stepKey.classList.remove("hidden");
-        if (stepList) stepList.classList.add("hidden");
-        const modal = document.getElementById("admin-modal");
-        if (modal) modal.classList.add("show");
-    }
+        showKeyError("");
 
-    function closeAdminModal(ctx) {
-        if (ctx.setAdminKey) ctx.setAdminKey("");
-        const modal = document.getElementById("admin-modal");
-        if (modal) modal.classList.remove("show");
-    }
+        document.getElementById("admin-step-key")?.classList.remove("hidden");
+        document.getElementById("admin-step-list")?.classList.add("hidden");
+        document.getElementById("admin-modal")?.classList.add("show");
+    };
 
-    async function submitAdminKey(ctx) {
-        const key = (document.getElementById("admin-key-input")?.value || "").trim();
-        const errEl = document.getElementById("admin-key-error");
-        if (!key) {
-            if (errEl) {
-                errEl.textContent = "Please enter the API key.";
-                errEl.classList.remove("hidden");
-            }
-            return;
-        }
-        const Utils = window.Utils;
-        const ApiClient = window.ApiClient;
+    const closeAdminModal = (ctx) => {
+        ctx.setAdminKey?.("");
+        document.getElementById("admin-modal")?.classList.remove("show");
+    };
+
+    const adminModerate = async (id, action, rowEl, ctx) => {
+        const key = ctx.getAdminKey?.() || "";
         try {
-            const d = await ApiClient.apiFetch(
-                (ctx.apiUrl || "") +
-                    "/admin/submissions?admin_key=" +
-                    encodeURIComponent(key),
-                { headers: { "X-Admin-Key": key } },
-                "Load submissions failed"
-            );
-            if (ctx.setAdminKey) ctx.setAdminKey(key);
-            const list = d.submissions || [];
-            const stepKey = document.getElementById("admin-step-key");
-            const stepList = document.getElementById("admin-step-list");
-            if (stepKey) stepKey.classList.add("hidden");
-            if (stepList) stepList.classList.remove("hidden");
-            await renderAdminPendingList(list, ctx);
-        } catch (e) {
-            if (errEl) {
-                errEl.textContent =
-                    e.status === 403
-                        ? "Invalid API key."
-                        : "Error: " +
-                          (Utils && Utils.formatApiError
-                              ? Utils.formatApiError(e, "Request failed")
-                              : String(e));
-                errEl.classList.remove("hidden");
+            if (window.ApiClient?.communityAdminDelete && action === "reject") {
+                // If your backend has a single delete endpoint, you can map reject->delete here.
             }
-        }
-    }
 
-    async function renderAdminPendingList(submissions, ctx) {
+            if (window.ApiClient?.communityAdminDelete && action === "delete") {
+                await window.ApiClient.communityAdminDelete(key, [id]);
+            } else {
+                // Preserve existing endpoints for approve/reject
+                const endpoint =
+                    action === "approve" ? "/api/admin/approve" : "/api/admin/reject";
+                const res = await fetch(
+                    `${ctx.apiUrl || ""}${endpoint}?admin_key=${encodeURIComponent(key)}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Admin-Key": key,
+                        },
+                        body: JSON.stringify({ id }),
+                    }
+                );
+                if (!res.ok) throw new Error(`Moderation failed (${res.status})`);
+            }
+
+            rowEl.remove();
+        } catch (e) {
+            const msg =
+                e?.status === 403 ? "Invalid API key." : e?.message || String(e);
+            toast("Admin", msg, "error");
+        }
+    };
+
+    const renderAdminPendingList = async (submissions, ctx) => {
         const ul = document.getElementById("admin-pending-list");
         if (!ul) return;
-        ul.innerHTML = "";
+
         const Utils = window.Utils;
         const Browse = window.CommunityBrowse;
-        if (!Browse || !submissions.length) {
+
+        ul.innerHTML = "";
+        if (!Browse || !submissions?.length) {
             ul.appendChild(
-                Utils && Utils.createListEmptyEl
+                Utils?.createListEmptyEl
                     ? Utils.createListEmptyEl("li", "No pending submissions.")
-                    : (() => {
-                          const li = document.createElement("li");
-                          li.textContent = "No pending submissions.";
-                          return li;
-                      })()
+                    : document.createElement("li")
             );
+            if (!Utils?.createListEmptyEl)
+                ul.firstChild.textContent = "No pending submissions.";
             return;
         }
+
         const displayByKey = await Browse.fetchDisplayDataForList(
             submissions,
             (s) => ({ ...(s.individual || s.genome), key: s.id }),
-            (sub) => sub.id
+            (s) => s.id
         );
+
         Browse.renderListWithPreviews(
             ul,
             submissions,
             displayByKey,
-            (sub) => sub.id,
+            (s) => s.id,
             (li, sub, canvas, displayItem) =>
-                Browse.buildPatternListEntry(
-                    li,
-                    sub,
-                    canvas,
-                    displayItem,
-                    {
-                        itemClass: "pending-item",
-                        infoContent: (s) => {
-                            const frag = document.createDocumentFragment();
-                            const strong = document.createElement("strong");
-                            strong.textContent = s.name || "Unnamed";
-                            frag.appendChild(strong);
-                            frag.appendChild(document.createTextNode(" by "));
-                            frag.appendChild(document.createTextNode(s.creator || "?"));
-                            return frag;
-                        },
-                        appendNodes: (listItem, s) => {
-                            const actions = document.createElement("div");
-                            actions.className = "actions";
-                            const approveBtn = document.createElement("button");
-                            approveBtn.type = "button";
-                            approveBtn.className = "approve-btn";
-                            approveBtn.textContent = "Approve";
-                            approveBtn.addEventListener("click", () =>
-                                adminModerate(s.id, "approve", listItem, ctx)
-                            );
-                            const rejectBtn = document.createElement("button");
-                            rejectBtn.type = "button";
-                            rejectBtn.className = "reject-btn";
-                            rejectBtn.textContent = "Reject";
-                            rejectBtn.addEventListener("click", () =>
-                                adminModerate(s.id, "reject", listItem, ctx)
-                            );
-                            actions.appendChild(approveBtn);
-                            actions.appendChild(rejectBtn);
-                            listItem.appendChild(actions);
-                        },
+                Browse.buildPatternListEntry(li, sub, canvas, displayItem, {
+                    itemClass: "pending-item",
+                    infoContent: (s) => {
+                        const frag = document.createDocumentFragment();
+                        const strong = document.createElement("strong");
+                        strong.textContent = s.name || "Unnamed";
+                        frag.appendChild(strong);
+                        frag.appendChild(
+                            document.createTextNode(` by ${s.creator || "?"}`)
+                        );
+                        return frag;
                     },
-                    ctx.patternRenderer
-                ),
+                    appendNodes: (row, s) => {
+                        const actions = document.createElement("div");
+                        actions.className = "actions";
+
+                        const mkBtn = (cls, label, action) => {
+                            const b = document.createElement("button");
+                            b.type = "button";
+                            b.className = cls;
+                            b.textContent = label;
+                            b.addEventListener("click", () =>
+                                adminModerate(s.id, action, row, ctx)
+                            );
+                            return b;
+                        };
+
+                        actions.appendChild(mkBtn("approve-btn", "Approve", "approve"));
+                        actions.appendChild(mkBtn("reject-btn", "Reject", "reject"));
+                        row.appendChild(actions);
+                    },
+                }),
             ctx.patternRenderer,
             ctx.viewerControls
         );
-    }
+    };
 
-    async function adminModerate(id, action, rowEl, ctx) {
-        const endpoint = action === "approve" ? "/admin/approve" : "/admin/reject";
-        const errorLabel = action === "approve" ? "Approve failed" : "Reject failed";
-        const adminKey = ctx.getAdminKey ? ctx.getAdminKey() : "";
-        const ApiClient = window.ApiClient;
+    const submitAdminKey = async (ctx) => {
+        const key = (document.getElementById("admin-key-input")?.value || "").trim();
+        if (!key) return showKeyError("Please enter the API key.");
+
         try {
-            await ApiClient.apiFetch(
-                (ctx.apiUrl || "") +
-                    endpoint +
-                    "?admin_key=" +
-                    encodeURIComponent(adminKey),
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-Admin-Key": adminKey,
-                    },
-                    body: JSON.stringify({ id }),
-                },
-                errorLabel
-            );
-            rowEl.remove();
-        } catch (e) {
-            if (window.Toast) {
-                window.Toast.error(
-                    e.status === 403
-                        ? "Invalid API key."
-                        : "Error: " + (e.message || String(e))
+            let d = null;
+            if (window.ApiClient?.communityAdminList) {
+                d = await window.ApiClient.communityAdminList(key);
+            } else {
+                const res = await fetch(
+                    `${ctx.apiUrl || ""}/api/admin/submissions?admin_key=${encodeURIComponent(key)}`,
+                    {
+                        headers: { "X-Admin-Key": key },
+                    }
                 );
+                d = await res.json();
+                if (!res.ok)
+                    throw Object.assign(new Error("Load submissions failed"), {
+                        status: res.status,
+                        data: d,
+                    });
             }
+
+            ctx.setAdminKey?.(key);
+            showKeyError("");
+
+            document.getElementById("admin-step-key")?.classList.add("hidden");
+            document.getElementById("admin-step-list")?.classList.remove("hidden");
+
+            await renderAdminPendingList(d?.submissions || [], ctx);
+        } catch (e) {
+            showKeyError(
+                e?.status === 403
+                    ? "Invalid API key."
+                    : window.Utils?.formatApiError
+                      ? window.Utils.formatApiError(e, "Request failed")
+                      : String(e)
+            );
         }
-    }
+    };
 
     window.CommunityAdmin = {
-        openAdminModal: openAdminModal,
-        closeAdminModal: closeAdminModal,
-        submitAdminKey: submitAdminKey,
-        renderAdminPendingList: renderAdminPendingList,
+        openAdminModal,
+        closeAdminModal,
+        submitAdminKey,
+        renderAdminPendingList,
     };
 })();

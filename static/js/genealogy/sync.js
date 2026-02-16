@@ -1,83 +1,59 @@
 /**
- * GenealogySync: branch counter (localStorage), population id (sessionStorage), and
- * save-current-population-to-genealogy API call. Researchers can add custom metadata
- * to the save payload if the API supports it.
- *
- * Dependencies: Utils.safeGetItem, Utils.safeSetItem
- * Exposes: GenealogySync.getGenealogyBranchCounter, GenealogySync.setGenealogyBranchCounter,
- *   GenealogySync.syncCurrentPopulationIdToStorage, GenealogySync.getStoredPopulationId,
- *   GenealogySync.saveCurrentPopulationToGenealogy
+ * GenealogySync: tiny storage helpers + saveCurrentPopulationToGenealogy.
+ * Exposes: GenealogySync.getGenealogyBranchCounter / setGenealogyBranchCounter /
+ *          syncCurrentPopulationIdToStorage / getStoredPopulationId / saveCurrentPopulationToGenealogy
  */
-(function () {
+(() => {
     "use strict";
 
-    var BRANCH_COUNTER_KEY = "genealogy_branch_counter";
-    var POPULATION_ID_KEY = "current_population_id";
+    const Utils = window.Utils;
 
-    function getStorage() {
-        return typeof localStorage !== "undefined" ? localStorage : null;
-    }
+    const BRANCH_COUNTER_KEY = "genealogy_branch_counter";
+    const POPULATION_ID_KEY = "current_population_id";
 
-    function getSessionStorage() {
-        return typeof sessionStorage !== "undefined" ? sessionStorage : null;
-    }
+    const safeLS = () => (typeof localStorage !== "undefined" ? localStorage : null);
+    const safeSS = () =>
+        typeof sessionStorage !== "undefined" ? sessionStorage : null;
 
-    function getGenealogyBranchCounter() {
-        var v = Utils.safeGetItem(getStorage(), BRANCH_COUNTER_KEY, "1");
-        return parseInt(v, 10) || 1;
-    }
+    const getGenealogyBranchCounter = () =>
+        parseInt(Utils.safeGetItem(safeLS(), BRANCH_COUNTER_KEY, "1"), 10) || 1;
 
-    function setGenealogyBranchCounter(n) {
-        Utils.safeSetItem(getStorage(), BRANCH_COUNTER_KEY, String(n));
-    }
+    const setGenealogyBranchCounter = (n) =>
+        Utils.safeSetItem(safeLS(), BRANCH_COUNTER_KEY, String(n));
 
-    function syncCurrentPopulationIdToStorage(populationId) {
-        var session = getSessionStorage();
-        if (!session) return;
-        if (populationId != null) {
-            Utils.safeSetItem(session, POPULATION_ID_KEY, String(populationId));
-        } else {
+    const syncCurrentPopulationIdToStorage = (populationId) => {
+        const s = safeSS();
+        if (!s) return;
+        if (populationId != null)
+            Utils.safeSetItem(s, POPULATION_ID_KEY, String(populationId));
+        else {
             try {
-                session.removeItem(POPULATION_ID_KEY);
-            } catch (_e) {
+                s.removeItem(POPULATION_ID_KEY);
+            } catch {
                 /* ignore */
             }
         }
-    }
+    };
 
-    function getStoredPopulationId() {
-        var session = getSessionStorage();
-        if (!session) return null;
-        var v = Utils.safeGetItem(session, POPULATION_ID_KEY, null);
-        if (v === null || v === "") return null;
-        var n = parseInt(v, 10);
-        return isNaN(n) ? null : n;
-    }
+    const getStoredPopulationId = () => {
+        const s = safeSS();
+        if (!s) return null;
+        const v = Utils.safeGetItem(s, POPULATION_ID_KEY, null);
+        const n = v == null || v === "" ? NaN : parseInt(v, 10);
+        return Number.isFinite(n) ? n : null;
+    };
 
-    /**
-     * Save current population to genealogy API. Returns Promise that resolves with
-     * { population_id } or rejects on error.
-     * @param {string} apiUrl - base API URL
-     * @param {Array} genomes - genome JSONs
-     * @param {number} generationNum
-     * @param {string} branchName
-     * @param {number|null} parentId - parent population id (null for gen 0)
-     * @param {Array<number>} fitnessData - parallel to genomes
-     * @param {function} apiFetch - (url, options, errorMsg) => Promise
-     * @param {string} [representationId] - current representation id for metadata
-     */
-    function saveCurrentPopulationToGenealogy(
+    const saveCurrentPopulationToGenealogy = async (
         apiUrl,
         genomes,
         generationNum,
         branchName,
         parentId,
         fitnessData,
-        apiFetch,
+        _apiFetch,
         representationId
-    ) {
-        var url = apiUrl + "/genealogy/save-population";
-        var body = {
+    ) => {
+        const body = {
             individuals: genomes,
             parent_id: parentId,
             generation_num: generationNum,
@@ -85,27 +61,38 @@
             description:
                 generationNum === 0
                     ? "Random initial population"
-                    : "Generation " + generationNum,
+                    : `Generation ${generationNum}`,
             user_id: "user",
             fitness_data: fitnessData || [],
+            ...(representationId != null
+                ? { representation_id: representationId }
+                : {}),
         };
-        if (representationId != null) body.representation_id = representationId;
-        return apiFetch(
-            url,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-            },
-            "Save failed"
-        );
-    }
+
+        const res = await fetch(`${apiUrl}/api/genealogy/save-population`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : null;
+        if (!res.ok) {
+            const err = new Error(
+                data?.error || data?.message || `Save failed (${res.status})`
+            );
+            err.status = res.status;
+            err.data = data;
+            throw err;
+        }
+        return data;
+    };
 
     window.GenealogySync = {
-        getGenealogyBranchCounter: getGenealogyBranchCounter,
-        setGenealogyBranchCounter: setGenealogyBranchCounter,
-        syncCurrentPopulationIdToStorage: syncCurrentPopulationIdToStorage,
-        getStoredPopulationId: getStoredPopulationId,
-        saveCurrentPopulationToGenealogy: saveCurrentPopulationToGenealogy,
+        getGenealogyBranchCounter,
+        setGenealogyBranchCounter,
+        syncCurrentPopulationIdToStorage,
+        getStoredPopulationId,
+        saveCurrentPopulationToGenealogy,
     };
 })();

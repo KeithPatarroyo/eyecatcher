@@ -1,286 +1,277 @@
 /**
- * Debug overlay module for Eyecatcher
- * Provides real-time signal monitoring and time signal output sampling.
+ * Debug overlay module for Eyecatcher.
+ * Shows live signal values + optional time-output sampling for the hovered pattern.
+ *
+ * Depends on: optional Api endpoint POST {apiUrl}/time-output
+ * Uses template: #debug-overlay-tpl, and ids dbg-* inside it.
  */
-const EyecatcherDebug = (function () {
-    // Configuration
-    let apiUrl = "";
-    let getMouseDistanceFn = null; // Function to get mouse distance to a pattern
-    let getPatternsMapFn = null; // Function to get the patterns Map
-    let getSignalStateFn = null; // Function to get signal state
-    let getGenomeForPatternFn = null; // Async function(patternId) => genome JSON for stateless time-output
-    let getRepresentationFn = null; // Function() => current representation (for capabilities.timeOutput)
+(() => {
+    "use strict";
 
-    // State
-    let hoveredPatternId = null;
-    let timeSamplingEnabled = false;
-    let lastSampleTime = 0;
-    let lastSampledTimeOutput = null;
-    let pendingSampleRequest = false;
     const SAMPLE_INTERVAL_MS = 400;
 
-    // DOM elements (created dynamically)
-    let toggleBtn = null;
-    let overlay = null;
-    let elements = {};
+    const getEl = (id) => document.getElementById(id);
 
-    /**
-     * Create the debug overlay DOM structure
-     */
-    function createDOM() {
-        // Toggle button
-        toggleBtn = document.createElement("button");
-        toggleBtn.id = "debug-toggle";
-        toggleBtn.textContent = "Debug";
-        document.body.appendChild(toggleBtn);
+    const fmt = (v) => (Number.isFinite(v) ? v.toFixed(3) : "-");
 
-        // Overlay container (structure from template)
-        overlay = document.createElement("div");
-        overlay.id = "debug-overlay";
-        overlay.className = "hidden";
-        const overlayTpl = document.getElementById("debug-overlay-tpl");
-        if (overlayTpl && overlayTpl.content) {
-            overlay.appendChild(overlayTpl.content.cloneNode(true));
-        }
-        document.body.appendChild(overlay);
+    const nowMs = () =>
+        typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now();
 
-        // Cache element references
-        elements = {
-            time: document.getElementById("dbg-time"),
-            mouseSpeed: document.getElementById("dbg-mouseSpeed"),
-            activity: document.getElementById("dbg-activity"),
-            mousePos: document.getElementById("dbg-mousePos"),
-            patternId: document.getElementById("dbg-pattern-id"),
-            mouseDist: document.getElementById("dbg-mouseDist"),
-            timeOutput: document.getElementById("dbg-v-time"),
-            sampleCheckbox: document.getElementById("dbg-sample-time"),
-            sampleWarning: document.getElementById("dbg-sample-warning"),
-        };
-    }
-
-    /**
-     * Set up event listeners
-     */
-    function setupEventListeners() {
-        // Toggle button
-        toggleBtn.addEventListener("click", () => {
-            overlay.classList.toggle("hidden");
-            toggleBtn.classList.toggle("hidden", !overlay.classList.contains("hidden"));
-        });
-
-        // Double-click overlay to close
-        overlay.addEventListener("dblclick", () => {
-            overlay.classList.add("hidden");
-            toggleBtn.classList.remove("hidden");
-        });
-
-        // Sample checkbox
-        elements.sampleCheckbox.addEventListener("change", (e) => {
-            timeSamplingEnabled = e.target.checked;
-            elements.sampleWarning.classList.toggle("hidden", !timeSamplingEnabled);
-            if (!timeSamplingEnabled) {
-                lastSampledTimeOutput = null;
-            }
-        });
-    }
-
-    /**
-     * Fetch time output from server (stateless: send genome in body)
-     */
-    async function sampleTimeOutput(
-        patternId,
-        time,
-        mouseSpd,
-        mouseDist,
-        activityLevel
-    ) {
-        if (pendingSampleRequest || !getGenomeForPatternFn) return;
-
-        pendingSampleRequest = true;
-        lastSampleTime = performance.now();
+    const postJson = async (url, body, timeoutMs = 20_000) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
 
         try {
-            const genome = await getGenomeForPatternFn(patternId);
-            if (!genome) {
-                pendingSampleRequest = false;
-                return;
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+                signal: controller.signal,
+            });
+            const text = await res.text();
+            const data = text ? JSON.parse(text) : null;
+
+            if (!res.ok) {
+                const msg =
+                    data?.error || data?.message || `Request failed (${res.status})`;
+                const err = new Error(msg);
+                err.status = res.status;
+                err.data = data;
+                throw err;
             }
-            let data;
-            try {
-                data = await window.ApiClient.apiFetch(
-                    apiUrl + "/time-output",
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            individual: genome,
-                            time,
-                            mouseSpeed: mouseSpd,
-                            mouseDist,
-                            activity: activityLevel,
-                        }),
-                    },
-                    "Time output failed"
-                );
-            } catch (_e) {
-                pendingSampleRequest = false;
-                return;
-            }
-            if (hoveredPatternId === patternId && timeSamplingEnabled) {
-                lastSampledTimeOutput = data.timeOutput;
-            }
-        } catch (error) {
-            console.error("Error sampling time output:", error);
+
+            return data;
         } finally {
-            pendingSampleRequest = false;
+            clearTimeout(timer);
         }
-    }
+    };
 
-    /**
-     * Format number for display
-     */
-    function fmt(v) {
-        return v.toFixed(3);
-    }
+    class EyecatcherDebug {
+        constructor() {
+            // Config
+            this.apiUrl = "";
+            this.getMouseDistance = () => 0;
+            this.getPatterns = () => new Map();
+            this.getSignalState = () => ({ time: true });
+            this.getGenomeForPattern = null;
+            this.getRepresentation = null;
 
-    // Public API
-    return {
-        /**
-         * Initialize the debug module
-         * @param {Object} config Configuration object
-         * @param {string} config.apiUrl Base API URL
-         * @param {Function} config.getMouseDistance Function(canvas) that returns mouse distance to canvas center
-         * @param {Function} config.getPatterns Function() that returns the patterns Map
-         * @param {Function} config.getSignalState Function() that returns signalState object
-         * @param {Function} config.getGenomeForPattern Async function(patternId) that returns genome JSON (for time-output)
-         */
-        init: function (config) {
-            apiUrl = config.apiUrl || "";
-            getMouseDistanceFn = config.getMouseDistance || (() => 0);
-            getPatternsMapFn = config.getPatterns || (() => new Map());
-            getSignalStateFn = config.getSignalState || (() => ({ time: true }));
-            getGenomeForPatternFn = config.getGenomeForPattern || null;
-            getRepresentationFn = config.getRepresentation || null;
+            // State
+            this.hoveredPatternId = null;
+            this.timeSamplingEnabled = false;
+            this.lastSampleTime = 0;
+            this.lastSampledTimeOutput = null;
+            this.pendingSampleRequest = false;
 
-            createDOM();
-            setupEventListeners();
-        },
+            // DOM
+            this.toggleBtn = null;
+            this.overlay = null;
+            this.el = {};
+        }
 
-        /**
-         * Update the debug overlay with current values
-         * @param {Object} state Current state
-         * @param {number} state.time Animation time (0-1)
-         * @param {number} state.mouseSpeed Mouse speed (0-1)
-         * @param {number} state.activity Activity level (0-1)
-         * @param {number} state.mouseX Mouse X position
-         * @param {number} state.mouseY Mouse Y position
-         */
-        update: function (state) {
-            // Skip if hidden
-            if (overlay.classList.contains("hidden")) return;
+        _createDOM() {
+            // Toggle button
+            this.toggleBtn = document.createElement("button");
+            this.toggleBtn.id = "debug-toggle";
+            this.toggleBtn.textContent = "Debug";
+            document.body.appendChild(this.toggleBtn);
 
-            const { time, mouseSpeed, activity, mouseX, mouseY } = state;
+            // Overlay container (from template)
+            this.overlay = document.createElement("div");
+            this.overlay.id = "debug-overlay";
+            this.overlay.className = "hidden";
+
+            const tpl = getEl("debug-overlay-tpl");
+            if (tpl?.content) this.overlay.appendChild(tpl.content.cloneNode(true));
+            document.body.appendChild(this.overlay);
+
+            // Cache element refs
+            this.el = {
+                time: getEl("dbg-time"),
+                mouseSpeed: getEl("dbg-mouseSpeed"),
+                activity: getEl("dbg-activity"),
+                mousePos: getEl("dbg-mousePos"),
+                patternId: getEl("dbg-pattern-id"),
+                mouseDist: getEl("dbg-mouseDist"),
+                timeOutput: getEl("dbg-v-time"),
+                sampleCheckbox: getEl("dbg-sample-time"),
+                sampleWarning: getEl("dbg-sample-warning"),
+                timeOutputSection: getEl("debug-time-output-section"),
+            };
+        }
+
+        _setOverlayVisible(visible) {
+            this.overlay.classList.toggle("hidden", !visible);
+            this.toggleBtn.classList.toggle("hidden", visible);
+        }
+
+        _setupEventListeners() {
+            this.toggleBtn.addEventListener("click", () =>
+                this._setOverlayVisible(true)
+            );
+
+            // Double click overlay to close (nice “get out of the way” gesture)
+            this.overlay.addEventListener("dblclick", () =>
+                this._setOverlayVisible(false)
+            );
+
+            const cb = this.el.sampleCheckbox;
+            if (cb) {
+                cb.addEventListener("change", (e) => {
+                    this.timeSamplingEnabled = Boolean(e.target.checked);
+                    this.el.sampleWarning?.classList.toggle(
+                        "hidden",
+                        !this.timeSamplingEnabled
+                    );
+                    if (!this.timeSamplingEnabled) this.lastSampledTimeOutput = null;
+                });
+            }
+        }
+
+        async _sampleTimeOutput(patternId, time, mouseSpeed, mouseDist, activity) {
+            if (this.pendingSampleRequest || !this.getGenomeForPattern) return;
+
+            this.pendingSampleRequest = true;
+            this.lastSampleTime = nowMs();
+
+            try {
+                const genome = await this.getGenomeForPattern(patternId);
+                if (!genome) return;
+
+                const data = await postJson(`${this.apiUrl}/time-output`, {
+                    individual: genome,
+                    time,
+                    mouseSpeed,
+                    mouseDist,
+                    activity,
+                });
+
+                if (this.hoveredPatternId === patternId && this.timeSamplingEnabled) {
+                    this.lastSampledTimeOutput = data?.timeOutput ?? null;
+                }
+            } catch (e) {
+                // Debug overlay should not be noisy; log once per failure type if you want later.
+                // console.warn("Time output sample failed:", e);
+            } finally {
+                this.pendingSampleRequest = false;
+            }
+        }
+
+        init(config) {
+            this.apiUrl = config.apiUrl || "";
+            this.getMouseDistance = config.getMouseDistance || (() => 0);
+            this.getPatterns = config.getPatterns || (() => new Map());
+            this.getSignalState = config.getSignalState || (() => ({ time: true }));
+            this.getGenomeForPattern = config.getGenomeForPattern || null;
+            this.getRepresentation = config.getRepresentation || null;
+
+            this._createDOM();
+            this._setupEventListeners();
+        }
+
+        update(state) {
+            if (!this.overlay || this.overlay.classList.contains("hidden")) return;
+
+            const { time, mouseSpeed, activity, mouseX, mouseY } = state || {};
 
             // Global signals
-            elements.time.textContent = fmt(time);
-            elements.mouseSpeed.textContent = fmt(mouseSpeed);
-            elements.activity.textContent = fmt(activity);
-            elements.mousePos.textContent = `${Math.round(mouseX)}, ${Math.round(mouseY)}`;
+            if (this.el.time) this.el.time.textContent = fmt(time);
+            if (this.el.mouseSpeed) this.el.mouseSpeed.textContent = fmt(mouseSpeed);
+            if (this.el.activity) this.el.activity.textContent = fmt(activity);
+            if (this.el.mousePos) {
+                const x = Number.isFinite(mouseX) ? Math.round(mouseX) : "-";
+                const y = Number.isFinite(mouseY) ? Math.round(mouseY) : "-";
+                this.el.mousePos.textContent = `${x}, ${y}`;
+            }
 
-            const timeEl = elements.timeOutput;
-            const representation = getRepresentationFn ? getRepresentationFn() : null;
-            const hasTimeOutput =
-                representation &&
-                representation.capabilities &&
-                representation.capabilities.timeOutput === true;
-            const signalState = getSignalStateFn();
-            const timeEnabled = hasTimeOutput && signalState && signalState.time;
+            const representation = this.getRepresentation
+                ? this.getRepresentation()
+                : null;
+            const hasTimeOutput = representation?.capabilities?.timeOutput === true;
+
+            const signalState = this.getSignalState ? this.getSignalState() : null;
+            const timeEnabled = hasTimeOutput && signalState?.time;
+
+            const timeEl = this.el.timeOutput;
 
             // Hovered pattern info
-            const patterns = getPatternsMapFn();
-            if (hoveredPatternId !== null && patterns.has(hoveredPatternId)) {
-                const runtime = patterns.get(hoveredPatternId);
-                const mouseDist = getMouseDistanceFn(runtime.canvas);
+            const patterns = this.getPatterns ? this.getPatterns() : new Map();
+            const id = this.hoveredPatternId;
 
-                elements.patternId.textContent = `#${hoveredPatternId}`;
-                elements.mouseDist.textContent = fmt(mouseDist);
+            if (id != null && patterns?.has?.(id)) {
+                const runtime = patterns.get(id);
+                const dist = runtime?.canvas
+                    ? this.getMouseDistance(runtime.canvas)
+                    : 0;
 
-                // Time output - only when representation has timeOutput capability
+                if (this.el.patternId) this.el.patternId.textContent = `#${id}`;
+                if (this.el.mouseDist) this.el.mouseDist.textContent = fmt(dist);
+
+                if (!timeEl) return;
+
                 if (!hasTimeOutput) {
                     timeEl.textContent = "-";
                     timeEl.classList.remove("disabled", "sampled");
-                } else if (timeSamplingEnabled && timeEnabled) {
-                    const now = performance.now();
+                    return;
+                }
+
+                // Live mode / sampling mode
+                if (this.timeSamplingEnabled && timeEnabled) {
+                    const tNow = nowMs();
                     if (
-                        !pendingSampleRequest &&
-                        now - lastSampleTime >= SAMPLE_INTERVAL_MS
+                        !this.pendingSampleRequest &&
+                        tNow - this.lastSampleTime >= SAMPLE_INTERVAL_MS
                     ) {
-                        sampleTimeOutput(
-                            hoveredPatternId,
-                            time,
-                            mouseSpeed,
-                            mouseDist,
-                            activity
-                        );
+                        this._sampleTimeOutput(id, time, mouseSpeed, dist, activity);
                     }
-                    if (lastSampledTimeOutput !== null) {
-                        timeEl.textContent = fmt(lastSampledTimeOutput);
+
+                    if (this.lastSampledTimeOutput != null) {
+                        timeEl.textContent = fmt(this.lastSampledTimeOutput);
                         timeEl.classList.remove("disabled");
                         timeEl.classList.add("sampled");
                     } else {
                         timeEl.textContent = "...";
                         timeEl.classList.remove("disabled", "sampled");
                     }
-                } else {
-                    timeEl.textContent = timeEnabled ? "unique" : "disabled";
-                    timeEl.classList.toggle("disabled", !timeEnabled);
-                    timeEl.classList.remove("sampled");
+                    return;
                 }
-            } else {
-                elements.patternId.textContent = "(hover to see)";
-                elements.mouseDist.textContent = "-";
+
+                timeEl.textContent = timeEnabled ? "unique" : "disabled";
+                timeEl.classList.toggle("disabled", !timeEnabled);
+                timeEl.classList.remove("sampled");
+                return;
+            }
+
+            // No hover
+            if (this.el.patternId) this.el.patternId.textContent = "(hover to see)";
+            if (this.el.mouseDist) this.el.mouseDist.textContent = "-";
+            if (timeEl) {
                 timeEl.textContent = "-";
                 timeEl.classList.remove("disabled", "sampled");
-                lastSampledTimeOutput = null;
             }
-        },
+            this.lastSampledTimeOutput = null;
+        }
 
-        /**
-         * Set the currently hovered pattern ID
-         * Called from main script on card mouseenter/mouseleave
-         * @param {number|null} id Pattern ID or null if not hovering
-         */
-        setHoveredPatternId: function (id) {
-            if (id !== hoveredPatternId) {
-                lastSampledTimeOutput = null; // Reset sample when changing patterns
-            }
-            hoveredPatternId = id;
-        },
+        setHoveredPatternId(id) {
+            if (id !== this.hoveredPatternId) this.lastSampledTimeOutput = null;
+            this.hoveredPatternId = id;
+        }
 
-        /**
-         * Get the currently hovered pattern ID
-         * @returns {number|null}
-         */
-        getHoveredPatternId: function () {
-            return hoveredPatternId;
-        },
+        getHoveredPatternId() {
+            return this.hoveredPatternId;
+        }
 
-        /**
-         * Show or hide time-output section based on representation capabilities.
-         * Call when representation changes (e.g. after load or addToGrid).
-         * @param {string|null} representationId - current representation id
-         */
-        updateForRepresentation: function (representationId) {
-            const representation = window.RepresentationRegistry.get(representationId);
-            const show =
-                representation &&
-                representation.capabilities &&
-                representation.capabilities.timeOutput === true;
-            const section = document.getElementById("debug-time-output-section");
-            if (section) section.style.display = show ? "" : "none";
-        },
-    };
+        updateForRepresentation(representationId) {
+            const rep = window.RepresentationRegistry?.get?.(representationId);
+            const show = rep?.capabilities?.timeOutput === true;
+            if (this.el.timeOutputSection)
+                this.el.timeOutputSection.style.display = show ? "" : "none";
+        }
+    }
+
+    if (typeof window !== "undefined") {
+        window.EyecatcherDebug = new EyecatcherDebug();
+    }
 })();
-if (typeof window !== "undefined") {
-    window.EyecatcherDebug = EyecatcherDebug;
-}

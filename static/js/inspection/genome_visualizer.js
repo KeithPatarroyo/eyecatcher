@@ -1,10 +1,5 @@
-/**
- * Genome visualization module: CPPN sidebar, vis.js graph, weight sliders.
- * Aligns with backend inspection/genome_visualizer.py.
- * Depends: vis (global from CDN), Toast (from toast.js).
- * Call init() with dependencies before use. Exposes: toggle(), close(), fitToView(), exportNetwork().
- */
-(function () {
+// genome_visualizer.js (minimal rewrite, replace whole file)
+(() => {
     "use strict";
 
     let _apiUrl = "";
@@ -13,10 +8,9 @@
     let _onGenomeUpdated = null;
     let _getCurrentPopulation = null;
 
-    const networkVisualizations = new Map();
-    const networkEdges = new Map();
-    const networkPhysicsState = new Map();
-    let currentNetworkId = null;
+    const networks = new Map(); // individualId -> vis.Network
+    const edgesById = new Map(); // individualId -> vis.DataSet
+    let currentId = null;
 
     const nodeColors = {
         input: {
@@ -36,135 +30,144 @@
         },
     };
 
-    function getNetworkTypesFromData(data) {
-        const types = new Set();
-        if (data.nodes) {
-            data.nodes.forEach(function (n) {
-                if (n.network) types.add(n.network);
-            });
-        }
-        if (data.connections) {
-            data.connections.forEach(function (c) {
-                if (c.network) types.add(c.network);
-            });
-        }
-        return types.size ? Array.from(types) : ["main"];
-    }
+    const hashString = (s) => {
+        let h = 0;
+        const str = String(s);
+        for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
+        return h;
+    };
 
-    function colorForNetwork(networkType, isPositive) {
-        let hash = 0;
-        const s = String(networkType);
-        for (let i = 0; i < s.length; i++) {
-            hash = s.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const hue = Math.abs(hash % 360);
+    const getNetworkTypesFromData = (data) => {
+        const types = new Set();
+        data?.nodes?.forEach((n) => n.network && types.add(n.network));
+        data?.connections?.forEach((c) => c.network && types.add(c.network));
+        return types.size ? [...types] : ["main"];
+    };
+
+    const colorForNetwork = (networkType, isPositive) => {
+        const hue = Math.abs(hashString(networkType) % 360);
         const sat = 60;
         const light = isPositive ? 45 : 55;
-        return "hsla(" + hue + "," + sat + "%," + light + "%,0.4)";
-    }
+        return `hsla(${hue},${sat}%,${light}%,0.4)`;
+    };
 
-    function opacityForNetwork(networkType) {
-        let hash = 0;
-        const s = String(networkType);
-        for (let i = 0; i < s.length; i++) {
-            hash = s.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        return 0.4 + (Math.abs(hash) % 60) / 100;
-    }
+    const opacityForNetwork = (networkType) =>
+        0.4 + (Math.abs(hashString(networkType)) % 60) / 100;
 
-    function extractNodeLabel(nodeId) {
+    const extractNodeLabel = (nodeId) => {
         const parts = String(nodeId).split("_");
-        if (parts.length >= 3) {
-            const type = parts[1];
-            const id = parts.slice(2).join("_");
-            if (type === "input") return "in" + id;
-            if (type === "output") return "out" + id;
-            if (type === "hidden") return "h" + id;
-            return id;
-        }
-        return nodeId;
-    }
+        if (parts.length < 3) return nodeId;
 
-    function visualizeNetworkInline(individualId, data, container) {
-        if (typeof vis === "undefined") {
-            Toast.show("Visualization error", "vis.js not loaded", "error");
+        const type = parts[1];
+        const id = parts.slice(2).join("_");
+        if (type === "input") return `in${id}`;
+        if (type === "output") return `out${id}`;
+        if (type === "hidden") return `h${id}`;
+        return id;
+    };
+
+    const updateNetworkEdgeWeight = (
+        individualId,
+        sourceId,
+        targetId,
+        newWeight,
+        networkType
+    ) => {
+        const edges = edgesById.get(individualId);
+        if (!edges) return;
+
+        const allEdges = edges.get();
+        for (const edge of allEdges) {
+            if (edge.from !== sourceId || edge.to !== targetId) continue;
+
+            edges.update({
+                id: edge.id,
+                width: Math.max(0.5, Math.abs(newWeight)),
+                color: colorForNetwork(networkType, newWeight > 0),
+                title: `${networkType.toUpperCase()} Weight: ${newWeight.toFixed(3)}`,
+            });
             return;
         }
-        try {
-            const vizContainer = container.querySelector(".network-visualization");
-            vizContainer.innerHTML = "";
+    };
 
-            const networkTypes = getNetworkTypesFromData(data);
-            const nodes = new vis.DataSet();
-            data.nodes.forEach(function (node) {
-                const color = nodeColors[node.type];
-                const network = node.network || networkTypes[0] || "main";
-                const opacity = opacityForNetwork(network);
-                const groupPrefix =
-                    node.group && node.type !== "hidden" ? "[" + node.group + "] " : "";
-                let label = groupPrefix + (node.label || node.id);
-                if (node.type === "hidden") {
-                    label +=
-                        "\nBias: " + (node.bias != null ? node.bias.toFixed(2) : "0");
-                    if (node.activation) label += "\n" + node.activation;
-                }
-                label += "\n[" + network + "]";
-                const hex = Math.round(opacity * 255)
-                    .toString(16)
-                    .padStart(2, "0");
-                const adjustedColor = {
-                    background: color.background + hex,
-                    border: color.border + hex,
-                    highlight: {
-                        background: color.highlight.background + hex,
-                        border: color.highlight.border + hex,
-                    },
-                };
-                const hoverTitle =
-                    (node.group ? node.group + ": " : "") +
-                    (node.label ? node.label.split("\n")[0] : node.id) +
-                    " (" +
-                    node.type +
-                    ")";
-                nodes.add({
-                    id: node.id,
-                    label: label,
-                    color: adjustedColor,
-                    shape: "dot",
-                    size: node.type === "hidden" ? 20 : 25,
-                    font: { size: 9, color: "#fff", face: "monospace" },
-                    physics: false,
-                    x: node.x || undefined,
-                    y: node.y || undefined,
-                    title: hoverTitle,
-                });
+    const visualizeNetworkInline = (individualId, data, sidebar) => {
+        if (typeof vis === "undefined") {
+            window.Toast?.show?.("Visualization error", "vis.js not loaded", "error");
+            return;
+        }
+
+        const vizContainer = sidebar.querySelector(".network-visualization");
+        if (!vizContainer) return;
+        vizContainer.innerHTML = "";
+
+        const networkTypes = getNetworkTypesFromData(data);
+
+        const nodes = new vis.DataSet();
+        (data?.nodes ?? []).forEach((node) => {
+            const base = nodeColors[node.type] ?? nodeColors.hidden;
+            const network = node.network || networkTypes[0] || "main";
+            const opacity = opacityForNetwork(network);
+            const hex = Math.round(opacity * 255)
+                .toString(16)
+                .padStart(2, "0");
+
+            const groupPrefix =
+                node.group && node.type !== "hidden" ? `[${node.group}] ` : "";
+            let label = groupPrefix + (node.label || node.id);
+
+            if (node.type === "hidden") {
+                label += `\nBias: ${(node.bias ?? 0).toFixed(2)}`;
+                if (node.activation) label += `\n${node.activation}`;
+            }
+            label += `\n[${network}]`;
+
+            const adjusted = {
+                background: base.background + hex,
+                border: base.border + hex,
+                highlight: {
+                    background: base.highlight.background + hex,
+                    border: base.highlight.border + hex,
+                },
+            };
+
+            const hoverTitle = `${node.group ? `${node.group}: ` : ""}${node.label ? node.label.split("\n")[0] : node.id} (${node.type})`;
+
+            nodes.add({
+                id: node.id,
+                label,
+                color: adjusted,
+                shape: "dot",
+                size: node.type === "hidden" ? 20 : 25,
+                font: { size: 9, color: "#fff", face: "monospace" },
+                physics: false,
+                x: node.x || undefined,
+                y: node.y || undefined,
+                title: hoverTitle,
             });
+        });
 
-            const edges = new vis.DataSet();
-            data.connections.forEach(function (conn) {
-                const network = conn.network || networkTypes[0] || "main";
-                const width = Math.max(0.5, Math.abs(conn.weight));
-                const isPositive = conn.weight > 0;
-                const color = colorForNetwork(network, isPositive);
-                edges.add({
-                    from: conn.source,
-                    to: conn.target,
-                    label: "",
-                    width: width,
-                    color: color,
-                    font: { size: 8, color: "#999" },
-                    title: network.toUpperCase() + " Weight: " + conn.weight.toFixed(3),
-                    arrows: "to",
-                    smooth: { type: "continuous" },
-                });
+        const edges = new vis.DataSet();
+        (data?.connections ?? []).forEach((conn) => {
+            const network = conn.network || networkTypes[0] || "main";
+            edges.add({
+                from: conn.source,
+                to: conn.target,
+                width: Math.max(0.5, Math.abs(conn.weight)),
+                color: colorForNetwork(network, conn.weight > 0),
+                title: `${network.toUpperCase()} Weight: ${conn.weight.toFixed(3)}`,
+                arrows: "to",
+                smooth: { type: "continuous" },
             });
+        });
 
-            const options = {
+        const network = new vis.Network(
+            vizContainer,
+            { nodes, edges },
+            {
                 physics: { enabled: false },
                 layout: { randomSeed: 42, improvedLayout: true },
                 interaction: {
                     hover: true,
-                    navigationButtons: false,
                     keyboard: false,
                     zoomView: true,
                     dragView: true,
@@ -178,92 +181,95 @@
                         forceDirection: "vertical",
                     },
                 },
-            };
-
-            const network = new vis.Network(
-                vizContainer,
-                { nodes: nodes, edges: edges },
-                options
-            );
-            networkVisualizations.set(individualId, network);
-            networkEdges.set(individualId, edges);
-            networkPhysicsState.set(individualId, false);
-
-            if (window.NetworkWeightSliders)
-                window.NetworkWeightSliders.setupWeightSliders(individualId, data);
-
-            network.on("selectEdge", function (params) {
-                if (params.edges.length > 0) {
-                    const edge = edges.get(params.edges[0]);
-                    if (edge && window.NetworkWeightSliders)
-                        window.NetworkWeightSliders.scrollToWeightSlider(
-                            edge.from,
-                            edge.to
-                        );
-                }
-            });
-
-            setTimeout(function () {
-                const net = networkVisualizations.get(individualId);
-                if (net) net.fit({ animation: { duration: 500 } });
-            }, 100);
-        } catch (err) {
-            Toast.show(
-                "Visualization error",
-                err.message || "Failed to visualize network",
-                "error"
-            );
-        }
-    }
-
-    function updateNetworkEdgeWeight(
-        individualId,
-        sourceId,
-        targetId,
-        newWeight,
-        networkType
-    ) {
-        const edges = networkEdges.get(individualId);
-        if (!edges) return;
-        const allEdges = edges.get();
-        for (let i = 0; i < allEdges.length; i++) {
-            const edge = allEdges[i];
-            if (edge.from === sourceId && edge.to === targetId) {
-                const width = Math.max(0.5, Math.abs(newWeight));
-                const isPositive = newWeight > 0;
-                const color = colorForNetwork(networkType, isPositive);
-                edges.update({
-                    id: edge.id,
-                    width: width,
-                    color: color,
-                    title:
-                        networkType.toUpperCase() + " Weight: " + newWeight.toFixed(3),
-                });
-                break;
             }
-        }
-    }
+        );
 
-    async function toggle(individualId, _card) {
-        currentNetworkId = individualId;
+        networks.set(individualId, network);
+        edgesById.set(individualId, edges);
+
+        window.NetworkWeightSliders?.setupWeightSliders?.(individualId, data);
+
+        network.on("selectEdge", (params) => {
+            const edgeId = params?.edges?.[0];
+            if (!edgeId) return;
+            const edge = edges.get(edgeId);
+            if (!edge) return;
+            window.NetworkWeightSliders?.scrollToWeightSlider?.(edge.from, edge.to);
+        });
+
+        setTimeout(
+            () => networks.get(individualId)?.fit?.({ animation: { duration: 500 } }),
+            100
+        );
+    };
+
+    const close = () => {
+        const sidebar = document.getElementById("network-sidebar");
+        sidebar?.classList.remove("open");
+
+        if (currentId && networks.has(currentId)) {
+            networks.get(currentId).destroy();
+            networks.delete(currentId);
+            edgesById.delete(currentId);
+        }
+        currentId = null;
+    };
+
+    const fitToView = () =>
+        currentId && networks.get(currentId)?.fit?.({ animation: { duration: 500 } });
+
+    const exportNetwork = () => {
+        if (!currentId) return;
+        const network = networks.get(currentId);
+        if (!network) return;
+
+        const data = network.body.data;
+        const exportData = {
+            id: currentId,
+            nodes: data.nodes.get(),
+            edges: data.edges.get(),
+        };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+            type: "application/json",
+        });
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `network_${currentId}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const toggle = async (individualId) => {
         const sidebar = document.getElementById("network-sidebar");
         if (!sidebar) return;
-        if (typeof _getGenomeForPattern !== "function") {
-            Toast.show("Network error", "Not initialized", "error");
+
+        if (sidebar.classList.contains("open") && currentId === individualId) {
+            close();
             return;
         }
+
+        currentId = individualId;
+
+        if (typeof _getGenomeForPattern !== "function") {
+            window.Toast?.show?.("Network error", "Not initialized", "error");
+            return;
+        }
+
         const genome = await _getGenomeForPattern(individualId);
         if (!genome) {
-            Toast.show(
+            window.Toast?.show?.(
                 "Network error",
                 "Could not find genome data for this pattern",
                 "error"
             );
             return;
         }
+
         try {
             const data = await window.ApiClient.apiFetch(
-                _apiUrl + "/network",
+                `${_apiUrl}/api/network`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -271,118 +277,82 @@
                 },
                 "Network error"
             );
+
             const infoPanel = sidebar.querySelector(".network-info-panel");
             if (infoPanel) {
-                const networkTypes = getNetworkTypesFromData(data);
-                const nodeCounts = networkTypes.map(function (t) {
-                    return (
-                        t.substring(0, 1).toUpperCase() +
-                        ":" +
-                        data.nodes.filter(function (n) {
-                            return n.network === t && n.type === "hidden";
-                        }).length
-                    );
-                });
-                const connCounts = networkTypes.map(function (t) {
-                    return (
-                        t.substring(0, 1).toUpperCase() +
-                        ":" +
-                        data.connections.filter(function (c) {
-                            return c.network === t;
-                        }).length
-                    );
-                });
-                const nodesEl = infoPanel.querySelector("[data-nodes]");
-                const connsEl = infoPanel.querySelector("[data-connections]");
-                if (nodesEl) nodesEl.textContent = nodeCounts.join(" ");
-                if (connsEl) connsEl.textContent = connCounts.join(" ");
+                const types = getNetworkTypesFromData(data);
+                const nodeCounts = types.map(
+                    (t) =>
+                        `${t.substring(0, 1).toUpperCase()}:${
+                            (data.nodes ?? []).filter(
+                                (n) => n.network === t && n.type === "hidden"
+                            ).length
+                        }`
+                );
+                const connCounts = types.map(
+                    (t) =>
+                        `${t.substring(0, 1).toUpperCase()}:${
+                            (data.connections ?? []).filter((c) => c.network === t)
+                                .length
+                        }`
+                );
+
+                infoPanel
+                    .querySelector("[data-nodes]")
+                    ?.replaceChildren(document.createTextNode(nodeCounts.join(" ")));
+                infoPanel
+                    .querySelector("[data-connections]")
+                    ?.replaceChildren(document.createTextNode(connCounts.join(" ")));
             }
+
             visualizeNetworkInline(individualId, data, sidebar);
             sidebar.classList.add("open");
         } catch (err) {
-            Toast.show(
+            window.Toast?.show?.(
                 "Network error",
-                err.message || "Failed to load network",
+                err?.message || "Failed to load network",
                 "error"
             );
         }
-    }
+    };
 
-    function close() {
-        const sidebar = document.getElementById("network-sidebar");
-        if (sidebar) sidebar.classList.remove("open");
-        if (currentNetworkId && networkVisualizations.has(currentNetworkId)) {
-            networkVisualizations.get(currentNetworkId).destroy();
-            networkVisualizations.delete(currentNetworkId);
-            networkEdges.delete(currentNetworkId);
-        }
-        currentNetworkId = null;
-    }
-
-    function fitToView() {
-        if (currentNetworkId) {
-            const network = networkVisualizations.get(currentNetworkId);
-            if (network) network.fit({ animation: { duration: 500 } });
-        }
-    }
-
-    function exportNetwork() {
-        if (!currentNetworkId) return;
-        const network = networkVisualizations.get(currentNetworkId);
-        if (!network) return;
-        const data = network.body.data;
-        const exportData = {
-            id: currentNetworkId,
-            nodes: data.nodes.get(),
-            edges: data.edges.get(),
-        };
-        const json = JSON.stringify(exportData, null, 2);
-        const blob = new Blob([json], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "network_" + currentNetworkId + ".json";
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    function init(options) {
-        options = options || {};
+    const init = (options = {}) => {
         _apiUrl = options.apiUrl || "";
         _getGenomeForPattern = options.getGenomeForPattern || null;
         _updatePatternRule = options.updatePatternRule || null;
         _onGenomeUpdated = options.onGenomeUpdated || null;
         _getCurrentPopulation = options.getCurrentPopulation || null;
 
-        if (window.NetworkWeightSliders) {
-            window.NetworkWeightSliders.init({
-                apiUrl: _apiUrl,
-                getGenomeForPattern: _getGenomeForPattern,
-                updatePatternRule: _updatePatternRule,
-                onGenomeUpdated: _onGenomeUpdated,
-                getCurrentPopulation: _getCurrentPopulation,
-                updateNetworkEdgeWeight: updateNetworkEdgeWeight,
-                getNetworkTypesFromData: getNetworkTypesFromData,
-                extractNodeLabel: extractNodeLabel,
-            });
-        }
+        window.NetworkWeightSliders?.init?.({
+            apiUrl: _apiUrl,
+            getGenomeForPattern: _getGenomeForPattern,
+            updatePatternRule: _updatePatternRule,
+            onGenomeUpdated: _onGenomeUpdated,
+            getCurrentPopulation: _getCurrentPopulation,
+            updateNetworkEdgeWeight,
+            getNetworkTypesFromData,
+            extractNodeLabel,
+        });
 
-        const closeBtn = document.getElementById("network-sidebar-close");
-        if (closeBtn) closeBtn.addEventListener("click", close);
-        const fitBtn = document.getElementById("network-fit-btn");
-        if (fitBtn) fitBtn.addEventListener("click", fitToView);
-        const exportBtn = document.getElementById("network-export-btn");
-        if (exportBtn) exportBtn.addEventListener("click", exportNetwork);
-    }
+        document
+            .getElementById("network-sidebar-close")
+            ?.addEventListener("click", close);
+        document
+            .getElementById("network-fit-btn")
+            ?.addEventListener("click", fitToView);
+        document
+            .getElementById("network-export-btn")
+            ?.addEventListener("click", exportNetwork);
+    };
 
     window.NetworkVisualizer = {
-        toggle: toggle,
-        close: close,
-        fitToView: fitToView,
-        exportNetwork: exportNetwork,
-        init: init,
+        toggle,
+        close,
+        fitToView,
+        exportNetwork,
+        init,
         get currentId() {
-            return currentNetworkId;
+            return currentId;
         },
     };
 })();

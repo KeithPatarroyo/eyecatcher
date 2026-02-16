@@ -1,266 +1,203 @@
 /**
  * Community UI: entry point. Delegates to CommunityBrowse, CommunitySubmit, CommunityAdmin.
- * Handles community pattern submission, browsing, and admin moderation.
+ * Exposes: CommunityUI.init + handler functions used by HTML onclick.
  */
-(function () {
+(() => {
     "use strict";
 
-    let _apiUrl = "";
-    let _loadFromStatelessGenomes = null;
-    let _addToGrid = null;
-    let _getGenomeForPattern = null;
-    let _patternRenderer = null;
-    let _viewerControls = null;
-    let _communityPatternsList = [];
-    let _submitCommunityGenome = null;
-    let _adminKey = "";
+    let apiUrl = "";
+    let addToGrid = null;
+    let getGenomeForPattern = null;
+    let patternRenderer = null;
+    let viewerControls = null;
 
-    function init(options) {
-        _apiUrl = options.apiUrl || "";
-        _loadFromStatelessGenomes = options.loadFromStatelessGenomes;
-        _addToGrid = options.addToGrid;
-        _getGenomeForPattern = options.getGenomeForPattern;
-        _patternRenderer = options.patternRenderer || null;
-        _viewerControls = options.viewerControls || null;
-    }
+    let communityPatterns = [];
+    let submitGenome = null;
+    let adminKey = "";
 
-    function delegate(moduleName, methodName, getContext) {
-        var M = window[moduleName];
-        if (!M) return;
-        M[methodName](getContext());
-    }
+    const showLoading = (show) => window.showLoading?.(Boolean(show));
+    const toast = (t, m, type) => window.Toast?.show?.(t, m, type);
 
-    function showLoading(show) {
-        if (typeof window.showLoading === "function") {
-            window.showLoading(show);
-        }
-    }
+    const init = (options) => {
+        apiUrl = options.apiUrl || "";
+        addToGrid = options.addToGrid || null;
+        getGenomeForPattern = options.getGenomeForPattern || null;
+        patternRenderer = options.patternRenderer || null;
+        viewerControls = options.viewerControls || null;
+    };
 
-    // ----- Submit (delegate to CommunitySubmit) -----
-    function openSubmitCommunityModal(patternId) {
-        var Submit = window.CommunitySubmit;
-        if (!Submit) return;
-        Submit.openSubmitCommunityModal(patternId, {
-            getGenomeForPattern: _getGenomeForPattern,
-            setSubmitGenome: function (g) {
-                _submitCommunityGenome = g;
-            },
-            getSubmitGenome: function () {
-                return _submitCommunityGenome;
-            },
-            showLoading: showLoading,
+    // ----- Submit -----
+    const openSubmitCommunityModal = (patternId) =>
+        window.CommunitySubmit?.openSubmitCommunityModal?.(patternId, {
+            getGenomeForPattern,
+            setSubmitGenome: (g) => (submitGenome = g),
+            getSubmitGenome: () => submitGenome,
+            showLoading,
         });
-    }
 
-    function closeSubmitCommunityModal() {
-        delegate("CommunitySubmit", "closeSubmitCommunityModal", function () {
-            return {
-                setSubmitGenome: function (g) {
-                    _submitCommunityGenome = g;
-                },
-            };
+    const closeSubmitCommunityModal = () =>
+        window.CommunitySubmit?.closeSubmitCommunityModal?.({
+            setSubmitGenome: (g) => (submitGenome = g),
         });
-    }
 
-    function submitCommunityForm() {
-        delegate("CommunitySubmit", "submitCommunityForm", function () {
-            return {
-                getSubmitGenome: function () {
-                    return _submitCommunityGenome;
-                },
-                apiUrl: _apiUrl,
-            };
+    const submitCommunityForm = () =>
+        window.CommunitySubmit?.submitCommunityForm?.({
+            apiUrl,
+            getSubmitGenome: () => submitGenome,
         });
-    }
 
-    // ----- Browse (delegate to CommunityBrowse) -----
-    async function onNewFromCommunityClick() {
+    // ----- Browse -----
+    const selectedGenomes = () => {
+        const ul = document.getElementById("community-list");
+        if (!ul) return [];
+        return Array.from(
+            ul.querySelectorAll('.community-item input[type="checkbox"]:checked')
+        )
+            .map((cb) => cb.closest(".community-item"))
+            .map((li) => communityPatterns[parseInt(li.dataset.idx, 10)])
+            .filter(Boolean)
+            .map((p) => ({ ...(p.individual || p.genome), key: p.id }));
+    };
+
+    const onCommunityLoadSelected = () => {
+        const genomes = selectedGenomes();
+        if (!genomes.length)
+            return toast("Community", "No patterns selected.", "error");
+        document.getElementById("community-list-modal")?.classList.remove("show");
+        addToGrid?.(genomes);
+    };
+
+    const onCommunityLoad12 = () => {
+        const n = window.EvolutionConfig?.DEFAULT_POPULATION_SIZE || 12;
+        const genomes = (communityPatterns || [])
+            .slice(0, n)
+            .map((p) => ({ ...(p.individual || p.genome), key: p.id }));
+        document.getElementById("community-list-modal")?.classList.remove("show");
+        addToGrid?.(genomes);
+    };
+
+    const setAllChecks = (checked) => {
+        document
+            .querySelectorAll('#community-list .community-item input[type="checkbox"]')
+            .forEach((cb) => (cb.checked = checked));
+    };
+
+    const onCommunitySelectAll = () => setAllChecks(true);
+    const onCommunityDeselectAll = () => setAllChecks(false);
+
+    const onNewFromCommunityClick = async () => {
         const Browse = window.CommunityBrowse;
         const Utils = window.Utils;
         if (!Browse) return;
+
         showLoading(true);
         try {
-            const d = await window.ApiClient.apiFetch(
-                _apiUrl + "/community",
-                {},
-                "Failed to load community"
-            );
-            _communityPatternsList = d.patterns || [];
+            const d = window.ApiClient?.communityList
+                ? await window.ApiClient.communityList()
+                : await (await fetch(`${apiUrl}/api/community`)).json();
+
+            communityPatterns = d.patterns || [];
             const ul = document.getElementById("community-list");
             if (!ul) return;
+
+            const toggle = (id, show) =>
+                document.getElementById(id)?.classList.toggle("hidden", !show);
+
+            const hasAny = communityPatterns.length > 0;
+            toggle("community-load-selected-btn", hasAny);
+            toggle("community-load-12-btn", hasAny);
+            toggle("community-select-all-btn", hasAny);
+            toggle("community-deselect-all-btn", hasAny);
+
             ul.innerHTML = "";
-            const loadSelectedBtn = document.getElementById(
-                "community-load-selected-btn"
-            );
-            const load12Btn = document.getElementById("community-load-12-btn");
-            const selectAllBtn = document.getElementById("community-select-all-btn");
-            const deselectAllBtn = document.getElementById(
-                "community-deselect-all-btn"
-            );
-            if (!_communityPatternsList.length) {
+            if (!hasAny) {
                 ul.appendChild(
-                    Utils.createListEmptyEl("li", "No approved community patterns yet.")
+                    Utils?.createListEmptyEl
+                        ? Utils.createListEmptyEl(
+                              "li",
+                              "No approved community patterns yet."
+                          )
+                        : document.createElement("li")
                 );
-                if (loadSelectedBtn) loadSelectedBtn.classList.add("hidden");
-                if (load12Btn) load12Btn.classList.add("hidden");
-                if (selectAllBtn) selectAllBtn.classList.add("hidden");
-                if (deselectAllBtn) deselectAllBtn.classList.add("hidden");
+                if (!Utils?.createListEmptyEl)
+                    ul.firstChild.textContent = "No approved community patterns yet.";
             } else {
-                if (loadSelectedBtn) loadSelectedBtn.classList.remove("hidden");
-                if (load12Btn) load12Btn.classList.remove("hidden");
-                if (selectAllBtn) selectAllBtn.classList.remove("hidden");
-                if (deselectAllBtn) deselectAllBtn.classList.remove("hidden");
                 const displayByKey = await Browse.fetchDisplayDataForList(
-                    _communityPatternsList,
+                    communityPatterns,
                     (pat) => ({ ...(pat.individual || pat.genome), key: pat.id }),
                     (pat) => pat.id
                 );
+
                 Browse.renderListWithPreviews(
                     ul,
-                    _communityPatternsList,
+                    communityPatterns,
                     displayByKey,
                     (pat) => pat.id,
                     (li, pat, canvas, displayItem) =>
-                        Browse.buildPatternListEntry(
-                            li,
-                            pat,
-                            canvas,
-                            displayItem,
-                            {
-                                itemClass: "community-item",
-                                dataset: {
-                                    idx: String(_communityPatternsList.indexOf(pat)),
-                                },
-                                prependNodes: (listItem) => {
-                                    const checkWrap = document.createElement("div");
-                                    checkWrap.className = "check-wrap";
-                                    const checkbox = document.createElement("input");
-                                    checkbox.type = "checkbox";
-                                    checkbox.checked = false;
-                                    checkWrap.appendChild(checkbox);
-                                    listItem.appendChild(checkWrap);
-                                },
-                                infoContent: (p) =>
-                                    (p.name || "Unnamed") + " by " + (p.creator || "?"),
+                        Browse.buildPatternListEntry(li, pat, canvas, displayItem, {
+                            itemClass: "community-item",
+                            dataset: { idx: String(communityPatterns.indexOf(pat)) },
+                            prependNodes: (row) => {
+                                const w = document.createElement("div");
+                                w.className = "check-wrap";
+                                const cb = document.createElement("input");
+                                cb.type = "checkbox";
+                                cb.checked = false;
+                                w.appendChild(cb);
+                                row.appendChild(w);
                             },
-                            _patternRenderer
-                        ),
-                    _patternRenderer,
-                    _viewerControls
+                            infoContent: (p) =>
+                                `${p.name || "Unnamed"} by ${p.creator || "?"}`,
+                        }),
+                    patternRenderer,
+                    viewerControls
                 );
             }
-            document.getElementById("community-list-modal").classList.add("show");
+
+            document.getElementById("community-list-modal")?.classList.add("show");
         } catch (e) {
-            window.Toast.error("Error: " + Utils.formatApiError(e, "Request failed"));
+            const msg = Utils?.formatApiError
+                ? Utils.formatApiError(e, "Request failed")
+                : String(e);
+            toast("Community load failed", msg, "error");
         } finally {
             showLoading(false);
         }
-    }
+    };
 
-    function getCommunitySelectedGenomes() {
-        const ul = document.getElementById("community-list");
-        if (!ul) return [];
-        const checked = ul.querySelectorAll(
-            '.community-item input[type="checkbox"]:checked'
-        );
-        const genomes = [];
-        checked.forEach((cb) => {
-            const li = cb.closest(".community-item");
-            const idx = parseInt(li.dataset.idx, 10);
-            const pat = _communityPatternsList[idx];
-            if (pat) genomes.push({ ...(pat.individual || pat.genome), key: pat.id });
+    // ----- Admin -----
+    const openAdminModal = () =>
+        window.CommunityAdmin?.openAdminModal?.({
+            setAdminKey: (k) => (adminKey = k),
         });
-        return genomes;
-    }
 
-    function onCommunityLoadSelected() {
-        const genomes = getCommunitySelectedGenomes();
-        if (!genomes.length) {
-            window.Toast.error("No patterns selected.");
-            return;
-        }
-        document.getElementById("community-list-modal").classList.remove("show");
-        if (_addToGrid) _addToGrid(genomes);
-    }
-
-    function onCommunityLoad12() {
-        const n =
-            (window.EvolutionConfig &&
-                window.EvolutionConfig.DEFAULT_POPULATION_SIZE) ||
-            12;
-        const first12 = _communityPatternsList
-            .slice(0, n)
-            .map((p) => ({ ...(p.individual || p.genome), key: p.id }));
-        document.getElementById("community-list-modal").classList.remove("show");
-        if (_addToGrid) _addToGrid(first12);
-    }
-
-    function onCommunitySelectAll() {
-        document
-            .querySelectorAll('#community-list .community-item input[type="checkbox"]')
-            .forEach((cb) => {
-                cb.checked = true;
-            });
-    }
-
-    function onCommunityDeselectAll() {
-        document
-            .querySelectorAll('#community-list .community-item input[type="checkbox"]')
-            .forEach((cb) => {
-                cb.checked = false;
-            });
-    }
-
-    // ----- Admin (delegate to CommunityAdmin) -----
-    function openAdminModal() {
-        delegate("CommunityAdmin", "openAdminModal", function () {
-            return {
-                setAdminKey: function (k) {
-                    _adminKey = k;
-                },
-            };
+    const closeAdminModal = () =>
+        window.CommunityAdmin?.closeAdminModal?.({
+            setAdminKey: (k) => (adminKey = k),
         });
-    }
 
-    function closeAdminModal() {
-        delegate("CommunityAdmin", "closeAdminModal", function () {
-            return {
-                setAdminKey: function (k) {
-                    _adminKey = k;
-                },
-            };
+    const submitAdminKey = () =>
+        window.CommunityAdmin?.submitAdminKey?.({
+            apiUrl,
+            getAdminKey: () => adminKey,
+            setAdminKey: (k) => (adminKey = k),
+            patternRenderer,
+            viewerControls,
         });
-    }
 
-    function submitAdminKey() {
-        delegate("CommunityAdmin", "submitAdminKey", function () {
-            return {
-                setAdminKey: function (k) {
-                    _adminKey = k;
-                },
-                getAdminKey: function () {
-                    return _adminKey;
-                },
-                apiUrl: _apiUrl,
-                patternRenderer: _patternRenderer,
-                viewerControls: _viewerControls,
-            };
-        });
-    }
-
+    // Expose for HTML onclick
     window.CommunityUI = {
-        init: init,
-        openSubmitCommunityModal: openSubmitCommunityModal,
-        closeSubmitCommunityModal: closeSubmitCommunityModal,
-        submitCommunityForm: submitCommunityForm,
-        onNewFromCommunityClick: onNewFromCommunityClick,
-        getCommunitySelectedGenomes: getCommunitySelectedGenomes,
-        onCommunityLoadSelected: onCommunityLoadSelected,
-        onCommunityLoad12: onCommunityLoad12,
-        onCommunitySelectAll: onCommunitySelectAll,
-        onCommunityDeselectAll: onCommunityDeselectAll,
-        openAdminModal: openAdminModal,
-        closeAdminModal: closeAdminModal,
-        submitAdminKey: submitAdminKey,
+        init,
+        openSubmitCommunityModal,
+        closeSubmitCommunityModal,
+        submitCommunityForm,
+        onNewFromCommunityClick,
+        onCommunityLoadSelected,
+        onCommunityLoad12,
+        onCommunitySelectAll,
+        onCommunityDeselectAll,
+        openAdminModal,
+        closeAdminModal,
+        submitAdminKey,
     };
 })();
