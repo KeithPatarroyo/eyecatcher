@@ -50,7 +50,6 @@
         branchName,
         parentId,
         fitnessData,
-        _apiFetch,
         representationId
     ) => {
         const body = {
@@ -69,12 +68,23 @@
                 : {}),
         };
 
+        const api = window.ApiClient;
+        if (api) {
+            const result = await api.request(
+                `${apiUrl}/api/genealogy/save-population`,
+                {
+                    method: "POST",
+                    body,
+                }
+            );
+            if (!result.ok) throw new Error(result.error || "Save failed");
+            return result.data;
+        }
         const res = await fetch(`${apiUrl}/api/genealogy/save-population`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
         });
-
         const text = await res.text();
         const data = text ? JSON.parse(text) : null;
         if (!res.ok) {

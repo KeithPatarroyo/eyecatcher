@@ -108,5 +108,28 @@
         },
     };
 
+    /**
+     * Single accessor for app config. Always returns the same object; use assertConfig() at startup to validate.
+     */
+    const getConfig = () => EvolutionConfig;
+
+    /**
+     * Call once at app init. Logs loudly if required config is missing; does not throw so app can still run with defaults.
+     */
+    const assertConfig = () => {
+        if (!unified.defaults) {
+            console.error(
+                "[EvolutionConfig] Defaults not loaded. Run 'make generate' or ensure config.generated.js is loaded."
+            );
+        }
+        if (!signalsByRepresentation || typeof signalsByRepresentation !== "object") {
+            console.warn(
+                "[EvolutionConfig] Signal config missing or wrong shape. Signal toggles may be empty."
+            );
+        }
+    };
+
     window.EvolutionConfig = EvolutionConfig;
+    window.getConfig = getConfig;
+    window.assertConfig = assertConfig;
 })();

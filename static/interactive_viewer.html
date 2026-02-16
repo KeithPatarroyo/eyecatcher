@@ -29,6 +29,7 @@
                 tabindex="0"
                 title="Show help"
                 aria-label="Show help"
+                data-action="help-toggle"
                 >?</span
             >
         </div>
@@ -51,6 +52,7 @@
                     tabindex="0"
                     aria-haspopup="true"
                     aria-expanded="false"
+                    data-action="start-fresh-toggle"
                     >Start Fresh ▾</span
                 >
                 <div
@@ -110,6 +112,7 @@
                         tabindex="0"
                         title="Decrease"
                         aria-label="Decrease population size"
+                        data-action="population-size-down"
                         >−</span
                     >
                     <input
@@ -129,6 +132,7 @@
                         tabindex="0"
                         title="Increase"
                         aria-label="Increase population size"
+                        data-action="population-size-up"
                         >+</span
                     >
                 </span>
@@ -165,6 +169,7 @@
                     aria-expanded="false"
                     title="Settings"
                     aria-label="Open settings"
+                    data-action="settings-toggle"
                     >⚙ Settings</span
                 >
             </span>
@@ -241,7 +246,7 @@
                         title="Probability of crossover vs mutate-one-parent (0–1)"
                     />
                 </div>
-                <button type="button" id="experiment-params-apply" class="pop-btn">
+                <button type="button" id="experiment-params-apply" class="pop-btn" data-action="experiment-params-apply">
                     Apply
                 </button>
             </div>
@@ -335,6 +340,7 @@
                     type="button"
                     id="settings-moderate-btn"
                     class="pop-btn moderate-btn"
+                    data-action="admin-modal"
                 >
                     Moderate
                 </button>
@@ -452,7 +458,7 @@
 
         <!-- Network Sidebar (representation network graph) -->
         <div id="network-sidebar" class="network-container">
-            <button class="network-container-close" id="network-sidebar-close">
+            <button class="network-container-close" id="network-sidebar-close" data-network-action="close">
                 Close
             </button>
             <div class="network-labels-header">
@@ -484,8 +490,8 @@
             </div>
             <div class="network-visualization"></div>
             <div class="network-inline-controls">
-                <button id="network-fit-btn">Fit View</button>
-                <button id="network-export-btn">Export JSON</button>
+                <button id="network-fit-btn" data-network-action="fit">Fit View</button>
+                <button id="network-export-btn" data-network-action="export">Export JSON</button>
             </div>
             <div class="weight-adjustment-panel hidden" id="weight-adjustment-panel">
                 <div class="weight-adjustment-title">Adjust Connection Weights</div>
@@ -597,6 +603,7 @@
 
         <!-- Load order: lib (support) → config (unified EyecatcherConfig) → evolution → app. See static/js/README.md. -->
         <script src="js/lib/utils.js"></script>
+        <script src="js/lib/dom.js"></script>
         <script src="js/lib/api_client.js"></script>
         <script src="js/config.generated.js"></script>
         <script src="js/evolution/experiment_config.js"></script>

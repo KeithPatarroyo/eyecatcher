@@ -8,8 +8,10 @@
     let _onGenomeUpdated = null;
     let _getCurrentPopulation = null;
 
-    const networks = new Map(); // individualId -> vis.Network
-    const edgesById = new Map(); // individualId -> vis.DataSet
+    /** Inspection state: individualId -> vis.Network (not canonical; UI-only). */
+    const networks = new Map();
+    /** Inspection state: individualId -> vis.DataSet edges (for weight updates). */
+    const edgesById = new Map();
     let currentId = null;
 
     const nodeColors = {
@@ -204,8 +206,8 @@
     };
 
     const close = () => {
-        const sidebar = document.getElementById("network-sidebar");
-        sidebar?.classList.remove("open");
+        const sidebar = DOM.byId("network-sidebar");
+        if (sidebar) DOM.toggleClass(sidebar, "open", false);
 
         if (currentId && networks.has(currentId)) {
             networks.get(currentId).destroy();
@@ -242,7 +244,7 @@
     };
 
     const toggle = async (individualId) => {
-        const sidebar = document.getElementById("network-sidebar");
+        const sidebar = DOM.byId("network-sidebar");
         if (!sidebar) return;
 
         if (sidebar.classList.contains("open") && currentId === individualId) {
@@ -306,7 +308,7 @@
             }
 
             visualizeNetworkInline(individualId, data, sidebar);
-            sidebar.classList.add("open");
+            DOM.toggleClass(sidebar, "open", true);
         } catch (err) {
             window.Toast?.show?.(
                 "Network error",
@@ -334,15 +336,15 @@
             extractNodeLabel,
         });
 
-        document
-            .getElementById("network-sidebar-close")
-            ?.addEventListener("click", close);
-        document
-            .getElementById("network-fit-btn")
-            ?.addEventListener("click", fitToView);
-        document
-            .getElementById("network-export-btn")
-            ?.addEventListener("click", exportNetwork);
+        const sidebar = DOM.byId("network-sidebar");
+        if (sidebar) {
+            DOM.delegate(sidebar, "click", "[data-network-action]", (ev, el) => {
+                const action = el.dataset.networkAction;
+                if (action === "close") close();
+                else if (action === "fit") fitToView();
+                else if (action === "export") exportNetwork();
+            });
+        }
     };
 
     window.NetworkVisualizer = {

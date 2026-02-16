@@ -1,6 +1,12 @@
 /**
  * PopulationState: central in-memory store for organisms + metadata.
  * Small reducer-based state container. No DOM, no side effects.
+ *
+ * Canonical state (single source of truth):
+ * - PopulationState: organisms, generationNum, representationId, genealogy, loading.
+ * - Viewer state (zoom, selection): ViewerControls.patternZoom, OrganismActions selection; GridTopology for grid positions (derived from DOM).
+ * - Inspection state: NetworkVisualizer (currentId, vis networks); genome/weight UI is driven by currentId.
+ * - Caches (performance only, not source of truth): patternsMap in GridRenderer/PopulationLoader (id -> runtime), thumbnailCache in genealogy viewer, pending in network_weight_sliders (debounce).
  */
 (() => {
     "use strict";

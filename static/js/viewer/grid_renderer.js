@@ -20,9 +20,9 @@
 
     class GridTopology {
         constructor() {
-            /** @type {Map<number|string, { row: number, col: number }>} */
+            /** Cache: patternId -> { row, col } derived from grid DOM (not canonical state). */
             this._positions = new Map();
-            /** @type {Map<string, number|string>} */
+            /** Cache: "row:col" -> patternId for neighbor lookup. */
             this._coordToId = new Map();
             this._columns = 0;
         }
@@ -103,6 +103,57 @@
 
     const getGridEl = (ids) => getEl(ids?.grid);
 
+    /** dataset.id is always string; coerce to number when numeric so getOrganism(id) matches state. */
+    function parseCardId(value) {
+        if (value == null || value === "") return undefined;
+        const s = String(value);
+        return /^\d+$/.test(s) ? parseInt(s, 10) : s;
+    }
+
+    function attachGridDelegatedListeners(grid, self) {
+        if (!grid || grid.dataset.delegationBound === "true") return;
+        grid.dataset.delegationBound = "true";
+
+        DOM.delegate(grid, "click", ".organism-card", (ev, card) => {
+            const isCanvasClick =
+                ev.target?.nodeName === "CANVAS" &&
+                card?.contains?.(ev.target) === true;
+            if (isCanvasClick) {
+                window.CardBuilder?.runCellInteraction?.(ev, card);
+                return;
+            }
+            const id = parseCardId(card.dataset.id);
+            if (id !== undefined) self._cardCallbacks?.onClick?.(id, card);
+        });
+
+        DOM.delegate(grid, "contextmenu", ".organism-card", (ev, card) => {
+            ev.preventDefault();
+            const isCanvasClick =
+                ev.target?.nodeName === "CANVAS" &&
+                card?.contains?.(ev.target) === true;
+            if (isCanvasClick) {
+                window.CardBuilder?.runCellInteraction?.(ev, card);
+                return;
+            }
+            const id = parseCardId(card.dataset.id);
+            if (id !== undefined) self._cardCallbacks?.onUnclick?.(id, card);
+        });
+
+        DOM.on(grid, "mouseover", (ev) => {
+            const card = ev.target?.closest?.(".organism-card");
+            if (!card || (ev.relatedTarget && card.contains(ev.relatedTarget))) return;
+            const id = parseCardId(card.dataset.id);
+            if (id !== undefined) self._cardCallbacks?.onMouseEnter?.(id);
+        });
+
+        DOM.on(grid, "mouseout", (ev) => {
+            const card = ev.target?.closest?.(".organism-card");
+            if (!card || (ev.relatedTarget && card.contains(ev.relatedTarget))) return;
+            const id = parseCardId(card.dataset.id);
+            if (id !== undefined) self._cardCallbacks?.onMouseLeave?.(id);
+        });
+    }
+
     const safeCall = (fn, ...args) => {
         try {
             return fn?.(...args);
@@ -115,6 +166,8 @@
     class GridRenderer {
         constructor() {
             this._deps = null;
+            /** Current callbacks for delegated card click/hover. */
+            this._cardCallbacks = null;
         }
 
         init(deps) {
@@ -302,6 +355,9 @@
             if (!grid || !Array.isArray(population) || population.length === 0)
                 return map;
 
+            this._cardCallbacks = callbacks || null;
+            attachGridDelegatedListeners(grid, this);
+
             this._appendPatternCards(
                 population,
                 grid,
@@ -309,6 +365,7 @@
                 map,
                 representationId
             );
+            this._patternsMap = map;
             window.GridTopology.rebuild(grid);
 
             return map;
@@ -324,6 +381,9 @@
             )
                 return;
 
+            this._cardCallbacks = callbacks || this._cardCallbacks;
+            attachGridDelegatedListeners(grid, this);
+
             this._appendPatternCards(
                 population,
                 grid,
@@ -331,7 +391,21 @@
                 patternsMap,
                 representationId
             );
+            if (!this._patternsMap) this._patternsMap = new Map();
+            patternsMap.forEach((v, k) => this._patternsMap.set(k, v));
             window.GridTopology.rebuild(grid);
+        }
+
+        /** Get runtime (state) for a pattern id for FBO; tries number and string keys. */
+        getRuntime(id) {
+            if (!this._patternsMap) return null;
+            const n = /^\d+$/.test(String(id)) ? parseInt(id, 10) : null;
+            return (
+                this._patternsMap.get(id) ??
+                (n != null ? this._patternsMap.get(n) : null) ??
+                this._patternsMap.get(String(id)) ??
+                null
+            );
         }
     }
 

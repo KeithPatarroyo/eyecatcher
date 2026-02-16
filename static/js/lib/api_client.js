@@ -73,6 +73,70 @@
         }
     };
 
+    /**
+     * Single entry point: call API and return { ok, data } or { ok: false, error, status?, data? }.
+     * Does not throw on HTTP errors; use for consistent error handling and toast in one place.
+     */
+    const request = async (url, opts = {}) => {
+        const {
+            method = "GET",
+            body,
+            timeoutMs = DEFAULT_TIMEOUT_MS,
+            headers = {},
+            signal,
+        } = opts;
+
+        const controller = !signal ? new AbortController() : null;
+        const effectiveSignal = signal || controller.signal;
+        const timer =
+            controller &&
+            setTimeout(() => {
+                try {
+                    controller.abort();
+                } catch {
+                    /* ignore */
+                }
+            }, timeoutMs);
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...headers,
+                },
+                body: body !== undefined ? JSON.stringify(body) : undefined,
+                signal: effectiveSignal,
+            });
+
+            let data = null;
+            const text = await res.text();
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = { message: text };
+                }
+            }
+
+            if (!res.ok) {
+                const err = await buildError(res, "Request failed");
+                return {
+                    ok: false,
+                    error: err.message,
+                    status: err.status,
+                    data: err.data ?? data,
+                };
+            }
+            return { ok: true, data };
+        } catch (e) {
+            const msg = e?.message ?? String(e);
+            return { ok: false, error: msg, status: e?.status, data: e?.data };
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    };
+
     class ApiClient {
         constructor() {
             this._baseUrl = "";
@@ -84,6 +148,35 @@
 
         _url(path) {
             return joinUrl(this._baseUrl, path);
+        }
+
+        /**
+         * Request that returns { ok, data } or { ok: false, error, status?, data? }. Use with toastError for one error path.
+         */
+        async request(pathOrUrl, opts = {}) {
+            const url =
+                pathOrUrl.startsWith("http") || pathOrUrl.startsWith("/")
+                    ? pathOrUrl
+                    : this._url(pathOrUrl);
+            return request(url, opts);
+        }
+
+        get(pathOrUrl, opts = {}) {
+            return this.request(pathOrUrl, { ...opts, method: "GET" });
+        }
+
+        post(pathOrUrl, body, opts = {}) {
+            return this.request(pathOrUrl, { ...opts, method: "POST", body });
+        }
+
+        /**
+         * If result is not ok, show toast and log. Call after get/post when you want a single error path.
+         */
+        toastError(result, title = "Error") {
+            if (result?.ok) return;
+            const msg = result?.error ?? "Request failed";
+            if (window.Toast?.show) window.Toast.show(title, msg, "error");
+            console.warn(`[ApiClient] ${title}:`, msg);
         }
 
         /**

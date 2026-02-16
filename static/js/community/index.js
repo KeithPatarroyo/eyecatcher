@@ -48,7 +48,7 @@
 
     // ----- Browse -----
     const selectedGenomes = () => {
-        const ul = document.getElementById("community-list");
+        const ul = DOM.byId("community-list");
         if (!ul) return [];
         return Array.from(
             ul.querySelectorAll('.community-item input[type="checkbox"]:checked')
@@ -63,7 +63,7 @@
         const genomes = selectedGenomes();
         if (!genomes.length)
             return toast("Community", "No patterns selected.", "error");
-        document.getElementById("community-list-modal")?.classList.remove("show");
+        DOM.toggleClass(DOM.byId("community-list-modal"), "show", false);
         addToGrid?.(genomes);
     };
 
@@ -72,14 +72,15 @@
         const genomes = (communityPatterns || [])
             .slice(0, n)
             .map((p) => ({ ...(p.individual || p.genome), key: p.id }));
-        document.getElementById("community-list-modal")?.classList.remove("show");
+        DOM.toggleClass(DOM.byId("community-list-modal"), "show", false);
         addToGrid?.(genomes);
     };
 
     const setAllChecks = (checked) => {
-        document
-            .querySelectorAll('#community-list .community-item input[type="checkbox"]')
-            .forEach((cb) => (cb.checked = checked));
+        const ul = DOM.byId("community-list");
+        ul?.querySelectorAll?.('.community-item input[type="checkbox"]')?.forEach(
+            (cb) => (cb.checked = checked)
+        );
     };
 
     const onCommunitySelectAll = () => setAllChecks(true);
@@ -92,16 +93,26 @@
 
         showLoading(true);
         try {
-            const d = window.ApiClient?.communityList
-                ? await window.ApiClient.communityList()
-                : await (await fetch(`${apiUrl}/api/community`)).json();
-
+            const api = window.ApiClient;
+            const result = api
+                ? await api.request(`${apiUrl}/api/community`)
+                : { ok: false, error: "No API client" };
+            if (!result.ok) {
+                if (api) api.toastError(result, "Community load failed");
+                else
+                    toast(
+                        "Community load failed",
+                        result.error || "Request failed",
+                        "error"
+                    );
+                return;
+            }
+            const d = result.data || {};
             communityPatterns = d.patterns || [];
-            const ul = document.getElementById("community-list");
+            const ul = DOM.byId("community-list");
             if (!ul) return;
 
-            const toggle = (id, show) =>
-                document.getElementById(id)?.classList.toggle("hidden", !show);
+            const toggle = (id, show) => DOM.setHidden(DOM.byId(id), !show);
 
             const hasAny = communityPatterns.length > 0;
             toggle("community-load-selected-btn", hasAny);
@@ -154,7 +165,7 @@
                 );
             }
 
-            document.getElementById("community-list-modal")?.classList.add("show");
+            DOM.toggleClass(DOM.byId("community-list-modal"), "show", true);
         } catch (e) {
             const msg = Utils?.formatApiError
                 ? Utils.formatApiError(e, "Request failed")

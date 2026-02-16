@@ -94,6 +94,8 @@
             const card = document.createElement("div");
             card.className = `organism-card${hasCellInteraction ? " organism-card--interactive" : ""}`;
             card.dataset.id = id;
+            card.dataset.representationId = representationId ?? "";
+            card.dataset.cellInteractive = hasCellInteraction ? "true" : "";
 
             const actions = this._buildActions(options, id, representation);
             const info = this._buildInfo(pattern, id, fitness, representation);
@@ -230,63 +232,50 @@
         }
 
         _attachEvents(card, { id, representationId, hasCellInteraction, options }) {
-            const canvas = card.querySelector("canvas") || null;
+            // Card-level click/contextmenu/mouseenter/mouseleave are handled by grid delegation (see GridRenderer).
+            // Only ensure data attributes are set; no per-card listeners for those.
+        }
 
-            const fireCellInteraction = (event, interactionType) => {
-                if (!canvas) return;
-                if (!hasCellInteraction) return;
-                if (event.target !== canvas) return;
+        /** Instance delegate so window.CardBuilder.runCellInteraction works (static lives on the class). */
+        runCellInteraction(ev, card) {
+            return this.constructor.runCellInteraction(ev, card);
+        }
 
-                const rep =
-                    window.RepresentationRegistry?.resolve?.({ representationId })
-                        ?.representation ?? null;
-                const Helpers = window.RepresentationHelpers;
+        /**
+         * Run FBO/cell interaction for a canvas click. Called by grid when ev.target is canvas and card.contains(ev.target).
+         * No return value; grid already decided not to trigger fitness.
+         */
+        static runCellInteraction(ev, card) {
+            const canvas = ev.target?.nodeName === "CANVAS" ? ev.target : null;
+            if (!canvas) return;
 
-                if (!rep) return;
-                if (!Helpers?.supportsCellInteraction?.(rep.substrate, rep.phenotype))
-                    return;
-                if (!rep.substrate?.handleInteraction) return;
+            const representationId = card.dataset.representationId || null;
+            const id = card.dataset.id;
+            let rep =
+                window.RepresentationRegistry?.resolve?.({ representationId })
+                    ?.representation ?? null;
+            if (!rep)
+                rep =
+                    window.RepresentationRegistry?.resolve?.({})?.representation ??
+                    null;
+            const Helpers = window.RepresentationHelpers;
+            const supportsInteraction =
+                rep &&
+                Helpers?.supportsCellInteraction?.(rep.substrate, rep.phenotype) &&
+                rep.substrate?.handleInteraction;
+            if (!supportsInteraction) return;
 
-                const coords = getClickCoordinates(event, canvas);
-                const org = getOrganismFlexible(id);
-                const runtime = org?.runtime ?? null;
-
-                rep.substrate.handleInteraction(
-                    runtime,
-                    coords.x,
-                    coords.y,
-                    interactionType
-                );
-            };
-
-            if (options.onClick) {
-                card.addEventListener("click", (e) => {
-                    // If the click is on the canvas and we have cell interaction, let it be a canvas event first.
-                    if (canvas && e.target === canvas && hasCellInteraction) {
-                        fireCellInteraction(e, "click");
-                        return;
-                    }
-                    options.onClick(id, card);
-                    fireCellInteraction(e, "click");
-                });
-            }
-
-            if (options.onUnclick) {
-                card.addEventListener("contextmenu", (e) => {
-                    e.preventDefault();
-                    if (canvas && e.target === canvas && hasCellInteraction) {
-                        fireCellInteraction(e, "contextmenu");
-                        return;
-                    }
-                    options.onUnclick(id, card);
-                    fireCellInteraction(e, "contextmenu");
-                });
-            }
-
-            if (options.onMouseEnter)
-                card.addEventListener("mouseenter", () => options.onMouseEnter(id));
-            if (options.onMouseLeave)
-                card.addEventListener("mouseleave", () => options.onMouseLeave(id));
+            const coords = getClickCoordinates(ev, canvas);
+            const runtime =
+                window.GridRenderer?.getRuntime?.(id) ??
+                getOrganismFlexible(id)?.runtime ??
+                null;
+            rep.substrate.handleInteraction(
+                runtime,
+                coords.x,
+                coords.y,
+                ev.type === "contextmenu" ? "contextmenu" : "click"
+            );
         }
 
         static createErrorFallback(msg) {

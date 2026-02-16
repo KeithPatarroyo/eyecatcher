@@ -304,10 +304,15 @@
     // ---------- Boot sequence ----------
     window.PopulationState.init();
     window.ApiClient.init(API_URL);
+    if (typeof window.assertConfig === "function") window.assertConfig();
 
-    const gridDeps = {
-        IDS,
-        API_URL,
+    /** Frontend context: one object passed into inits so modules use ctx.api / ctx.state instead of window.* */
+    const ctx = {
+        api: window.ApiClient,
+        state: window.PopulationState,
+        toast: window.Toast,
+        ids: IDS,
+        apiUrl: API_URL,
         getGridCallbacks,
         resolveRepresentation,
         getColorMode,
@@ -315,10 +320,16 @@
         updateStats,
     };
 
+    const gridDeps = {
+        ...ctx,
+        IDS: ctx.ids,
+        API_URL: ctx.apiUrl,
+    };
+
     window.GridRenderer.init(gridDeps);
     window.PopulationLoader.init(gridDeps);
 
-    window.EvolutionCoordinator.init({ IDS, showLoading, updateStats });
+    window.EvolutionCoordinator.init(ctx);
 
     window.onRepresentationSwitched = (config) => {
         window.GridRenderer.clearGrid(IDS);
@@ -383,7 +394,7 @@
     });
 
     window.PopulationUI.init({
-        apiUrl: API_URL,
+        ...ctx,
         loadFromStatelessGenomes,
         addToGrid: window.PopulationLoader.addToPopulation.bind(
             window.PopulationLoader
@@ -392,7 +403,7 @@
     });
 
     window.CommunityUI.init({
-        apiUrl: API_URL,
+        ...ctx,
         loadFromStatelessGenomes,
         addToGrid: window.PopulationLoader.addToPopulation.bind(
             window.PopulationLoader
@@ -402,7 +413,7 @@
     });
 
     window.NetworkVisualizer.init({
-        apiUrl: API_URL,
+        ...ctx,
         getGenomeForPattern,
         updatePatternRule,
         getCurrentPopulation,

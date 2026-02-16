@@ -6,7 +6,7 @@
     "use strict";
 
     const getCfg = () => {
-        const cfg = window.EvolutionConfig || {};
+        const cfg = window.getConfig?.() ?? window.EvolutionConfig ?? {};
         return {
             max: cfg.FULLSCREEN_CANVAS_MAX ?? 1024,
             def: cfg.FULLSCREEN_CANVAS_DEFAULT ?? 800,
@@ -22,8 +22,8 @@
     const getEls = (ids) => {
         const { modalId, wrapId } = getIds(ids);
         return {
-            modal: document.getElementById(modalId),
-            wrap: document.getElementById(wrapId),
+            modal: DOM.byId(modalId),
+            wrap: DOM.byId(wrapId),
         };
     };
 
@@ -63,7 +63,7 @@
 
             const { modal, wrap } = getEls(ids);
             if (wrap) clearWrap(wrap);
-            if (modal) modal.hidden = true;
+            if (modal) DOM.setHidden(modal, true);
         }
 
         openFullscreen(id, population, ids) {
@@ -93,7 +93,7 @@
             if (!hasImage && !hasRule && !canLiveRender) return;
 
             this.closeFullscreen(ids);
-            modal.hidden = false;
+            DOM.setHidden(modal, false);
             wrap.innerHTML = "";
 
             setAspectRatio(wrap, representation);
@@ -131,7 +131,7 @@
                 );
                 if (!runtime || runtime.error) {
                     wrap.innerHTML = "";
-                    modal.hidden = true;
+                    DOM.setHidden(modal, true);
                     this._fullscreenRepresentation = null;
                     return;
                 }

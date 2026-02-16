@@ -15,18 +15,17 @@
         if (!genome) return toast("Submit", "Could not get pattern data.", "error");
 
         ctx.setSubmitGenome?.(genome);
-        document.getElementById("community-submit-name")?.setAttribute("value", "");
-        const nameEl = document.getElementById("community-submit-name");
-        const creatorEl = document.getElementById("community-submit-creator");
+        const nameEl = DOM.byId("community-submit-name");
+        const creatorEl = DOM.byId("community-submit-creator");
         if (nameEl) nameEl.value = "";
         if (creatorEl) creatorEl.value = "";
 
-        document.getElementById("community-submit-modal")?.classList.add("show");
+        DOM.toggleClass(DOM.byId("community-submit-modal"), "show", true);
     };
 
     const closeSubmitCommunityModal = (ctx) => {
         ctx.setSubmitGenome?.(null);
-        document.getElementById("community-submit-modal")?.classList.remove("show");
+        DOM.toggleClass(DOM.byId("community-submit-modal"), "show", false);
     };
 
     const submitCommunityForm = async (ctx) => {
@@ -34,40 +33,29 @@
         if (!genome) return;
 
         const name =
-            (document.getElementById("community-submit-name")?.value || "").trim() ||
-            "Unnamed";
+            (DOM.byId("community-submit-name")?.value || "").trim() || "Unnamed";
         const creator =
-            (document.getElementById("community-submit-creator")?.value || "").trim() ||
-            "Anonymous";
+            (DOM.byId("community-submit-creator")?.value || "").trim() || "Anonymous";
 
-        try {
-            if (window.ApiClient?.communitySubmit) {
-                await window.ApiClient.communitySubmit({
-                    individual: genome,
-                    name,
-                    creator,
-                });
-            } else {
-                // Fallback for older ApiClient
-                await fetch(`${ctx.apiUrl || ""}/api/community/submit`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ individual: genome, name, creator }),
-                });
-            }
+        const api = window.ApiClient;
+        const url = `${ctx.apiUrl || ""}/api/community/submit`;
+        const result = api
+            ? await api.request(url, {
+                  method: "POST",
+                  body: { individual: genome, name, creator },
+              })
+            : { ok: false, error: "No API client" };
 
-            toast(
-                "Submitted",
-                "It will be reviewed before appearing in Community.",
-                "success"
-            );
-            closeSubmitCommunityModal(ctx);
-        } catch (e) {
-            const msg = window.Utils?.formatApiError
-                ? window.Utils.formatApiError(e, "Request failed")
-                : String(e);
-            toast("Submit failed", msg, "error");
+        if (!result.ok) {
+            toast("Submit failed", result.error || "Request failed", "error");
+            return;
         }
+        toast(
+            "Submitted",
+            "It will be reviewed before appearing in Community.",
+            "success"
+        );
+        closeSubmitCommunityModal(ctx);
     };
 
     window.CommunitySubmit = {

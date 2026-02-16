@@ -25,31 +25,38 @@
             });
     };
 
-    const getGenomeOrNull = (id) => {
-        const org = window.PopulationState?.getOrganism?.(id) ?? null;
-        return org?.genome ?? null;
+    const getOrganismFlexible = (id) => {
+        const PS = window.PopulationState;
+        if (!PS?.getOrganism) return null;
+        if (PS.getOrganism(id)) return PS.getOrganism(id);
+        const s = id != null ? String(id) : "";
+        if (PS.getOrganism(s)) return PS.getOrganism(s);
+        if (/^\d+$/.test(s)) return PS.getOrganism(parseInt(s, 10)) ?? null;
+        return null;
     };
+
+    const getGenomeOrNull = (id) => getOrganismFlexible(id)?.genome ?? null;
 
     const setFitnessUI = (card, fitness) => {
         const badge = card?.querySelector?.(".fitness-badge") ?? null;
         if (!badge) return;
-
-        badge.textContent = String(fitness);
-        badge.classList.toggle("zero", fitness === 0);
-        card?.classList.toggle?.("selected", fitness > 0);
+        DOM.setText(badge, String(fitness));
+        DOM.toggleClass(badge, "zero", fitness === 0);
+        DOM.toggleClass(card, "selected", fitness > 0);
     };
 
     const updateFitness = (id, card, delta, updateStats) => {
-        const org = window.PopulationState?.getOrganism?.(id);
+        const org = getOrganismFlexible(id);
         if (!org) return;
 
         const current = org.fitness || 0;
         const next = Math.max(0, current + delta);
         if (next === current) return;
 
+        const payloadId = typeof org.id !== "undefined" ? org.id : id;
         window.PopulationState.dispatch({
             type: "SET_ORGANISM_FITNESS",
-            payload: { id, fitness: next },
+            payload: { id: payloadId, fitness: next },
         });
 
         setFitnessUI(card, next);

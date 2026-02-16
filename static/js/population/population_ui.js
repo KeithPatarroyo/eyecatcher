@@ -112,7 +112,7 @@
                 if (!storage) return;
 
                 const list = await storage.listPopulations();
-                const ul = document.getElementById("load-list");
+                const ul = DOM.byId("load-list");
                 if (!ul) return;
 
                 ul.innerHTML = "";
@@ -127,10 +127,8 @@
                         const count = (pop.genomes || []).length;
                         li.textContent = `${pop.name || "Unnamed"} (gen ${pop.generation || 0}, ${count} patterns)`;
 
-                        li.addEventListener("click", async () => {
-                            document
-                                .getElementById("load-list-modal")
-                                ?.classList.remove("show");
+                        DOM.on(li, "click", async () => {
+                            DOM.toggleClass(DOM.byId("load-list-modal"), "show", false);
                             if (!this._loadFromStatelessGenomes) return;
 
                             const r = window.RepresentationRegistry.resolve(pop);
@@ -146,7 +144,7 @@
                     }
                 }
 
-                document.getElementById("load-list-modal")?.classList.add("show");
+                DOM.toggleClass(DOM.byId("load-list-modal"), "show", true);
             } catch (e) {
                 toast("Error", e?.message || String(e), "error");
             }
@@ -188,7 +186,7 @@
         }
 
         onImportClick() {
-            document.getElementById("import-file")?.click();
+            DOM.byId("import-file")?.click();
         }
 
         async handleImportFile(file) {

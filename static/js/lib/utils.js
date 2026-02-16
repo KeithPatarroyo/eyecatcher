@@ -49,6 +49,36 @@
     };
 
     /**
+     * Run an async task with optional button disable, loading state, and single error/finally path.
+     * @param {Object} opts
+     * @param {HTMLButtonElement|HTMLElement|null} [opts.button] - disabled during task, re-enabled in finally
+     * @param {(show: boolean) => void} [opts.setLoading] - called with true before task, false in finally
+     * @param {() => Promise<any>} opts.task - async function to run
+     * @param {(err: any) => void} [opts.onError] - called on catch (e.g. toast + log)
+     * @param {() => void} [opts.onFinally] - called in finally after re-enable and setLoading(false)
+     */
+    const runTask = async (opts) => {
+        const { button, setLoading, task, onError, onFinally } = opts || {};
+        if (button) {
+            button.disabled = true;
+            if (button.setAttribute) button.setAttribute("aria-disabled", "true");
+        }
+        if (setLoading) setLoading(true);
+        try {
+            return await task();
+        } catch (err) {
+            if (onError) onError(err);
+        } finally {
+            if (button) {
+                button.disabled = false;
+                if (button.setAttribute) button.setAttribute("aria-disabled", "false");
+            }
+            if (setLoading) setLoading(false);
+            if (onFinally) onFinally();
+        }
+    };
+
+    /**
      * Safe storage get. Returns value or fallback on error or missing.
      * @param {Storage} storage
      * @param {string} key
@@ -134,6 +164,7 @@
         escapeHtml,
         showLoading,
         withLoading,
+        runTask,
         safeGetItem,
         safeSetItem,
         formatApiError,

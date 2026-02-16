@@ -20,9 +20,18 @@
             : Date.now();
 
     const postJson = async (url, body, timeoutMs = 20_000) => {
+        const api = window.ApiClient;
+        if (api) {
+            const result = await api.request(url, {
+                method: "POST",
+                body,
+                timeoutMs,
+            });
+            if (!result.ok) throw new Error(result.error || "Request failed");
+            return result.data;
+        }
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
-
         try {
             const res = await fetch(url, {
                 method: "POST",
@@ -32,16 +41,14 @@
             });
             const text = await res.text();
             const data = text ? JSON.parse(text) : null;
-
             if (!res.ok) {
-                const msg =
-                    data?.error || data?.message || `Request failed (${res.status})`;
-                const err = new Error(msg);
+                const err = new Error(
+                    data?.error || data?.message || `Request failed (${res.status})`
+                );
                 err.status = res.status;
                 err.data = data;
                 throw err;
             }
-
             return data;
         } finally {
             clearTimeout(timer);

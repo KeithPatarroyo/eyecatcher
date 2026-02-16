@@ -9,7 +9,7 @@
     };
 
     const getPopLimits = () => {
-        const cfg = window.EvolutionConfig ?? {};
+        const cfg = window.getConfig?.() ?? window.EvolutionConfig ?? {};
         return {
             min: cfg.MIN_POPULATION_SIZE ?? 2,
             max: cfg.MAX_POPULATION_SIZE ?? 50,
@@ -18,107 +18,105 @@
     };
 
     class EvolutionCoordinator {
-        _IDS = {};
-        _showLoading = () => {};
-        _updateStats = () => {};
+        _ctx = null;
 
-        init({ IDS = {}, showLoading = () => {}, updateStats = () => {} } = {}) {
-            this._IDS = IDS;
-            this._showLoading = showLoading;
-            this._updateStats = updateStats;
-        }
-
-        _btn(disabled) {
-            const id = this._IDS?.evolveBtn;
-            const el = id ? document.getElementById(id) : null;
-            if (!el) return;
-
-            el.classList.toggle("disabled", disabled);
-            el.setAttribute("aria-disabled", disabled ? "true" : "false");
+        init(ctx = {}) {
+            this._ctx = ctx;
         }
 
         _populationSize() {
             const { min, max, def } = getPopLimits();
-            const id = this._IDS?.populationSizeInput;
+            const id = this._ctx?.ids?.populationSizeInput;
             const el = id ? document.getElementById(id) : null;
             return clampInt(el?.value, min, max, def);
         }
 
-        _fail(err) {
-            console.error("Error evolving:", err);
-            window.Toast?.error?.(`Evolve failed: ${err?.message ?? String(err)}`);
-
-            this._showLoading(false);
-            window.PopulationState?.dispatch?.({ type: "SET_LOADING", payload: false });
-            this._btn(false);
-            this._updateStats();
-        }
-
         async evolve() {
-            const evolveEl = this._IDS?.evolveBtn
-                ? document.getElementById(this._IDS.evolveBtn)
+            const evolveEl = this._ctx?.ids?.evolveBtn
+                ? document.getElementById(this._ctx.ids.evolveBtn)
                 : null;
 
             if (evolveEl?.classList.contains("disabled")) return;
 
-            this._btn(true);
-            this._showLoading(true);
-            window.PopulationState?.dispatch?.({ type: "SET_LOADING", payload: true });
-
-            try {
-                const organisms = window.PopulationState?.organisms ?? [];
-                if (!organisms.length) {
-                    throw new Error(
-                        "No population loaded. Start with New random population or Load population."
-                    );
-                }
-
-                const parents = organisms
-                    .filter((o) => (o?.fitness ?? 0) > 0 && o?.genome)
-                    .map((o) => ({ genome: o.genome, fitness: o.fitness ?? 0 }));
-
-                if (!parents.length) {
-                    throw new Error(
-                        "Select at least one pattern (click on it) before evolving."
-                    );
-                }
-
-                const populationSize = this._populationSize();
-                const newGenerationNum =
-                    (window.PopulationState?.generationNum ?? 0) + 1;
-
-                const opts = {
-                    parentPopulationId: window.PopulationState?.populationId,
-                    generationNum: newGenerationNum,
-                    branchName: window.PopulationState?.branchName || "main",
-                };
-
-                const data = await window.ApiClient.evolve(
-                    parents,
-                    populationSize,
-                    opts
-                );
-                if (!data?.children) throw new Error("No children in evolve response");
-
-                if (data.population_id != null) {
-                    window.PopulationState?.dispatch?.({
-                        type: "SET_EVOLVE_RESULT",
-                        payload: { populationId: data.population_id },
+            await window.Utils?.runTask?.({
+                button: evolveEl,
+                setLoading: this._ctx?.showLoading,
+                task: async () => {
+                    this._ctx?.state?.dispatch?.({
+                        type: "SET_LOADING",
+                        payload: true,
                     });
-                    window.GenealogySync?.syncCurrentPopulationIdToStorage?.(
-                        data.population_id
-                    );
-                }
+                    const organisms = this._ctx?.state?.organisms ?? [];
+                    if (!organisms.length) {
+                        throw new Error(
+                            "No population loaded. Start with New random population or Load population."
+                        );
+                    }
 
-                window.PopulationLoader.loadPopulation(
-                    data.children,
-                    newGenerationNum,
-                    data.representation_id,
-                    { saveToGenealogy: false }
-                );
-            } catch (err) {
-                this._fail(err);
-            }
+                    const parents = organisms
+                        .filter((o) => (o?.fitness ?? 0) > 0 && o?.genome)
+                        .map((o) => ({ genome: o.genome, fitness: o.fitness ?? 0 }));
+
+                    if (!parents.length) {
+                        throw new Error(
+                            "Select at least one pattern (click on it) before evolving."
+                        );
+                    }
+
+                    const populationSize = this._populationSize();
+                    const newGenerationNum = (this._ctx?.state?.generationNum ?? 0) + 1;
+
+                    const genealogy = this._ctx?.state?.getState?.()?.genealogy;
+                    const opts = {
+                        parentPopulationId: genealogy?.populationId ?? null,
+                        generationNum: newGenerationNum,
+                        branchName: genealogy?.branchName || "main",
+                    };
+
+                    const data = await this._ctx?.api?.evolve?.(
+                        parents,
+                        populationSize,
+                        opts
+                    );
+                    if (!data?.children)
+                        throw new Error("No children in evolve response");
+
+                    if (data.population_id != null) {
+                        this._ctx?.state?.dispatch?.({
+                            type: "SET_GENEALOGY",
+                            payload: {
+                                populationId: data.population_id,
+                                branchName: genealogy?.branchName || "main",
+                            },
+                        });
+                        window.GenealogySync?.syncCurrentPopulationIdToStorage?.(
+                            data.population_id
+                        );
+                    }
+
+                    window.PopulationLoader.loadPopulation(
+                        data.children,
+                        newGenerationNum,
+                        data.representation_id,
+                        { saveToGenealogy: false }
+                    );
+                },
+                onError: (err) => {
+                    console.error("Error evolving:", err);
+                    this._ctx?.toast?.show?.(
+                        "Evolve failed",
+                        err?.message ?? String(err),
+                        "error"
+                    );
+                },
+                onFinally: () => {
+                    this._ctx?.state?.dispatch?.({
+                        type: "SET_LOADING",
+                        payload: false,
+                    });
+                    this._ctx?.updateStats?.();
+                },
+            });
         }
     }
 

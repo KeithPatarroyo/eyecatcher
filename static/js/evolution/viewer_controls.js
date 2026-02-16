@@ -6,10 +6,8 @@
     const ZOOM_MAX = 2.0;
     const ZOOM_STEP = 0.1;
 
-    const el = (id) => document.getElementById(id);
-
     const renderSignalControls = (signalGroups) => {
-        const container = el("signal-controls");
+        const container = DOM.byId("signal-controls");
         if (!container) return;
 
         container.innerHTML = "";
@@ -79,25 +77,35 @@
                 "--pattern-zoom",
                 String(this.patternZoom)
             );
-            const label = el("zoom-label");
-            if (label) label.textContent = `${Math.round(this.patternZoom * 100)}%`;
+            DOM.setText(
+                DOM.byId("zoom-label"),
+                `${Math.round(this.patternZoom * 100)}%`
+            );
         }
 
         _syncCheckboxes(representationId) {
-            const cfg = window.EvolutionConfig;
-            const toggles = cfg?.getToggleableSignals?.(representationId) ?? [];
-            const defaults = cfg?.getDefaultSignalState?.(representationId) ?? {};
+            const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+            const toggles =
+                (cfg &&
+                    cfg.getToggleableSignals &&
+                    cfg.getToggleableSignals(representationId)) ??
+                [];
+            const defaults =
+                (cfg &&
+                    cfg.getDefaultSignalState &&
+                    cfg.getDefaultSignalState(representationId)) ??
+                {};
 
             for (const s of toggles) {
                 if (this.signalState[s.id] === undefined)
                     this.signalState[s.id] = defaults[s.id] !== false;
-                const checkbox = el(`signal-${s.id}`);
+                const checkbox = DOM.byId(`signal-${s.id}`);
                 if (checkbox) checkbox.checked = !!this.signalState[s.id];
             }
         }
 
         updateForRepresentation(representationId) {
-            const container = el("signal-controls");
+            const container = DOM.byId("signal-controls");
             if (!container) return;
 
             const representation =
@@ -108,40 +116,44 @@
                     : representation?.hasSignalControls !== false;
             container.style.display = show ? "" : "none";
 
-            const cfg = window.EvolutionConfig;
-            const signalGroups = cfg?.getSignalGroups?.(representationId) ?? [];
+            const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+            const signalGroups =
+                (cfg && cfg.getSignalGroups && cfg.getSignalGroups(representationId)) ??
+                [];
             renderSignalControls(signalGroups);
             this._syncCheckboxes(representationId);
 
-            const gridHint = el("instructions-grid-hint");
+            const gridHint = DOM.byId("instructions-grid-hint");
             if (gridHint) {
                 const sub = representation?.phenotype?.substrate;
                 const isGrid = sub?.type === "grid" || sub === "grid";
-                gridHint.hidden = !isGrid;
+                DOM.setHidden(gridHint, !isGrid);
             }
         }
 
         init() {
-            const cfg = window.EvolutionConfig;
-            const representationId = cfg?.getCurrentRepresentationId?.() ?? "";
+            const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+            const representationId =
+                (cfg &&
+                    cfg.getCurrentRepresentationId &&
+                    cfg.getCurrentRepresentationId()) ??
+                "";
 
             // One delegated listener instead of N listeners.
             if (!this._signalsBound) {
-                const container = el("signal-controls");
-                if (container) {
-                    container.addEventListener("change", (e) => {
-                        const input = e.target;
-                        const signalId = input?.dataset?.signalId;
-                        if (!signalId) return;
-                        this.signalState[signalId] = !!input.checked;
-                    });
-                }
+                const container = DOM.byId("signal-controls");
+                DOM.on(container, "change", (e) => {
+                    const input = e.target;
+                    const signalId = input?.dataset?.signalId;
+                    if (!signalId) return;
+                    this.signalState[signalId] = !!input.checked;
+                });
                 this._signalsBound = true;
             }
 
             const Utils = window.Utils;
-            const zoomIn = el("zoom-in");
-            const zoomOut = el("zoom-out");
+            const zoomIn = DOM.byId("zoom-in");
+            const zoomOut = DOM.byId("zoom-out");
 
             if (zoomIn && Utils?.onRoleButtonKeydown) {
                 Utils.onRoleButtonKeydown(zoomIn, () => {

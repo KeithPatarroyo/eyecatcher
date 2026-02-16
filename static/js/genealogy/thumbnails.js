@@ -37,11 +37,14 @@
             return null;
 
         try {
-            const res = await fetch(
-                `${apiUrl}/api/genealogy/population-thumbnail/${populationId}`
-            );
-            const data = await res.json();
-            if (!res.ok) return null;
+            const api = window.ApiClient;
+            const result = api
+                ? await api.request(
+                      `${apiUrl}/api/genealogy/population-thumbnail/${populationId}`
+                  )
+                : { ok: false };
+            if (!result?.ok) return null;
+            const data = result.data;
 
             const genome = data.individual ?? data.genome;
             if (!genome) return null;

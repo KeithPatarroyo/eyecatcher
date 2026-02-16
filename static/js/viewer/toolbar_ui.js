@@ -1,11 +1,15 @@
 /**
  * Toolbar UI: Start Fresh dropdown, help toggle, settings panel, experiment params, population size −/+.
  * Call ToolbarUI.init() after DOM and PopulationUI / CommunityUI are available.
+ * Uses one delegated click/keydown handler on document for [data-action] elements.
  */
 (() => {
     "use strict";
 
-    const $ = (id) => document.getElementById(id);
+    const $ = (id) => (id ? document.getElementById(id) : null);
+
+    /** @type {Record<string, (ev: Event) => void>} */
+    const actionHandlers = Object.create(null);
 
     const asInt = (v) => {
         const n = parseInt(v, 10);
@@ -31,22 +35,6 @@
         return { cfg, minP, maxP, defaultP, crossover };
     };
 
-    // Make anything act like an accessible button (click + Enter/Space).
-    const bindButton = (el, fn) => {
-        if (!el || !fn) return;
-        if (window.Utils?.onRoleButtonKeydown) {
-            window.Utils.onRoleButtonKeydown(el, fn);
-            return;
-        }
-        el.addEventListener("click", (e) => fn(e));
-        el.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                fn(e);
-            }
-        });
-    };
-
     const initStartFreshDropdown = () => {
         const btn = $("start-fresh-btn");
         const menu = $("start-fresh-dropdown");
@@ -57,14 +45,12 @@
             btn.setAttribute("aria-expanded", String(open));
         };
 
-        const toggle = (e) => {
+        actionHandlers["start-fresh-toggle"] = (e) => {
             e?.stopPropagation?.();
             setOpen(menu.hidden);
         };
 
-        bindButton(btn, toggle);
-
-        // Event delegation: one handler for all items in the dropdown.
+        // Delegated handler for dropdown items (random / load)
         const onActivate = (target) => {
             const actionEl = target?.closest?.("[data-action]");
             const action = actionEl?.dataset?.action;
@@ -76,16 +62,16 @@
             setOpen(false);
         };
 
-        menu.addEventListener("click", (e) => onActivate(e.target));
-        menu.addEventListener("keydown", (e) => {
+        DOM.on(menu, "click", (e) => onActivate(e.target));
+        DOM.on(menu, "keydown", (e) => {
             if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 onActivate(e.target);
             }
         });
 
-        document.addEventListener("click", () => setOpen(false));
-        document.addEventListener("keydown", (e) => {
+        DOM.on(document, "click", () => setOpen(false));
+        DOM.on(document, "keydown", (e) => {
             if (e.key === "Escape") setOpen(false);
         });
     };
@@ -95,15 +81,13 @@
         const instructions = $("instructions");
         if (!helpBtn || !instructions) return;
 
-        const toggleHelp = () => {
+        actionHandlers["help-toggle"] = () => {
             instructions.hidden = !instructions.hidden;
             helpBtn.setAttribute(
                 "title",
                 instructions.hidden ? "Show help" : "Hide help"
             );
         };
-
-        bindButton(helpBtn, toggleHelp);
     };
 
     /**
@@ -127,8 +111,7 @@
         const maxPopInput = $("param-max-population-size");
         const crossoverInput = $("param-crossover-probability");
         const repSelect = $("param-representation-id");
-        const applyBtn = $("experiment-params-apply");
-        if (!popInput || !maxPopInput || !crossoverInput || !applyBtn) return;
+        if (!popInput || !maxPopInput || !crossoverInput) return;
 
         const refreshFromConfig = () => {
             const { cfg, minP, maxP, defaultP, crossover } = getCfgNumbers();
@@ -218,7 +201,7 @@
         };
 
         refreshFromConfig();
-        bindButton(applyBtn, apply);
+        actionHandlers["experiment-params-apply"] = apply;
         if (toolbarUI) toolbarUI.refreshExperimentParamsFromConfig = refreshFromConfig;
     };
 
@@ -234,30 +217,23 @@
             if (open) toolbarUI?.refreshExperimentParamsFromConfig?.();
         };
 
-        bindButton(btn, (e) => {
+        actionHandlers["settings-toggle"] = (e) => {
             e?.stopPropagation?.();
             setOpen(panel.hidden);
-        });
+        };
 
-        document.addEventListener("keydown", (e) => {
+        DOM.on(document, "keydown", (e) => {
             if (e.key === "Escape") setOpen(false);
         });
 
-        const moderateBtn = $("settings-moderate-btn");
-        if (moderateBtn) {
-            moderateBtn.addEventListener("click", () =>
-                window.CommunityUI?.openAdminModal?.()
-            );
-        }
+        actionHandlers["admin-modal"] = () => window.CommunityUI?.openAdminModal?.();
 
         initExperimentParamsPanel(toolbarUI);
     };
 
     const initPopulationSizeControls = (toolbarUI) => {
         const input = $("population-size-input");
-        const downBtn = $("population-size-down");
-        const upBtn = $("population-size-up");
-        if (!input || !downBtn || !upBtn) return;
+        if (!input) return;
 
         const { minP, maxP, defaultP } = getCfgNumbers();
         const normalize = (v) => clamp(asInt(v), minP, maxP, defaultP);
@@ -268,11 +244,28 @@
 
         toolbarUI?.syncToolbarPopulationSizeFromConfig?.();
 
-        bindButton(downBtn, () => setValue(asInt(input.value) - 1));
-        bindButton(upBtn, () => setValue(asInt(input.value) + 1));
+        actionHandlers["population-size-down"] = () => setValue(asInt(input.value) - 1);
+        actionHandlers["population-size-up"] = () => setValue(asInt(input.value) + 1);
 
-        input.addEventListener("change", () => setValue(input.value));
+        DOM.on(input, "change", () => setValue(input.value));
     };
+
+    function bindToolbarDelegation() {
+        const run = (ev, el) => {
+            const action = el?.dataset?.action;
+            const fn = action ? actionHandlers[action] : null;
+            if (fn) {
+                ev.preventDefault();
+                fn(ev);
+            }
+        };
+        DOM.delegate(document.body, "click", "[data-action]", (ev, el) => run(ev, el));
+        DOM.on(document.body, "keydown", (ev) => {
+            if (ev.key !== "Enter" && ev.key !== " ") return;
+            const el = ev.target?.closest?.("[data-action]");
+            if (el) run(ev, el);
+        });
+    }
 
     class ToolbarUI {
         constructor() {
@@ -284,6 +277,7 @@
             initHelpToggle();
             initSettingsPanel(this);
             initPopulationSizeControls(this);
+            bindToolbarDelegation();
         }
 
         syncToolbarPopulationSizeFromConfig() {

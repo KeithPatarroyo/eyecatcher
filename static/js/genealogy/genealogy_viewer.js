@@ -1,6 +1,6 @@
 /**
  * Genealogy tree viewer (vis.js). Keeps legacy globals initialize()/runWhenReady().
- * Depends on: vis.js, Utils, Toast, GenealogyNetworkConfig, GenealogyPhysics, GenealogyThumbnails, GenealogyExport
+ * Depends on: vis.js, DOM, Utils, Toast, GenealogyNetworkConfig, GenealogyPhysics, GenealogyThumbnails, GenealogyExport
  */
 const API_URL = window.API_URL || "";
 
@@ -9,6 +9,7 @@ let selectedNodeId = null;
 let treeNodesById = Object.create(null); // id -> raw node from API (generation_num, branch_name, etc.)
 let hierarchicalLayout = false;
 let currentPopulationId = null;
+/** Cache: populationId -> thumbnail image/canvas for vis nodes; not canonical state. */
 let thumbnailCache = new Map();
 let savedPositions = null;
 
@@ -19,48 +20,42 @@ function showGenealogyToast(title, body, type = "success") {
     window.Toast?.show?.(title, body, type, { duration: TOAST_DURATION_MS });
 }
 
-async function fetchJson(url, fallback) {
-    const res = await fetch(url);
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-        const err = new Error(
-            data?.error || data?.message || fallback || `Request failed (${res.status})`
-        );
-        err.status = res.status;
-        err.data = data;
-        throw err;
+async function apiGet(url, fallback) {
+    const api = window.ApiClient;
+    const result = api
+        ? await api.request(url)
+        : { ok: false, error: fallback || "No API client" };
+    if (!result.ok) {
+        const msg = result.error || fallback || "Request failed";
+        showGenealogyToast("Error", msg, "error");
+        throw new Error(msg);
     }
-    return data;
+    return result.data;
 }
 
 function updateControlsVisibility() {
-    document
-        .getElementById("physics-controls")
-        ?.classList.toggle("hidden", hierarchicalLayout);
+    DOM.setHidden(DOM.byId("physics-controls"), hierarchicalLayout);
 }
 
 async function loadStats() {
     try {
-        const d = await fetchJson(`${API_URL}/api/genealogy/stats`, "Stats failed");
-        document.getElementById("stat-populations").textContent = d.total_populations;
-        document.getElementById("stat-individuals").textContent = d.total_individuals;
-        document.getElementById("stat-branches").textContent = d.total_branches;
-        document.getElementById("stat-max-gen").textContent = d.max_generation;
+        const d = await apiGet(`${API_URL}/api/genealogy/stats`, "Stats failed");
+        DOM.setText(DOM.byId("stat-populations"), d.total_populations);
+        DOM.setText(DOM.byId("stat-individuals"), d.total_individuals);
+        DOM.setText(DOM.byId("stat-branches"), d.total_branches);
+        DOM.setText(DOM.byId("stat-max-gen"), d.max_generation);
     } catch (e) {
         console.warn("Stats failed:", e);
     }
 }
 
 async function loadBranches() {
-    const list = document.getElementById("branch-list");
+    const list = DOM.byId("branch-list");
     if (!list) return;
 
     list.innerHTML = "";
     try {
-        const d = await fetchJson(
-            `${API_URL}/api/genealogy/branches`,
-            "Branches failed"
-        );
+        const d = await apiGet(`${API_URL}/api/genealogy/branches`, "Branches failed");
         const branches = d.branches || [];
 
         if (!branches.length) {
@@ -68,34 +63,29 @@ async function loadBranches() {
             return;
         }
 
-        const tpl = document.getElementById("branch-list-item-tpl");
+        const tpl = DOM.byId("branch-list-item-tpl");
 
         branches.forEach((branch) => {
-            const el =
-                tpl?.content?.cloneNode(true)?.querySelector?.(".branch-item") ||
+            const branchName = branch.name || "main";
+            const popCount = branch.populations ?? branch.node_count ?? 0;
+            const indCount = branch.individuals ?? "—";
+            const infoText = `${popCount} populations${indCount !== "—" ? ` • ${indCount} individuals` : ""}`;
+
+            const row =
+                DOM.cloneAndFill(tpl, ".branch-item", {
+                    ".branch-name": branchName,
+                    ".branch-info": infoText,
+                }) ||
                 (() => {
                     const div = document.createElement("div");
                     div.className = "branch-item";
                     div.innerHTML = `<div class="branch-name"></div><div class="branch-info"></div>`;
+                    DOM.setText(DOM.qs(".branch-name", div), branchName);
+                    DOM.setText(DOM.qs(".branch-info", div), infoText);
                     return div;
                 })();
-
-            el.querySelector(".branch-name").textContent = branch.name || "main";
-            const popCount = branch.populations ?? branch.node_count ?? 0;
-            const indCount = branch.individuals ?? "—";
-            el.querySelector(".branch-info").textContent =
-                `${popCount} populations${indCount !== "—" ? ` • ${indCount} individuals` : ""}`;
-
-            el.addEventListener("click", () => {
-                const name = branch.name || "main";
-                document
-                    .querySelectorAll(".branch-item")
-                    .forEach((n) => n.classList.remove("active"));
-                el.classList.add("active");
-                loadTree(name);
-            });
-
-            list.appendChild(el);
+            row.dataset.branchName = branchName;
+            list.appendChild(row);
         });
     } catch (e) {
         list.appendChild(
@@ -123,10 +113,7 @@ function getBranchColor(branchName) {
 }
 
 function buildVisNodes(treeData) {
-    const nodeSize = parseInt(
-        document.getElementById("node-size")?.value || DEFAULT_NODE_SIZE,
-        10
-    );
+    const nodeSize = parseInt(DOM.byId("node-size")?.value || DEFAULT_NODE_SIZE, 10);
     return (treeData.nodes || []).map((n) => {
         const branch = n.branch_name || "main";
         const border = getBranchColor(branch);
@@ -144,8 +131,8 @@ function buildVisNodes(treeData) {
 }
 
 function buildVisEdges(treeData) {
-    const width = parseFloat(document.getElementById("link-thickness")?.value || 1.5);
-    const arrows = document.getElementById("show-arrows")?.checked === true;
+    const width = parseFloat(DOM.byId("link-thickness")?.value || 1.5);
+    const arrows = DOM.byId("show-arrows")?.checked === true;
 
     // Backend returns only nodes (with parent_id); derive edges from parent links.
     const edges =
@@ -206,14 +193,11 @@ function selectNode(popId) {
 }
 
 async function updateCurrentPopulationInfo(popId) {
-    const section = document.getElementById("selected-node-info");
-    if (section) section.classList.remove("hidden");
+    const section = DOM.byId("selected-node-info");
+    if (section) DOM.setHidden(section, false);
 
     const node = treeNodesById[popId];
-    const setInfo = (id, text) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = text ?? "-";
-    };
+    const setInfo = (id, text) => DOM.setText(DOM.byId(id), text ?? "-");
     setInfo("info-id", String(popId));
     setInfo(
         "info-generation",
@@ -237,7 +221,7 @@ async function loadPopulation(popId) {
 
     // Standalone genealogy page: fetch population, store for main app, then redirect.
     try {
-        const data = await fetchJson(
+        const data = await apiGet(
             `${API_URL}/api/genealogy/load-population/${popId}`,
             "Load population failed"
         );
@@ -284,7 +268,7 @@ async function loadPopulation(popId) {
 }
 
 function visualizeTree(data) {
-    const container = document.getElementById("tree-visualization");
+    const container = DOM.byId("tree-visualization");
     if (!container || !window.vis) return;
 
     const nodes = new window.vis.DataSet(buildVisNodes(data));
@@ -316,7 +300,7 @@ async function loadTree(branchName = null) {
         : `${API_URL}/api/genealogy/tree`;
 
     try {
-        const data = await fetchJson(url, "Tree load failed");
+        const data = await apiGet(url, "Tree load failed");
         treeNodesById = Object.create(null);
         (data.nodes || []).forEach((n) => {
             treeNodesById[n.id] = n;
@@ -348,10 +332,8 @@ async function loadTree(branchName = null) {
 
 function setLayoutMode(hierarchical) {
     hierarchicalLayout = hierarchical;
-    const hierBtn = document.getElementById("hierarchical-btn");
-    const physBtn = document.getElementById("physics-btn");
-    hierBtn?.classList.toggle("active", hierarchical);
-    physBtn?.classList.toggle("active", !hierarchical);
+    DOM.toggleClass(DOM.byId("hierarchical-btn"), "active", hierarchical);
+    DOM.toggleClass(DOM.byId("physics-btn"), "active", !hierarchical);
 
     if (!treeNetwork) return;
 
@@ -374,23 +356,19 @@ function setLayoutMode(hierarchical) {
 }
 
 function bindLayoutEvents() {
-    document
-        .getElementById("hierarchical-btn")
-        ?.addEventListener("click", () => setLayoutMode(true));
-    document
-        .getElementById("physics-btn")
-        ?.addEventListener("click", () => setLayoutMode(false));
+    DOM.on(DOM.byId("hierarchical-btn"), "click", () => setLayoutMode(true));
+    DOM.on(DOM.byId("physics-btn"), "click", () => setLayoutMode(false));
 }
 
 async function resetGenealogy() {
     if (!confirm("Clear all genealogy data? This cannot be undone.")) return;
     try {
-        const res = await fetch(`${API_URL}/api/genealogy/reset`, { method: "POST" });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-            throw new Error(
-                data?.error || data?.message || `Reset failed (${res.status})`
-            );
+        const result = await window.ApiClient?.post?.(
+            `${API_URL}/api/genealogy/reset`,
+            {}
+        );
+        if (!result?.ok) {
+            throw new Error(result?.error || "Reset failed");
         }
         showGenealogyToast(
             "Genealogy",
@@ -406,7 +384,7 @@ async function resetGenealogy() {
             /* ignore */
         }
         selectedNodeId = null;
-        document.getElementById("selected-node-info")?.classList.add("hidden");
+        DOM.setHidden(DOM.byId("selected-node-info"), true);
         await loadTree();
     } catch (e) {
         console.error("Reset genealogy failed:", e);
@@ -419,20 +397,13 @@ async function resetGenealogy() {
 }
 
 function bindActionEvents() {
-    document
-        .getElementById("load-population-btn")
-        ?.addEventListener("click", async () => {
-            if (selectedNodeId == null) return;
-            await loadPopulation(selectedNodeId);
-        });
-
-    document.getElementById("refresh-btn")?.addEventListener("click", () => loadTree());
-    document
-        .getElementById("fit-btn")
-        ?.addEventListener("click", () => treeNetwork?.fit?.({ animation: true }));
-    document
-        .getElementById("reset-genealogy-btn")
-        ?.addEventListener("click", () => resetGenealogy());
+    DOM.on(DOM.byId("load-population-btn"), "click", async () => {
+        if (selectedNodeId == null) return;
+        await loadPopulation(selectedNodeId);
+    });
+    DOM.on(DOM.byId("refresh-btn"), "click", () => loadTree());
+    DOM.on(DOM.byId("fit-btn"), "click", () => treeNetwork?.fit?.({ animation: true }));
+    DOM.on(DOM.byId("reset-genealogy-btn"), "click", () => resetGenealogy());
 }
 
 function initPhysicsControls() {
@@ -446,6 +417,20 @@ function initPhysicsControls() {
 function attachEventListeners() {
     bindLayoutEvents();
     bindActionEvents();
+
+    const branchList = DOM.byId("branch-list");
+    if (branchList && branchList.dataset.delegationBound !== "true") {
+        branchList.dataset.delegationBound = "true";
+        DOM.delegate(branchList, "click", ".branch-item", (ev, row) => {
+            const name = row.dataset.branchName || "main";
+            branchList
+                .querySelectorAll(".branch-item")
+                .forEach((n) => DOM.toggleClass(n, "active", false));
+            DOM.toggleClass(row, "active", true);
+            loadTree(name);
+        });
+    }
+
     if (window.GenealogyExport?.bindExportModalEvents)
         window.GenealogyExport.bindExportModalEvents(showGenealogyToast, API_URL);
 }

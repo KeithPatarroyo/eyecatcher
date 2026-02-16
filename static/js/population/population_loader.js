@@ -55,7 +55,7 @@
             false
         );
         _deps?.showLoading?.(false);
-        window.PopulationState?.dispatch?.({ type: "SET_LOADING", payload: false });
+        _deps?.state?.dispatch?.({ type: "SET_LOADING", payload: false });
     };
 
     const renderPopulation = (population, patternsMap, representationId) => {
@@ -70,7 +70,7 @@
 
     const computeNextNumericId = () => {
         let next = 0;
-        (window.PopulationState?.organisms || []).forEach((o) => {
+        (_deps?.state?.organisms || []).forEach((o) => {
             const id = o?.id;
             if (typeof id === "number" && Number.isFinite(id))
                 next = Math.max(next, id + 1);
@@ -82,7 +82,7 @@
         if (got === expected) return;
         const msg = `Display count mismatch: got ${got} results for ${expected} organisms. Some cards may be broken or missing.`;
         console.error("Add to grid:", msg);
-        window.Toast?.show?.("Add from community", msg, "error");
+        _deps?.toast?.show?.("Add from community", msg, "error");
     };
 
     const warnGridMissingRules = (representation, population, payload) => {
@@ -99,7 +99,7 @@
         });
 
         if (missingRuleCount > 0) {
-            window.Toast?.show?.(
+            _deps?.toast?.show?.(
                 "Add from community",
                 `${missingRuleCount} organism(s) have no rule – cards may show an error.`,
                 "error"
@@ -108,7 +108,7 @@
     };
 
     const warnIfBrokenCards = () => {
-        const organisms = window.PopulationState?.organisms || [];
+        const organisms = _deps?.state?.organisms || [];
         let brokenCount = 0;
         let lostContextCount = 0;
 
@@ -133,7 +133,7 @@
                   : `${brokenCount} organism(s) could not be displayed (missing rule or WebGL).`;
 
         console.warn("Add from community:", msg);
-        window.Toast?.show?.("Add from community", msg, "error");
+        _deps?.toast?.show?.("Add from community", msg, "error");
     };
 
     const maybeStartImageAnimate = (representation, genomes, representationId) => {
@@ -175,12 +175,11 @@
                 branchName,
                 parentId,
                 fitnessData,
-                window.ApiClient?.apiFetch, // legacy param; okay if undefined
                 representationId
             );
 
             if (data?.population_id != null) {
-                window.PopulationState.dispatch({
+                _deps.state.dispatch({
                     type: "SET_GENEALOGY",
                     payload: { populationId: data.population_id, branchName },
                 });
@@ -241,7 +240,7 @@
                     "No patterns returned from server.",
                     true
                 );
-                window.PopulationState.dispatch({
+                _deps.state.dispatch({
                     type: "LOAD_POPULATION",
                     payload: {
                         population: [],
@@ -262,9 +261,8 @@
 
             // Genealogy bookkeeping for “new branch on gen0” behaviour
             let branchName =
-                window.PopulationState?.getState?.()?.genealogy?.branchName || "main";
-            let parentId =
-                window.PopulationState?.getState?.()?.genealogy?.populationId ?? null;
+                _deps?.state?.getState?.()?.genealogy?.branchName || "main";
+            let parentId = _deps?.state?.getState?.()?.genealogy?.populationId ?? null;
 
             if (saveToGenealogy) {
                 if (generationNum === 0) {
@@ -276,7 +274,7 @@
                     branchName = counter === 1 ? "main" : `branch-${counter}`;
                     window.GenealogySync?.setGenealogyBranchCounter?.(counter + 1);
 
-                    window.PopulationState.dispatch({
+                    _deps.state.dispatch({
                         type: "SET_GENEALOGY",
                         payload: { populationId: null, branchName },
                     });
@@ -293,7 +291,7 @@
                 });
             }
 
-            window.PopulationState.dispatch({
+            _deps.state.dispatch({
                 type: "LOAD_POPULATION",
                 payload: {
                     population,
@@ -320,7 +318,7 @@
         if (!_deps || !Array.isArray(genomes) || genomes.length === 0) return;
 
         const resolved = _deps.resolveRepresentation(
-            window.PopulationState.representationId,
+            _deps.state.representationId,
             genomes
         );
         const representation = resolved.representation;
@@ -350,10 +348,10 @@
                 _deps.IDS,
                 _deps.getGridCallbacks(),
                 newPatternsMap,
-                window.PopulationState.representationId
+                _deps.state.representationId
             );
 
-            window.PopulationState.dispatch({
+            _deps.state.dispatch({
                 type: "ADD_TO_POPULATION",
                 payload: {
                     genomes: payload,
@@ -368,7 +366,7 @@
             _deps.updateStats?.();
         }).catch((e) => {
             console.error(e);
-            window.Toast?.show?.(
+            _deps?.toast?.show?.(
                 "Add failed",
                 e?.message || "Failed to compile",
                 "error"

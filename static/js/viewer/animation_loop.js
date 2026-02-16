@@ -14,8 +14,13 @@
 
     const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
-    const getSignalIdsForCurrentRep = () =>
-        window.EvolutionConfig?.getSignalIdsForCurrentRep?.() ?? [];
+    const getSignalIdsForCurrentRep = () => {
+        const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+        return (
+            (cfg && cfg.getSignalIdsForCurrentRep && cfg.getSignalIdsForCurrentRep()) ??
+            []
+        );
+    };
 
     const getTimeMode = () =>
         document.querySelector('input[name="timeMode"]:checked')?.value ?? "oscillate";

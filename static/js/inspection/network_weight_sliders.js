@@ -7,7 +7,8 @@
     const DEBOUNCE_MS = 120;
 
     let _deps = null;
-    const pending = new Map(); // key -> timeoutId
+    /** Debounce cache: key -> timeoutId (not canonical state). */
+    const pending = new Map();
 
     const toastError = (title, msg) => window.Toast?.show?.(title, msg, "error");
 
@@ -84,17 +85,7 @@
         container,
         labelMap
     ) => {
-        const tpl = document.getElementById("weight-slider-row-tpl");
-        const item = tpl?.content
-            ?.cloneNode(true)
-            ?.querySelector?.(".weight-slider-item");
-        if (!item) return;
-
-        item.dataset.networkType = networkType;
-        item.dataset.source = connection.source;
-        item.dataset.target = connection.target;
-        item.classList.add(`network-${networkType}`);
-
+        const tpl = DOM.byId("weight-slider-row-tpl");
         const srcLabel =
             labelMap?.[connection.source] ??
             _deps?.extractNodeLabel?.(connection.source) ??
@@ -103,59 +94,82 @@
             labelMap?.[connection.target] ??
             _deps?.extractNodeLabel?.(connection.target) ??
             connection.target;
-
-        item.querySelector(".weight-slider-label").textContent =
-            `${srcLabel} → ${tgtLabel}`;
-
-        const slider = item.querySelector("input");
-        const valueEl = item.querySelector(".weight-value");
-        const setValue = (w) => (valueEl.textContent = Number(w).toFixed(2));
-
-        slider.min = WEIGHT_MIN;
-        slider.max = WEIGHT_MAX;
-        slider.step = "0.05";
-        slider.value = connection.weight;
-        setValue(connection.weight);
-
-        slider.addEventListener("input", (e) => {
-            const w = Number(e.target.value);
-            setValue(w);
-
-            const key = debounceKey(
-                individualId,
-                networkType,
-                connection.source,
-                connection.target
-            );
-            const prev = pending.get(key);
-            if (prev) clearTimeout(prev);
-
-            pending.set(
-                key,
-                setTimeout(() => {
-                    pending.delete(key);
-                    applyWeightChange(individualId, connection, networkType, w);
-                }, DEBOUNCE_MS)
-            );
+        const item = DOM.cloneAndFill(tpl, ".weight-slider-item", {
+            ".weight-slider-label": `${srcLabel} → ${tgtLabel}`,
         });
+        if (!item) return;
+
+        item.dataset.networkType = networkType;
+        item.dataset.source = connection.source;
+        item.dataset.target = connection.target;
+        item.classList.add(`network-${networkType}`);
+
+        const slider = DOM.qs("input", item);
+        const valueEl = DOM.qs(".weight-value", item);
+        if (slider) {
+            slider.min = WEIGHT_MIN;
+            slider.max = WEIGHT_MAX;
+            slider.step = "0.05";
+            slider.value = connection.weight;
+        }
+        if (valueEl) valueEl.textContent = Number(connection.weight).toFixed(2);
 
         container.appendChild(item);
     };
 
+    function attachWeightSliderDelegation(container) {
+        if (container.dataset.weightDelegationBound === "true") return;
+        container.dataset.weightDelegationBound = "true";
+
+        DOM.on(container, "input", (e) => {
+            const slider = e.target;
+            if (slider.type !== "range" && slider.type !== "number") return;
+            const item = slider.closest(".weight-slider-item");
+            if (!item) return;
+
+            const individualId = container.dataset.individualId;
+            const networkType = item.dataset.networkType;
+            const source = item.dataset.source;
+            const target = item.dataset.target;
+            const w = Number(slider.value);
+
+            const valueEl = item.querySelector(".weight-value");
+            if (valueEl) valueEl.textContent = w.toFixed(2);
+
+            const key = debounceKey(individualId, networkType, source, target);
+            const prev = pending.get(key);
+            if (prev) clearTimeout(prev);
+            pending.set(
+                key,
+                setTimeout(() => {
+                    pending.delete(key);
+                    applyWeightChange(
+                        individualId,
+                        { source, target, weight: w },
+                        networkType,
+                        w
+                    );
+                }, DEBOUNCE_MS)
+            );
+        });
+    }
+
     const setupWeightSliders = (individualId, data) => {
-        const panel = document.getElementById("weight-adjustment-panel");
-        const container = document.getElementById("weight-sliders-container");
+        const panel = DOM.byId("weight-adjustment-panel");
+        const container = DOM.byId("weight-sliders-container");
         if (!panel || !container) return;
         if (!_deps?.getNetworkTypesFromData) return;
 
         const connections = data?.connections ?? [];
         if (!connections.length) {
-            panel.classList.add("hidden");
+            DOM.toggleClass(panel, "hidden", true);
             return;
         }
 
         container.innerHTML = "";
-        panel.classList.remove("hidden");
+        DOM.toggleClass(panel, "hidden", false);
+        container.dataset.individualId = individualId;
+        attachWeightSliderDelegation(container);
 
         const labelMap = {};
         (data?.nodes ?? []).forEach((n) => (labelMap[n.id] = n.label));
@@ -174,17 +188,18 @@
     };
 
     const scrollToWeightSlider = (sourceNodeId, targetNodeId) => {
-        const items = document.querySelectorAll(".weight-slider-item");
-        items.forEach((n) => n.classList.remove("highlighted"));
+        const container = DOM.byId("weight-sliders-container");
+        const items = container?.querySelectorAll?.(".weight-slider-item") ?? [];
+        items.forEach((n) => DOM.toggleClass(n, "highlighted", false));
 
         for (const item of items) {
             if (
                 item.dataset.source === sourceNodeId &&
                 item.dataset.target === targetNodeId
             ) {
-                item.classList.add("highlighted");
+                DOM.toggleClass(item, "highlighted", true);
                 item.scrollIntoView({ behavior: "smooth", block: "center" });
-                setTimeout(() => item.classList.remove("highlighted"), 2000);
+                setTimeout(() => DOM.toggleClass(item, "highlighted", false), 2000);
                 return;
             }
         }

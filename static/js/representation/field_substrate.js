@@ -7,8 +7,15 @@
 
     const Substrate = window.Substrate;
 
-    const getToggleableSignals = () =>
-        window.EvolutionConfig?.getToggleableSignalsForCurrentRep?.() ?? null;
+    const getToggleableSignals = () => {
+        const cfg = window.getConfig?.() ?? window.EvolutionConfig;
+        return (
+            (cfg &&
+                cfg.getToggleableSignalsForCurrentRep &&
+                cfg.getToggleableSignalsForCurrentRep()) ??
+            null
+        );
+    };
 
     const bindFullscreenQuad = (gl, program, positionBuffer, cachedAttrLoc) => {
         const loc =

@@ -7,21 +7,15 @@
 
     const fmtBytes = (n) => (window.formatBytes ? window.formatBytes(n) : `${n} B`);
 
-    const fetchJson = async (url, fallback) => {
-        const res = await fetch(url);
-        const data = await res.json().catch(() => null);
-        if (!res.ok) {
-            const err = new Error(
-                data?.error ||
-                    data?.message ||
-                    fallback ||
-                    `Request failed (${res.status})`
-            );
-            err.status = res.status;
-            err.data = data;
-            throw err;
+    const apiGet = async (url, fallback) => {
+        const api = window.ApiClient;
+        const result = api
+            ? await api.request(url)
+            : { ok: false, error: fallback || "No API client" };
+        if (!result.ok) {
+            throw new Error(result.error || fallback || "Request failed");
         }
-        return data;
+        return result.data;
     };
 
     const downloadJson = (obj, filename) => {
@@ -33,117 +27,95 @@
 
     const bindExportModalEvents = (showToast, apiUrl = window.API_URL || "") => {
         const Utils = window.Utils;
-        if (!Utils?.onId) return;
+        const modal = () => DOM.byId("export-genealogy-modal");
+        const hide = () => DOM.setHidden(modal(), true);
+        const show = () => DOM.setHidden(modal(), false);
 
-        const modal = () => document.getElementById("export-genealogy-modal");
-        const hide = () => {
-            const m = modal();
-            if (m) m.hidden = true;
-        };
-        const show = () => {
-            const m = modal();
-            if (m) m.hidden = false;
-        };
+        DOM.on(DOM.byId("download-genealogy-btn"), "click", async () => {
+            try {
+                const sizes = await apiGet(
+                    `${apiUrl}/api/genealogy/export-sizes`,
+                    "Could not load sizes"
+                );
 
-        Utils.onId("download-genealogy-btn", (btn) => {
-            btn.onclick = async () => {
-                try {
-                    const sizes = await fetchJson(
-                        `${apiUrl}/api/genealogy/export-sizes`,
-                        "Could not load sizes"
-                    );
+                DOM.setText(
+                    DOM.byId("export-full-size"),
+                    `${sizes.full.populations} populations, ${sizes.full.individuals} individuals (~${fmtBytes(sizes.full.estimated_bytes)})`
+                );
 
-                    document.getElementById("export-full-size").textContent =
-                        `${sizes.full.populations} populations, ${sizes.full.individuals} individuals (~${fmtBytes(sizes.full.estimated_bytes)})`;
+                const branches = sizes.branches || [];
+                const branchList = DOM.byId("export-branch-list");
+                const branchesGroup = DOM.byId("export-branches-group");
+                if (branchList) branchList.innerHTML = "";
+                DOM.setHidden(branchesGroup, branches.length === 0);
 
-                    const branches = sizes.branches || [];
-                    const branchList = document.getElementById("export-branch-list");
-                    const branchesGroup = document.getElementById(
-                        "export-branches-group"
-                    );
-                    if (branchList) branchList.innerHTML = "";
-                    if (branchesGroup) branchesGroup.hidden = branches.length === 0;
-
-                    const tpl = document.getElementById("export-branch-option-tpl");
-                    branches.forEach((b) => {
-                        if (!tpl?.content || !branchList) return;
-                        const label = tpl.content
-                            .cloneNode(true)
-                            .querySelector("label");
-                        if (!label) return;
-
-                        const radio = label.querySelector('input[type="radio"]');
-                        const titleSpan = label.querySelector(".export-option-title");
-                        const sizeSpan = label.querySelector(".export-size");
-
-                        const branchName = b.name || "main";
+                const tpl = DOM.byId("export-branch-option-tpl");
+                branches.forEach((b) => {
+                    if (!tpl?.content || !branchList) return;
+                    const branchName = b.name || "main";
+                    const sizeText = `${b.populations} pop., ${b.individuals} ind. (~${fmtBytes(b.estimated_bytes)})`;
+                    const label = DOM.cloneAndFill(tpl, "label", {
+                        ".export-option-title": branchName,
+                        ".export-size": sizeText,
+                    });
+                    if (!label) return;
+                    const radio = DOM.qs('input[type="radio"]', label);
+                    if (radio) {
                         radio.id = `export-branch-${branchName.replace(/\W/g, "_")}`;
                         radio.value = branchName;
-                        if (titleSpan) titleSpan.textContent = branchName;
-                        if (sizeSpan)
-                            sizeSpan.textContent = `${b.populations} pop., ${b.individuals} ind. (~${fmtBytes(b.estimated_bytes)})`;
+                    }
+                    branchList.appendChild(label);
+                });
 
-                        branchList.appendChild(label);
-                    });
-
-                    show();
-                } catch (e) {
-                    showToast(
-                        "Could not load sizes",
-                        Utils.formatApiError
-                            ? Utils.formatApiError(e, "Network error")
-                            : String(e),
-                        "error"
-                    );
-                }
-            };
+                show();
+            } catch (e) {
+                showToast(
+                    "Could not load sizes",
+                    Utils.formatApiError
+                        ? Utils.formatApiError(e, "Network error")
+                        : String(e),
+                    "error"
+                );
+            }
         });
 
-        Utils.onId("export-modal-cancel", (btn) => {
-            btn.onclick = hide;
-        });
-        document
-            .querySelector(".export-modal-backdrop")
-            ?.addEventListener("click", hide);
-        document.addEventListener("keydown", (e) => {
+        DOM.on(DOM.byId("export-modal-cancel"), "click", hide);
+        DOM.on(DOM.qs(".export-modal-backdrop"), "click", hide);
+        DOM.on(document, "keydown", (e) => {
             if (e.key === "Escape" && modal() && !modal().hidden) hide();
         });
 
-        Utils.onId("export-modal-download", (btn) => {
-            btn.onclick = async () => {
-                hide();
-                const scope = document.querySelector(
-                    'input[name="export-scope"]:checked'
+        DOM.on(DOM.byId("export-modal-download"), "click", async () => {
+            hide();
+            const scope = DOM.qs('input[name="export-scope"]:checked');
+            const branchName = scope && scope.value !== "full" ? scope.value : null;
+
+            try {
+                const url = branchName
+                    ? `${apiUrl}/api/genealogy/export?branch_name=${encodeURIComponent(branchName)}`
+                    : `${apiUrl}/api/genealogy/export`;
+
+                const data = await apiGet(url, "Download failed");
+                const date = new Date().toISOString().slice(0, 10);
+                const filename = branchName
+                    ? `genealogy-${branchName}-${date}.json`
+                    : `genealogy-export-${date}.json`;
+
+                downloadJson(data, filename);
+                showToast(
+                    "Downloaded",
+                    `${branchName ? `Branch "${branchName}"` : "Full tree"} exported as JSON.`,
+                    "success"
                 );
-                const branchName = scope && scope.value !== "full" ? scope.value : null;
-
-                try {
-                    const url = branchName
-                        ? `${apiUrl}/api/genealogy/export?branch_name=${encodeURIComponent(branchName)}`
-                        : `${apiUrl}/api/genealogy/export`;
-
-                    const data = await fetchJson(url, "Download failed");
-                    const date = new Date().toISOString().slice(0, 10);
-                    const filename = branchName
-                        ? `genealogy-${branchName}-${date}.json`
-                        : `genealogy-export-${date}.json`;
-
-                    downloadJson(data, filename);
-                    showToast(
-                        "Downloaded",
-                        `${branchName ? `Branch "${branchName}"` : "Full tree"} exported as JSON.`,
-                        "success"
-                    );
-                } catch (e) {
-                    showToast(
-                        "Download failed",
-                        Utils.formatApiError
-                            ? Utils.formatApiError(e, "Network error")
-                            : String(e),
-                        "error"
-                    );
-                }
-            };
+            } catch (e) {
+                showToast(
+                    "Download failed",
+                    Utils.formatApiError
+                        ? Utils.formatApiError(e, "Network error")
+                        : String(e),
+                    "error"
+                );
+            }
         });
     };
 
