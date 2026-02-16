@@ -40,7 +40,7 @@ Optional: copy [.env.example](.env.example) to `.env`; Docker Compose loads it. 
 
 ## Architecture
 
-The system follows a simple biological model:
+Terminology is a loose biological metaphor: genome, phenotype, development, receptors, etc. roughly match common evolutionary-algorithm usage..
 
 - **Genome** — evolvable data (e.g. NEAT networks, grid). Created by `create_random`, evolved by `mutate` / `crossover`.
 - **Development** — `express(genome)` produces a displayable output (image/grid); `develop(genome)` produces a GLSL **rule** for real-time rendering. Field substrates (CPPN) implement `develop`; grid (NCA, CA) use phenotype behaviour rules.
@@ -52,16 +52,17 @@ flowchart LR
     subgraph backend [Backend]
         Genome[Genome]
         Develop[develop / express]
+        Rep[Representation]
         Phenotype[Phenotype]
         Genome --> Develop
-        Develop --> Phenotype
+        Rep --> Phenotype
     end
     subgraph frontend [Frontend]
         Config[config.generated.js]
         Substrate[Substrate by type]
         Pixels[pixels]
-        Config --> Substrate
         Phenotype --> Config
+        Config --> Substrate
         Substrate --> Pixels
     end
 ```
