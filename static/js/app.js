@@ -1,14 +1,28 @@
 /**
  * Eyecatcher app entry: init and DOM wiring.
- *
- * Core modules (PopulationState, AnimationLoop, FullscreenModal) are instances on window;
- * GridRenderer and RepresentationRegistry are imported. Wiring is via init(options).
- *
- * Load after: those modules, api_client, webgl_utils, viewer_controls, animation_loop,
- * population_ui, community, genome_visualizer, toolbar_ui.
+ * All core modules are imported; wiring is via init(options).
  */
 import RepresentationRegistry from "./representation/representation_registry.js";
 import GridRenderer from "./viewer/grid_renderer.js";
+import { gridTopology } from "./viewer/grid_renderer.js";
+import Utils from "./lib/utils.js";
+import Toast from "./lib/toast.js";
+import apiInstance from "./lib/api_client.js";
+import populationState from "./population/population_state.js";
+import populationLoader from "./population/population_loader.js";
+import populationUI from "./population/population_ui.js";
+import fullscreenModal from "./viewer/fullscreen_modal.js";
+import evolutionCoordinator from "./evolution/coordinator.js";
+import viewerControls from "./evolution/viewer_controls.js";
+import { CommunityUI } from "./community/index.js";
+import { assertConfig, EvolutionConfig } from "./evolution/experiment_config.js";
+import WebGLUtils from "./representation/webgl_utils.js";
+import organismActions from "./viewer/organism_actions.js";
+import eyecatcherDebug from "./lib/debug.js";
+import toolbarUI from "./viewer/toolbar_ui.js";
+import { NetworkVisualizer } from "./inspection/genome_visualizer.js";
+import GenealogySync from "./genealogy/sync.js";
+import animationLoop from "./viewer/animation_loop.js";
 
 if (typeof vis === "undefined") {
     console.error(
@@ -52,12 +66,7 @@ const IDS = {
 
 const getEl = (id) => (id ? document.getElementById(id) : null);
 
-const onId =
-    window.Utils?.onId ??
-    ((id, fn) => {
-        const el = getEl(id);
-        if (el) fn(el);
-    });
+const onId = (id, fn) => Utils.onId(id, fn);
 
 const bindClick = (id, handler) => {
     if (!id || !handler) return;
@@ -67,17 +76,7 @@ const bindClick = (id, handler) => {
 const bindRoleButton = (id, handler) => {
     if (!id || !handler) return;
     onId(id, (el) => {
-        el.addEventListener("click", handler);
-        if (window.Utils?.onRoleButtonKeydown) {
-            window.Utils.onRoleButtonKeydown(el, handler);
-            return;
-        }
-        el.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handler();
-            }
-        });
+        Utils.onRoleButtonKeydown(el, handler);
     });
 };
 
@@ -86,7 +85,7 @@ const getColorMode = () => {
     return el?.value === "rgb" ? "rgb" : "hsv";
 };
 
-const showLoading = (show) => window.PopulationLoader?.showLoading?.(show);
+const showLoading = (show) => populationLoader?.showLoading?.(show);
 
 const closeModalById = (id) => {
     const m = getEl(id);
@@ -94,15 +93,11 @@ const closeModalById = (id) => {
 };
 
 const openFullscreen = (id) => {
-    window.FullscreenModal.openFullscreen(
-        id,
-        window.PopulationState.getPhenotypes(),
-        IDS
-    );
+    fullscreenModal.openFullscreen(id, populationState.getPhenotypes(), IDS);
 };
 
 const closeFullscreen = () => {
-    window.FullscreenModal.closeFullscreen(IDS);
+    fullscreenModal.closeFullscreen(IDS);
 };
 
 const resolveRepresentation = (representationId, genomes) => {
@@ -117,35 +112,35 @@ const resolveRepresentation = (representationId, genomes) => {
 };
 
 const evolveGeneration = () => {
-    window.EvolutionCoordinator.evolve();
+    evolutionCoordinator.evolve();
 };
 
 const getCurrentGenomesForSave = () => {
-    const genomes = window.PopulationState.getGenomes();
+    const genomes = populationState.getGenomes();
     if (genomes && genomes.length) {
         return {
             genomes,
-            generation: window.PopulationState.generationNum,
-            representationId: window.PopulationState.representationId,
+            generation: populationState.generationNum,
+            representationId: populationState.representationId,
         };
     }
     return null;
 };
 
 const getGenomeForPattern = (patternId) => {
-    const org = window.PopulationState.getOrganism(patternId);
+    const org = populationState.getOrganism(patternId);
     return Promise.resolve(org ? org.genome : null);
 };
 
 const updatePatternRule = (individualId, newRule) => {
-    const org = window.PopulationState.getOrganism(individualId);
+    const org = populationState.getOrganism(individualId);
     const runtime = org?.runtime;
-    if (!runtime || !window.WebGLUtils) return;
+    if (!runtime || !WebGLUtils) return;
 
-    const newRuntime = window.WebGLUtils.setupPattern(runtime.canvas, newRule);
+    const newRuntime = WebGLUtils.setupPattern(runtime.canvas, newRule);
     if (!newRuntime || newRuntime.error) return;
 
-    window.PopulationState.dispatch({
+    populationState.dispatch({
         type: "UPDATE_PATTERN_RULE",
         payload: {
             id: individualId,
@@ -161,11 +156,11 @@ const updatePatternRule = (individualId, newRule) => {
 };
 
 const getPatterns = () => {
-    const list = window.PopulationState.organisms
+    const list = populationState.organisms
         .filter((o) => o.runtime != null)
         .map((o) => o.runtime);
 
-    const fullscreen = window.FullscreenModal.getFullscreenRuntime();
+    const fullscreen = fullscreenModal.getFullscreenRuntime();
     if (fullscreen) list.push(fullscreen);
 
     return list;
@@ -173,16 +168,16 @@ const getPatterns = () => {
 
 const getPatternsMap = () => {
     const map = new Map();
-    window.PopulationState.organisms.forEach((o) => {
+    populationState.organisms.forEach((o) => {
         if (o.runtime != null) map.set(o.id, o.runtime);
     });
     return map;
 };
 
-const getCurrentPopulation = () => window.PopulationState.getPhenotypes();
+const getCurrentPopulation = () => populationState.getPhenotypes();
 
 const onGenomeUpdated = (individualId, idx, genome) => {
-    window.PopulationState.dispatch({
+    populationState.dispatch({
         type: "UPDATE_GENOME_AT_INDEX",
         payload: { idx, genome },
     });
@@ -192,7 +187,7 @@ const updateStats = () => {
     let totalFitness = 0;
     let hasFitness = false;
 
-    window.PopulationState.organisms.forEach((o) => {
+    populationState.organisms.forEach((o) => {
         const f = o.fitness || 0;
         totalFitness += f;
         if (f > 0) hasFitness = true;
@@ -209,34 +204,32 @@ const updateStats = () => {
 };
 
 const getGridCallbacks = () => ({
-    onShare: (id) => window.CommunityUI.openSubmitCommunityModal(id),
-    onNetwork: (id, card) => window.NetworkVisualizer.toggle(id, card),
-    onSave: window.OrganismActions.savePattern,
+    onShare: (id) => CommunityUI.openSubmitCommunityModal(id),
+    onNetwork: (id, card) => NetworkVisualizer.toggle(id, card),
+    onSave: organismActions.savePattern,
     onFullscreen: openFullscreen,
-    onClick: (id, card) => window.OrganismActions.clickPattern(id, card, updateStats),
-    onUnclick: (id, card) =>
-        window.OrganismActions.unclickPattern(id, card, updateStats),
-    onMouseEnter: (id) => window.EyecatcherDebug?.setHoveredPatternId?.(id),
+    onClick: (id, card) => organismActions.clickPattern(id, card, updateStats),
+    onUnclick: (id, card) => organismActions.unclickPattern(id, card, updateStats),
+    onMouseEnter: (id) => eyecatcherDebug?.setHoveredPatternId?.(id),
     onMouseLeave: (id) => {
-        if (window.EyecatcherDebug?.getHoveredPatternId?.() === id) {
-            window.EyecatcherDebug.setHoveredPatternId(null);
+        if (eyecatcherDebug?.getHoveredPatternId?.() === id) {
+            eyecatcherDebug.setHoveredPatternId(null);
         }
     },
 });
 
 const setGenealogyState = (populationId, branchName) => {
-    window.PopulationState.dispatch({
+    populationState.dispatch({
         type: "SET_GENEALOGY",
         payload: { populationId, branchName: branchName || "main" },
     });
-    window.GenealogySync.syncCurrentPopulationIdToStorage(populationId);
+    GenealogySync.syncCurrentPopulationIdToStorage(populationId);
 };
 
 const initGenealogyLoad = (setGenealogyStateFn) => {
-    const raw =
-        window.Utils?.safeGetItem?.(localStorage, "genealogy_load", null) ?? null;
+    const raw = Utils?.safeGetItem?.(localStorage, "genealogy_load", null) ?? null;
     if (!raw) {
-        window.PopulationUI.startNewRandomPopulation();
+        populationUI.startNewRandomPopulation();
         return;
     }
 
@@ -250,13 +243,13 @@ const initGenealogyLoad = (setGenealogyStateFn) => {
         }
     } catch (e) {
         console.warn("Genealogy load parse failed:", e);
-        window.PopulationUI.startNewRandomPopulation();
+        populationUI.startNewRandomPopulation();
         return;
     }
 
     const loadGenomes = genealogyLoad?.individuals || genealogyLoad?.genomes;
     if (!Array.isArray(loadGenomes) || loadGenomes.length === 0) {
-        window.PopulationUI.startNewRandomPopulation();
+        populationUI.startNewRandomPopulation();
         return;
     }
 
@@ -273,14 +266,9 @@ const initGenealogyLoad = (setGenealogyStateFn) => {
         genomes: loadGenomes,
     });
 
-    window.PopulationLoader.loadPopulation(
-        loadGenomes,
-        genNum,
-        resolved.representationId,
-        {
-            saveToGenealogy: false,
-        }
-    );
+    populationLoader.loadPopulation(loadGenomes, genNum, resolved.representationId, {
+        saveToGenealogy: false,
+    });
 };
 
 /** Wrapper for UI that expects (genomes, generationNum, saveToGenealogy, representationId). */
@@ -290,20 +278,21 @@ const loadFromStatelessGenomes = (
     saveToGenealogy,
     representationId
 ) =>
-    window.PopulationLoader.loadPopulation(genomes, generationNum, representationId, {
+    populationLoader.loadPopulation(genomes, generationNum, representationId, {
         saveToGenealogy,
     });
 
 // ---------- Boot sequence ----------
-window.PopulationState.init();
-window.ApiClient.init(API_URL);
-if (typeof window.assertConfig === "function") window.assertConfig();
+Utils.setPopulationRefs(populationLoader, populationState);
+populationState.init();
+apiInstance.init(API_URL);
+if (typeof assertConfig === "function") assertConfig();
 
 /** Frontend context: one object passed into inits so modules use ctx.api / ctx.state instead of window.* */
 const ctx = {
-    api: window.ApiClient,
-    state: window.PopulationState,
-    toast: window.Toast,
+    api: apiInstance,
+    state: populationState,
+    toast: Toast,
     ids: IDS,
     apiUrl: API_URL,
     getGridCallbacks,
@@ -320,14 +309,14 @@ const gridDeps = {
 };
 
 GridRenderer.init(gridDeps);
-window.PopulationLoader.init(gridDeps);
+populationLoader.init(gridDeps);
 
-window.EvolutionCoordinator.init(ctx);
+evolutionCoordinator.init(ctx);
 
 window.onRepresentationSwitched = (config) => {
     GridRenderer.clearGrid(IDS);
 
-    window.PopulationState.dispatch({
+    populationState.dispatch({
         type: "LOAD_POPULATION",
         payload: {
             population: [],
@@ -337,30 +326,31 @@ window.onRepresentationSwitched = (config) => {
         },
     });
 
-    window.ViewerControls.updateForRepresentation(config.representation_id);
-    window.GridTopology.rebuild(null);
+    viewerControls.updateForRepresentation(config.representation_id);
+    gridTopology.rebuild(null);
 
-    window.Toast?.show?.(
+    Toast?.show?.(
         "Representation changed",
         `Use Start Fresh to get a population for ${config.representation_id || "the new substrate"}.`,
         "info"
     );
 };
 
-window.ApiClient.fetchConfig()
+apiInstance
+    .fetchConfig()
     .then((c) => {
-        window.EvolutionConfig.mergeFromServer(c);
+        EvolutionConfig.mergeFromServer(c);
 
         if (c?.representation_id && window.__eyecatcherDefaultResolution) {
             window.__eyecatcherDefaultResolution.representationId = c.representation_id;
         }
 
         const needsRep =
-            window.PopulationState.representationId == null ||
-            window.PopulationState.organisms.length === 0;
+            populationState.representationId == null ||
+            populationState.organisms.length === 0;
 
         if (needsRep && c?.representation_id) {
-            window.PopulationState.dispatch({
+            populationState.dispatch({
                 type: "LOAD_POPULATION",
                 payload: {
                     population: [],
@@ -371,36 +361,36 @@ window.ApiClient.fetchConfig()
             });
         }
 
-        window.ToolbarUI?.syncToolbarPopulationSizeFromConfig?.();
+        toolbarUI?.syncToolbarPopulationSizeFromConfig?.();
         if (c?.representation_id)
-            window.ViewerControls?.updateForRepresentation?.(c.representation_id);
+            viewerControls?.updateForRepresentation?.(c.representation_id);
     })
     .catch(() => {
         /* keep in-app defaults if server config fetch fails */
     });
 
-window.AnimationLoop.init({
+animationLoop.init({
     getPatterns,
-    viewerControls: window.ViewerControls || null,
+    viewerControls: viewerControls || null,
     signalSource: window.SignalSource,
 });
 
-window.PopulationUI.init({
+populationUI.init({
     ...ctx,
     loadFromStatelessGenomes,
-    addToGrid: window.PopulationLoader.addToPopulation.bind(window.PopulationLoader),
+    addToGrid: populationLoader.addToPopulation.bind(populationLoader),
     getCurrentGenomesForSave,
 });
 
-window.CommunityUI.init({
+CommunityUI.init({
     ...ctx,
     loadFromStatelessGenomes,
-    addToGrid: window.PopulationLoader.addToPopulation.bind(window.PopulationLoader),
+    addToGrid: populationLoader.addToPopulation.bind(populationLoader),
     getGenomeForPattern,
-    viewerControls: window.ViewerControls || null,
+    viewerControls: viewerControls || null,
 });
 
-window.NetworkVisualizer.init({
+NetworkVisualizer.init({
     ...ctx,
     getGenomeForPattern,
     updatePatternRule,
@@ -408,8 +398,8 @@ window.NetworkVisualizer.init({
     onGenomeUpdated,
 });
 
-window.ToolbarUI.init();
-window.ViewerControls.init();
+toolbarUI.init();
+viewerControls.init();
 
 // Color mode switch reload: only relevant for field substrates (shader).
 document.querySelectorAll('input[name="colorMode"]').forEach((radio) => {
@@ -423,7 +413,7 @@ document.querySelectorAll('input[name="colorMode"]').forEach((radio) => {
             (typeof st === "string" && st === "field") || (st && st.type === "field");
 
         if (representation?.phenotype && isField) {
-            window.PopulationLoader.loadPopulation(
+            populationLoader.loadPopulation(
                 data.genomes,
                 data.generation,
                 data.representationId,
@@ -450,28 +440,28 @@ bindClick(IDS.fullscreenBackdrop, closeFullscreen);
 bindRoleButton(IDS.evolveBtn, evolveGeneration);
 bindClick(IDS.loadModalClose, closeLoadModal);
 
-bindClick(IDS.communitySubmitDo, window.CommunityUI.submitCommunityForm);
-bindClick(IDS.communitySubmitCancel, window.CommunityUI.closeSubmitCommunityModal);
+bindClick(IDS.communitySubmitDo, CommunityUI.submitCommunityForm);
+bindClick(IDS.communitySubmitCancel, CommunityUI.closeSubmitCommunityModal);
 bindClick(IDS.communityListClose, closeCommunityListModal);
 
-bindClick(IDS.communityLoadSelectedBtn, window.CommunityUI.onCommunityLoadSelected);
-bindClick(IDS.communityLoad12Btn, window.CommunityUI.onCommunityLoad12);
-bindClick(IDS.communitySelectAllBtn, window.CommunityUI.onCommunitySelectAll);
-bindClick(IDS.communityDeselectAllBtn, window.CommunityUI.onCommunityDeselectAll);
+bindClick(IDS.communityLoadSelectedBtn, CommunityUI.onCommunityLoadSelected);
+bindClick(IDS.communityLoad12Btn, CommunityUI.onCommunityLoad12);
+bindClick(IDS.communitySelectAllBtn, CommunityUI.onCommunitySelectAll);
+bindClick(IDS.communityDeselectAllBtn, CommunityUI.onCommunityDeselectAll);
 
-bindRoleButton(IDS.newFromCommunityBtn, window.CommunityUI.onNewFromCommunityClick);
+bindRoleButton(IDS.newFromCommunityBtn, CommunityUI.onNewFromCommunityClick);
 
-bindClick(IDS.adminKeySubmit, window.CommunityUI.submitAdminKey);
-bindClick(IDS.adminModalCancel, window.CommunityUI.closeAdminModal);
-bindClick(IDS.adminListClose, window.CommunityUI.closeAdminModal);
+bindClick(IDS.adminKeySubmit, CommunityUI.submitAdminKey);
+bindClick(IDS.adminModalCancel, CommunityUI.closeAdminModal);
+bindClick(IDS.adminListClose, CommunityUI.closeAdminModal);
 
-bindClick(IDS.saveCurrentBtn, window.PopulationUI.onSaveCurrentClick);
-bindClick(IDS.importBtn, window.PopulationUI.onImportClick);
+bindClick(IDS.saveCurrentBtn, populationUI.onSaveCurrentClick);
+bindClick(IDS.importBtn, populationUI.onImportClick);
 
 // Admin key input: Enter submits
 onId(IDS.adminKeyInput, (el) => {
     el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") window.CommunityUI.submitAdminKey();
+        if (e.key === "Enter") CommunityUI.submitAdminKey();
     });
 });
 
@@ -480,25 +470,23 @@ onId(IDS.importFile, (el) => {
     el.addEventListener("change", (e) => {
         const file = e.target.files && e.target.files[0];
         e.target.value = "";
-        if (file) window.PopulationUI.handleImportFile?.(file);
+        if (file) populationUI.handleImportFile?.(file);
     });
 });
 
-if (window.EyecatcherDebug) {
-    window.EyecatcherDebug.init({
+if (eyecatcherDebug) {
+    eyecatcherDebug.init({
         apiUrl: API_URL,
-        getMouseDistance: window.AnimationLoop.getMouseDistance.bind(
-            window.AnimationLoop
-        ),
+        getMouseDistance: animationLoop.getMouseDistance.bind(animationLoop),
         getPatterns: getPatternsMap,
-        getSignalState: () => window.ViewerControls.signalState,
+        getSignalState: () => viewerControls.signalState,
         getGenomeForPattern,
         getRepresentation: () =>
-            RepresentationRegistry.get(window.PopulationState.representationId),
+            RepresentationRegistry.get(populationState.representationId),
     });
 }
 
 initGenealogyLoad(setGenealogyState);
-window.AnimationLoop.start();
+animationLoop.start();
 
 console.log("Eyecatcher Interactive Evolution ready!");
