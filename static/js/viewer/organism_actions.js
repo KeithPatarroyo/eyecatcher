@@ -2,122 +2,114 @@
  * Organism interaction handlers: save, click, unclick.
  * Used by app.js grid callbacks. Depends on window.PopulationState, ApiClient, Toast.
  */
-(() => {
-    "use strict";
+const showError = (title, message) => window.Toast?.show?.(title, message, "error");
 
-    const showError = (title, message) => window.Toast?.show?.(title, message, "error");
+const showSuccess = (title, message, opts) =>
+    window.Toast?.show?.(title, message, "success", opts);
 
-    const showSuccess = (title, message, opts) =>
-        window.Toast?.show?.(title, message, "success", opts);
+const withBusyButton = (buttonEl, busyText, fn) => {
+    if (!buttonEl) return fn();
 
-    const withBusyButton = (buttonEl, busyText, fn) => {
-        if (!buttonEl) return fn();
+    const originalText = buttonEl.textContent;
+    buttonEl.textContent = busyText;
+    buttonEl.classList.add("saving");
 
-        const originalText = buttonEl.textContent;
-        buttonEl.textContent = busyText;
-        buttonEl.classList.add("saving");
-
-        return Promise.resolve()
-            .then(fn)
-            .finally(() => {
-                buttonEl.textContent = originalText;
-                buttonEl.classList.remove("saving");
-            });
-    };
-
-    const getOrganismFlexible = (id) => {
-        const PS = window.PopulationState;
-        if (!PS?.getOrganism) return null;
-        if (PS.getOrganism(id)) return PS.getOrganism(id);
-        const s = id != null ? String(id) : "";
-        if (PS.getOrganism(s)) return PS.getOrganism(s);
-        if (/^\d+$/.test(s)) return PS.getOrganism(parseInt(s, 10)) ?? null;
-        return null;
-    };
-
-    const getGenomeOrNull = (id) => getOrganismFlexible(id)?.genome ?? null;
-
-    const setFitnessUI = (card, fitness) => {
-        const badge = card?.querySelector?.(".fitness-badge") ?? null;
-        if (!badge) return;
-        DOM.setText(badge, String(fitness));
-        DOM.toggleClass(badge, "zero", fitness === 0);
-        DOM.toggleClass(card, "selected", fitness > 0);
-    };
-
-    const updateFitness = (id, card, delta, updateStats) => {
-        const org = getOrganismFlexible(id);
-        if (!org) return;
-
-        const current = org.fitness || 0;
-        const next = Math.max(0, current + delta);
-        if (next === current) return;
-
-        const payloadId = typeof org.id !== "undefined" ? org.id : id;
-        window.PopulationState.dispatch({
-            type: "SET_ORGANISM_FITNESS",
-            payload: { id: payloadId, fitness: next },
+    return Promise.resolve()
+        .then(fn)
+        .finally(() => {
+            buttonEl.textContent = originalText;
+            buttonEl.classList.remove("saving");
         });
+};
 
-        setFitnessUI(card, next);
-        if (typeof updateStats === "function") updateStats();
-    };
+const getOrganismFlexible = (id) => {
+    const PS = window.PopulationState;
+    if (!PS?.getOrganism) return null;
+    if (PS.getOrganism(id)) return PS.getOrganism(id);
+    const s = id != null ? String(id) : "";
+    if (PS.getOrganism(s)) return PS.getOrganism(s);
+    if (/^\d+$/.test(s)) return PS.getOrganism(parseInt(s, 10)) ?? null;
+    return null;
+};
 
-    class OrganismActions {
-        savePattern(id, buttonEl) {
-            const organisms = window.PopulationState?.organisms;
-            if (!Array.isArray(organisms) || organisms.length === 0) {
-                showError(
-                    "Cannot save",
-                    "No organism data. Start with New random population or Load population."
-                );
-                return;
-            }
+const getGenomeOrNull = (id) => getOrganismFlexible(id)?.genome ?? null;
 
-            const genome = getGenomeOrNull(id);
-            if (!genome) {
-                showError("Cannot save", "Could not get organism data.");
-                return;
-            }
+const setFitnessUI = (card, fitness) => {
+    const badge = card?.querySelector?.(".fitness-badge") ?? null;
+    if (!badge) return;
+    DOM.setText(badge, String(fitness));
+    DOM.toggleClass(badge, "zero", fitness === 0);
+    DOM.toggleClass(card, "selected", fitness > 0);
+};
 
-            return withBusyButton(buttonEl, "Compiling...", () =>
-                window.ApiClient.save(id, genome)
-                    .then((data) => {
-                        const downloads = data?.downloads;
-                        if (!Array.isArray(downloads) || downloads.length === 0) {
-                            showSuccess("Organism saved!", "No download in response.");
-                            return;
-                        }
+const updateFitness = (id, card, delta, updateStats) => {
+    const org = getOrganismFlexible(id);
+    if (!org) return;
 
-                        const file = downloads[0];
-                        const blob = file.content_base64
-                            ? window.Toast.base64ToBlob(file.content_base64, file.mime)
-                            : new Blob([file.content], { type: file.mime });
+    const current = org.fitness || 0;
+    const next = Math.max(0, current + delta);
+    if (next === current) return;
 
-                        window.Toast.triggerDownload(blob, file.filename);
-                        showSuccess(
-                            "Organism saved!",
-                            "Zip downloaded to your computer.",
-                            {
-                                duration: 5000,
-                            }
-                        );
-                    })
-                    .catch((error) => {
-                        console.error("Error saving:", error);
-                        showError("Save failed", error?.message || "Network error");
-                    })
+    const payloadId = typeof org.id !== "undefined" ? org.id : id;
+    window.PopulationState.dispatch({
+        type: "SET_ORGANISM_FITNESS",
+        payload: { id: payloadId, fitness: next },
+    });
+
+    setFitnessUI(card, next);
+    if (typeof updateStats === "function") updateStats();
+};
+
+class OrganismActions {
+    savePattern(id, buttonEl) {
+        const organisms = window.PopulationState?.organisms;
+        if (!Array.isArray(organisms) || organisms.length === 0) {
+            showError(
+                "Cannot save",
+                "No organism data. Start with New random population or Load population."
             );
+            return;
         }
 
-        clickPattern(id, card, updateStats) {
-            updateFitness(id, card, +1, updateStats);
+        const genome = getGenomeOrNull(id);
+        if (!genome) {
+            showError("Cannot save", "Could not get organism data.");
+            return;
         }
 
-        unclickPattern(id, card, updateStats) {
-            updateFitness(id, card, -1, updateStats);
-        }
+        return withBusyButton(buttonEl, "Compiling...", () =>
+            window.ApiClient.save(id, genome)
+                .then((data) => {
+                    const downloads = data?.downloads;
+                    if (!Array.isArray(downloads) || downloads.length === 0) {
+                        showSuccess("Organism saved!", "No download in response.");
+                        return;
+                    }
+
+                    const file = downloads[0];
+                    const blob = file.content_base64
+                        ? window.Toast.base64ToBlob(file.content_base64, file.mime)
+                        : new Blob([file.content], { type: file.mime });
+
+                    window.Toast.triggerDownload(blob, file.filename);
+                    showSuccess("Organism saved!", "Zip downloaded to your computer.", {
+                        duration: 5000,
+                    });
+                })
+                .catch((error) => {
+                    console.error("Error saving:", error);
+                    showError("Save failed", error?.message || "Network error");
+                })
+        );
     }
 
-    window.OrganismActions = new OrganismActions();
-})();
+    clickPattern(id, card, updateStats) {
+        updateFitness(id, card, +1, updateStats);
+    }
+
+    unclickPattern(id, card, updateStats) {
+        updateFitness(id, card, -1, updateStats);
+    }
+}
+
+window.OrganismActions = new OrganismActions();
