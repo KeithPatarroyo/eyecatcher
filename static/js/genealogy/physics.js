@@ -110,4 +110,7 @@ const initPhysicsControls = (
     updateControlsVisibility?.();
 };
 
-window.GenealogyPhysics = { initPhysicsControls };
+const GenealogyPhysics = { initPhysicsControls };
+export default GenealogyPhysics;
+export { GenealogyPhysics };
+window.GenealogyPhysics = GenealogyPhysics;

@@ -7,6 +7,9 @@ import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
 import { getConfig } from "../evolution/experiment_config.js";
+import CommunityBrowse from "./browse.js";
+import CommunitySubmit from "./submit.js";
+import CommunityAdmin from "./admin.js";
 
 let apiUrl = "";
 let addToGrid = null;
@@ -31,7 +34,7 @@ const init = (options) => {
 
 // ----- Submit -----
 const openSubmitCommunityModal = (patternId) =>
-    window.CommunitySubmit?.openSubmitCommunityModal?.(patternId, {
+    CommunitySubmit?.openSubmitCommunityModal?.(patternId, {
         getGenomeForPattern,
         setSubmitGenome: (g) => (submitGenome = g),
         getSubmitGenome: () => submitGenome,
@@ -39,12 +42,12 @@ const openSubmitCommunityModal = (patternId) =>
     });
 
 const closeSubmitCommunityModal = () =>
-    window.CommunitySubmit?.closeSubmitCommunityModal?.({
+    CommunitySubmit?.closeSubmitCommunityModal?.({
         setSubmitGenome: (g) => (submitGenome = g),
     });
 
 const submitCommunityForm = () =>
-    window.CommunitySubmit?.submitCommunityForm?.({
+    CommunitySubmit?.submitCommunityForm?.({
         apiUrl,
         getSubmitGenome: () => submitGenome,
     });
@@ -89,7 +92,7 @@ const onCommunitySelectAll = () => setAllChecks(true);
 const onCommunityDeselectAll = () => setAllChecks(false);
 
 const onNewFromCommunityClick = async () => {
-    const Browse = window.CommunityBrowse;
+    const Browse = CommunityBrowse;
     if (!Browse) return;
 
     showLoading(true);
@@ -178,17 +181,17 @@ const onNewFromCommunityClick = async () => {
 
 // ----- Admin -----
 const openAdminModal = () =>
-    window.CommunityAdmin?.openAdminModal?.({
+    CommunityAdmin?.openAdminModal?.({
         setAdminKey: (k) => (adminKey = k),
     });
 
 const closeAdminModal = () =>
-    window.CommunityAdmin?.closeAdminModal?.({
+    CommunityAdmin?.closeAdminModal?.({
         setAdminKey: (k) => (adminKey = k),
     });
 
 const submitAdminKey = () =>
-    window.CommunityAdmin?.submitAdminKey?.({
+    CommunityAdmin?.submitAdminKey?.({
         apiUrl,
         getAdminKey: () => adminKey,
         setAdminKey: (k) => (adminKey = k),

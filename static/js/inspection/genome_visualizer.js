@@ -2,6 +2,7 @@
 import Toast from "../lib/toast.js";
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
+import NetworkWeightSliders from "./network_weight_sliders.js";
 
 let _apiUrl = "";
 let _getGenomeForPattern = null;
@@ -190,14 +191,14 @@ const visualizeNetworkInline = (individualId, data, sidebar) => {
     networks.set(individualId, network);
     edgesById.set(individualId, edges);
 
-    window.NetworkWeightSliders?.setupWeightSliders?.(individualId, data);
+    NetworkWeightSliders?.setupWeightSliders?.(individualId, data);
 
     network.on("selectEdge", (params) => {
         const edgeId = params?.edges?.[0];
         if (!edgeId) return;
         const edge = edges.get(edgeId);
         if (!edge) return;
-        window.NetworkWeightSliders?.scrollToWeightSlider?.(edge.from, edge.to);
+        NetworkWeightSliders?.scrollToWeightSlider?.(edge.from, edge.to);
     });
 
     setTimeout(
@@ -321,7 +322,7 @@ const init = (options = {}) => {
     _onGenomeUpdated = options.onGenomeUpdated || null;
     _getCurrentPopulation = options.getCurrentPopulation || null;
 
-    window.NetworkWeightSliders?.init?.({
+    NetworkWeightSliders?.init?.({
         apiUrl: _apiUrl,
         getGenomeForPattern: _getGenomeForPattern,
         updatePatternRule: _updatePatternRule,

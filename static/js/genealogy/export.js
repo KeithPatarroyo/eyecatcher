@@ -117,4 +117,7 @@ const bindExportModalEvents = (showToast, apiUrl = window.API_URL || "") => {
     });
 };
 
-window.GenealogyExport = { bindExportModalEvents };
+const GenealogyExport = { bindExportModalEvents };
+export default GenealogyExport;
+export { GenealogyExport };
+window.GenealogyExport = GenealogyExport;

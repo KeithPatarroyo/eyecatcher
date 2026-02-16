@@ -121,9 +121,13 @@ const renderListWithPreviews = (
     );
 };
 
-window.CommunityBrowse = {
+const CommunityBrowse = {
     PREVIEW_CANVAS_SIZE,
     fetchDisplayDataForList,
     buildPatternListEntry,
     renderListWithPreviews,
 };
+
+export default CommunityBrowse;
+export { CommunityBrowse };
+window.CommunityBrowse = CommunityBrowse;

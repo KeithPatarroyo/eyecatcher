@@ -51,8 +51,12 @@ const submitCommunityForm = async (ctx) => {
     closeSubmitCommunityModal(ctx);
 };
 
-window.CommunitySubmit = {
+const CommunitySubmit = {
     openSubmitCommunityModal,
     closeSubmitCommunityModal,
     submitCommunityForm,
 };
+
+export default CommunitySubmit;
+export { CommunitySubmit };
+window.CommunitySubmit = CommunitySubmit;

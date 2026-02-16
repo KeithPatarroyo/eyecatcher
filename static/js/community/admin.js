@@ -7,6 +7,7 @@ import Toast from "../lib/toast.js";
 import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
+import CommunityBrowse from "./browse.js";
 
 let _adminCtx = null;
 
@@ -79,7 +80,7 @@ const renderAdminPendingList = async (submissions, ctx) => {
         });
     }
 
-    const Browse = window.CommunityBrowse;
+    const Browse = CommunityBrowse;
 
     ul.innerHTML = "";
     if (!Browse || !submissions?.length) {
@@ -168,9 +169,13 @@ const submitAdminKey = async (ctx) => {
     await renderAdminPendingList(result.data?.submissions || [], ctx);
 };
 
-window.CommunityAdmin = {
+const CommunityAdmin = {
     openAdminModal,
     closeAdminModal,
     submitAdminKey,
     renderAdminPendingList,
 };
+
+export default CommunityAdmin;
+export { CommunityAdmin };
+window.CommunityAdmin = CommunityAdmin;

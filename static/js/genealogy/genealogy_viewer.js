@@ -6,6 +6,9 @@ import Toast from "../lib/toast.js";
 import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
+import GenealogyNetworkConfig from "./network_config.js";
+import GenealogyPhysics from "./physics.js";
+import GenealogyExport from "./export.js";
 
 const API_URL = window.API_URL || "";
 
@@ -158,8 +161,8 @@ function buildVisEdges(treeData) {
 }
 
 function buildNetworkOptions() {
-    return window.GenealogyNetworkConfig?.buildNetworkOptions
-        ? window.GenealogyNetworkConfig.buildNetworkOptions(hierarchicalLayout)
+    return GenealogyNetworkConfig?.buildNetworkOptions
+        ? GenealogyNetworkConfig.buildNetworkOptions(hierarchicalLayout)
         : { physics: { enabled: !hierarchicalLayout } };
 }
 
@@ -402,7 +405,7 @@ function bindActionEvents() {
 }
 
 function initPhysicsControls() {
-    window.GenealogyPhysics?.initPhysicsControls?.(
+    GenealogyPhysics?.initPhysicsControls?.(
         () => treeNetwork,
         () => hierarchicalLayout,
         updateControlsVisibility
@@ -426,8 +429,8 @@ function attachEventListeners() {
         });
     }
 
-    if (window.GenealogyExport?.bindExportModalEvents)
-        window.GenealogyExport.bindExportModalEvents(showGenealogyToast, API_URL);
+    if (GenealogyExport?.bindExportModalEvents)
+        GenealogyExport.bindExportModalEvents(showGenealogyToast, API_URL);
 }
 
 function initialize() {
