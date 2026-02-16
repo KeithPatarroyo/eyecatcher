@@ -12,9 +12,9 @@ import sys
 
 def _cmd_config_show() -> int:
     """Print effective config with provenance. Returns 0 on success."""
-    from .experiment import get_effective_config_with_provenance
+    from . import experiment
 
-    data = get_effective_config_with_provenance()
+    data = experiment.get_effective_config_with_provenance()
     print(json.dumps(data, indent=2))
     return 0
 

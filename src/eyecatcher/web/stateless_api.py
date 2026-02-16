@@ -9,13 +9,7 @@ Endpoints: /api/develop, /api/express, /api/random, /api/time-output, /api/netwo
 
 from flask import Blueprint, current_app, jsonify, request
 
-from ..experiment import (
-    get_crossover_probability,
-    get_effective_config_with_provenance,
-    get_max_population_size,
-    get_population_size,
-    update_runtime_config,
-)
+from .. import experiment
 from ..representation import get_representation
 from ..representation.mixins import NetworkInspectable, Saveable
 from ..representation.registry import REPRESENTATIONS
@@ -46,14 +40,14 @@ def _config_response(include_provenance=False):
     payload = {
         "representation_id": representation.id,
         "output_type": representation.output_type,
-        "population_size": get_population_size(),
-        "max_population_size": get_max_population_size(),
-        "crossover_probability": get_crossover_probability(),
+        "population_size": experiment.get_population_size(),
+        "max_population_size": experiment.get_max_population_size(),
+        "crossover_probability": experiment.get_crossover_probability(),
         "capabilities": capabilities,
         "available_representation_ids": list(REPRESENTATIONS.keys()),
     }
     if include_provenance:
-        payload["config_sources"] = get_effective_config_with_provenance()
+        payload["config_sources"] = experiment.get_effective_config_with_provenance()
     return jsonify(payload)
 
 
@@ -78,7 +72,7 @@ def api_config():
                     400,
                 )
             current_app.config[_REPRESENTATION_CONFIG_KEY] = get_representation(new_id)
-        update_runtime_config(data)
+        experiment.update_runtime_config(data)
     include_provenance = request.args.get("provenance", "").lower() in (
         "1",
         "true",
@@ -205,8 +199,8 @@ def api_random():
     ca: grid, key).
     """
     data = request.json or {}
-    size = data.get("size", get_population_size())
-    size = max(1, min(int(size), get_max_population_size()))
+    size = data.get("size", experiment.get_population_size())
+    size = max(1, min(int(size), experiment.get_max_population_size()))
     individuals = []
     rep = get_current_representation()
     for i in range(size):

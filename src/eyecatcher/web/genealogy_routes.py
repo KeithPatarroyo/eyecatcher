@@ -8,7 +8,8 @@ Data layer: genealogy_db.py. Routes are thin: parse request, call db, jsonify.
 
 from flask import Blueprint, Response, jsonify, request
 
-from ..data.genealogy_db import (
+from .. import experiment
+from ..data import (
     export_genealogy_data,
     export_sizes,
     get_branches,
@@ -20,11 +21,6 @@ from ..data.genealogy_db import (
     init_genealogy_db,
     reset_genealogy,
     save_population,
-)
-from ..experiment import (
-    get_configured_representation,
-    get_crossover_probability,
-    get_population_size,
 )
 from .api_helpers import ERR_INDIVIDUALS_ARRAY_REQUIRED, api_error, api_try_except
 
@@ -55,13 +51,13 @@ def save_population_route():
     metadata = data.get("metadata") or {}
     if data.get("representation_id") is not None:
         metadata = dict(metadata, representation_id=data.get("representation_id"))
-    representation = get_configured_representation()
+    representation = experiment.get_configured_representation()
     metadata = dict(
         metadata,
         experiment_config={
             "representation_id": representation.id,
-            "population_size": get_population_size(),
-            "crossover_probability": get_crossover_probability(),
+            "population_size": experiment.get_population_size(),
+            "crossover_probability": experiment.get_crossover_probability(),
         },
     )
 
