@@ -25,7 +25,7 @@ REPRESENTATION_SCRIPTS = [
     "field_substrate.js",
     "grid_substrate.js",
     "substrate_registry.js",
-    "registry.js",
+    "representation_registry.js",
 ]
 
 SCRIPT_PREFIX = "js/representation/"

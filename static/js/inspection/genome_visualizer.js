@@ -1,5 +1,6 @@
 /**
- * Network visualization module: CPPN sidebar, vis.js graph, weight sliders.
+ * Genome visualization module: CPPN sidebar, vis.js graph, weight sliders.
+ * Aligns with backend inspection/genome_visualizer.py.
  * Depends: vis (global from CDN), Toast (from toast.js).
  * Call init() with dependencies before use. Exposes: toggle(), close(), fitToView(), exportNetwork().
  */

@@ -29,7 +29,7 @@
         CROSSOVER_PROBABILITY: defaults.crossover_probability,
 
         // Representation (backend returns representation_id; we expose as representationId for UI)
-        // Initial value; overwritten by mergeFromServer. Canonical default is in representation/registry.js (resolve / getDefaultRepresentationId).
+        // Initial value; overwritten by mergeFromServer. Canonical default is in representation/representation_registry.js (resolve / getDefaultRepresentationId).
         DEFAULT_REPRESENTATION_ID: "",
         /** Available representation ids from GET /api/config (e.g. ["dual_cppn", "single_cppn", "ca"]). */
         available_representation_ids: [],

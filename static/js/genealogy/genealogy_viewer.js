@@ -241,6 +241,10 @@ function attachNetworkHandlers(network, _visNodes) {
 function visualizeTree(nodes) {
     treeData.nodes = nodes;
     const container = document.getElementById("tree-visualization");
+    if (!container) {
+        console.error("Genealogy: #tree-visualization not found. Is the DOM ready?");
+        return;
+    }
     const visNodes = buildVisNodes(nodes);
     const visEdges = buildVisEdges(nodes);
     const options = buildNetworkOptions();
@@ -530,6 +534,12 @@ function initialize() {
     loadTree();
 }
 
-// Always run initialization when the script loads
-// The script is at the bottom of the body, so DOM is ready
-initialize();
+// Run initialization when the DOM is ready (handles edge cases where script runs before body is parsed)
+function runWhenReady() {
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initialize);
+    } else {
+        initialize();
+    }
+}
+runWhenReady();
