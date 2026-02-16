@@ -7,6 +7,8 @@ import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
 import { getConfig } from "../evolution/experiment_config.js";
+import populationUI from "../population/population_ui.js";
+import populationState from "../population/population_state.js";
 
 const $ = (id) => (id ? document.getElementById(id) : null);
 
@@ -58,8 +60,8 @@ const initStartFreshDropdown = () => {
         const action = actionEl?.dataset?.action;
         if (!action) return;
 
-        if (action === "random") window.PopulationUI?.startNewRandomPopulation?.();
-        else if (action === "load") window.PopulationUI?.onLoadSavedClick?.();
+        if (action === "random") populationUI?.startNewRandomPopulation?.();
+        else if (action === "load") populationUI?.onLoadSavedClick?.();
 
         setOpen(false);
     };
@@ -141,7 +143,7 @@ const initExperimentParamsPanel = (toolbarUI) => {
         }
 
         const current =
-            window.PopulationState?.representationId ||
+            populationState?.representationId ||
             cfg.DEFAULT_REPRESENTATION_ID ||
             RepresentationRegistry?.resolve?.({})?.representationId ||
             RepresentationRegistry?.getDefaultRepresentationId?.() ||
@@ -174,8 +176,7 @@ const initExperimentParamsPanel = (toolbarUI) => {
         };
         if (repSelect?.value) updates.representation_id = repSelect.value;
 
-        const previousRepresentationId =
-            window.PopulationState?.representationId ?? null;
+        const previousRepresentationId = populationState?.representationId ?? null;
 
         api?.patchConfig?.(updates).then(
             (config) => {

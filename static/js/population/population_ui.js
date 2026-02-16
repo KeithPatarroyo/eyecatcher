@@ -227,4 +227,6 @@ class PopulationUI {
     }
 }
 
-window.PopulationUI = new PopulationUI();
+const populationUI = new PopulationUI();
+export default populationUI;
+window.PopulationUI = populationUI;

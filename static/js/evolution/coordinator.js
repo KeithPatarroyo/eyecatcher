@@ -1,6 +1,7 @@
 import Utils from "../lib/utils.js";
 import GenealogySync from "../genealogy/sync.js";
 import { getConfig } from "./experiment_config.js";
+import populationLoader from "../population/population_loader.js";
 
 const clampInt = (value, min, max, fallback) => {
     const n = Number.parseInt(value, 10);
@@ -93,7 +94,7 @@ class EvolutionCoordinator {
                     );
                 }
 
-                window.PopulationLoader.loadPopulation(
+                populationLoader.loadPopulation(
                     data.children,
                     newGenerationNum,
                     data.representation_id,
