@@ -1,18 +1,84 @@
 """
-Genealogy data layer: DB init, save, and pure query functions.
+Shared data layer: SQLite connection helpers and genealogy DB.
 
-No Flask; all functions take no request state and return Python data.
-Routes in genealogy_routes.py parse request and call these functions.
-Researchers extend via populations.metadata_json (optional metadata dict).
+db_util: default_db_path, sqlite_connection, with_db_connection.
+genealogy: init_genealogy_db, save_population, get_population, get_experiment_log,
+get_tree_nodes, get_branches, reset_genealogy, export_sizes, export_genealogy_data,
+get_stats, get_population_thumbnail.
 """
 
 import json
 import os
+import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from .db_util import default_db_path, with_db_connection
+
+def default_db_path(filename: str) -> str:
+    """
+    Return the default path for a database file under the project data/ directory.
+
+    Args:
+        filename: Database filename (e.g. "community.db", "genealogy.db").
+
+    Returns:
+        Absolute path: get_root_dir() / "data" / filename.
+    """
+    from . import get_root_dir
+
+    return os.path.join(get_root_dir(), "data", filename)
+
+
+def sqlite_connection(
+    path: str,
+    pragmas: tuple[str, ...] = (),
+) -> sqlite3.Connection:
+    """
+    Open a SQLite connection with row_factory and optional pragmas.
+
+    Creates the parent directory of path if needed. Sets row_factory to
+    sqlite3.Row so rows are dict-like.
+
+    Args:
+        path: Database file path.
+        pragmas: Optional sequence of SQL statements to run after connect
+                 (e.g. ("PRAGMA foreign_keys = ON",)).
+
+    Returns:
+        Open connection (caller must close it).
+    """
+    parent = os.path.dirname(path) or "."
+    os.makedirs(parent, exist_ok=True)
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    for stmt in pragmas:
+        conn.execute(stmt)
+    return conn
+
+
+@contextmanager
+def with_db_connection(
+    path: str,
+    pragmas: tuple[str, ...] = (),
+) -> Generator[sqlite3.Connection, None, None]:
+    """
+    Context manager: yield a connection and close it on exit.
+
+    Use in route handlers so connection is always closed. Catch Exception
+    in the route and return api_error(str(e), 500) if needed.
+    """
+    conn = sqlite_connection(path, pragmas)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+# -----------------------------------------------------------------------------
+# Genealogy DB
+# -----------------------------------------------------------------------------
 
 GENEALOGY_DB_PATH = os.environ.get("GENEALOGY_DB_PATH") or default_db_path(
     "genealogy.db"
