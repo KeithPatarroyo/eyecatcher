@@ -1,6 +1,6 @@
 /**
  * Animation loop: mouse tracking, time modes (loop/oscillate/infinite), and per-frame pattern rendering.
- * Signal values come from a pluggable SignalSource. Set window.SignalSource before init, or pass signalSource in init().
+ * Signal values come from a pluggable SignalSource. Pass signalSource in init() (e.g. app passes window.SignalSource if set).
  */
 import RepresentationRegistry from "../representation/representation_registry.js";
 import { gridTopology } from "./grid_renderer.js";
@@ -202,8 +202,7 @@ class AnimationLoop {
         this._defaultSource = {
             getValues: (ctx) => this._defaultSignalValues(ctx),
         };
-        this._signalSource =
-            options.signalSource ?? window.SignalSource ?? this._defaultSource;
+        this._signalSource = options.signalSource ?? this._defaultSource;
 
         this._lastMouseTime = performance.now();
 
