@@ -170,4 +170,7 @@ class ViewerControls {
     }
 }
 
-window.ViewerControls = new ViewerControls();
+const viewerControls = new ViewerControls();
+export default viewerControls;
+export { ViewerControls };
+window.ViewerControls = viewerControls;

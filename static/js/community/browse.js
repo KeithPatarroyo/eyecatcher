@@ -4,6 +4,7 @@
  */
 import DisplayFetcher from "../representation/display_fetcher.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
+import animationLoop from "../viewer/animation_loop.js";
 
 const PREVIEW_CANVAS_SIZE = 80;
 
@@ -112,7 +113,7 @@ const renderListWithPreviews = (
     });
 
     const signalState = viewerControls?.signalState;
-    const renderFrame = window.AnimationLoop?.renderFrameWithSignals;
+    const renderFrame = animationLoop?.renderFrameWithSignals;
     if (!signalState || typeof renderFrame !== "function" || !previewPatternData.length)
         return;
 

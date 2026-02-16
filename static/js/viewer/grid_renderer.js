@@ -7,6 +7,9 @@ import Toast from "../lib/toast.js";
 import DOM from "../lib/dom.js";
 import cardBuilder from "./card_builder.js";
 import { CardBuilder } from "./card_builder.js";
+import viewerControls from "../evolution/viewer_controls.js";
+import eyecatcherDebug from "../lib/debug.js";
+import populationUI from "../population/population_ui.js";
 
 /**
  * GridTopology: tracks which pattern is at which row/col position in the grid
@@ -233,15 +236,14 @@ class GridRenderer {
         if (showRetry) {
             const retryEl = getEl(IDS.gridRetryBtn);
             if (retryEl) {
-                retryEl.onclick = () =>
-                    window.PopulationUI?.startNewRandomPopulation?.();
+                retryEl.onclick = () => populationUI?.startNewRandomPopulation?.();
             }
         }
     }
 
     _notifyRepresentationChange(representationId) {
-        window.ViewerControls?.updateForRepresentation?.(representationId);
-        window.EyecatcherDebug?.updateForRepresentation?.(representationId);
+        viewerControls?.updateForRepresentation?.(representationId);
+        eyecatcherDebug?.updateForRepresentation?.(representationId);
     }
 
     patternCardCallbacks(pattern, callbacks, representationId) {

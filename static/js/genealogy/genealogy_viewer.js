@@ -9,6 +9,7 @@ import DOM from "../lib/dom.js";
 import GenealogyNetworkConfig from "./network_config.js";
 import GenealogyPhysics from "./physics.js";
 import GenealogyExport from "./export.js";
+import GenealogyThumbnails from "./thumbnails.js";
 
 const API_URL = window.API_URL || "";
 
@@ -288,7 +289,7 @@ function visualizeTree(data) {
     updateControlsVisibility();
 
     // Thumbnails are optional and can be slow; batch them.
-    window.GenealogyThumbnails?.renderAllThumbnails?.(nodes, thumbnailCache, {
+    GenealogyThumbnails?.renderAllThumbnails?.(nodes, thumbnailCache, {
         apiUrl: API_URL,
         defaultNodeSize: DEFAULT_NODE_SIZE,
     });

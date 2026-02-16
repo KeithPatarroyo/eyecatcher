@@ -269,7 +269,9 @@ class EyecatcherDebug {
     }
 }
 
-export default EyecatcherDebug;
+const eyecatcherDebug = new EyecatcherDebug();
+export default eyecatcherDebug;
+export { EyecatcherDebug };
 if (typeof window !== "undefined") {
-    window.EyecatcherDebug = new EyecatcherDebug();
+    window.EyecatcherDebug = eyecatcherDebug;
 }

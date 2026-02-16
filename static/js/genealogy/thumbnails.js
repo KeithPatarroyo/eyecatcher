@@ -7,6 +7,7 @@ import DisplayFetcher from "../representation/display_fetcher.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
 import WebGLUtils from "../representation/webgl_utils.js";
 import { getConfig } from "../evolution/experiment_config.js";
+import animationLoop from "../viewer/animation_loop.js";
 
 const THUMBNAIL_CANVAS_SIZE = 128;
 const MAX_CACHE = 200;
@@ -69,11 +70,7 @@ const renderThumbnail = async (populationId, cache, apiUrl = window.API_URL || "
 
             const repId = getConfig()?.getCurrentRepresentationId?.() ?? "";
             const signalState = getConfig()?.getDefaultSignalState?.(repId) ?? {};
-            window.AnimationLoop?.renderFrameWithSignals?.(
-                runtime,
-                signalState,
-                canvas
-            );
+            animationLoop?.renderFrameWithSignals?.(runtime, signalState, canvas);
         } else {
             return null;
         }
@@ -122,4 +119,7 @@ const renderAllThumbnails = async (visNodes, cache, options = {}) => {
     }
 };
 
-window.GenealogyThumbnails = { renderThumbnail, renderAllThumbnails };
+const GenealogyThumbnails = { renderThumbnail, renderAllThumbnails };
+export default GenealogyThumbnails;
+export { GenealogyThumbnails };
+window.GenealogyThumbnails = GenealogyThumbnails;

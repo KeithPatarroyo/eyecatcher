@@ -5,6 +5,7 @@
 import RepresentationRegistry from "../representation/representation_registry.js";
 import { gridTopology } from "./grid_renderer.js";
 import { getConfig } from "../evolution/experiment_config.js";
+import eyecatcherDebug from "../lib/debug.js";
 
 const ANIMATION_SPEED = 0.005;
 const MOUSE_SPEED_DECAY = 0.95;
@@ -182,7 +183,7 @@ class AnimationLoop {
                 }
             }
 
-            window.EyecatcherDebug?.update?.({
+            eyecatcherDebug?.update?.({
                 time: this._animationTime,
                 mouseSpeed: this._mouseSpeed,
                 activity: this._activity,
@@ -295,4 +296,7 @@ class AnimationLoop {
     }
 }
 
-window.AnimationLoop = new AnimationLoop();
+const animationLoop = new AnimationLoop();
+export default animationLoop;
+export { AnimationLoop };
+window.AnimationLoop = animationLoop;

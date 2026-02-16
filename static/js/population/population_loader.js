@@ -11,6 +11,8 @@ import Utils from "../lib/utils.js";
 import DisplayFetcher from "../representation/display_fetcher.js";
 import GridRenderer from "../viewer/grid_renderer.js";
 import GenealogySync from "../genealogy/sync.js";
+import viewerControls from "../evolution/viewer_controls.js";
+import eyecatcherDebug from "../lib/debug.js";
 
 let _deps = null;
 
@@ -47,8 +49,8 @@ const setGenNumUI = (generationNum) => {
 };
 
 const updateRepUIs = (representationId) => {
-    window.ViewerControls?.updateForRepresentation?.(representationId);
-    window.EyecatcherDebug?.updateForRepresentation?.(representationId);
+    viewerControls?.updateForRepresentation?.(representationId);
+    eyecatcherDebug?.updateForRepresentation?.(representationId);
 };
 
 const showNoRepresentationError = (representationId) => {
@@ -364,4 +366,6 @@ const addToPopulation = async (genomes) => {
     });
 };
 
-window.PopulationLoader = { init, loadPopulation, addToPopulation };
+const populationLoader = { init, loadPopulation, addToPopulation };
+export default populationLoader;
+window.PopulationLoader = populationLoader;
