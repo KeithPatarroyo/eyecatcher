@@ -2,7 +2,7 @@
 Representation registry: factory for representation instances from preset config.
 
 Experiment presets in config/experiments.json can set
-"representation": "dual_cppn" etc.; get_representation() builds the configured
+"representation": "nca" etc.; get_representation() builds the configured
 representation from the preset.
 """
 
@@ -32,7 +32,7 @@ def get_representation(
     Return a representation instance.
 
     Args:
-        representation_id: Representation key (e.g. "dual_cppn"). None => "dual_cppn".
+        representation_id: Representation key (e.g. "nca"). None => "nca".
         **kwargs: Passed to representation constructor (e.g. neat_config_path).
 
     Returns:
@@ -41,7 +41,7 @@ def get_representation(
     Raises:
         KeyError: If representation_id is not in REPRESENTATIONS.
     """
-    rid = representation_id or "dual_cppn"
+    rid = representation_id or "nca"
     if rid not in REPRESENTATIONS:
         raise KeyError(f"Unknown representation: {rid}. Known: {list(REPRESENTATIONS)}")
     return REPRESENTATIONS[rid](**kwargs)

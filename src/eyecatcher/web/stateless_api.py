@@ -37,14 +37,17 @@ def _config_response(include_provenance=False):
     """Build JSON config payload (representation, limits, capabilities)."""
     representation = get_current_representation()
     capabilities = dict(representation.capabilities)
+    all_ids = list(REPRESENTATIONS.keys())
+    current_id = representation.id
+    available_ids = [current_id] + [i for i in all_ids if i != current_id]
     payload = {
-        "representation_id": representation.id,
+        "representation_id": current_id,
         "output_type": representation.output_type,
         "population_size": experiment.get_population_size(),
         "max_population_size": experiment.get_max_population_size(),
         "crossover_probability": experiment.get_crossover_probability(),
         "capabilities": capabilities,
-        "available_representation_ids": list(REPRESENTATIONS.keys()),
+        "available_representation_ids": available_ids,
     }
     if include_provenance:
         payload["config_sources"] = experiment.get_effective_config_with_provenance()

@@ -221,7 +221,7 @@ def get_effective_config_with_provenance() -> dict:
         else None
     )
     result["representation_id"] = {
-        "value": rep_id or "dual_cppn",
+        "value": rep_id or "nca",
         "from": (
             f"config/experiments.json (preset: {preset_name})"
             if rep_id
@@ -277,7 +277,7 @@ def get_configured_representation():
     Return the representation instance for the current experiment preset.
 
     Uses EXPERIMENT_CONFIG / config/experiments.json; preset must set "representation"
-    (e.g. "dual_cppn"). Defaults to "dual_cppn" if no preset or key.
+    (e.g. "nca"). Defaults to "nca" if no preset or key.
     """
     from .representation import get_representation
 
@@ -285,9 +285,9 @@ def get_configured_representation():
     if preset and isinstance(preset, dict):
         representation_id = preset.get("representation")
         if representation_id is None:
-            representation_id = "dual_cppn"
+            representation_id = "nca"
         return get_representation(representation_id, **preset)
-    return get_representation("dual_cppn")
+    return get_representation("nca")
 
 
 def warn_if_neat_pop_size_mismatch(representation) -> None:
