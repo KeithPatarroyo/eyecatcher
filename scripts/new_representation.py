@@ -117,7 +117,7 @@ class {pascal}Representation(RepresentationBase):
     def express(
         self, ind: {pascal}Genome, inputs: dict[str, float], **kwargs: Any
     ) -> RepresentationOutput:
-        # TODO: produce actual output (e.g. grid, rule). See trivial.py / ca.py.
+        # TODO: produce actual output (e.g. grid, rule). See ca.py.
         import numpy as np
         rgb = np.zeros((16, 16, 3), dtype=np.uint8)
         return RepresentationOutput("grid", rgb)
@@ -140,7 +140,7 @@ def _update_registry(name: str, pascal: str, content: str) -> str:
     """Add import and REPRESENTATIONS entry for the new representation."""
     module = name
     class_name = f"{pascal}Representation"
-    # Add import after existing from .trivial import ...
+    # Add import after existing representation imports
     import_line = f"from .{module} import {class_name}"
     if import_line in content:
         return content
@@ -191,7 +191,7 @@ def _update_init(
         all_extra = f'    "{pascal}Representation",\n'
     if import_line in content:
         return content
-    # Insert after last representation import (e.g. from .trivial import ...)
+    # Insert after last representation import
     last_import = None
     for m in re.finditer(r"^from \.\w+ import .+", content, re.MULTILINE):
         last_import = m
@@ -200,14 +200,18 @@ def _update_init(
     insert_after = last_import.end()
     content = content[:insert_after] + "\n" + import_line + content[insert_after:]
 
-    # Add to __all__ (after TrivialRepresentation)
+    # Add to __all__ (after last representation class)
     if f'"{pascal}Representation"' in content:
         return content
-    old = '"TrivialRepresentation",\n    "export_representations_for_frontend"'
-    new = (
-        f'"TrivialRepresentation",\n    {all_extra.rstrip()},\n'
-        + '"export_representations_for_frontend"'
+    # Match last representation entry before "export_representations_for_frontend"
+    match = re.search(
+        r'("[\w]+Representation",)\n(\s+"export_representations_for_frontend")',
+        content,
     )
+    if not match:
+        raise SystemExit("Could not find __all__ representation list in __init__.py")
+    old = match.group(0)
+    new = f"{match.group(1)}\n    {all_extra.rstrip()},\n{match.group(2)}"
     content = content.replace(old, new, 1)
     return content
 
@@ -233,7 +237,7 @@ from typing import Any
 
 import neat
 
-from ..experiment import NEAT_CONFIG_PATH
+from .. import experiment
 from ..genome import create_random_genome
 from ..genome.operators import crossover_genomes, mutate_genome
 from ..genome.serialization import genome_from_json, genome_to_json
@@ -263,7 +267,7 @@ class {pascal}Representation(CPPNRepresentationBase):
             inputs=catalog.STANDARD_2D_INPUTS,
             outputs=catalog.RGB_OUTPUTS,
             derived=(catalog.DISTANCE,),
-            config_path=neat_config_path or NEAT_CONFIG_PATH,
+            config_path=neat_config_path or experiment.NEAT_CONFIG_PATH,
             role="primary",
         )
         self.sensory_system = SensorySystem(

@@ -5,7 +5,7 @@ Run from repo root: python examples/api_usage.py
 
 import os
 
-from eyecatcher.experiment import PREVIEW_RENDER_RESOLUTION
+from eyecatcher import experiment
 from eyecatcher.representation import get_representation
 from PIL import Image
 
@@ -21,7 +21,7 @@ def main():
     # Render one image
     img = representation.render_to_image(
         ind,
-        resolution=PREVIEW_RENDER_RESOLUTION,
+        resolution=experiment.PREVIEW_RENDER_RESOLUTION,
         extra_inputs={"raw_time": 0.5},
     )
     if img is not None:
@@ -38,7 +38,7 @@ def main():
     child = representation.mutate(ind, key=1)
     img_child = representation.render_to_image(
         child,
-        resolution=PREVIEW_RENDER_RESOLUTION,
+        resolution=experiment.PREVIEW_RENDER_RESOLUTION,
         extra_inputs={"raw_time": 0.5},
     )
     if img_child is not None:
@@ -50,7 +50,7 @@ def main():
     offspring = representation.crossover(ind, parent2, key=3)
     img_off = representation.render_to_image(
         offspring,
-        resolution=PREVIEW_RENDER_RESOLUTION,
+        resolution=experiment.PREVIEW_RENDER_RESOLUTION,
         extra_inputs={"raw_time": 0.5},
     )
     if img_off is not None:

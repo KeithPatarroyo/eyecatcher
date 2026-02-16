@@ -1,7 +1,7 @@
 node_modules/
 dist/
 *.min.js
-config/eslint.config.js
+eslint.config.js
 .pytest_cache/
 .venv/
 build/

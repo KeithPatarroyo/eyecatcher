@@ -58,10 +58,13 @@ def main() -> None:
     root = _repo_root()
     sys.path.insert(0, os.path.join(root, "src"))
 
-    from eyecatcher.experiment import NEAT_CONFIG_PATH, NEAT_TIME_CONFIG_PATH
+    from eyecatcher import experiment
     from eyecatcher.representation import DualCPPNRepresentation
 
-    rep = DualCPPNRepresentation()
+    rep = DualCPPNRepresentation(
+        neat_config_path=experiment.NEAT_CONFIG_PATH,
+        neat_time_config_path=experiment.NEAT_TIME_CONFIG_PATH,
+    )
     visual_inputs = list(rep.visual.inputs)
     visual_outputs = list(rep.visual.outputs)
     time_inputs = list(rep.time.inputs)
@@ -98,31 +101,33 @@ def main() -> None:
                 )
 
     # Validate NEAT files match representation
-    visual_path = os.path.join(root, NEAT_CONFIG_PATH)
-    time_path = os.path.join(root, NEAT_TIME_CONFIG_PATH)
+    visual_path = os.path.join(root, experiment.NEAT_CONFIG_PATH)
+    time_path = os.path.join(root, experiment.NEAT_TIME_CONFIG_PATH)
     errors = []
+    v_path = experiment.NEAT_CONFIG_PATH
+    t_path = experiment.NEAT_TIME_CONFIG_PATH
     v_in = _neat_value(visual_path, "num_inputs")
     v_out = _neat_value(visual_path, "num_outputs")
     if v_in is not None and v_in != visual_in_count:
         errors.append(
-            f"NEAT config mismatch: num_inputs in {NEAT_CONFIG_PATH} is {v_in}, "
+            f"NEAT config mismatch: num_inputs in {v_path} is {v_in}, "
             f"representation has {visual_in_count}."
         )
     if v_out is not None and v_out != visual_out_count:
         errors.append(
-            f"NEAT config mismatch: num_outputs in {NEAT_CONFIG_PATH} is {v_out}, "
+            f"NEAT config mismatch: num_outputs in {v_path} is {v_out}, "
             f"representation has {visual_out_count}."
         )
     t_in = _neat_value(time_path, "num_inputs")
     t_out = _neat_value(time_path, "num_outputs")
     if t_in is not None and t_in != time_in_count:
         errors.append(
-            f"NEAT config mismatch: num_inputs in {NEAT_TIME_CONFIG_PATH} is {t_in}, "
+            f"NEAT config mismatch: num_inputs in {t_path} is {t_in}, "
             f"representation has {time_in_count}."
         )
     if t_out is not None and t_out != time_out_count:
         errors.append(
-            f"NEAT config mismatch: num_outputs in {NEAT_TIME_CONFIG_PATH} is {t_out}, "
+            f"NEAT config mismatch: num_outputs in {t_path} is {t_out}, "
             f"representation has {time_out_count}."
         )
     if errors:

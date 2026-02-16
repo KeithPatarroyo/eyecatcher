@@ -38,7 +38,7 @@ test:
 
 lint:
 	ruff check .
-	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npx eslint -c config/eslint.config.js static/; fi
+	@if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then npx eslint -c eslint.config.js static/; fi
 
 format:
 	ruff format .

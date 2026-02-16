@@ -35,9 +35,9 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 
 | Path | Purpose |
 |------|---------|
-| `src/eyecatcher/` | Python package. **Packages**: `experiment/` (config, presets, get_configured_representation), `evolution/` (reproduction, fitness), `genome/`, `representation/` (CPPN, CA, protocol), `signals/`, `inspection/`, `glsl/`, `web/`, `data/`. Top-level: `server`. |
+| `src/eyecatcher/` | Python package. **Top-level modules**: `experiment.py` (config, presets, get_configured_representation), `data.py` (DB helpers, genealogy). **Packages**: `evolution/`, `genome/`, `representation/` (CPPN, CA, protocol), `signals/`, `inspection/`, `glsl/`, `web/`. Entry: `server.py`. |
 | `static/` | Frontend: HTML, CSS, JS modules; served by Flask from repo root |
-| `config/` | NEAT config files in **config/neat/** (read at runtime via `get_root_dir()`). Also `config/eslint.config.js`, `config/.env.example` (copy to root `.env`). |
+| `config/` | NEAT config in **config/neat/**, presets in **config/experiments.json**, **config/evolution_defaults.json**. Root: **.env.example** (copy to `.env`), **eslint.config.js**. |
 | `tests/` | Pytest test suite |
 | `examples/` | Example scripts (api_usage, evolution_batch, time_signal_showcase) |
 | `data/` | Runtime data: `community.db`, `genealogy.db` (gitignored; created on first run) |
@@ -47,7 +47,7 @@ Eyecatcher is a **dual-CPPN interactive evolution** system: like Picbreeder, but
 ## Architecture notes
 
 - **Researchers and evolution-only changes:** See [RESEARCHER_GUIDE.md](../RESEARCHER_GUIDE.md) for touchpoints (signals, NEAT, reproduction, rendering).
-- **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from ..representation import get_representation`). Code outside imports from `eyecatcher.experiment`, `eyecatcher.evolution`, `eyecatcher.representation`, `eyecatcher.genome`, `eyecatcher.glsl`, etc.
+- **Src layout:** All Python lives in `src/eyecatcher/`. **Use relative imports** inside the package (e.g. `from ..representation import get_representation`). Code outside imports from `eyecatcher.experiment`, `eyecatcher.data`, `eyecatcher.evolution`, `eyecatcher.representation`, `eyecatcher.genome`, `eyecatcher.glsl`, etc.
 - **Stateless API:** The server does **not** hold population state. Clients send full genome payloads in requests (e.g. `/api/develop`, `/api/evolve`). Do not add server-side population storage.
 - **Dual-CPPN:** Each individual is a `DualGenome`: two NEAT genomes (`visual` and `time_signal`) evolved together. Mutations and crossovers operate on both; keep the pairing consistent.
 - **Paths:** `get_root_dir()` in `src/eyecatcher/__init__.py` returns the repo root. Use it (or paths relative to it) for `config/`, `static/`, `data/`. Flask's `static_folder` is set to that root `static/` directory.

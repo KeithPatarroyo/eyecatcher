@@ -22,7 +22,7 @@ Then open **http://localhost:5001**. Common dev: **`make help`**, **`make test`*
 - From repo root: `make docker-up`. Open **http://localhost:5001** (compose maps host 5001 → 8080).
 - Stop: `Ctrl+C` or `docker compose -f docker/docker-compose.yml down`.
 
-Optional: copy [config/.env.example](config/.env.example) to `.env`; Docker Compose loads it. Community DB (`data/community.db`) is created on first run.
+Optional: copy [.env.example](.env.example) to `.env`; Docker Compose loads it. Community DB (`data/community.db`) is created on first run.
 
 ### Deploy to Railway
 
@@ -70,13 +70,13 @@ flowchart LR
 
 ## Project layout
 
-- **src/eyecatcher/** — Python package. Entry: `server.py`. Representations in `representation/`, signals in `signals/`, GLSL rule assembly in `glsl/`.
+- **src/eyecatcher/** — Python package. Entry: `server.py`. Top-level modules: `experiment.py` (config, presets), `data.py` (DB, genealogy). Packages: `representation/`, `signals/`, `genome/`, `evolution/`, `glsl/`, `inspection/`, `web/`.
 - **static/** — Frontend (viewer, community, genealogy). [static/js/README.md](static/js/README.md) for folder map.
-- **config/** — [config/neat/](config/neat/) (NEAT .txt files), [config/experiments.json](config/experiments.json) (presets). Set `EXPERIMENT_CONFIG=preset_name` to switch experiment.
+- **config/** — [config/neat/](config/neat/) (NEAT .txt files), [config/experiments.json](config/experiments.json) (presets), [config/evolution_defaults.json](config/evolution_defaults.json). Set `EXPERIMENT_CONFIG=preset_name` to switch experiment.
+- **Root** — Makefile, pyproject.toml, docker/, scripts/, [.env.example](.env.example), eslint.config.js.
 - **tests/** — Pytest. [tests/README.md](tests/README.md). Run `make test` or `pytest -m "not slow"`.
 - **examples/** — [examples/README.md](examples/README.md). API usage, batch evolution, time-signal plot.
-- **data/** — Community and genealogy DBs (gitignored). **output/** — saved patterns, frames (gitignored).
-- **Root** — Makefile, pyproject.toml, docker/, scripts/. Contributing: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
+- **data/** — Community and genealogy DBs (gitignored). **output/** — saved patterns, frames (gitignored). Contributing: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 ## Requirements
 

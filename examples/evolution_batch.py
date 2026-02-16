@@ -16,20 +16,16 @@ import json
 import os
 
 import numpy as np
+from eyecatcher import experiment
 from eyecatcher.evolution import produce_next_generation
 from eyecatcher.evolution.fitness import get_fitness, list_fitness
-from eyecatcher.experiment import (
-    PREVIEW_RENDER_RESOLUTION,
-    get_configured_representation,
-    get_crossover_probability,
-    get_population_size,
-)
 from PIL import Image
 
 
 def _render_for_save(representation, ind):
     """Render individual to image array for saving."""
-    img = representation.render_to_image(ind, resolution=PREVIEW_RENDER_RESOLUTION)
+    res = experiment.PREVIEW_RENDER_RESOLUTION
+    img = representation.render_to_image(ind, resolution=res)
     if img is not None:
         return img
     out = representation.express(ind, {})
@@ -50,8 +46,8 @@ def run_evolution(
     fitness_name: str = "combined",
 ):
     if population_size is None:
-        population_size = get_population_size()
-    representation = get_configured_representation()
+        population_size = experiment.get_population_size()
+    representation = experiment.get_configured_representation()
     fitness_fn = get_fitness(fitness_name)
     if fitness_fn is None:
         raise ValueError(
@@ -91,7 +87,7 @@ def run_evolution(
             parents_data,
             population_size=population_size,
             elitism=True,
-            crossover_probability=get_crossover_probability(),
+            crossover_probability=experiment.get_crossover_probability(),
         )
         population = [representation.from_json(c) for c in children]
 
@@ -128,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", default="output/evolution", help="Output directory")
     args = parser.parse_args()
 
-    pop_size = args.population or get_population_size()
+    pop_size = args.population or experiment.get_population_size()
     print("Batch evolution – representation from EXPERIMENT_CONFIG, proxy fitness")
     run_evolution(
         population_size=pop_size,

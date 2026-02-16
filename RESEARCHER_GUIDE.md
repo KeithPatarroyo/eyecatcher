@@ -61,7 +61,7 @@ flowchart LR
 
 | # | File or action | Description |
 |---|----------------|-------------|
-| 1 | [representation/new.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `sensory_system`, `phenotype`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and `frontend_metadata`. Set `phenotype = Phenotype(substrate=Substrate(type="field"\|"grid"\|"image"), ...)`. Implement `develop` for field; for grid, put update_rule/interaction_rule in phenotype.behaviour; for image, implement `render_to_image()`. See [protocol.py](src/eyecatcher/representation/protocol.py), [trivial.py](src/eyecatcher/representation/trivial.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
+| 1 | [representation/new.py](src/eyecatcher/representation/) | New module: implement protocol (`id`, `output_type`, `sensory_system`, `phenotype`, `create_random`, `mutate`, `crossover`, `express`, `to_json`, `from_json`) and `frontend_metadata`. Set `phenotype = Phenotype(substrate=Substrate(type="field"\|"grid"\|"image"), ...)`. Implement `develop` for field; for grid, put update_rule/interaction_rule in phenotype.behaviour; for image, implement `render_to_image()`. See [protocol.py](src/eyecatcher/representation/protocol.py), [ca.py](src/eyecatcher/representation/ca.py), [dual_cppn.py](src/eyecatcher/representation/dual_cppn.py). |
 | 2 | [representation/__init__.py](src/eyecatcher/representation/__init__.py) | Export the new representation class. |
 | 3 | [representation/registry.py](src/eyecatcher/representation/registry.py) | Add one entry to `REPRESENTATIONS`: `"<id>": NewRepresentation`. |
 | 4 | `make generate` | Regenerate frontend config (writes [static/js/config.generated.js](static/js/config.generated.js) and representation includes). |
@@ -69,7 +69,7 @@ flowchart LR
 
 Standard substrates (field, grid, image) = steps 1–5, no frontend code. Custom substrate (new medium, e.g. audio): add a JS class extending `Substrate`, implement the six-method contract, register in [substrate_registry.js](static/js/representation/substrate_registry.js), add script to `REPRESENTATION_SCRIPTS` in [generate_representation_includes.py](scripts/generate_representation_includes.py), run `make generate`.
 
-**Representation types:** NEAT (CPPN): `dual_cppn`, `single_cppn`. Non-NEAT: `ca`, `trivial`. `trivial` is a minimal template: one receptor tying a signal to the “body part” that expresses it, one float genome → grid. For receptor inputs, use catalog presets: `STANDARD_2D_INPUTS`, `TEMPORAL_INPUTS`, or `MINIMAL_SPATIAL` (see [signals/catalog.py](src/eyecatcher/signals/catalog.py)). Copy [trivial.py](src/eyecatcher/representation/trivial.py) for custom representations; see [base.py](src/eyecatcher/representation/base.py) for the protocol.
+**Representation types:** NEAT (CPPN): `dual_cppn`, `single_cppn`. Non-NEAT: `ca`. Use `make new-representation name=<snake_case>` to scaffold. For receptor inputs, use catalog presets: `STANDARD_2D_INPUTS`, `TEMPORAL_INPUTS`, or `MINIMAL_SPATIAL` (see [signals/catalog.py](src/eyecatcher/signals/catalog.py)). See [base.py](src/eyecatcher/representation/base.py) for the protocol.
 
 ---
 
