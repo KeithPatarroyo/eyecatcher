@@ -20,8 +20,10 @@ let viewerControls = null;
 let communityPatterns = [];
 let submitGenome = null;
 let adminKey = "";
+let showLoadingFn = null;
 
-const showLoading = (show) => window.showLoading?.(Boolean(show));
+const defaultShowLoading = (s) => window.showLoading?.(s);
+const showLoading = (show) => (showLoadingFn ?? defaultShowLoading)?.(Boolean(show));
 const toast = (t, m, type) => Toast.show(t, m, type);
 
 const init = (options) => {
@@ -30,6 +32,7 @@ const init = (options) => {
     getGenomeForPattern = options.getGenomeForPattern || null;
     patternRenderer = options.patternRenderer || null;
     viewerControls = options.viewerControls || null;
+    showLoadingFn = options.showLoading ?? null;
 };
 
 // ----- Submit -----
