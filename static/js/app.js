@@ -2,6 +2,7 @@
  * Eyecatcher app entry: init and DOM wiring.
  * All core modules are imported; wiring is via init(options).
  */
+import { defaultResolutionRef } from "./representation/default_resolution_ref.js";
 import RepresentationRegistry from "./representation/representation_registry.js";
 import GridRenderer from "./viewer/grid_renderer.js";
 import { gridTopology } from "./viewer/grid_renderer.js";
@@ -23,14 +24,13 @@ import toolbarUI from "./viewer/toolbar_ui.js";
 import { NetworkVisualizer } from "./inspection/genome_visualizer.js";
 import GenealogySync from "./genealogy/sync.js";
 import animationLoop from "./viewer/animation_loop.js";
+import { API_URL } from "./lib/env.js";
 
 if (typeof vis === "undefined") {
     console.error(
         "ERROR: vis.js library not loaded! Network visualization will not work."
     );
 }
-
-const API_URL = window.API_URL || "";
 
 const IDS = {
     grid: "grid",
@@ -341,8 +341,8 @@ apiInstance
     .then((c) => {
         EvolutionConfig.mergeFromServer(c);
 
-        if (c?.representation_id && window.__eyecatcherDefaultResolution) {
-            window.__eyecatcherDefaultResolution.representationId = c.representation_id;
+        if (c?.representation_id && defaultResolutionRef?.current) {
+            defaultResolutionRef.current.representationId = c.representation_id;
         }
 
         const needsRep =
