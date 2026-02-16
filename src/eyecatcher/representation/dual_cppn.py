@@ -24,17 +24,16 @@ from ..genome.dual import (
     dual_genome_to_json,
     mutate_dual_genome,
 )
-from ..inspection import parse_network_node_id
 from ..signals import catalog
 from ..signals.registry import parse_time_inputs
 from ..signals.sensory_system import SensorySystem
-from .cppn_base import CPPNRepresentationBase, _clamp_rgb
+from .field_base import FieldRepresentationBase, _clamp_rgb
 from .mixins import NetworkInspectable
 from .protocol import Phenotype, Substrate
 from .receptors import NeatReceptor
 
 
-class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
+class DualCPPNRepresentation(NetworkInspectable, FieldRepresentationBase):
     """
     Representation that wraps the current dual-CPPN (visual + time) setup.
     Individual = DualGenome; output = rule.
@@ -87,7 +86,38 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
         self.population = self._population
         self.time_population = self._time_population
 
-    # -- Evolution (representation concern) --
+    @property
+    def receptors(self) -> tuple[NeatReceptor, ...]:
+        """NetworkInspectable: visual and time receptors."""
+        return (self.visual, self.time)
+
+    def _genome_for_receptor(
+        self,
+        genome: DualGenome,
+        receptor: NeatReceptor,
+    ) -> neat.DefaultGenome:
+        """Route to sub-genome for dual representation."""
+        if receptor.name == "visual":
+            return genome.visual
+        return genome.time_signal
+
+    def get_network_types(self) -> tuple[str, ...]:
+        """Frontend expects genomeKeys: visual, time_signal."""
+        return ("visual", "time_signal")
+
+    def adjust_weight(
+        self,
+        genome: DualGenome,
+        network: str,
+        source: str,
+        target: str,
+        weight: float,
+    ) -> dict[str, Any] | None:
+        if network == "time_signal":
+            network = "time"
+        return super().adjust_weight(genome, network, source, target, weight)
+
+    # -- Evolution (DualGenome overrides NeatEvolvable defaults) --
 
     def create_random(self, key: int = 0) -> DualGenome:
         return create_random_dual_genome(self.config, self.time_config, genome_id=key)
@@ -143,20 +173,6 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
 
     def from_json(self, data: dict[str, Any]) -> DualGenome:
         return dual_genome_from_json(data, self.config, self.time_config)
-
-    def get_network_types(self) -> tuple[str, ...]:
-        return ("visual", "time_signal")
-
-    def get_neat_pop_size(self) -> int | None:
-        return getattr(self.config, "pop_size", None)
-
-    # -- Inspection (receptors know the structure of the individual) --
-
-    def get_develop_stats(self, genome: DualGenome) -> dict[str, Any]:
-        stats: dict[str, Any] = {}
-        stats.update(self.visual.network_stats(genome.visual))
-        stats.update(self.time.network_stats(genome.time_signal))
-        return stats
 
     def get_save_filenames(self, individual_id: int) -> dict[str, str]:
         base = super().get_save_filenames(individual_id)
@@ -216,39 +232,3 @@ class DualCPPNRepresentation(NetworkInspectable, CPPNRepresentationBase):
         time_inputs = parse_time_inputs(inputs, time_signals, bipolar=True)
         out = self._query_time_signal(genome.time_signal, time_inputs)
         return {"timeOutput": out, "inputs": response_inputs}
-
-    def get_network_data(self, genome: DualGenome) -> dict[str, Any] | None:
-        all_nodes: list[dict[str, Any]] = []
-        all_connections: list[dict[str, Any]] = []
-        if genome.visual:
-            nodes, conns = self.visual.extract_network_data(genome.visual, x_offset=0)
-            all_nodes.extend(nodes)
-            all_connections.extend(conns)
-        if genome.time_signal:
-            nodes, conns = self.time.extract_network_data(
-                genome.time_signal, x_offset=1000
-            )
-            all_nodes.extend(nodes)
-            all_connections.extend(conns)
-        return {"nodes": all_nodes, "connections": all_connections}
-
-    def adjust_weight(
-        self,
-        genome: DualGenome,
-        network: str,
-        source: str,
-        target: str,
-        weight: float,
-    ) -> dict[str, Any] | None:
-        net_genome = genome.visual if network == "visual" else genome.time_signal
-        try:
-            source_id = parse_network_node_id(source)
-            target_id = parse_network_node_id(target)
-        except (ValueError, IndexError):
-            return None
-        conn_key = (source_id, target_id)
-        if conn_key not in net_genome.connections:
-            return None
-        net_genome.connections[conn_key].weight = weight
-        rule_str = self.develop(genome) or ""
-        return {"rule": rule_str, "individual": self.to_json(genome)}

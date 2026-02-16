@@ -2,7 +2,7 @@
 Single-CPPN representation: visual network only (no time signal CPPN).
 
 Expression and signal translation are delegated to a NeatReceptor.
-Evolution (population, mutation, crossover) is owned by the representation.
+Evolution (population, mutation, crossover) from FieldRepresentationBase/NeatEvolvable.
 """
 
 from __future__ import annotations
@@ -12,17 +12,19 @@ from typing import Any
 import neat
 
 from .. import experiment
-from ..genome import create_random_genome
-from ..genome.operators import crossover_genomes, mutate_genome
-from ..genome.serialization import genome_from_json, genome_to_json
 from ..signals import catalog
 from ..signals.sensory_system import SensorySystem
-from .cppn_base import CPPNRepresentationBase, _clamp_rgb, normalize_to_bipolar
+from .field_base import (
+    FieldRepresentationBase,
+    _clamp_rgb,
+    normalize_to_bipolar,
+)
+from .mixins import NetworkInspectable
 from .protocol import Phenotype, Substrate
 from .receptors import NeatReceptor
 
 
-class SingleCPPNRepresentation(CPPNRepresentationBase):
+class SingleCPPNRepresentation(NetworkInspectable, FieldRepresentationBase):
     """
     Representation with a single visual CPPN (no time signal network).
     Individual = neat.DefaultGenome; output = rule.
@@ -63,22 +65,10 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
         )
         super().__init__(color_mode=color_mode)
 
-    # -- Evolution (representation concern) --
-
-    def create_random(self, key: int = 0) -> neat.DefaultGenome:
-        return create_random_genome(self.config, genome_id=key)
-
-    def mutate(self, genome: neat.DefaultGenome, key: int) -> neat.DefaultGenome:
-        child = mutate_genome(genome, self.config)
-        child.key = key  # type: ignore[assignment]
-        return child
-
-    def crossover(
-        self, a: neat.DefaultGenome, b: neat.DefaultGenome, key: int
-    ) -> neat.DefaultGenome:
-        child = crossover_genomes(a, b, self.config)
-        child.key = key  # type: ignore[assignment]
-        return child
+    @property
+    def receptors(self) -> tuple[NeatReceptor, ...]:
+        """NetworkInspectable: single visual receptor."""
+        return (self.visual,)
 
     # -- Expression (delegated to receptor) --
 
@@ -105,22 +95,3 @@ class SingleCPPNRepresentation(CPPNRepresentationBase):
         base = self.visual.default_values()
         base[catalog.time.id] = normalize_to_bipolar(0.0)
         return base
-
-    # -- Serialization --
-
-    def to_json(self, genome: neat.DefaultGenome) -> dict[str, Any]:
-        return genome_to_json(genome)
-
-    def from_json(self, data: dict[str, Any]) -> neat.DefaultGenome:
-        return genome_from_json(data, self.config)
-
-    def get_network_types(self) -> tuple[str, ...]:
-        return ("visual",)
-
-    def get_neat_pop_size(self) -> int | None:
-        return getattr(self.config, "pop_size", None)
-
-    # -- Inspection (receptor knows the structure) --
-
-    def get_develop_stats(self, genome: neat.DefaultGenome) -> dict[str, Any]:
-        return self.visual.network_stats(genome)

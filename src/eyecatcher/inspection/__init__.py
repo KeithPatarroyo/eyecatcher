@@ -2,7 +2,7 @@
 Inspection: look inside genomes.
 
 Network graph data for UI/API, genome visualization (PDF), graph algorithms.
-CPU rendering and query live in substrate (cppn_base, dual_cppn, single_cppn).
+CPU rendering and query live in substrate (field_base, dual_cppn, single_cppn).
 """
 
 from .genome_visualizer import render_genome_network_pdf

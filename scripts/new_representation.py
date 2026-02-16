@@ -238,17 +238,19 @@ from typing import Any
 import neat
 
 from .. import experiment
-from ..genome import create_random_genome
-from ..genome.operators import crossover_genomes, mutate_genome
-from ..genome.serialization import genome_from_json, genome_to_json
 from ..signals import catalog
 from ..signals.sensory_system import SensorySystem
-from .cppn_base import CPPNRepresentationBase, _clamp_rgb, normalize_to_bipolar
+from .field_base import (
+    FieldRepresentationBase,
+    _clamp_rgb,
+    normalize_to_bipolar,
+)
+from .mixins import NetworkInspectable
 from .protocol import Phenotype, Substrate
 from .receptors import NeatReceptor
 
 
-class {pascal}Representation(CPPNRepresentationBase):
+class {pascal}Representation(NetworkInspectable, FieldRepresentationBase):
     """Field substrate: one visual CPPN, rule from develop()."""
 
     id = "{name}"
@@ -276,6 +278,10 @@ class {pascal}Representation(CPPNRepresentationBase):
         )
         super().__init__(color_mode=kwargs.get("color_mode", "hsv"))
 
+    @property
+    def receptors(self) -> tuple[NeatReceptor, ...]:
+        return (self.visual,)
+
     def _compile_contributions(self, genome: neat.DefaultGenome) -> dict[str, Any]:
         return {{"visual": self.visual.compile(genome)}}
 
@@ -294,33 +300,6 @@ class {pascal}Representation(CPPNRepresentationBase):
         base = self.visual.default_values()
         base[catalog.time.id] = normalize_to_bipolar(0.0)
         return base
-
-    def create_random(self, key: int = 0) -> neat.DefaultGenome:
-        return create_random_genome(self.config, genome_id=key)
-
-    def mutate(self, genome: neat.DefaultGenome, key: int) -> neat.DefaultGenome:
-        child = mutate_genome(genome, self.config)
-        child.key = key  # type: ignore[assignment]
-        return child
-
-    def crossover(
-        self, a: neat.DefaultGenome, b: neat.DefaultGenome, key: int
-    ) -> neat.DefaultGenome:
-        child = crossover_genomes(a, b, self.config)
-        child.key = key  # type: ignore[assignment]
-        return child
-
-    def to_json(self, genome: neat.DefaultGenome) -> dict[str, Any]:
-        return genome_to_json(genome)
-
-    def from_json(self, data: dict[str, Any]) -> neat.DefaultGenome:
-        return genome_from_json(data, self.config)
-
-    def get_network_types(self) -> tuple[str, ...]:
-        return ("visual",)
-
-    def get_develop_stats(self, genome: neat.DefaultGenome) -> dict[str, Any]:
-        return self.visual.network_stats(genome)
 '''
 
 

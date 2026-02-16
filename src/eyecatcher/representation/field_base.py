@@ -1,9 +1,10 @@
 """
-Shared CPPN representation helpers: render utilities and CPPNRepresentationBase.
+Field-substrate representation base.
 
+Shared develop, express, sample, render, save for SingleCPPN and DualCPPN.
 Expression and signal translation are delegated to NeatReceptor instances.
-CPPNRepresentationBase implements shared orchestration logic (compile, render,
-sample, save) for SingleCPPNRepresentation and DualCPPNRepresentation.
+Subclasses set self.visual (and optionally self.time), self.sensory_system,
+then call super().__init__(color_mode=...).
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from .. import experiment
 from ..glsl import RuleAssembler
 from ..signals.registry import get_default_signal_values
 from .base import RepresentationBase
-from .mixins import Samplable, Saveable
+from .mixins import NeatEvolvable, Samplable, Saveable
 from .protocol import RepresentationOutput
 
 
@@ -67,13 +68,13 @@ def base_express(
     return RepresentationOutput("field", glsl if glsl else "")
 
 
-class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
+class FieldRepresentationBase(NeatEvolvable, Saveable, Samplable, RepresentationBase):
     """
-    Shared base for single and dual CPPN representations.
+    Shared base for field-substrate representations (SingleCPPN, DualCPPN).
     Subclasses set self.visual (and optionally self.time), self.sensory_system,
     then call super().__init__(color_mode=...). Subclasses implement
-    query_rgb, _sample_inputs, get_base_inputs_for_render, _compile_contributions,
-    to_json, from_json, create_random, mutate, crossover.
+    query_rgb, _sample_inputs, get_base_inputs_for_render, _compile_contributions.
+    DualCPPN overrides create_random, mutate, crossover, to_json, from_json.
     """
 
     def __init__(self, *, color_mode: str = "hsv") -> None:
@@ -82,6 +83,11 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
         self.rule_assembler = RuleAssembler.from_sensory_system(
             self.sensory_system, color_mode=color_mode
         )
+
+    @property
+    def neat_config(self) -> neat.Config:
+        """NeatEvolvable: NEAT config for primary (visual) genome."""
+        return self.config
 
     @abstractmethod
     def query_rgb(
@@ -119,16 +125,6 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
             primary=contributions["visual"],
             modifier=contributions.get("time"),
         )
-
-    @abstractmethod
-    def to_json(self, genome: Any) -> dict[str, Any]:
-        """Serialize genome to JSON-serializable dict."""
-        ...
-
-    @abstractmethod
-    def from_json(self, data: dict[str, Any]) -> Any:
-        """Deserialize individual from dict."""
-        ...
 
     def express(
         self, genome: Any, inputs: dict[str, float], **kwargs: Any
@@ -194,10 +190,10 @@ class CPPNRepresentationBase(Saveable, Samplable, RepresentationBase):
     def serialize_output(
         self, output: RepresentationOutput, genome: Any = None
     ) -> dict[str, Any]:
-        """CPPN output is rule string."""
+        """Field output is rule string."""
         rule_str = output.data if isinstance(output.data, str) else ""
         return {"rule": rule_str}
 
     def has_temporal_signals(self) -> bool:
-        """CPPN representations have time as an input."""
+        """Field representations have time as an input."""
         return True
