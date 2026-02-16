@@ -108,6 +108,12 @@ def serve_pattern_renderer_js():
     return send_from_directory(STATIC_DIR, 'pattern_renderer.js', mimetype='application/javascript')
 
 
+@app.route('/open_endedness.js')
+def serve_open_endedness_js():
+    """Serve the open-endedness tracking module."""
+    return send_from_directory(STATIC_DIR, 'open_endedness.js', mimetype='application/javascript')
+
+
 @app.route('/api/breed', methods=['POST'])
 def breed():
     """

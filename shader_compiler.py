@@ -251,6 +251,11 @@ uniform float uVisualEnableMouseSpeed;
 uniform float uVisualEnableMouseDist;
 uniform float uVisualEnableInactivity;
 
+// Mouse perturbation uniforms
+uniform float uMouseX;  // Mouse X position on canvas (0-1)
+uniform float uMouseY;  // Mouse Y position on canvas (0-1)
+uniform float uPerturbStrength;  // Perturbation strength (0-1)
+
 // Output color
 out vec4 fragColor;
 
@@ -293,31 +298,52 @@ float inv(float x) {{
 }}
 
 void main() {{
-    // Convert UV to CPPN coordinate space (-1 to 1)
-    float vX = vUV.x * 2.0 - 1.0;
-    float vY = vUV.y * 2.0 - 1.0;
+    // === MOUSE PERTURBATION ===
+    // Mouse position in CPPN coordinate space
+    float mX = uMouseX * 2.0 - 1.0;
+    float mY = uMouseY * 2.0 - 1.0;
+
+    // Base coordinates
+    float baseX = vUV.x * 2.0 - 1.0;
+    float baseY = vUV.y * 2.0 - 1.0;
+
+    // Distance from current pixel to mouse position
+    float mouseDistX = baseX - mX;
+    float mouseDistY = baseY - mY;
+    float mouseDistToPixel = sqrt(mouseDistX * mouseDistX + mouseDistY * mouseDistY);
+
+    // Perturbation field: Gaussian blob centered at mouse
+    float perturbRadius = 0.4;
+    float perturbField = exp(-mouseDistToPixel * mouseDistToPixel / (perturbRadius * perturbRadius));
+    float perturbAmount = perturbField * uPerturbStrength;
+
+    // Convert UV to CPPN coordinate space with perturbation
+    float ripple = sin(mouseDistToPixel * 10.0 - uTime * 6.28) * perturbAmount * 0.3;
+    float vX = baseX + mouseDistX * ripple;
+    float vY = baseY + mouseDistY * ripple;
     float vDist = sqrt(vX * vX + vY * vY);
-    
+
     // Apply enable gates (disabled = 0.0 neutral)
-    float vTime = (uTime * 2.0 - 1.0) * uVisualEnableTime;
+    // Time with local perturbation (mouse can speed up/slow down local time)
+    float vTime = (uTime * 2.0 - 1.0 + perturbAmount * 0.5) * uVisualEnableTime;
     float vMouseSpeed = (uMouseSpeed * 2.0 - 1.0) * uVisualEnableMouseSpeed;
     float vMouseDist = (uMouseDist * 2.0 - 1.0) * uVisualEnableMouseDist;
     float vInactivity = (uInactivity * 2.0 - 1.0) * uVisualEnableInactivity;
     float vBias = 1.0;
-    
+
     // Network computations
 {node_code}
-    
+
     // Output RGB (clamp to 0-1)
     float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
     float g = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);
     float b = clamp((output_2 + 1.0) * 0.5, 0.0, 1.0);
-    
+
     fragColor = vec4(r, g, b, 1.0);
 }}
 """
         return shader
-    
+
     def compile_dual_to_glsl(self,
                              dual_genome: 'DualGenome',
                              visual_config: neat.Config,
@@ -378,6 +404,11 @@ uniform float uVisualEnableMouseSpeed;
 uniform float uVisualEnableMouseDist;
 uniform float uVisualEnableInactivity;
 
+// Mouse perturbation uniforms
+uniform float uMouseX;  // Mouse X position on canvas (0-1)
+uniform float uMouseY;  // Mouse Y position on canvas (0-1)
+uniform float uPerturbStrength;  // Perturbation strength (0-1)
+
 // Output color
 out vec4 fragColor;
 
@@ -426,40 +457,63 @@ void main() {{
     float mouseDist_base = uMouseDist * 2.0 - 1.0;
     float inactivity_base = uInactivity * 2.0 - 1.0;
     float vBias = 1.0;
-    
+
+    // === MOUSE PERTURBATION ===
+    // Mouse position in CPPN coordinate space
+    float mX = uMouseX * 2.0 - 1.0;
+    float mY = uMouseY * 2.0 - 1.0;
+
+    // Base coordinates
+    float baseX = vUV.x * 2.0 - 1.0;
+    float baseY = vUV.y * 2.0 - 1.0;
+
+    // Distance from current pixel to mouse position
+    float mouseDistX = baseX - mX;
+    float mouseDistY = baseY - mY;
+    float mouseDistToPixel = sqrt(mouseDistX * mouseDistX + mouseDistY * mouseDistY);
+
+    // Perturbation field: Gaussian blob centered at mouse
+    float perturbRadius = 0.4;
+    float perturbField = exp(-mouseDistToPixel * mouseDistToPixel / (perturbRadius * perturbRadius));
+    float perturbAmount = perturbField * uPerturbStrength;
+
     // === TIME SIGNAL NETWORK ===
     // Apply enable gates for time CPPN inputs (disabled = 0.0 neutral)
     float vRawTime = rawTime_base * uTimeEnableRawTime;
     float vMouseSpeed = mouseSpeed_base * uTimeEnableMouseSpeed;
     float vMouseDist = mouseDist_base * uTimeEnableMouseDist;
     float vInactivity = inactivity_base * uTimeEnableInactivity;
-    
+
     // Time signal network computation
 {time_code}
-    
+
     // Get modified time from time signal network (clamped to valid range)
     float timeFromNetwork = clamp(time_output_0, -1.0, 1.0);
-    
+
+    // Add local time perturbation from mouse (creates local "time bubbles")
+    timeFromNetwork = timeFromNetwork + perturbAmount * 0.5;
+
     // === VISUAL NETWORK ===
-    // Convert UV to CPPN coordinate space (-1 to 1)
-    float vX = vUV.x * 2.0 - 1.0;
-    float vY = vUV.y * 2.0 - 1.0;
+    // Convert UV to CPPN coordinate space with perturbation
+    float ripple = sin(mouseDistToPixel * 10.0 - uTime * 6.28) * perturbAmount * 0.3;
+    float vX = baseX + mouseDistX * ripple;
+    float vY = baseY + mouseDistY * ripple;
     float vDist = sqrt(vX * vX + vY * vY);
-    
+
     // Apply enable gates for visual CPPN inputs (disabled = 0.0 neutral)
     float vTime = timeFromNetwork * uVisualEnableTime;
     vMouseSpeed = mouseSpeed_base * uVisualEnableMouseSpeed;
     vMouseDist = mouseDist_base * uVisualEnableMouseDist;
     vInactivity = inactivity_base * uVisualEnableInactivity;
-    
+
     // Visual network computations (using modified time)
 {visual_code}
-    
+
     // Output RGB (clamp to 0-1)
     float r = clamp((output_0 + 1.0) * 0.5, 0.0, 1.0);
     float g = clamp((output_1 + 1.0) * 0.5, 0.0, 1.0);
     float b = clamp((output_2 + 1.0) * 0.5, 0.0, 1.0);
-    
+
     fragColor = vec4(r, g, b, 1.0);
 }}
 """
