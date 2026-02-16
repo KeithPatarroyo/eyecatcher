@@ -120,4 +120,6 @@ class EvolutionCoordinator {
     }
 }
 
-window.EvolutionCoordinator = new EvolutionCoordinator();
+const evolutionCoordinator = new EvolutionCoordinator();
+export default evolutionCoordinator;
+window.EvolutionCoordinator = evolutionCoordinator;

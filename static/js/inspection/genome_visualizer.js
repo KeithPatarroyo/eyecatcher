@@ -344,7 +344,7 @@ const init = (options = {}) => {
     }
 };
 
-window.NetworkVisualizer = {
+export const NetworkVisualizer = {
     toggle,
     close,
     fitToView,
@@ -354,3 +354,4 @@ window.NetworkVisualizer = {
         return currentId;
     },
 };
+window.NetworkVisualizer = NetworkVisualizer;

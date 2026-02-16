@@ -155,4 +155,6 @@ class FullscreenModal {
     }
 }
 
-window.FullscreenModal = new FullscreenModal();
+const fullscreenModal = new FullscreenModal();
+export default fullscreenModal;
+window.FullscreenModal = fullscreenModal;

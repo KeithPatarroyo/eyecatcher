@@ -118,4 +118,6 @@ class OrganismActions {
     }
 }
 
-window.OrganismActions = new OrganismActions();
+const organismActions = new OrganismActions();
+export default organismActions;
+window.OrganismActions = organismActions;
