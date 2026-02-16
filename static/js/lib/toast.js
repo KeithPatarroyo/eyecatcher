@@ -42,6 +42,10 @@
             toast.appendChild(link);
         }
 
+        if (!container) {
+            console.warn("Toast: #toast-container not found, skipping show.");
+            return toast;
+        }
         container.appendChild(toast);
 
         const duration = options.duration || (options.linkUrl ? 10000 : 6000);

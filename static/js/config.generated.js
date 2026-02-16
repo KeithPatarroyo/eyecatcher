@@ -282,39 +282,6 @@
                     ]
                 }
             }
-        },
-        {
-            "id": "trivial",
-            "outputType": "grid",
-            "hasSignalControls": true,
-            "genomeKeys": [
-                "value",
-                "key"
-            ],
-            "capabilities": {
-                "save": false,
-                "network": false,
-                "timeOutput": false,
-                "adjustWeight": false,
-                "animate": false
-            },
-            "sensorySystem": {
-                "inputs": [
-                    {
-                        "id": "raw_time",
-                        "label": "Raw Time",
-                        "default": 0.0,
-                        "uniform": "u_raw_time"
-                    }
-                ],
-                "outputs": [],
-                "derivedInputs": []
-            },
-            "phenotype": {
-                "substrate": {
-                    "type": "grid"
-                }
-            }
         }
     ],
     "signals": {

@@ -7,15 +7,11 @@
     background: var(--color-success-soft-hover);
 }
 
-/* Admin modal (overlay pattern in modals.css) */
+/* Admin modal (overlay + .modal-content base in modals.css) */
 #admin-modal .modal-content {
-    background: var(--color-bg-primary);
     padding: var(--space-xl);
-    border-radius: var(--radius-lg);
     max-width: 420px;
-    width: 90%;
     max-height: 80vh;
-    overflow: auto;
 }
 
 #admin-modal label {
@@ -131,13 +127,8 @@
 /* Community submit / list modals */
 #community-submit-modal .modal-content,
 #community-list-modal .modal-content {
-    background: var(--color-bg-primary);
     padding: var(--space-xl);
-    border-radius: var(--radius-lg);
     max-width: 380px;
-    width: 90%;
-    max-height: 70vh;
-    overflow: auto;
 }
 
 #community-submit-modal h3,
