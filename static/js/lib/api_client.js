@@ -1,201 +1,230 @@
 /**
- * API client for Eyecatcher backend. Raw fetch calls; no UI.
- * Sets window.API_URL and window.DEFAULT_DEV_PORT. Exposes: ApiClient.init(apiUrl),
- * ApiClient.develop(individuals, colorMode), ApiClient.express(individuals),
- * ApiClient.evolve(parents, populationSize), ApiClient.save(id, individual),
- * ApiClient.randomPopulation(size)
+ * ApiClient: wrapper around backend REST API.
  */
-(function () {
+(() => {
     "use strict";
 
-    var DEFAULT_DEV_PORT =
-        (typeof window !== "undefined" &&
-            window.EvolutionConfig &&
-            window.EvolutionConfig.DEFAULT_DEV_PORT) ||
-        5001;
+    const DEFAULT_TIMEOUT_MS = 45_000;
 
-    function getApiBaseUrl() {
-        if (
-            typeof window !== "undefined" &&
-            window.location &&
-            window.location.origin &&
-            window.location.protocol &&
-            window.location.protocol.indexOf("http") === 0
-        ) {
-            return window.location.origin + "/api";
+    const joinUrl = (base, path) => {
+        const b = (base || "").replace(/\/+$/, "");
+        const p = String(path || "").replace(/^\/+/, "");
+        return b ? `${b}/${p}` : `/${p}`;
+    };
+
+    const buildError = async (res, fallback) => {
+        let data = null;
+        try {
+            data = await res.json();
+        } catch {
+            /* ignore */
         }
-        return "http://localhost:" + DEFAULT_DEV_PORT + "/api";
-    }
 
-    window.DEFAULT_DEV_PORT = DEFAULT_DEV_PORT;
-    window.API_URL = getApiBaseUrl();
+        const msg =
+            data?.error ||
+            data?.message ||
+            `${fallback} (${res.status} ${res.statusText})`;
+
+        const err = new Error(msg);
+        err.status = res.status;
+        err.data = data;
+        return err;
+    };
+
+    const fetchJson = async (url, opts = {}) => {
+        const {
+            method = "GET",
+            body,
+            timeoutMs = DEFAULT_TIMEOUT_MS,
+            headers = {},
+            signal,
+        } = opts;
+
+        const controller = !signal ? new AbortController() : null;
+        const effectiveSignal = signal || controller.signal;
+
+        const timer =
+            controller &&
+            setTimeout(() => {
+                try {
+                    controller.abort();
+                } catch {
+                    /* ignore */
+                }
+            }, timeoutMs);
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...headers,
+                },
+                body: body !== undefined ? JSON.stringify(body) : undefined,
+                signal: effectiveSignal,
+            });
+
+            if (!res.ok) throw await buildError(res, "Request failed");
+            // Some endpoints may respond with empty body; tolerate that.
+            const text = await res.text();
+            return text ? JSON.parse(text) : null;
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    };
 
     class ApiClient {
         constructor() {
-            this._apiUrl = "";
+            this._baseUrl = "";
         }
 
-        init(apiUrl) {
-            this._apiUrl = apiUrl || "";
+        init(baseUrl) {
+            this._baseUrl = baseUrl || "";
         }
 
-        getBase() {
-            return this._apiUrl || getApiBaseUrl();
+        _url(path) {
+            return joinUrl(this._baseUrl, path);
         }
 
         /**
-         * Generic fetch that parses JSON and throws on !r.ok with data.error or defaultMessage.
-         * @param {string} url - Full URL
-         * @param {RequestInit} [options] - fetch options
-         * @param {string} [defaultMessage] - Error message when response has no data.error
+         * Low-level fetch wrapper for callers that build their own URL and options.
+         * Body should already be JSON.stringify'd if present.
+         * @param {string} url - full URL
+         * @param {RequestInit} opts - raw fetch options
+         * @param {string} [fallbackError] - error message if response is not ok
+         * @returns {Promise<any>}
          */
-        async apiFetch(url, options, defaultMessage) {
-            var r = await fetch(url, options || {});
-            var data = await r.json().catch(function () {
-                return {};
+        async apiFetch(url, opts = {}, fallbackError = "Request failed") {
+            const res = await fetch(url, opts);
+            if (!res.ok) throw await buildError(res, fallbackError);
+            const text = await res.text();
+            return text ? JSON.parse(text) : null;
+        }
+
+        // ---- Config ----
+        fetchConfig() {
+            return fetchJson(this._url("/api/config"));
+        }
+
+        patchConfig(partialConfig) {
+            return fetchJson(this._url("/api/config"), {
+                method: "PATCH",
+                body: partialConfig,
             });
-            if (!r.ok) {
-                var err = new Error(
-                    data.error || defaultMessage || "Request failed (" + r.status + ")"
-                );
-                err.status = r.status;
-                err.data = data;
-                throw err;
-            }
-            return data;
         }
 
-        /** Develop genome → shader (POST /api/develop). */
-        async develop(individuals, colorMode) {
-            var payload = (individuals || []).map(function (g) {
-                var copy = Object.assign({}, g);
-                copy.fitness = 0;
-                return copy;
+        // ---- Random population ----
+        randomPopulation(size) {
+            return fetchJson(this._url("/api/random"), {
+                method: "POST",
+                body: { size },
             });
-            var body = { individuals: payload };
-            if (colorMode === "hsv" || colorMode === "rgb") body.color_mode = colorMode;
-            return this.apiFetch(
-                this.getBase() + "/develop",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body),
-                },
-                "Develop failed"
-            );
         }
 
-        async evolve(parents, populationSize, genealogy) {
-            var parentsPayload = (parents || []).map(function (p) {
-                return {
-                    individual: p.genome || p,
-                    fitness: p.fitness != null ? p.fitness : 0,
-                };
+        // ---- Evolution / express pipeline ----
+        develop(genomes, colorMode) {
+            return fetchJson(this._url("/api/develop"), {
+                method: "POST",
+                body: { individuals: genomes, color_mode: colorMode },
             });
-            var body = {
-                parents: parentsPayload,
-                population_size: populationSize,
-            };
-            if (genealogy) {
-                if (genealogy.parentPopulationId != null)
-                    body.parent_population_id = genealogy.parentPopulationId;
-                if (genealogy.generationNum != null)
-                    body.generation_num = genealogy.generationNum;
-                if (genealogy.branchName) body.branch_name = genealogy.branchName;
-            }
-            var data = await this.apiFetch(
-                this.getBase() + "/evolve",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body),
-                },
-                "Evolve failed"
-            );
-            if (!Array.isArray(data.children)) {
-                throw new Error("Evolve failed: no children in response");
-            }
-            return data;
         }
 
-        async save(id, individual) {
-            return this.apiFetch(
-                this.getBase() + "/save",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id: id, individual: individual }),
+        express(genomes, inputs, expressOptions) {
+            return fetchJson(this._url("/api/express"), {
+                method: "POST",
+                body: {
+                    individuals: genomes,
+                    inputs: inputs || {},
+                    options: expressOptions || undefined,
                 },
-                "Save failed"
-            );
+            });
         }
 
-        async fetchConfig() {
-            var data = await this.apiFetch(
-                this.getBase() + "/config",
-                { method: "GET" },
-                "Config failed"
-            );
-            if (typeof window !== "undefined") {
-                window.ServerConfig = data;
-            }
-            return data;
+        evolve(parents, populationSize, opts = {}) {
+            return fetchJson(this._url("/api/evolve"), {
+                method: "POST",
+                body: {
+                    parents,
+                    population_size: populationSize,
+                    parent_population_id: opts.parentPopulationId,
+                    generation_num: opts.generationNum,
+                    branch_name: opts.branchName,
+                },
+            });
         }
 
-        async patchConfig(updates) {
-            var data = await this.apiFetch(
-                this.getBase() + "/config",
-                {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(updates || {}),
-                },
-                "Update config failed"
-            );
-            if (typeof window !== "undefined") {
-                window.ServerConfig = data;
-            }
-            return data;
+        save(id, genome) {
+            return fetchJson(this._url("/api/save"), {
+                method: "POST",
+                body: { id, individual: genome },
+                timeoutMs: 120_000, // compiling can take longer
+            });
         }
 
-        async randomPopulation(size) {
-            return this.apiFetch(
-                this.getBase() + "/random",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ size: size }),
-                },
-                "Failed to create random population"
-            );
+        // ---- Community ----
+        communityList() {
+            return fetchJson(this._url("/api/community"));
         }
 
-        /** Express genome → phenotype (POST /api/express). Optional inputs and options (e.g. nca_steps for faster NCA load). */
-        async express(individuals, inputs, options) {
-            var body = { individuals: individuals || [] };
-            if (
-                inputs &&
-                typeof inputs === "object" &&
-                Object.keys(inputs).length > 0
-            ) {
-                body.inputs = inputs;
-            }
-            if (
-                options &&
-                typeof options === "object" &&
-                Object.keys(options).length > 0
-            ) {
-                body.options = options;
-            }
-            return this.apiFetch(
-                this.getBase() + "/express",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body),
-                },
-                "Express failed"
-            );
+        communitySubmit(payload) {
+            return fetchJson(this._url("/api/community/submit"), {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        communityLoad(ids) {
+            return fetchJson(this._url("/api/community/load"), {
+                method: "POST",
+                body: { ids },
+            });
+        }
+
+        communityAdminList(adminKey) {
+            return fetchJson(this._url("/api/admin/submissions"), {
+                method: "GET",
+                headers: { "X-Admin-Key": adminKey },
+            });
+        }
+
+        communityAdminDelete(adminKey, ids) {
+            return fetchJson(this._url("/api/community/admin/delete"), {
+                method: "POST",
+                body: { admin_key: adminKey, ids },
+            });
+        }
+
+        // ---- Genealogy ----
+        genealogyCreatePopulation(name) {
+            return fetchJson(this._url("/api/genealogy/create_population"), {
+                method: "POST",
+                body: { name },
+            });
+        }
+
+        genealogySaveGeneration(payload) {
+            return fetchJson(this._url("/api/genealogy/save_generation"), {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        genealogyListPopulations() {
+            return fetchJson(this._url("/api/genealogy/list_populations"));
+        }
+
+        genealogyListBranches(populationId) {
+            return fetchJson(this._url("/api/genealogy/list_branches"), {
+                method: "POST",
+                body: { population_id: populationId },
+            });
+        }
+
+        genealogyLoadGeneration(payload) {
+            return fetchJson(this._url("/api/genealogy/load_generation"), {
+                method: "POST",
+                body: payload,
+            });
         }
     }
 
