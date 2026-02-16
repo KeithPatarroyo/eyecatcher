@@ -68,6 +68,15 @@ def get_glsl_block() -> str:
     return "\n".join(lines)
 
 
+def build_shader_preamble(middle: str) -> str:
+    """Build shared shader header: version, precision, middle, activation block."""
+    return f"""#version 300 es
+precision highp float;
+{middle}
+{get_glsl_block()}
+"""
+
+
 def get_activation_names_sorted() -> list[str]:
     """Return activation names in registry order (for tests and codegen)."""
     return [e.name for e in _ACTIVATIONS]

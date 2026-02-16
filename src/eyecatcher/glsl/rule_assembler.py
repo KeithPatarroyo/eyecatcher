@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from ..representation.receptors import NetworkContribution
 from ..signals.sensory_system import SensorySystem, Signal
-from .activation_registry import get_glsl_block
+from .activation_registry import build_shader_preamble
 from .codegen import generate_node_code
 from .input_map import glsl_uniform_name, glsl_var_name
 
@@ -180,13 +180,12 @@ class RuleAssembler:
     def _glsl_header(self) -> str:
         uniform_decls = self._glsl_uniform_declarations()
         enable_decls = self._glsl_enable_declarations()
-        return f"""#version 300 es
-precision highp float;
-in vec2 vUV;
+        middle = f"""in vec2 vUV;
 {uniform_decls}
 {enable_decls}
 out vec4 fragColor;
-{get_glsl_block()}"""
+"""
+        return build_shader_preamble(middle)
 
     def _build_rule(self, main_body: str, num_outputs: int = 3) -> str:
         return f"""{self._glsl_header()}

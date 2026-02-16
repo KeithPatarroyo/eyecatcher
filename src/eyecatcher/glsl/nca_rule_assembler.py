@@ -8,8 +8,10 @@ stochastic update, alive masking, and state clamp. Used by NCARepresentation.dev
 from __future__ import annotations
 
 from ..representation.receptors import NetworkContribution
-from .activation_registry import get_glsl_block
+from ..signals import catalog
+from .activation_registry import build_shader_preamble
 from .codegen import generate_node_code
+from .input_map import glsl_uniform_name
 
 
 def assemble_nca_step_shader(contribution: NetworkContribution) -> str:
@@ -78,26 +80,24 @@ void main() {{
 }}
 """
 
-    header = (
-        """#version 300 es
-precision highp float;
-
+    # Global signal uniforms via glsl_uniform_name (raw_time, mouse_x, mouse_y)
+    nca_global_signals = (catalog.raw_time, catalog.mouse_x, catalog.mouse_y)
+    signal_uniforms = "\n".join(
+        f"uniform float {glsl_uniform_name(s)};"
+        for s in nca_global_signals
+        if glsl_uniform_name(s)
+    )
+    middle = f"""
 uniform sampler2D u_state;
 uniform vec2 u_texelSize;
-uniform float u_raw_time;
-uniform float u_mouse_x;
-uniform float u_mouse_y;
+{signal_uniforms}
 
 in vec2 vUV;
 out vec4 fragColor;
 
-vec4 getState(vec2 offset) {
+vec4 getState(vec2 offset) {{
     return texture(u_state, vUV + offset * u_texelSize);
-}
-
+}}
 """
-        + get_glsl_block()
-        + "\n"
-    )
-
+    header = build_shader_preamble(middle) + "\n"
     return header + main_body
