@@ -225,4 +225,3 @@ class PopulationUI {
 
 const populationUI = new PopulationUI();
 export default populationUI;
-window.PopulationUI = populationUI;

@@ -131,4 +131,3 @@ const success = (message, opts) => show("Success", message, "success", opts);
 const Toast = { show, error, info, success, triggerDownload, base64ToBlob };
 export { show, error, info, success, triggerDownload, base64ToBlob };
 export default Toast;
-window.Toast = Toast;

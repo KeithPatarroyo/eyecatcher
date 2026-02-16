@@ -80,4 +80,3 @@ const GenealogySync = {
 };
 
 export default GenealogySync;
-window.GenealogySync = GenealogySync;

@@ -190,8 +190,3 @@ export {
     setPopulationRefs,
 };
 export default Utils;
-
-window.Utils = Utils;
-window.formatBytes = formatBytes;
-window.escapeHtml = escapeHtml;
-window.showLoading = showLoading;

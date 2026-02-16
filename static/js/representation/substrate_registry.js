@@ -34,4 +34,3 @@ const SubstrateRegistry = {
 };
 
 export default SubstrateRegistry;
-window.SubstrateRegistry = SubstrateRegistry;

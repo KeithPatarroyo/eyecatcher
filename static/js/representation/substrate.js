@@ -43,4 +43,3 @@ class Substrate {
 
 export default Substrate;
 export { Substrate };
-window.Substrate = Substrate;

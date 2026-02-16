@@ -99,7 +99,6 @@ class GridTopology {
 
 const gridTopology = new GridTopology();
 export { gridTopology };
-window.GridTopology = gridTopology;
 
 const getEl = (id) => (id ? document.getElementById(id) : null);
 
@@ -394,4 +393,3 @@ class GridRenderer {
 
 const gridRenderer = new GridRenderer();
 export default gridRenderer;
-window.GridRenderer = gridRenderer;

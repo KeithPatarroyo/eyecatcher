@@ -113,4 +113,3 @@ const initPhysicsControls = (
 const GenealogyPhysics = { initPhysicsControls };
 export default GenealogyPhysics;
 export { GenealogyPhysics };
-window.GenealogyPhysics = GenealogyPhysics;

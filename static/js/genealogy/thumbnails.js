@@ -122,4 +122,3 @@ const renderAllThumbnails = async (visNodes, cache, options = {}) => {
 const GenealogyThumbnails = { renderThumbnail, renderAllThumbnails };
 export default GenealogyThumbnails;
 export { GenealogyThumbnails };
-window.GenealogyThumbnails = GenealogyThumbnails;

@@ -285,4 +285,3 @@ class ToolbarUI {
 
 const toolbarUI = new ToolbarUI();
 export default toolbarUI;
-window.ToolbarUI = toolbarUI;

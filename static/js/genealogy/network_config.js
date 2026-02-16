@@ -101,4 +101,3 @@ const buildNetworkOptions = (hierarchicalLayout) => {
 const GenealogyNetworkConfig = { buildNetworkOptions };
 export default GenealogyNetworkConfig;
 export { GenealogyNetworkConfig };
-window.GenealogyNetworkConfig = GenealogyNetworkConfig;

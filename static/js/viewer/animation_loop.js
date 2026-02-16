@@ -205,8 +205,6 @@ class AnimationLoop {
         this._signalSource =
             options.signalSource ?? window.SignalSource ?? this._defaultSource;
 
-        window.getSignalSource = this.getActiveSignalSource.bind(this);
-
         this._lastMouseTime = performance.now();
 
         document.addEventListener("mousemove", (e) => {
@@ -299,4 +297,3 @@ class AnimationLoop {
 const animationLoop = new AnimationLoop();
 export default animationLoop;
 export { AnimationLoop };
-window.AnimationLoop = animationLoop;

@@ -131,4 +131,3 @@ const CommunityBrowse = {
 
 export default CommunityBrowse;
 export { CommunityBrowse };
-window.CommunityBrowse = CommunityBrowse;

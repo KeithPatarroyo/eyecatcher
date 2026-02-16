@@ -126,7 +126,6 @@ const RepresentationHelpers = {
 };
 
 export { RepresentationHelpers };
-window.RepresentationHelpers = RepresentationHelpers;
 
 const createRepresentation = (entry, substrate, phenotype) => ({
     id: entry.id,
@@ -239,4 +238,3 @@ class RepresentationRegistry {
 
 const representationRegistry = new RepresentationRegistry();
 export default representationRegistry;
-window.RepresentationRegistry = representationRegistry;

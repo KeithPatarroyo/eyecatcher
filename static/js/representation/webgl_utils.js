@@ -200,4 +200,3 @@ const WebGLUtils = {
 };
 
 export default WebGLUtils;
-window.WebGLUtils = WebGLUtils;

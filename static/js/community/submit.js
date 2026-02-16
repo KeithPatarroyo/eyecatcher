@@ -59,4 +59,3 @@ const CommunitySubmit = {
 
 export default CommunitySubmit;
 export { CommunitySubmit };
-window.CommunitySubmit = CommunitySubmit;

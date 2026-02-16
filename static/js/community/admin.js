@@ -178,4 +178,3 @@ const CommunityAdmin = {
 
 export default CommunityAdmin;
 export { CommunityAdmin };
-window.CommunityAdmin = CommunityAdmin;

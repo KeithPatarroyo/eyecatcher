@@ -90,4 +90,3 @@ const cloneAndFill = (tpl, rootSelector, fillers) => {
 export { byId, qs, on, setText, toggleClass, setHidden, delegate, cloneAndFill };
 const DOM = { byId, qs, on, setText, toggleClass, setHidden, delegate, cloneAndFill };
 export default DOM;
-window.DOM = DOM;

@@ -368,4 +368,3 @@ const addToPopulation = async (genomes) => {
 
 const populationLoader = { init, loadPopulation, addToPopulation };
 export default populationLoader;
-window.PopulationLoader = populationLoader;

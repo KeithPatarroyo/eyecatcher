@@ -118,5 +118,4 @@ const EyecatcherStorage = {
 };
 
 export default EyecatcherStorage;
-if (typeof window !== "undefined") window.EyecatcherStorage = EyecatcherStorage;
 if (typeof module !== "undefined" && module.exports) module.exports = EyecatcherStorage;

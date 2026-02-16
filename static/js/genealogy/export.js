@@ -120,4 +120,3 @@ const bindExportModalEvents = (showToast, apiUrl = window.API_URL || "") => {
 const GenealogyExport = { bindExportModalEvents };
 export default GenealogyExport;
 export { GenealogyExport };
-window.GenealogyExport = GenealogyExport;

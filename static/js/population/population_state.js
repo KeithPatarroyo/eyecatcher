@@ -141,4 +141,3 @@ const populationState = {
 };
 
 export default populationState;
-window.PopulationState = populationState;

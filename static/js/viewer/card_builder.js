@@ -282,4 +282,3 @@ class CardBuilder {
 const cardBuilder = new CardBuilder();
 export default cardBuilder;
 export { CardBuilder };
-window.CardBuilder = cardBuilder;

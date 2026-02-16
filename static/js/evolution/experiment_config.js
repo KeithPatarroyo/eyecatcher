@@ -128,6 +128,3 @@ const assertConfig = () => {
 };
 
 export { EvolutionConfig, getConfig, assertConfig };
-window.EvolutionConfig = EvolutionConfig;
-window.getConfig = getConfig;
-window.assertConfig = assertConfig;

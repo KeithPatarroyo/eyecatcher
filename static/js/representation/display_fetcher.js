@@ -26,8 +26,6 @@ const expressGenomes = async (genomes, options = {}) => {
     const expressOptions = options.expressOptions || null;
 
     const evalData = await api.express(genomes, inputs, expressOptions);
-    if (typeof performance !== "undefined")
-        window.CA_ANIMATION_START_TIME = performance.now();
 
     return { population: normalizePopulation(evalData.results) };
 };
@@ -113,4 +111,3 @@ const DisplayFetcher = {
 };
 
 export default DisplayFetcher;
-window.DisplayFetcher = DisplayFetcher;

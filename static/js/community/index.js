@@ -22,8 +22,7 @@ let submitGenome = null;
 let adminKey = "";
 let showLoadingFn = null;
 
-const defaultShowLoading = (s) => window.showLoading?.(s);
-const showLoading = (show) => (showLoadingFn ?? defaultShowLoading)?.(Boolean(show));
+const showLoading = (show) => showLoadingFn?.(Boolean(show));
 const toast = (t, m, type) => Toast.show(t, m, type);
 
 const init = (options) => {
@@ -216,4 +215,3 @@ export const CommunityUI = {
     closeAdminModal,
     submitAdminKey,
 };
-window.CommunityUI = CommunityUI;

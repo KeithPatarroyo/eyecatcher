@@ -321,4 +321,3 @@ class ApiClient {
 export { ApiClient };
 const apiInstance = new ApiClient();
 export default apiInstance;
-window.ApiClient = apiInstance;

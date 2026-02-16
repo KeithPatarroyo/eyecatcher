@@ -354,4 +354,3 @@ export const NetworkVisualizer = {
         return currentId;
     },
 };
-window.NetworkVisualizer = NetworkVisualizer;

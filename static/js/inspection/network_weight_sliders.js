@@ -202,4 +202,3 @@ const init = (deps) => {
 const NetworkWeightSliders = { init, setupWeightSliders, scrollToWeightSlider };
 export default NetworkWeightSliders;
 export { NetworkWeightSliders };
-window.NetworkWeightSliders = NetworkWeightSliders;

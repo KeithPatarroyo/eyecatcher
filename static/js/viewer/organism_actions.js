@@ -120,4 +120,3 @@ class OrganismActions {
 
 const organismActions = new OrganismActions();
 export default organismActions;
-window.OrganismActions = organismActions;
