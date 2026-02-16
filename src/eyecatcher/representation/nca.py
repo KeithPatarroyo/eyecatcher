@@ -10,22 +10,17 @@ for express() thumbnails.
 
 from __future__ import annotations
 
-import json
-from typing import Any, Callable
+from typing import Any
 
 import neat
 import numpy as np
 
-from ..genome.operators import crossover_genomes, mutate_genome
-from ..genome.serialization import genome_from_json, genome_to_json
 from ..glsl.nca_rule_assembler import assemble_nca_step_shader
-from ..inspection.network_data import parse_network_node_id
 from ..signals import catalog
 from ..signals.receptor import Receptor
 from ..signals.sensory_system import SensorySystem
-from ._image_util import rgb_to_png_base64
-from .base import RepresentationBase
-from .mixins import GridAnalyzable, NetworkInspectable, Saveable
+from .grid_base import GridRepresentationBase
+from .mixins import NeatEvolvable, NetworkInspectable
 from .protocol import Behaviour, Phenotype, RepresentationOutput, Substrate
 from .receptors import NeatReceptor
 
@@ -193,9 +188,7 @@ void main() {
 """
 
 
-class NCARepresentation(
-    NetworkInspectable, Saveable, GridAnalyzable, RepresentationBase
-):
+class NCARepresentation(NeatEvolvable, NetworkInspectable, GridRepresentationBase):
     """
     Neural Cellular Automata: NEAT-evolved per-cell update rule, Sobel perception.
 
@@ -265,31 +258,30 @@ class NCARepresentation(
         """NEAT config for the update-rule network."""
         return self.receptor.config
 
+    @property
+    def neat_config(self) -> neat.Config:
+        """NeatEvolvable: NEAT config for genome lifecycle."""
+        return self.receptor.config
+
+    @property
+    def receptors(self) -> tuple[NeatReceptor, ...]:
+        """NetworkInspectable: single NCA update receptor."""
+        return (self.receptor,)
+
     def _seed_grid(self) -> np.ndarray:
         """Fixed initial seed (center pixel alive)."""
         return _create_seed(self.grid_size)
 
-    def create_random(self, key: int = 0) -> neat.DefaultGenome:
-        from ..genome.operators import create_random_genome
-
-        genome = create_random_genome(self.config, genome_id=key)
-        genome.key = key  # type: ignore[assignment]
-        return genome
-
-    def mutate(self, genome: neat.DefaultGenome, key: int) -> neat.DefaultGenome:
-        child = mutate_genome(genome, self.config)
-        child.key = key  # type: ignore[assignment]
-        return child
-
-    def crossover(
-        self,
-        a: neat.DefaultGenome,
-        b: neat.DefaultGenome,
-        key: int,
-    ) -> neat.DefaultGenome:
-        child = crossover_genomes(a, b, self.config)
-        child.key = key  # type: ignore[assignment]
-        return child
+    def parse_express_options(self, raw_options: dict[str, Any]) -> dict[str, Any]:
+        """Allowlist nca_steps and nca_preview_grid_size for express()."""
+        out: dict[str, Any] = {}
+        if isinstance(raw_options.get("nca_steps"), (int, float)):
+            out["nca_steps"] = max(1, int(raw_options["nca_steps"]))
+        if isinstance(raw_options.get("nca_preview_grid_size"), (int, float)):
+            out["nca_preview_grid_size"] = max(
+                8, int(raw_options["nca_preview_grid_size"])
+            )
+        return out
 
     def express(
         self,
@@ -330,97 +322,13 @@ class NCARepresentation(
         contribution = self.receptor.compile(genome)
         return assemble_nca_step_shader(contribution)
 
-    def to_json(self, genome: neat.DefaultGenome) -> dict[str, Any]:
-        return genome_to_json(genome)
-
-    def from_json(self, data: dict[str, Any]) -> neat.DefaultGenome:
-        return genome_from_json(data, self.config)
-
-    def serialize_output(
-        self,
-        output: RepresentationOutput,
-        genome: neat.DefaultGenome | None = None,
-    ) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        if output.output_type == "grid" and hasattr(output.data, "shape"):
-            arr = np.asarray(output.data)
-            result["image"] = "data:image/png;base64," + rgb_to_png_base64(arr)
-            grid_01 = (np.asarray(arr)[:, :, 0] > 0).astype(np.uint8)
-            if arr.shape[:2] != (self.grid_size, self.grid_size):
-                grid_01 = np.zeros((self.grid_size, self.grid_size), dtype=np.uint8)
-            result["grid"] = grid_01.tolist()
-        else:
-            result["image"] = ""
-            result["grid"] = []
-
-        if genome is not None:
-            result["rule"] = self.develop(genome)
-            seed = self._seed_grid()
-            result["grid"] = (seed[:, :, 3] > 0.1).astype(np.uint8).tolist()
-            result["nodes"] = len(genome.nodes)
-            result["connections"] = sum(
-                1 for c in genome.connections.values() if c.enabled
-            )
+    def _serialize_genome_extras(self, genome: neat.DefaultGenome) -> dict[str, Any]:
+        """Add rule, nodes, connections, and seed grid for client."""
+        result: dict[str, Any] = {
+            "rule": self.develop(genome) or "",
+            "nodes": len(genome.nodes),
+            "connections": sum(1 for c in genome.connections.values() if c.enabled),
+        }
+        seed = self._seed_grid()
+        result["grid"] = (seed[:, :, 3] > 0.1).astype(np.uint8).tolist()
         return result
-
-    def get_save_filenames(self, individual_id: int) -> dict[str, str]:
-        return {
-            "png": f"pattern_{individual_id}.png",
-            "genome_json": f"genome_{individual_id}.json",
-            "zip": f"pattern_{individual_id}.zip",
-        }
-
-    def build_save_assets(
-        self,
-        genome: neat.DefaultGenome,
-        individual_id: int,
-        **kwargs: Any,
-    ) -> dict[str, bytes]:
-        to_png_bytes: Callable[[np.ndarray], bytes] | None = kwargs.get("to_png_bytes")
-        if not callable(to_png_bytes):
-            return {}
-        out = self.express(genome, {})
-        if out.output_type != "grid" or not hasattr(out.data, "shape"):
-            return {}
-        arr = np.asarray(out.data)
-        names = self.get_save_filenames(individual_id)
-        return {
-            names["png"]: to_png_bytes(arr),
-            names["genome_json"]: json.dumps(self.to_json(genome), indent=2).encode(
-                "utf-8"
-            ),
-        }
-
-    def get_neat_pop_size(self) -> int | None:
-        return getattr(self.config, "pop_size", None)
-
-    # --- NetworkInspectable (brain view) ---
-
-    def get_network_types(self) -> tuple[str, ...]:
-        return (self.receptor.name,)
-
-    def get_network_data(self, genome: neat.DefaultGenome) -> dict[str, Any] | None:
-        nodes, connections = self.receptor.extract_network_data(genome, x_offset=0)
-        return {"nodes": nodes, "connections": connections}
-
-    def adjust_weight(
-        self,
-        genome: neat.DefaultGenome,
-        network: str,
-        source: str,
-        target: str,
-        weight: float,
-    ) -> dict[str, Any] | None:
-        if network != self.receptor.name:
-            return None
-        try:
-            source_id = parse_network_node_id(source)
-            target_id = parse_network_node_id(target)
-        except (ValueError, TypeError):
-            return None
-        conn_key = (source_id, target_id)
-        if conn_key not in genome.connections:
-            return None
-        genome.connections[conn_key].weight = weight
-        rule_str = self.develop(genome) or ""
-        return {"rule": rule_str, "individual": self.to_json(genome)}
