@@ -29,6 +29,39 @@
         return out;
     }
 
+    function float32ToFloat16(f) {
+        var f32 = new Float32Array(1);
+        var u32 = new Uint32Array(f32.buffer);
+        f32[0] = f;
+        var x = u32[0];
+        var sign = (x >> 31) & 1;
+        var exp = (x >> 23) & 0xff;
+        var frac = x & 0x7fffff;
+        if (exp === 0xff) return (sign << 15) | 0x7c00 | (frac ? 0x200 : 0);
+        if (exp === 0 && frac === 0) return sign << 15;
+        exp -= 127;
+        if (exp < -14) return sign << 15;
+        return (sign << 15) | ((exp + 15) << 10) | (frac >> 13);
+    }
+
+    function gridToRgba16FPixelArray(grid, rows, cols) {
+        var n = rows * cols * 4;
+        var f32 = new Float32Array(n);
+        for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+                var alive = grid[r][c] > 0.5 || grid[r][c] === 1 ? 1.0 : 0.0;
+                var i = (r * cols + c) * 4;
+                f32[i] = 0;
+                f32[i + 1] = 0;
+                f32[i + 2] = 0;
+                f32[i + 3] = alive;
+            }
+        }
+        var u16 = new Uint16Array(n);
+        for (var j = 0; j < n; j++) u16[j] = float32ToFloat16(f32[j]);
+        return u16;
+    }
+
     function createFBOWithOptions(gl, width, height, options) {
         options = options || {};
         var useFloat = options.format === "RGBA16F";
@@ -120,6 +153,21 @@
         state.toggleMask = [];
     }
 
+    function copySharedFramebufferTo2D(gl, sharedCanvas, canvas2d, width, height) {
+        var pixels = new Uint8Array(width * height * 4);
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        var flipped = new Uint8Array(width * height * 4);
+        for (var y = 0; y < height; y++) {
+            var srcRow = (height - 1 - y) * width * 4;
+            var dstRow = y * width * 4;
+            for (var i = 0; i < width * 4; i++)
+                flipped[dstRow + i] = pixels[srcRow + i];
+        }
+        var imageData = canvas2d.createImageData(width, height);
+        imageData.data.set(flipped);
+        canvas2d.putImageData(imageData, 0, 0);
+    }
+
     class GridSubstrate extends Substrate {
         createDisplayElement(phenotype, patternPayload) {
             var stepShader =
@@ -143,12 +191,32 @@
                 err.textContent = "WebGLUtils not available";
                 return { element: err, state: null };
             }
-            var state = wu.setupPattern(canvas, stepShader);
-            if (state && state.error) {
-                var errEl = document.createElement("div");
-                errEl.className = "organism-canvas-fallback";
-                errEl.textContent = state.error || "Shader error";
-                return { element: errEl, state: null };
+            var shared = wu.getSharedGridContext && wu.getSharedGridContext();
+            var state;
+            if (shared && wu.setupPatternWithSharedGL) {
+                var compiled = wu.setupPatternWithSharedGL(shared.gl, stepShader);
+                if (compiled.error) {
+                    var errEl = document.createElement("div");
+                    errEl.className = "organism-canvas-fallback";
+                    errEl.textContent = compiled.error || "Shader error";
+                    return { element: errEl, state: null };
+                }
+                state = {
+                    gl: shared.gl,
+                    program: compiled.program,
+                    positionBuffer: compiled.positionBuffer,
+                    canvas: canvas,
+                    useSharedContext: true,
+                    sharedCanvas: shared.canvas,
+                };
+            } else {
+                state = wu.setupPattern(canvas, stepShader);
+                if (state && state.error) {
+                    var fallbackEl = document.createElement("div");
+                    fallbackEl.className = "organism-canvas-fallback";
+                    fallbackEl.textContent = state.error || "Shader error";
+                    return { element: fallbackEl, state: null };
+                }
             }
             state.canvas = canvas;
             state.patternPayload = patternPayload || {};
@@ -174,7 +242,12 @@
                 grid[0] &&
                 grid[0].length === w
             ) {
-                initialPixels = gridToRgbaPixelArray(grid);
+                var is2D = typeof grid[0][0] === "number";
+                if (texFormat === "RGBA16F" && is2D) {
+                    initialPixels = gridToRgba16FPixelArray(grid, w, w);
+                } else {
+                    initialPixels = gridToRgbaPixelArray(grid);
+                }
             }
 
             var fboOpts = {
@@ -209,6 +282,9 @@
             state.gridSize = w;
             state.stepIntervalMs = stepIntervalMs;
             state._lastStepTime = 0;
+            if (state.useSharedContext && state.canvas) {
+                state.canvas2d = state.canvas.getContext("2d");
+            }
 
             var toggleShaderSource =
                 (phenotype &&
@@ -230,12 +306,16 @@
         teardown(state) {
             if (!state) return;
             var wu = window.WebGLUtils;
-            if (wu) {
+            if (wu && state.gl) {
                 if (state.fboRead) wu.destroyFBO(state.gl, state.fboRead);
                 if (state.fboWrite) wu.destroyFBO(state.gl, state.fboWrite);
             }
             state.fboRead = null;
             state.fboWrite = null;
+            if (state.program && state.gl) {
+                state.gl.deleteProgram(state.program);
+                state.program = null;
+            }
             if (state.displayProgram && state.gl) {
                 state.gl.deleteProgram(state.displayProgram);
                 state.displayProgram = null;
@@ -247,10 +327,21 @@
         }
 
         buildParams(phenotype, signalValues) {
-            return {};
+            var out = {};
+            var inputs =
+                phenotype && phenotype.sensorySystem && phenotype.sensorySystem.inputs;
+            if (inputs && Array.isArray(inputs) && signalValues) {
+                inputs.forEach(function (inp) {
+                    var uname = inp.uniform || (inp.id ? "u_" + inp.id : null);
+                    if (uname && signalValues[inp.id] !== undefined) {
+                        out[uname] = signalValues[inp.id];
+                    }
+                });
+            }
+            return out;
         }
 
-        render(state, params, signalState) {
+        render(state, params, _signalState) {
             if (
                 !state ||
                 !state.gl ||
@@ -259,6 +350,12 @@
                 !state.displayProgram
             )
                 return;
+            if (
+                typeof state.gl.isContextLost === "function" &&
+                state.gl.isContextLost()
+            ) {
+                return;
+            }
             var gl = state.gl;
             var program = state.program;
             var positionBuffer = state.positionBuffer;
@@ -294,6 +391,15 @@
                     1 / w,
                     1 / w
                 );
+                if (params && typeof params === "object") {
+                    Object.keys(params).forEach(function (key) {
+                        if (key === "u_state" || key === "u_texelSize") return;
+                        var loc = gl.getUniformLocation(program, key);
+                        if (loc !== null && typeof params[key] === "number") {
+                            gl.uniform1f(loc, params[key]);
+                        }
+                    });
+                }
                 gl.bindTexture(gl.TEXTURE_2D, fboRead.texture);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, fboWrite.fbo);
                 gl.viewport(0, 0, w, w);
@@ -308,7 +414,15 @@
             }
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl.viewport(0, 0, canvas.width, canvas.height);
+            var displayWidth =
+                state.useSharedContext && state.sharedCanvas
+                    ? state.sharedCanvas.width
+                    : canvas.width;
+            var displayHeight =
+                state.useSharedContext && state.sharedCanvas
+                    ? state.sharedCanvas.height
+                    : canvas.height;
+            gl.viewport(0, 0, displayWidth, displayHeight);
             gl.useProgram(displayProgram);
             gl.uniform1i(gl.getUniformLocation(displayProgram, "u_state"), 0);
             gl.bindTexture(gl.TEXTURE_2D, state.fboRead.texture);
@@ -319,9 +433,18 @@
             gl.clearColor(0, 0, 0, 1);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            if (state.useSharedContext && state.canvas2d && state.sharedCanvas) {
+                copySharedFramebufferTo2D(
+                    gl,
+                    state.sharedCanvas,
+                    state.canvas2d,
+                    displayWidth,
+                    displayHeight
+                );
+            }
         }
 
-        handleInteraction(state, x, y, interactionType) {
+        handleInteraction(state, x, y, _interactionType) {
             if (!state) return;
             if (state.toggleMask == null) state.toggleMask = [];
             state.toggleMask.push({ x: x, y: y });

@@ -80,6 +80,51 @@
         };
     }
 
+    var sharedGridContext = null;
+
+    /**
+     * Single shared WebGL2 context for all grid organism cards. Avoids per-card context
+     * limit; each card uses a 2D canvas and we copy the rendered frame from this context.
+     * @returns {{ gl: WebGL2RenderingContext, canvas: HTMLCanvasElement } | null}
+     */
+    function getSharedGridContext() {
+        if (sharedGridContext) {
+            if (
+                sharedGridContext.gl &&
+                typeof sharedGridContext.gl.isContextLost === "function" &&
+                sharedGridContext.gl.isContextLost()
+            ) {
+                sharedGridContext = null;
+                return null;
+            }
+            return sharedGridContext;
+        }
+        var canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        var gl = createWebGLContext(canvas);
+        if (!gl) return null;
+        sharedGridContext = { gl: gl, canvas: canvas };
+        return sharedGridContext;
+    }
+
+    /**
+     * Compile step shader in an existing GL context (e.g. shared grid context).
+     * @param {WebGL2RenderingContext} gl
+     * @param {string} shaderCode - Fragment shader source (GLSL)
+     * @returns {{ program, positionBuffer } | { error: string }}
+     */
+    function setupPatternWithSharedGL(gl, shaderCode) {
+        var program = createProgram(gl, VERTEX_SHADER_SOURCE, shaderCode);
+        if (program && program.error) return { error: program.error };
+        if (!program) return { error: "Shader compile failed" };
+        var positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+        var positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+        return { program: program, positionBuffer: positionBuffer };
+    }
+
     /**
      * Create a framebuffer object with an attached RGBA texture.
      * @param {WebGL2RenderingContext} gl
@@ -133,6 +178,8 @@
         createWebGLContext: createWebGLContext,
         createProgram: createProgram,
         setupPattern: setupPattern,
+        getSharedGridContext: getSharedGridContext,
+        setupPatternWithSharedGL: setupPatternWithSharedGL,
         createFBO: createFBO,
         swapFBOs: swapFBOs,
         destroyFBO: destroyFBO,
