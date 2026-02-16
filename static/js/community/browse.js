@@ -3,6 +3,7 @@
  * Exposes: CommunityBrowse.fetchDisplayDataForList, buildPatternListEntry, renderListWithPreviews.
  */
 import DisplayFetcher from "../representation/display_fetcher.js";
+import RepresentationRegistry from "../representation/representation_registry.js";
 
 const PREVIEW_CANVAS_SIZE = 80;
 
@@ -14,9 +15,10 @@ const getGenome = (payload) => {
 };
 
 const fetchDisplayDataForList = async (list, toPayload, getKey) => {
-    const RR = window.RepresentationRegistry;
-
-    if (!RR?.findByGenome || typeof DisplayFetcher?.fetchDisplayData !== "function")
+    if (
+        !RepresentationRegistry?.findByGenome ||
+        typeof DisplayFetcher?.fetchDisplayData !== "function"
+    )
         return {};
 
     const entries = await Promise.all(
@@ -24,7 +26,7 @@ const fetchDisplayDataForList = async (list, toPayload, getKey) => {
             const payload = toPayload(item);
             const genome = getGenome(payload);
             const key = getKey(item);
-            const rep = genome ? RR.findByGenome(genome) : null;
+            const rep = genome ? RepresentationRegistry.findByGenome(genome) : null;
             if (!rep) return [key, null];
 
             try {

@@ -3,6 +3,7 @@
  * Dependencies: window.WebGLUtils.setupPattern, window.RepresentationRegistry, window.RepresentationHelpers, window.EvolutionConfig
  */
 import DOM from "../lib/dom.js";
+import RepresentationRegistry from "../representation/representation_registry.js";
 
 const getCfg = () => {
     const cfg = window.getConfig?.() ?? window.EvolutionConfig ?? {};
@@ -75,13 +76,12 @@ class FullscreenModal {
         if (!modal || !wrap) return;
 
         // Resolve representation from the genome if possible.
-        const resolved = window.RepresentationRegistry?.resolve?.({
+        const resolved = RepresentationRegistry?.resolve?.({
             genomes: [pattern],
         });
         let representation = resolved?.representation ?? null;
         if (!representation) {
-            representation =
-                window.RepresentationRegistry?.findByGenome?.(pattern) ?? null;
+            representation = RepresentationRegistry?.findByGenome?.(pattern) ?? null;
         }
 
         const hasImage = pattern.image != null;

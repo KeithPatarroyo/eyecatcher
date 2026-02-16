@@ -9,6 +9,7 @@
  */
 import Utils from "../lib/utils.js";
 import DisplayFetcher from "../representation/display_fetcher.js";
+import GridRenderer from "../viewer/grid_renderer.js";
 
 let _deps = null;
 
@@ -50,7 +51,7 @@ const updateRepUIs = (representationId) => {
 };
 
 const showNoRepresentationError = (representationId) => {
-    window.GridRenderer.showGridError(
+    GridRenderer.showGridError(
         `No representation for ${representationId || "?"}. Check config.`,
         false
     );
@@ -59,7 +60,7 @@ const showNoRepresentationError = (representationId) => {
 };
 
 const renderPopulation = (population, patternsMap, representationId) => {
-    window.GridRenderer.renderGridFromPopulation(
+    GridRenderer.renderGridFromPopulation(
         population,
         _deps.IDS,
         _deps.getGridCallbacks(),
@@ -224,7 +225,7 @@ const loadPopulation = async (
 
     await Utils.withLoading(async () => {
         stopImageAnimateIfAny();
-        window.GridRenderer.clearGrid(_deps.IDS);
+        GridRenderer.clearGrid(_deps.IDS);
 
         const displayResult = await DisplayFetcher.fetchDisplayData(
             representation,
@@ -236,10 +237,7 @@ const loadPopulation = async (
 
         const population = displayResult.population || displayResult.rules || [];
         if (!population.length) {
-            window.GridRenderer.showGridError(
-                "No patterns returned from server.",
-                true
-            );
+            GridRenderer.showGridError("No patterns returned from server.", true);
             _deps.state.dispatch({
                 type: "LOAD_POPULATION",
                 payload: {
@@ -305,7 +303,7 @@ const loadPopulation = async (
         setGenNumUI(generationNum);
         _deps.updateStats?.();
     }).catch((e) => {
-        window.GridRenderer.showGridError(e?.message || "Failed to compile", true);
+        GridRenderer.showGridError(e?.message || "Failed to compile", true);
     });
 };
 
@@ -339,7 +337,7 @@ const addToPopulation = async (genomes) => {
         warnGridMissingRules(representation, population, payload);
 
         const newPatternsMap = new Map();
-        window.GridRenderer.appendCardsToGrid(
+        GridRenderer.appendCardsToGrid(
             population,
             _deps.IDS,
             _deps.getGridCallbacks(),

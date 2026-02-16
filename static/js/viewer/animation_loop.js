@@ -2,6 +2,8 @@
  * Animation loop: mouse tracking, time modes (loop/oscillate/infinite), and per-frame pattern rendering.
  * Signal values come from a pluggable SignalSource. Set window.SignalSource before init, or pass signalSource in init().
  */
+import RepresentationRegistry from "../representation/representation_registry.js";
+
 const ANIMATION_SPEED = 0.005;
 const MOUSE_SPEED_DECAY = 0.95;
 const MOUSE_SPEED_SCALE = 0.005;
@@ -145,7 +147,7 @@ class AnimationLoop {
             const runtimes = this._getPatterns?.() ?? null;
             const signalState = this._viewerControls?.signalState;
 
-            if (runtimes && signalState != null && window.RepresentationRegistry) {
+            if (runtimes && signalState != null && RepresentationRegistry) {
                 const GT = window.GridTopology;
                 for (const runtime of runtimes) {
                     if (!runtime?.gl) continue;
@@ -282,7 +284,7 @@ class AnimationLoop {
 
         const signalValues = this._getSignalValues(signalContext);
 
-        const representation = window.RepresentationRegistry?.currentRepresentation?.();
+        const representation = RepresentationRegistry?.currentRepresentation?.();
         const substrate = representation?.substrate;
         const phenotype = representation?.phenotype;
 

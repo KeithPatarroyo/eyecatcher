@@ -1,8 +1,10 @@
 /**
  * CardBuilder: builds organism card DOM (display element, info, actions, events).
  * WebGL setup lives in webgl_utils.js.
- * Depends: window.RepresentationRegistry, window.PopulationState, window.RepresentationHelpers.
+ * Depends: window.PopulationState, window.RepresentationHelpers.
  */
+import RepresentationRegistry from "../representation/representation_registry.js";
+
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
 const createErrorFallback = (errorMsg) => {
@@ -70,12 +72,11 @@ class CardBuilder {
     createCard(options) {
         const { pattern, representationId = null } = options;
         const Helpers = window.RepresentationHelpers;
-        const Registry = window.RepresentationRegistry;
 
         const resolved =
             pattern && pattern.id != null
-                ? Registry.resolve({ genomes: [pattern] })
-                : Registry.resolve({ representationId });
+                ? RepresentationRegistry.resolve({ genomes: [pattern] })
+                : RepresentationRegistry.resolve({ representationId });
 
         const representation = resolved?.representation ?? null;
         const id = pattern?.id;
@@ -249,10 +250,9 @@ class CardBuilder {
         const representationId = card.dataset.representationId || null;
         const id = card.dataset.id;
         let rep =
-            window.RepresentationRegistry?.resolve?.({ representationId })
-                ?.representation ?? null;
-        if (!rep)
-            rep = window.RepresentationRegistry?.resolve?.({})?.representation ?? null;
+            RepresentationRegistry?.resolve?.({ representationId })?.representation ??
+            null;
+        if (!rep) rep = RepresentationRegistry?.resolve?.({})?.representation ?? null;
         const Helpers = window.RepresentationHelpers;
         const supportsInteraction =
             rep &&
@@ -278,4 +278,7 @@ class CardBuilder {
     }
 }
 
-window.CardBuilder = new CardBuilder();
+const cardBuilder = new CardBuilder();
+export default cardBuilder;
+export { CardBuilder };
+window.CardBuilder = cardBuilder;

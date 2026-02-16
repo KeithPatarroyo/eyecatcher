@@ -5,6 +5,7 @@
  */
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
+import RepresentationRegistry from "../representation/representation_registry.js";
 
 const $ = (id) => (id ? document.getElementById(id) : null);
 
@@ -141,8 +142,8 @@ const initExperimentParamsPanel = (toolbarUI) => {
         const current =
             window.PopulationState?.representationId ||
             cfg.DEFAULT_REPRESENTATION_ID ||
-            window.RepresentationRegistry?.resolve?.({})?.representationId ||
-            window.RepresentationRegistry?.getDefaultRepresentationId?.() ||
+            RepresentationRegistry?.resolve?.({})?.representationId ||
+            RepresentationRegistry?.getDefaultRepresentationId?.() ||
             "";
 
         if (current && [...repSelect.options].some((o) => o.value === current)) {

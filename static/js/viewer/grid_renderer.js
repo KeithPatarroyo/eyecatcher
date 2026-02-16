@@ -5,6 +5,8 @@
  */
 import Toast from "../lib/toast.js";
 import DOM from "../lib/dom.js";
+import cardBuilder from "./card_builder.js";
+import { CardBuilder } from "./card_builder.js";
 
 /**
  * GridTopology: tracks which pattern is at which row/col position in the grid
@@ -113,7 +115,7 @@ function attachGridDelegatedListeners(grid, self) {
         const isCanvasClick =
             ev.target?.nodeName === "CANVAS" && card?.contains?.(ev.target) === true;
         if (isCanvasClick) {
-            window.CardBuilder?.runCellInteraction?.(ev, card);
+            CardBuilder.runCellInteraction?.(ev, card);
             return;
         }
         const id = parseCardId(card.dataset.id);
@@ -125,7 +127,7 @@ function attachGridDelegatedListeners(grid, self) {
         const isCanvasClick =
             ev.target?.nodeName === "CANVAS" && card?.contains?.(ev.target) === true;
         if (isCanvasClick) {
-            window.CardBuilder?.runCellInteraction?.(ev, card);
+            CardBuilder.runCellInteraction?.(ev, card);
             return;
         }
         const id = parseCardId(card.dataset.id);
@@ -285,8 +287,7 @@ class GridRenderer {
     }
 
     _appendPatternCards(population, grid, callbacks, patternsMap, representationId) {
-        const CardBuilder = window.CardBuilder;
-        if (!CardBuilder || typeof CardBuilder.createCard !== "function") return;
+        if (!cardBuilder || typeof cardBuilder.createCard !== "function") return;
 
         let displayFailureCount = 0;
 
@@ -297,7 +298,7 @@ class GridRenderer {
                 );
             }
 
-            const result = CardBuilder.createCard(
+            const result = cardBuilder.createCard(
                 this.patternCardCallbacks(pattern, callbacks, representationId)
             );
 
@@ -386,4 +387,6 @@ class GridRenderer {
     }
 }
 
-window.GridRenderer = new GridRenderer();
+const gridRenderer = new GridRenderer();
+export default gridRenderer;
+window.GridRenderer = gridRenderer;

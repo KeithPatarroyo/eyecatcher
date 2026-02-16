@@ -7,6 +7,7 @@ import Toast from "../lib/toast.js";
 import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
+import RepresentationRegistry from "../representation/representation_registry.js";
 
 const toast = (title, message, type = "info", opts) =>
     Toast.show(title, message, type, opts);
@@ -53,7 +54,7 @@ const getGenomesFromZip = async (file) => {
     for (const entry of genomeFiles) {
         const text = await zip.files[entry].async("string");
         const genome = JSON.parse(text);
-        if (genome && window.RepresentationRegistry?.findByGenome?.(genome))
+        if (genome && RepresentationRegistry?.findByGenome?.(genome))
             genomes.push(genome);
     }
     return genomes;
@@ -126,7 +127,7 @@ class PopulationUI {
                         DOM.toggleClass(DOM.byId("load-list-modal"), "show", false);
                         if (!this._loadFromStatelessGenomes) return;
 
-                        const r = window.RepresentationRegistry.resolve(pop);
+                        const r = RepresentationRegistry.resolve(pop);
                         await this._loadFromStatelessGenomes(
                             pop.genomes || [],
                             pop.generation || 0,
@@ -209,7 +210,7 @@ class PopulationUI {
             if (json && typeof EyecatcherStorage !== "undefined") {
                 const storage = await ensureStorage();
                 if (storage) {
-                    const r = window.RepresentationRegistry.resolve({ genomes });
+                    const r = RepresentationRegistry.resolve({ genomes });
                     await storage.importPopulation({
                         ...json,
                         representationId: json.representationId || r.representationId,

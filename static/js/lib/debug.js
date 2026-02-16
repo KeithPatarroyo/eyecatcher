@@ -6,6 +6,7 @@
  * Uses template: #debug-overlay-tpl, and ids dbg-* inside it.
  */
 import api from "./api_client.js";
+import RepresentationRegistry from "../representation/representation_registry.js";
 
 const SAMPLE_INTERVAL_MS = 400;
 
@@ -261,7 +262,7 @@ class EyecatcherDebug {
     }
 
     updateForRepresentation(representationId) {
-        const rep = window.RepresentationRegistry?.get?.(representationId);
+        const rep = RepresentationRegistry?.get?.(representationId);
         const show = rep?.capabilities?.timeOutput === true;
         if (this.el.timeOutputSection)
             this.el.timeOutputSection.style.display = show ? "" : "none";

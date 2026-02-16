@@ -1,6 +1,7 @@
 // viewer_controls.js (replace whole file)
 import Utils from "../lib/utils.js";
 import DOM from "../lib/dom.js";
+import RepresentationRegistry from "../representation/representation_registry.js";
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
@@ -105,7 +106,7 @@ class ViewerControls {
         const container = DOM.byId("signal-controls");
         if (!container) return;
 
-        const representation = window.RepresentationRegistry?.get?.(representationId);
+        const representation = RepresentationRegistry?.get?.(representationId);
         const show =
             representation === null
                 ? true

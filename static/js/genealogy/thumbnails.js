@@ -4,6 +4,7 @@
  */
 import api from "../lib/api_client.js";
 import DisplayFetcher from "../representation/display_fetcher.js";
+import RepresentationRegistry from "../representation/representation_registry.js";
 
 const THUMBNAIL_CANVAS_SIZE = 128;
 const MAX_CACHE = 200;
@@ -26,9 +27,10 @@ const loadImg = (src) =>
 const renderThumbnail = async (populationId, cache, apiUrl = window.API_URL || "") => {
     if (cache?.has(populationId)) return cache.get(populationId);
 
-    const RR = window.RepresentationRegistry;
-
-    if (!RR?.findByGenome || typeof DisplayFetcher?.fetchDisplayData !== "function")
+    if (
+        !RepresentationRegistry?.findByGenome ||
+        typeof DisplayFetcher?.fetchDisplayData !== "function"
+    )
         return null;
 
     try {
@@ -43,7 +45,7 @@ const renderThumbnail = async (populationId, cache, apiUrl = window.API_URL || "
         const genome = data.individual ?? data.genome;
         if (!genome) return null;
 
-        const rep = RR.findByGenome(genome);
+        const rep = RepresentationRegistry.findByGenome(genome);
         if (!rep) return null;
 
         const pop = (await DisplayFetcher.fetchDisplayData(rep, [genome], {}))

@@ -1,12 +1,15 @@
 /**
  * Eyecatcher app entry: init and DOM wiring.
  *
- * Core modules (PopulationState, GridRenderer, AnimationLoop, FullscreenModal,
- * RepresentationRegistry) are instances on window; wiring is via init(options).
+ * Core modules (PopulationState, AnimationLoop, FullscreenModal) are instances on window;
+ * GridRenderer and RepresentationRegistry are imported. Wiring is via init(options).
  *
  * Load after: those modules, api_client, webgl_utils, viewer_controls, animation_loop,
  * population_ui, community, genome_visualizer, toolbar_ui.
  */
+import RepresentationRegistry from "./representation/representation_registry.js";
+import GridRenderer from "./viewer/grid_renderer.js";
+
 if (typeof vis === "undefined") {
     console.error(
         "ERROR: vis.js library not loaded! Network visualization will not work."
@@ -103,7 +106,7 @@ const closeFullscreen = () => {
 };
 
 const resolveRepresentation = (representationId, genomes) => {
-    const resolved = window.RepresentationRegistry.resolve({
+    const resolved = RepresentationRegistry.resolve({
         representationId,
         genomes,
     });
@@ -265,7 +268,7 @@ const initGenealogyLoad = (setGenealogyStateFn) => {
     const genNum =
         genealogyLoad.generation_num != null ? genealogyLoad.generation_num : 0;
 
-    const resolved = window.RepresentationRegistry.resolve({
+    const resolved = RepresentationRegistry.resolve({
         representationId: genealogyLoad.representation_id || genealogyLoad.substrate_id,
         genomes: loadGenomes,
     });
@@ -316,13 +319,13 @@ const gridDeps = {
     API_URL: ctx.apiUrl,
 };
 
-window.GridRenderer.init(gridDeps);
+GridRenderer.init(gridDeps);
 window.PopulationLoader.init(gridDeps);
 
 window.EvolutionCoordinator.init(ctx);
 
 window.onRepresentationSwitched = (config) => {
-    window.GridRenderer.clearGrid(IDS);
+    GridRenderer.clearGrid(IDS);
 
     window.PopulationState.dispatch({
         type: "LOAD_POPULATION",
@@ -414,7 +417,7 @@ document.querySelectorAll('input[name="colorMode"]').forEach((radio) => {
         const data = getCurrentGenomesForSave();
         if (!data) return;
 
-        const representation = window.RepresentationRegistry.get(data.representationId);
+        const representation = RepresentationRegistry.get(data.representationId);
         const st = representation?.phenotype?.substrate;
         const isField =
             (typeof st === "string" && st === "field") || (st && st.type === "field");
@@ -491,7 +494,7 @@ if (window.EyecatcherDebug) {
         getSignalState: () => window.ViewerControls.signalState,
         getGenomeForPattern,
         getRepresentation: () =>
-            window.RepresentationRegistry.get(window.PopulationState.representationId),
+            RepresentationRegistry.get(window.PopulationState.representationId),
     });
 }
 
