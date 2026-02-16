@@ -241,6 +241,58 @@
                 .then(function (displayResult) {
                     var population = displayResult.population || [];
                     var newPatternsMap = new Map();
+
+                    if (population.length !== payload.length) {
+                        var msg =
+                            "Display count mismatch: got " +
+                            population.length +
+                            " results for " +
+                            payload.length +
+                            " organisms. Some cards may be broken or missing.";
+                        console.error("Add to grid:", msg);
+                        if (window.Toast && window.Toast.show) {
+                            window.Toast.show("Add from community", msg, "error");
+                        }
+                    }
+
+                    var substrateType =
+                        (representation.phenotype &&
+                            representation.phenotype.substrate &&
+                            representation.phenotype.substrate.type) ||
+                        "";
+                    if (substrateType === "grid") {
+                        var missingRuleCount = 0;
+                        population.forEach(function (p, idx) {
+                            if (p.id == null || p.id === undefined) {
+                                console.warn(
+                                    "Add to grid: population[" +
+                                        idx +
+                                        "] missing id (genome key: " +
+                                        (payload[idx] && payload[idx].key) +
+                                        ")"
+                                );
+                            }
+                            if (!p.rule || p.rule === "") {
+                                missingRuleCount++;
+                                console.warn(
+                                    "Add to grid: population[" +
+                                        idx +
+                                        "] (id=" +
+                                        p.id +
+                                        ") missing rule – display may break"
+                                );
+                            }
+                        });
+                        if (missingRuleCount > 0 && window.Toast && window.Toast.show) {
+                            window.Toast.show(
+                                "Add from community",
+                                missingRuleCount +
+                                    " organism(s) have no rule – cards may show an error.",
+                                "error"
+                            );
+                        }
+                    }
+
                     window.GridRenderer.appendCardsToGrid(
                         population,
                         _deps.IDS,
@@ -257,6 +309,44 @@
                             representationId: resolved.representationId,
                         },
                     });
+
+                    var organisms = window.PopulationState.organisms;
+                    var brokenCount = 0;
+                    var lostContextCount = 0;
+                    organisms.forEach(function (o) {
+                        if (!o.runtime) {
+                            brokenCount++;
+                            return;
+                        }
+                        if (!o.runtime.gl) {
+                            brokenCount++;
+                            return;
+                        }
+                        if (
+                            typeof o.runtime.gl.isContextLost === "function" &&
+                            o.runtime.gl.isContextLost()
+                        ) {
+                            lostContextCount++;
+                        }
+                    });
+                    if (brokenCount > 0 || lostContextCount > 0) {
+                        var warnMsg =
+                            brokenCount > 0 && lostContextCount > 0
+                                ? brokenCount +
+                                  " card(s) without display, " +
+                                  lostContextCount +
+                                  " lost WebGL (browser limit)."
+                                : lostContextCount > 0
+                                  ? lostContextCount +
+                                    " organism(s) lost display (WebGL context limit). Try fewer cards or refresh."
+                                  : brokenCount +
+                                    " organism(s) could not be displayed (missing rule or WebGL).";
+                        console.warn("Add from community:", warnMsg);
+                        if (window.Toast && window.Toast.show) {
+                            window.Toast.show("Add from community", warnMsg, "error");
+                        }
+                    }
+
                     if (
                         window.ViewerControls &&
                         window.ViewerControls.updateForRepresentation

@@ -213,7 +213,15 @@
             var CardBuilder = window.CardBuilder;
             if (!CardBuilder || typeof CardBuilder.createCard !== "function") return;
             var self = this;
-            population.forEach(function (pattern) {
+            var displayFailureCount = 0;
+            population.forEach(function (pattern, index) {
+                if (pattern.id === undefined || pattern.id === null) {
+                    console.warn(
+                        "appendCardsToGrid: pattern at index " +
+                            index +
+                            " has no id – will not be in patternsMap"
+                    );
+                }
                 var result = CardBuilder.createCard(
                     self.patternCardCallbacks(pattern, callbacks, representationId)
                 );
@@ -222,7 +230,25 @@
                 if (pattern.id !== undefined) {
                     patternsMap.set(pattern.id, entry);
                 }
+                if (entry && !entry.gl) {
+                    displayFailureCount++;
+                    console.warn(
+                        "appendCardsToGrid: card at index " +
+                            index +
+                            " (id=" +
+                            pattern.id +
+                            ") has no WebGL context – display may be broken"
+                    );
+                }
             });
+            if (displayFailureCount > 0 && window.Toast && window.Toast.show) {
+                window.Toast.show(
+                    "Add from community",
+                    displayFailureCount +
+                        " organism(s) could not be displayed (missing rule or WebGL limit).",
+                    "error"
+                );
+            }
         }
 
         renderGridFromPopulation(

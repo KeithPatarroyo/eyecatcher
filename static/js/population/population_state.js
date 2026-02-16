@@ -8,17 +8,40 @@
     "use strict";
 
     function payloadToOrganisms(population, genomes, patternsMap) {
-        if (!population || !genomes || population.length !== genomes.length) {
+        if (!population || !genomes) {
+            console.error(
+                "Add to grid: payloadToOrganisms missing population or genomes"
+            );
+            return [];
+        }
+        if (population.length !== genomes.length) {
+            console.error(
+                "Add to grid: payloadToOrganisms length mismatch – population " +
+                    population.length +
+                    ", genomes " +
+                    genomes.length +
+                    "; new organisms will not be added"
+            );
             return [];
         }
         var map = patternsMap || new Map();
         return population.map(function (p, i) {
             var id = p.id != null ? p.id : genomes[i] && genomes[i].key;
+            var runtime = map.get(id) || null;
+            if (runtime === null && map.size > 0) {
+                console.warn(
+                    "Add to grid: no runtime for organism id=" +
+                        id +
+                        " (index " +
+                        i +
+                        ") – card may not animate"
+                );
+            }
             return {
                 id: id,
                 genome: genomes[i],
                 phenotype: p,
-                runtime: map.get(id) || null,
+                runtime: runtime,
                 fitness: p.fitness != null ? p.fitness : 0,
             };
         });
