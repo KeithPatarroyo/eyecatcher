@@ -199,8 +199,7 @@ const submitAdminKey = () =>
         viewerControls,
     });
 
-// Expose for HTML onclick
-window.CommunityUI = {
+export const CommunityUI = {
     init,
     openSubmitCommunityModal,
     closeSubmitCommunityModal,
@@ -214,3 +213,4 @@ window.CommunityUI = {
     closeAdminModal,
     submitAdminKey,
 };
+window.CommunityUI = CommunityUI;

@@ -9,6 +9,7 @@ import RepresentationRegistry from "../representation/representation_registry.js
 import { getConfig } from "../evolution/experiment_config.js";
 import populationUI from "../population/population_ui.js";
 import populationState from "../population/population_state.js";
+import { CommunityUI } from "../community/index.js";
 
 const $ = (id) => (id ? document.getElementById(id) : null);
 
@@ -221,7 +222,7 @@ const initSettingsPanel = (toolbarUI) => {
         if (e.key === "Escape") setOpen(false);
     });
 
-    actionHandlers["admin-modal"] = () => window.CommunityUI?.openAdminModal?.();
+    actionHandlers["admin-modal"] = () => CommunityUI?.openAdminModal?.();
 
     initExperimentParamsPanel(toolbarUI);
 };
@@ -280,4 +281,6 @@ class ToolbarUI {
     }
 }
 
-window.ToolbarUI = new ToolbarUI();
+const toolbarUI = new ToolbarUI();
+export default toolbarUI;
+window.ToolbarUI = toolbarUI;
