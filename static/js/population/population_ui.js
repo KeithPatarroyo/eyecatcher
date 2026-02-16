@@ -1,4 +1,3 @@
-/* global EyecatcherStorage: readonly */
 /**
  * PopulationUI: save/load/import populations (IndexedDB) + start random population.
  * Depends on: EyecatcherStorage, RepresentationRegistry, EvolutionConfig.
@@ -7,6 +6,7 @@ import Toast from "../lib/toast.js";
 import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
 import DOM from "../lib/dom.js";
+import EyecatcherStorage from "../lib/storage.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
 import { getConfig } from "../evolution/experiment_config.js";
 
@@ -14,10 +14,6 @@ const toast = (title, message, type = "info", opts) =>
     Toast.show(title, message, type, opts);
 
 const ensureStorage = async () => {
-    if (typeof EyecatcherStorage === "undefined") {
-        toast("Storage missing", "storage.js not loaded or not served.", "error");
-        return null;
-    }
     await EyecatcherStorage.init();
     return EyecatcherStorage;
 };
@@ -208,7 +204,7 @@ class PopulationUI {
             }
 
             // Store JSON imports into IndexedDB when possible (nice for researcher workflows).
-            if (json && typeof EyecatcherStorage !== "undefined") {
+            if (json) {
                 const storage = await ensureStorage();
                 if (storage) {
                     const r = RepresentationRegistry.resolve({ genomes });
