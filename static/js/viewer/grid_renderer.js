@@ -94,7 +94,9 @@ class GridTopology {
     }
 }
 
-window.GridTopology = new GridTopology();
+const gridTopology = new GridTopology();
+export { gridTopology };
+window.GridTopology = gridTopology;
 
 const getEl = (id) => (id ? document.getElementById(id) : null);
 
@@ -172,7 +174,7 @@ class GridRenderer {
     clearGrid(ids) {
         const grid = getGridEl(ids);
         if (grid) grid.innerHTML = "";
-        window.GridTopology.rebuild(null);
+        gridTopology.rebuild(null);
     }
 
     showGridError(message, showRetry) {
@@ -344,7 +346,7 @@ class GridRenderer {
 
         this._appendPatternCards(population, grid, callbacks, map, representationId);
         this._patternsMap = map;
-        window.GridTopology.rebuild(grid);
+        gridTopology.rebuild(grid);
 
         return map;
     }
@@ -371,7 +373,7 @@ class GridRenderer {
         );
         if (!this._patternsMap) this._patternsMap = new Map();
         patternsMap.forEach((v, k) => this._patternsMap.set(k, v));
-        window.GridTopology.rebuild(grid);
+        gridTopology.rebuild(grid);
     }
 
     /** Get runtime (state) for a pattern id for FBO; tries number and string keys. */

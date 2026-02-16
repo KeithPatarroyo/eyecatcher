@@ -187,7 +187,7 @@ const destroyFBO = (gl, fboObj) => {
     if (fboObj.texture) gl.deleteTexture(fboObj.texture);
 };
 
-window.WebGLUtils = {
+const WebGLUtils = {
     VERTEX_SHADER_SOURCE,
     createWebGLContext,
     createProgram,
@@ -198,3 +198,6 @@ window.WebGLUtils = {
     swapFBOs,
     destroyFBO,
 };
+
+export default WebGLUtils;
+window.WebGLUtils = WebGLUtils;

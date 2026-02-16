@@ -1,9 +1,11 @@
 /**
  * FullscreenModal: open/close fullscreen pattern view. Supports shader and grid/image output types.
- * Dependencies: window.WebGLUtils.setupPattern, window.RepresentationRegistry, window.RepresentationHelpers, window.EvolutionConfig
+ * Dependencies: window.RepresentationRegistry, window.EvolutionConfig
  */
 import DOM from "../lib/dom.js";
 import RepresentationRegistry from "../representation/representation_registry.js";
+import { RepresentationHelpers } from "../representation/representation_registry.js";
+import WebGLUtils from "../representation/webgl_utils.js";
 
 const getCfg = () => {
     const cfg = window.getConfig?.() ?? window.EvolutionConfig ?? {};
@@ -124,10 +126,7 @@ class FullscreenModal {
             canvas.height = size;
             wrap.appendChild(canvas);
 
-            const runtime = window.WebGLUtils?.setupPattern?.(
-                canvas,
-                pattern.rule || ""
-            );
+            const runtime = WebGLUtils?.setupPattern?.(canvas, pattern.rule || "");
             if (!runtime || runtime.error) {
                 wrap.innerHTML = "";
                 DOM.setHidden(modal, true);
@@ -144,11 +143,8 @@ class FullscreenModal {
                 ...(pattern.grid !== undefined ? { grid: pattern.grid } : null),
             };
 
-            if (representation && window.RepresentationHelpers) {
-                window.RepresentationHelpers.prepareRuntime(
-                    this._fullscreenRuntime,
-                    pattern
-                );
+            if (representation && RepresentationHelpers) {
+                RepresentationHelpers.prepareRuntime(this._fullscreenRuntime, pattern);
             }
         });
     }

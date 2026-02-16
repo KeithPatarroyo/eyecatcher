@@ -114,7 +114,7 @@ const createDisplayElement = (rep, pattern, options) => {
     };
 };
 
-window.RepresentationHelpers = {
+const RepresentationHelpers = {
     getMetaLabel,
     prepareRuntime,
     supportsCellInteraction,
@@ -122,6 +122,9 @@ window.RepresentationHelpers = {
     getMetaIdPrefix,
     createDisplayElement,
 };
+
+export { RepresentationHelpers };
+window.RepresentationHelpers = RepresentationHelpers;
 
 const createRepresentation = (entry, substrate, phenotype) => ({
     id: entry.id,

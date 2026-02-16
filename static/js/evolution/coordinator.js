@@ -1,4 +1,5 @@
 import Utils from "../lib/utils.js";
+import GenealogySync from "../genealogy/sync.js";
 
 const clampInt = (value, min, max, fallback) => {
     const n = Number.parseInt(value, 10);
@@ -86,7 +87,7 @@ class EvolutionCoordinator {
                             branchName: genealogy?.branchName || "main",
                         },
                     });
-                    window.GenealogySync?.syncCurrentPopulationIdToStorage?.(
+                    GenealogySync?.syncCurrentPopulationIdToStorage?.(
                         data.population_id
                     );
                 }

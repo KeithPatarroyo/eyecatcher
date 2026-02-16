@@ -3,6 +3,8 @@
  * Step shader, display shader, and toggle shader come from phenotype.
  * Built-in interaction "toggle": click to flip cells.
  */
+import WebGLUtils from "./webgl_utils.js";
+
 const Substrate = window.Substrate;
 
 const MAX_TOGGLES_PER_PASS = 64;
@@ -253,7 +255,7 @@ class GridSubstrate extends Substrate {
             return { element: this._createFallback("No step shader"), state: null };
 
         const canvas = this._createCanvas(256, 256);
-        const wu = window.WebGLUtils;
+        const wu = WebGLUtils;
 
         if (!wu?.setupPattern) {
             return {
@@ -302,7 +304,7 @@ class GridSubstrate extends Substrate {
         if (!state?.gl) return;
 
         const gl = state.gl;
-        const wu = window.WebGLUtils;
+        const wu = WebGLUtils;
         if (!wu?.createProgram) return;
 
         const w = clampInt(phenotype?.gridSize, 2, 4096, 64);
@@ -397,7 +399,7 @@ class GridSubstrate extends Substrate {
 
     teardown(state) {
         if (!state) return;
-        const wu = window.WebGLUtils;
+        const wu = WebGLUtils;
 
         if (wu && state.gl) {
             if (state.fboRead) wu.destroyFBO(state.gl, state.fboRead);

@@ -10,6 +10,7 @@
 import Utils from "../lib/utils.js";
 import DisplayFetcher from "../representation/display_fetcher.js";
 import GridRenderer from "../viewer/grid_renderer.js";
+import GenealogySync from "../genealogy/sync.js";
 
 let _deps = null;
 
@@ -163,7 +164,7 @@ const maybeSaveToGenealogy = async ({
     population,
     representationId,
 }) => {
-    const gs = window.GenealogySync;
+    const gs = GenealogySync;
     if (!gs?.saveCurrentPopulationToGenealogy) return null;
 
     const fitnessData = population.map((p) => patternsMap.get(p.id)?.fitness || 0);
@@ -264,12 +265,11 @@ const loadPopulation = async (
         if (saveToGenealogy) {
             if (generationNum === 0) {
                 parentId = null;
-                window.GenealogySync?.syncCurrentPopulationIdToStorage?.(null);
+                GenealogySync?.syncCurrentPopulationIdToStorage?.(null);
 
-                const counter =
-                    window.GenealogySync?.getGenealogyBranchCounter?.() ?? 1;
+                const counter = GenealogySync?.getGenealogyBranchCounter?.() ?? 1;
                 branchName = counter === 1 ? "main" : `branch-${counter}`;
-                window.GenealogySync?.setGenealogyBranchCounter?.(counter + 1);
+                GenealogySync?.setGenealogyBranchCounter?.(counter + 1);
 
                 _deps.state.dispatch({
                     type: "SET_GENEALOGY",

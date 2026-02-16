@@ -2,6 +2,8 @@
  * FieldSubstrate: phenotype expressed on a continuous field (fullscreen quad).
  * Uses WebGLUtils for WebGL setup. Toggleable signals come from EvolutionConfig.
  */
+import WebGLUtils from "./webgl_utils.js";
+
 const Substrate = window.Substrate;
 
 const getToggleableSignals = () => {
@@ -66,7 +68,7 @@ class FieldSubstrate extends Substrate {
         if (!rule) return { element: this._createFallback("No rule"), state: null };
 
         const canvas = this._createCanvas(256, 256);
-        const wu = window.WebGLUtils;
+        const wu = WebGLUtils;
 
         if (!wu?.setupPattern) {
             return {

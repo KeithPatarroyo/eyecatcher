@@ -1,9 +1,10 @@
 /**
  * CardBuilder: builds organism card DOM (display element, info, actions, events).
  * WebGL setup lives in webgl_utils.js.
- * Depends: window.PopulationState, window.RepresentationHelpers.
+ * Depends: window.PopulationState.
  */
 import RepresentationRegistry from "../representation/representation_registry.js";
+import { RepresentationHelpers } from "../representation/representation_registry.js";
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
@@ -71,7 +72,7 @@ class CardBuilder {
      */
     createCard(options) {
         const { pattern, representationId = null } = options;
-        const Helpers = window.RepresentationHelpers;
+        const Helpers = RepresentationHelpers;
 
         const resolved =
             pattern && pattern.id != null
@@ -140,7 +141,7 @@ class CardBuilder {
     }
 
     _buildInfo(pattern, id, fitness, representation) {
-        const Helpers = window.RepresentationHelpers;
+        const Helpers = RepresentationHelpers;
 
         const info = document.createElement("div");
         info.className = "organism-info";
@@ -169,7 +170,7 @@ class CardBuilder {
     }
 
     _buildActions(options, id, representation) {
-        const Helpers = window.RepresentationHelpers;
+        const Helpers = RepresentationHelpers;
 
         const actions = document.createElement("div");
         actions.className = "organism-actions";
@@ -253,7 +254,7 @@ class CardBuilder {
             RepresentationRegistry?.resolve?.({ representationId })?.representation ??
             null;
         if (!rep) rep = RepresentationRegistry?.resolve?.({})?.representation ?? null;
-        const Helpers = window.RepresentationHelpers;
+        const Helpers = RepresentationHelpers;
         const supportsInteraction =
             rep &&
             Helpers?.supportsCellInteraction?.(rep.substrate, rep.phenotype) &&

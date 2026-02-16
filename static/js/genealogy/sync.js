@@ -71,10 +71,13 @@ const saveCurrentPopulationToGenealogy = async (
     return result.data;
 };
 
-window.GenealogySync = {
+const GenealogySync = {
     getGenealogyBranchCounter,
     setGenealogyBranchCounter,
     syncCurrentPopulationIdToStorage,
     getStoredPopulationId,
     saveCurrentPopulationToGenealogy,
 };
+
+export default GenealogySync;
+window.GenealogySync = GenealogySync;

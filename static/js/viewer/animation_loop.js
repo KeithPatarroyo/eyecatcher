@@ -3,6 +3,7 @@
  * Signal values come from a pluggable SignalSource. Set window.SignalSource before init, or pass signalSource in init().
  */
 import RepresentationRegistry from "../representation/representation_registry.js";
+import { gridTopology } from "./grid_renderer.js";
 
 const ANIMATION_SPEED = 0.005;
 const MOUSE_SPEED_DECAY = 0.95;
@@ -78,7 +79,7 @@ class AnimationLoop {
 
         if (context.gridPosition) {
             const pos = context.gridPosition;
-            const GT = window.GridTopology;
+            const GT = gridTopology;
             const cols = GT?.getColumns?.() ?? 1;
             const total = GT?.getAll?.()?.size ?? 1;
             const rows = cols > 0 ? Math.ceil(total / cols) : 1;
@@ -148,7 +149,7 @@ class AnimationLoop {
             const signalState = this._viewerControls?.signalState;
 
             if (runtimes && signalState != null && RepresentationRegistry) {
-                const GT = window.GridTopology;
+                const GT = gridTopology;
                 for (const runtime of runtimes) {
                     if (!runtime?.gl) continue;
                     if (runtime.gl.isContextLost?.()) continue;
