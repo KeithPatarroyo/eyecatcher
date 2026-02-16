@@ -5,6 +5,7 @@
 import Toast from "../lib/toast.js";
 import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
+import DOM from "../lib/dom.js";
 
 let apiUrl = "";
 let addToGrid = null;

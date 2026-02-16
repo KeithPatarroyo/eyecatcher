@@ -3,6 +3,7 @@
  * Exposes: GenealogyThumbnails.renderThumbnail / renderAllThumbnails
  */
 import api from "../lib/api_client.js";
+import DisplayFetcher from "../representation/display_fetcher.js";
 
 const THUMBNAIL_CANVAS_SIZE = 128;
 const MAX_CACHE = 200;
@@ -26,9 +27,9 @@ const renderThumbnail = async (populationId, cache, apiUrl = window.API_URL || "
     if (cache?.has(populationId)) return cache.get(populationId);
 
     const RR = window.RepresentationRegistry;
-    const DF = window.DisplayFetcher;
 
-    if (!RR?.findByGenome || typeof DF?.fetchDisplayData !== "function") return null;
+    if (!RR?.findByGenome || typeof DisplayFetcher?.fetchDisplayData !== "function")
+        return null;
 
     try {
         const result = api
@@ -45,7 +46,8 @@ const renderThumbnail = async (populationId, cache, apiUrl = window.API_URL || "
         const rep = RR.findByGenome(genome);
         if (!rep) return null;
 
-        const pop = (await DF.fetchDisplayData(rep, [genome], {}))?.population?.[0];
+        const pop = (await DisplayFetcher.fetchDisplayData(rep, [genome], {}))
+            ?.population?.[0];
         if (!pop) return null;
 
         const canvas = document.createElement("canvas");

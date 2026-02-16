@@ -2,6 +2,8 @@
  * CommunityBrowse: preview helpers for community/admin lists.
  * Exposes: CommunityBrowse.fetchDisplayDataForList, buildPatternListEntry, renderListWithPreviews.
  */
+import DisplayFetcher from "../representation/display_fetcher.js";
+
 const PREVIEW_CANVAS_SIZE = 80;
 
 const getGenome = (payload) => {
@@ -13,9 +15,9 @@ const getGenome = (payload) => {
 
 const fetchDisplayDataForList = async (list, toPayload, getKey) => {
     const RR = window.RepresentationRegistry;
-    const DF = window.DisplayFetcher;
 
-    if (!RR?.findByGenome || typeof DF?.fetchDisplayData !== "function") return {};
+    if (!RR?.findByGenome || typeof DisplayFetcher?.fetchDisplayData !== "function")
+        return {};
 
     const entries = await Promise.all(
         (list || []).map(async (item) => {
@@ -26,7 +28,7 @@ const fetchDisplayDataForList = async (list, toPayload, getKey) => {
             if (!rep) return [key, null];
 
             try {
-                const r = await DF.fetchDisplayData(rep, [genome], {});
+                const r = await DisplayFetcher.fetchDisplayData(rep, [genome], {});
                 return [key, r?.population?.[0] || null];
             } catch {
                 return [key, null];

@@ -1,5 +1,6 @@
 // viewer_controls.js (replace whole file)
 import Utils from "../lib/utils.js";
+import DOM from "../lib/dom.js";
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;

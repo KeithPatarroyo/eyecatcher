@@ -4,6 +4,7 @@
  * Exposes: init, clearGrid, showGridError, renderGridFromPopulation, appendCardsToGrid, patternCardCallbacks.
  */
 import Toast from "../lib/toast.js";
+import DOM from "../lib/dom.js";
 
 /**
  * GridTopology: tracks which pattern is at which row/col position in the grid

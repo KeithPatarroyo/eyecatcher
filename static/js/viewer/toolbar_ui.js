@@ -4,6 +4,7 @@
  * Uses one delegated click/keydown handler on document for [data-action] elements.
  */
 import api from "../lib/api_client.js";
+import DOM from "../lib/dom.js";
 
 const $ = (id) => (id ? document.getElementById(id) : null);
 

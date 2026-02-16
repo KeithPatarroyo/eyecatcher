@@ -105,9 +105,12 @@ const fetchDisplayData = async (representation, genomes, options = {}) => {
     return expressGenomes(genomes, expressOpts);
 };
 
-window.DisplayFetcher = {
+const DisplayFetcher = {
     developGenomes,
     expressGenomes,
     fetchDisplayData,
     startImageAnimate,
 };
+
+export default DisplayFetcher;
+window.DisplayFetcher = DisplayFetcher;

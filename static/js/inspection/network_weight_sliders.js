@@ -1,6 +1,7 @@
 // network_weight_sliders.js (replace whole file)
 import Toast from "../lib/toast.js";
 import api from "../lib/api_client.js";
+import DOM from "../lib/dom.js";
 
 const WEIGHT_MIN = -5;
 const WEIGHT_MAX = 5;

@@ -1,6 +1,7 @@
 // genome_visualizer.js (minimal rewrite, replace whole file)
 import Toast from "../lib/toast.js";
 import api from "../lib/api_client.js";
+import DOM from "../lib/dom.js";
 
 let _apiUrl = "";
 let _getGenomeForPattern = null;

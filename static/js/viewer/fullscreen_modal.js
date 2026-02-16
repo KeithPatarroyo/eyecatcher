@@ -2,6 +2,8 @@
  * FullscreenModal: open/close fullscreen pattern view. Supports shader and grid/image output types.
  * Dependencies: window.WebGLUtils.setupPattern, window.RepresentationRegistry, window.RepresentationHelpers, window.EvolutionConfig
  */
+import DOM from "../lib/dom.js";
+
 const getCfg = () => {
     const cfg = window.getConfig?.() ?? window.EvolutionConfig ?? {};
     return {

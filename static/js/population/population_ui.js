@@ -6,6 +6,7 @@
 import Toast from "../lib/toast.js";
 import Utils from "../lib/utils.js";
 import api from "../lib/api_client.js";
+import DOM from "../lib/dom.js";
 
 const toast = (title, message, type = "info", opts) =>
     Toast.show(title, message, type, opts);

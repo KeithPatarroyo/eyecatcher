@@ -1,9 +1,10 @@
 /**
  * Organism interaction handlers: save, click, unclick.
- * Used by app.js grid callbacks. Depends on window.PopulationState, ApiClient, Toast.
+ * Used by app.js grid callbacks. Depends on window.PopulationState.
  */
 import Toast from "../lib/toast.js";
 import api from "../lib/api_client.js";
+import DOM from "../lib/dom.js";
 
 const showError = (title, message) => Toast.show(title, message, "error");
 

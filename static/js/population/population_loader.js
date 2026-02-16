@@ -2,12 +2,13 @@
  * PopulationLoader: orchestrates loading and adding population
  * (fetch display data, render grid, dispatch state, optional genealogy save).
  *
- * Depends on: GridRenderer, DisplayFetcher, PopulationState, GenealogySync
+ * Depends on: GridRenderer, PopulationState, GenealogySync
  * and RepresentationRegistry via deps.resolveRepresentation.
  *
  * Exposes: init, loadPopulation, addToPopulation.
  */
 import Utils from "../lib/utils.js";
+import DisplayFetcher from "../representation/display_fetcher.js";
 
 let _deps = null;
 
@@ -32,7 +33,7 @@ const getSubstrateType = (representation) =>
 const canAnimateImage = (representation) =>
     getSubstrateType(representation) === "image" &&
     representation?.capabilities?.animate === true &&
-    typeof window.DisplayFetcher?.startImageAnimate === "function";
+    typeof DisplayFetcher?.startImageAnimate === "function";
 
 const getSignalValuesFn = () => _deps?.getSignalValues || (() => ({}));
 
@@ -140,7 +141,7 @@ const maybeStartImageAnimate = (representation, genomes, representationId) => {
 
     stopImageAnimateIfAny();
 
-    _deps.stopImageAnimate = window.DisplayFetcher.startImageAnimate(
+    _deps.stopImageAnimate = DisplayFetcher.startImageAnimate(
         representation,
         genomes,
         getSignalValuesFn(),
@@ -225,7 +226,7 @@ const loadPopulation = async (
         stopImageAnimateIfAny();
         window.GridRenderer.clearGrid(_deps.IDS);
 
-        const displayResult = await window.DisplayFetcher.fetchDisplayData(
+        const displayResult = await DisplayFetcher.fetchDisplayData(
             representation,
             genomes,
             {
@@ -324,7 +325,7 @@ const addToPopulation = async (genomes) => {
     const payload = genomes.map((g) => ({ ...g, key: nextKey++, fitness: 0 }));
 
     await Utils.withLoading(async () => {
-        const displayResult = await window.DisplayFetcher.fetchDisplayData(
+        const displayResult = await DisplayFetcher.fetchDisplayData(
             representation,
             payload,
             {
