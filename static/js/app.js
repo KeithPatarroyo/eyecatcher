@@ -570,7 +570,7 @@
     var oeToggle = document.getElementById('oe-toggle');
     if (oeToggle && typeof window.OpenEndednessTracker !== 'undefined') {
         window.OpenEndednessTracker.init({
-            getPatterns: function () { return patterns; },
+            getPatterns: function () { return Array.from(patterns.values()); },
             getGenomes: function () { return currentGenomes; },
             getGeneration: function () { return currentGenerationNum; }
         });
