@@ -43,6 +43,11 @@
         const loadingEl = document.getElementById('loading');
         if (loadingEl) loadingEl.style.display = 'block';
         try {
+            // Clear any existing session data when starting fresh
+            sessionStorage.removeItem('current_population_data');
+            sessionStorage.removeItem('current_population_id');
+            sessionStorage.removeItem('has_population');
+            
             const r = await fetch(`${_apiUrl}/random`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -50,38 +55,16 @@
             });
             if (!r.ok) {
                 const d = await r.json().catch(() => ({}));
-                alert(d.error || 'Failed to create random population');
+                if (window.Toast) Toast.error(d.error || 'Failed to create random population'); else alert(d.error || 'Failed to create random population');
                 return;
             }
             const d = await r.json();
             if (_loadFromStatelessGenomes) {
-                await _loadFromStatelessGenomes(d.genomes || [], 0);
+                await _loadFromStatelessGenomes(d.genomes || [], 0, true);
             }
         } catch (error) {
             console.error('Error starting random population:', error);
-            alert('Error: ' + (error.message || String(error)));
-        } finally {
-            if (loadingEl) loadingEl.style.display = 'none';
-        }
-    }
-
-    /**
-     * Load population from curated seeds.
-     */
-    async function onNewFromSeedsClick() {
-        const loadingEl = document.getElementById('loading');
-        if (loadingEl) loadingEl.style.display = 'block';
-        try {
-            const r = await fetch(_apiUrl + '/seeds');
-            if (!r.ok) { alert('Failed to load seeds'); return; }
-            const d = await r.json();
-            const seeds = d.seeds || [];
-            if (!seeds.length) { alert('No seeds available.'); return; }
-            if (_loadFromStatelessGenomes) {
-                await _loadFromStatelessGenomes(seeds.slice(0, 12).map(s => s.genome || s), 0);
-            }
-        } catch (e) {
-            alert('Error: ' + (e.message || e));
+            if (window.Toast) window.Toast.error('Error: ' + (error.message || String(error))); else alert('Error: ' + (error.message || String(error)));
         } finally {
             if (loadingEl) loadingEl.style.display = 'none';
         }
@@ -93,7 +76,7 @@
     async function onLoadSavedClick() {
         try {
             if (typeof EyecatcherStorage === 'undefined') {
-                alert('Storage not loaded. Check that storage.js is served.');
+                if (window.Toast) Toast.error('Storage not loaded. Check that storage.js is served.'); else alert('Storage not loaded. Check that storage.js is served.');
                 return;
             }
             await EyecatcherStorage.init();
@@ -118,7 +101,7 @@
             }
             document.getElementById('load-list-modal').classList.add('show');
         } catch (e) {
-            alert('Error: ' + (e.message || e));
+            if (window.Toast) Toast.error('Error: ' + (e.message || e)); else alert('Error: ' + (e.message || e));
         }
     }
 
@@ -127,12 +110,12 @@
      */
     async function onSaveCurrentClick() {
         if (typeof EyecatcherStorage === 'undefined') {
-            alert('Storage not loaded.');
+            if (window.Toast) Toast.error('Storage not loaded.'); else alert('Storage not loaded.');
             return;
         }
         const data = _getCurrentGenomesForSave ? await _getCurrentGenomesForSave() : null;
         if (!data || !data.genomes.length) {
-            alert('No population to save. Start with New random population or Load Saved.');
+            if (window.Toast) Toast.error('No population to save. Start with New random population or Load Saved.'); else alert('No population to save. Start with New random population or Load Saved.');
             return;
         }
         const name = prompt('Name this population:', 'Session ' + new Date().toLocaleDateString());
@@ -140,9 +123,9 @@
         try {
             await EyecatcherStorage.init();
             await EyecatcherStorage.savePopulation((name.trim() || 'Unnamed'), data.genomes, data.generation);
-            alert('Saved.');
+            if (window.Toast) Toast.show('Saved', 'Population saved to browser storage.', 'success'); else alert('Saved.');
         } catch (e) {
-            alert('Error: ' + (e.message || e));
+            if (window.Toast) Toast.error('Error: ' + (e.message || e)); else alert('Error: ' + (e.message || e));
         }
     }
 
@@ -167,13 +150,13 @@
             let genomes = [];
             if (name.endsWith('.zip')) {
                 if (typeof JSZip === 'undefined') {
-                    alert('Import failed: JSZip not loaded. Check script for jszip.min.js.');
+                    if (window.Toast) Toast.error('Import failed: JSZip not loaded. Check script for jszip.min.js.'); else alert('Import failed: JSZip not loaded. Check script for jszip.min.js.');
                     return;
                 }
                 const zip = await JSZip.loadAsync(file);
                 const genomeFiles = Object.keys(zip.files).filter(n => /^genome_.*\.json$/i.test(n));
                 if (!genomeFiles.length) {
-                    alert('No genome JSON found in zip (expected genome_*.json).');
+                    if (window.Toast) Toast.error('No genome JSON found in zip (expected genome_*.json).'); else alert('No genome JSON found in zip (expected genome_*.json).');
                     return;
                 }
                 for (const entry of genomeFiles) {
@@ -192,14 +175,14 @@
                 }
             }
             if (!genomes.length) {
-                alert('No genomes in file');
+                if (window.Toast) Toast.error('No genomes in file'); else alert('No genomes in file');
                 return;
             }
             if (_addToGrid) {
                 await _addToGrid(genomes);
             }
         } catch (err) {
-            alert('Import failed: ' + (err.message || err));
+            if (window.Toast) Toast.error('Import failed: ' + (err.message || err)); else alert('Import failed: ' + (err.message || err));
         }
     }
 
@@ -207,7 +190,6 @@
     window.PopulationUI = {
         init: init,
         startNewRandomPopulation: startNewRandomPopulation,
-        onNewFromSeedsClick: onNewFromSeedsClick,
         onLoadSavedClick: onLoadSavedClick,
         onSaveCurrentClick: onSaveCurrentClick,
         onImportClick: onImportClick,

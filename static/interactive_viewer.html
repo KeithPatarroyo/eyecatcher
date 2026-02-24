@@ -1,100 +1,192 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>Eyecatcher - Interactive Evolution</title>
-    <link rel="stylesheet" href="debug.css">
-    <link rel="stylesheet" href="community.css">
-    <link rel="stylesheet" href="viewer.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/debug.css">
+    <link rel="stylesheet" href="css/community.css">
+    <link rel="stylesheet" href="css/viewer.css">
+    <link rel="stylesheet" href="css/network.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
+
 <body>
     <div id="header">
-        <h1>🎨 Eyecatcher - Interactive Evolution</h1>
-        <div id="controls">
-            <span id="breed-btn" class="btn-action breed disabled" role="button" tabindex="0" aria-disabled="true">Continue Generation</span>
-            <span id="new-random-btn" class="btn-action" role="button" tabindex="0">New random population</span>
-            <span class="zoom-controls" title="Pattern size">
-                <span class="zoom-controls-label">Zoom</span>
-                <span id="zoom-out" class="btn-zoom" role="button" tabindex="0" title="Zoom out" aria-label="Zoom out">−</span>
-                <span id="zoom-label" style="display:inline-block;min-width:2.5em;padding:4px 8px;font-weight:bold;color:#0066cc;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">100%</span>
-                <span id="zoom-in" class="btn-zoom" role="button" tabindex="0" title="Zoom in" aria-label="Zoom in">+</span>
+        <h1>Eyecatcher</h1>
+        <span id="help-btn" class="header-icon" role="button" tabindex="0" title="Show help" aria-label="Show help">?</span>
+    </div>
+
+    <div id="toolbar">
+        <span id="breed-btn" class="btn-action breed disabled" role="button" tabindex="0" aria-disabled="true">Evolve Next Generation</span>
+        <span class="toolbar-sep" aria-hidden="true">|</span>
+        <span class="start-fresh-wrap">
+            <span id="start-fresh-btn" class="btn-action pop-btn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">Start Fresh ▾</span>
+            <div id="start-fresh-dropdown" class="dropdown-content" role="menu" hidden>
+                <span data-action="random" role="menuitem" tabindex="0">Random</span>
+                <span data-action="load" role="menuitem" tabindex="0">Load population</span>
+            </div>
+        </span>
+        <a href="/genealogy" class="pop-btn btn-action" style="text-decoration:none;" title="View genealogy tree">Genealogy Tree</a>
+        <span id="new-from-community-btn" class="pop-btn btn-action" role="button" tabindex="0">Add from Community</span>
+        <span id="import-btn" class="pop-btn btn-action" role="button" tabindex="0">Add from File</span>
+        <span id="save-current-btn" class="pop-btn btn-action" role="button" tabindex="0">Save population</span>
+        <span class="toolbar-sep" aria-hidden="true">|</span>
+        <span id="stats" class="stats-inline">
+            <span class="stat"><span class="stat-label">Generation:</span><span id="gen-num" class="stat-value">0</span></span>
+            <span class="stat"><span class="stat-label">Total clicks:</span><span id="total-clicks" class="stat-value">0</span></span>
+            <span class="toolbar-sep" aria-hidden="true">|</span>
+            <span class="population-size-controls" title="Number of individuals per generation">
+                <span class="population-size-label">Next generation size</span>
+                <span id="population-size-down" class="btn-zoom" role="button" tabindex="0" title="Decrease" aria-label="Decrease population size">−</span>
+                <input type="number" id="population-size-input" class="population-size-value" min="2" max="50" value="12" title="Individuals per generation" aria-label="Population size">
+                <span id="population-size-up" class="btn-zoom" role="button" tabindex="0" title="Increase" aria-label="Increase population size">+</span>
             </span>
-            <span id="stats" style="display:inline-flex;flex-wrap:wrap;gap:20px;font-size:14px;color:#888;">
-                <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Generation:</span><span id="gen-num" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
-                <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Selected:</span><span id="selected-count" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
-                <span class="stat" style="display:inline-flex;gap:8px;align-items:center;"><span style="color:#888;">Total Clicks:</span><span id="total-clicks" class="stat-value" style="display:inline-block;min-width:1.5em;padding:2px 6px;color:#0066cc;font-weight:bold;background:#252525;border:1px solid #444;border-radius:4px;text-align:center;">0</span></span>
+        </span>
+        <span class="toolbar-sep" aria-hidden="true">|</span>
+        <span class="zoom-controls" title="Pattern size">
+            <span class="zoom-controls-label">Zoom</span>
+            <span id="zoom-out" class="btn-zoom" role="button" tabindex="0" title="Zoom out" aria-label="Zoom out">−</span>
+            <span id="zoom-label">100%</span>
+            <span id="zoom-in" class="btn-zoom" role="button" tabindex="0" title="Zoom in" aria-label="Zoom in">+</span>
+        </span>
+        <!-- Open-Endedness Score Button -->
+        <span class="oe-controls">
+            <span id="oe-toggle" class="oe-toggle" role="button" tabindex="0" title="Compute OE scores for all patterns">
+                <span class="oe-toggle-label">OE Score</span>
+                <span id="oe-status" class="oe-status">OFF</span>
             </span>
-            <!-- Open-Endedness Score Button -->
-            <span class="oe-controls">
-                <span id="oe-toggle" class="oe-toggle" role="button" tabindex="0" title="Compute OE scores for all patterns">
-                    <span class="oe-toggle-label">OE Score</span>
-                    <span id="oe-status" class="oe-status">OFF</span>
-                </span>
-            </span>
+        </span>
+        <span class="toolbar-end">
+            <span id="settings-btn" class="settings-btn" role="button" tabindex="0" aria-expanded="false" title="Settings" aria-label="Open settings">⚙ Settings</span>
+        </span>
+        <input type="file" id="import-file" accept=".json,.zip">
+    </div>
+
+    <div id="instructions" class="collapsible-help" hidden>
+        <strong>How to use:</strong> Click on patterns you like (right-click to undo). The more you click, the higher their fitness.
+        When you're happy with your selection, click "Evolve Next Generation" to breed the next generation from your favorites.
+        Patterns with green borders have fitness (clicks). Hover over a pattern and click "Download" to save it.
+    </div>
+
+    <div id="settings-panel" class="settings-panel" hidden>
+        <div id="time-mode-controls">
+            <div class="signal-group-title">Time signal <span class="signal-hint">(raw input; CPPN modifies it)</span></div>
+            <div class="time-mode-radios">
+                <div class="time-mode-radio">
+                    <input type="radio" id="time-mode-loop" name="timeMode" value="loop">
+                    <label for="time-mode-loop">Loop <span class="signal-hint">(sawtooth)</span></label>
+                </div>
+                <div class="time-mode-radio">
+                    <input type="radio" id="time-mode-oscillate" name="timeMode" value="oscillate" checked>
+                    <label for="time-mode-oscillate">Oscillate <span class="signal-hint">(sine wave)</span></label>
+                </div>
+                <div class="time-mode-radio">
+                    <input type="radio" id="time-mode-infinite" name="timeMode" value="infinite">
+                    <label for="time-mode-infinite">Infinite <span class="signal-hint">(linear)</span></label>
+                </div>
+            </div>
+        </div>
+        <div id="signal-controls">
+            <div class="signal-group">
+                <div class="signal-group-title">Time Signal CPPN Inputs</div>
+                <div class="signal-checkboxes">
+                    <div class="signal-checkbox">
+                        <input type="checkbox" id="time-rawTime" checked>
+                        <label for="time-rawTime">Raw Time <span class="signal-hint">(from Time Mode above)</span></label>
+                    </div>
+                    <div class="signal-checkbox">
+                        <input type="checkbox" id="time-mouseSpeed" checked>
+                        <label for="time-mouseSpeed">Mouse Speed</label>
+                    </div>
+                    <div class="signal-checkbox">
+                        <input type="checkbox" id="time-mouseDist" checked>
+                        <label for="time-mouseDist">Mouse Dist</label>
+                    </div>
+                    <div class="signal-checkbox">
+                        <input type="checkbox" id="time-inactivity" checked>
+                        <label for="time-inactivity">Activity</label>
+                    </div>
+                </div>
+            </div>
+            <div class="signal-flow">→</div>
+            <div class="signal-group">
+                <div class="signal-group-title">Visual CPPN Inputs</div>
+                <div class="signal-checkboxes">
+                    <div class="signal-checkbox signal-derived">
+                        <input type="checkbox" id="visual-time" checked>
+                        <label for="visual-time">Body Clock <span class="signal-hint">(from Time CPPN)</span></label>
+                    </div>
+                    <div class="signal-checkbox">
+                        <input type="checkbox" id="visual-mouseSpeed" checked>
+                        <label for="visual-mouseSpeed">Mouse Speed</label>
+                    </div>
+                    <div class="signal-checkbox">
+                        <input type="checkbox" id="visual-mouseDist" checked>
+                        <label for="visual-mouseDist">Mouse Dist</label>
+                    </div>
+                    <div class="signal-checkbox">
+                        <input type="checkbox" id="visual-inactivity" checked>
+                        <label for="visual-inactivity">Activity</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="signal-group">
+            <div class="signal-group-title">Effects</div>
+            <div class="signal-checkboxes">
+                <div class="signal-checkbox">
+                    <input type="checkbox" id="effect-mouseRipple">
+                    <label for="effect-mouseRipple">Mouse Ripple <span class="signal-hint">(local distortion)</span></label>
+                </div>
+            </div>
+        </div>
+        <div id="color-mode-controls" class="signal-group">
+            <div class="signal-group-title">Color output</div>
+            <div class="time-mode-radios">
+                <div class="time-mode-radio">
+                    <input type="radio" id="color-mode-hsv" name="colorMode" value="hsv" checked>
+                    <label for="color-mode-hsv">HSV <span class="signal-hint">(Picbreeder-style)</span></label>
+                </div>
+                <div class="time-mode-radio">
+                    <input type="radio" id="color-mode-rgb" name="colorMode" value="rgb">
+                    <label for="color-mode-rgb">RGB <span class="signal-hint">(direct)</span></label>
+                </div>
+            </div>
+        </div>
+        <div class="settings-panel-actions">
+            <button type="button" id="settings-moderate-btn" class="pop-btn moderate-btn">Moderate</button>
         </div>
     </div>
-    
-    <div id="instructions">
-        <strong>How to use:</strong> Click on patterns you like (right-click to undo). The more you click, the higher their fitness. 
-        When you're happy with your selection, click "Continue Generation" to breed the next generation from your favorites.
-        Patterns with green borders are selected. Hover over a pattern and click "Save" to keep it.
-    </div>
-    
-    <div id="time-mode-controls">
-        <div class="signal-group-title">Raw Time Source (Time Mode) <span class="signal-hint">(→ Time Signal CPPN modifies it)</span></div>
-        <div class="time-mode-radios">
-            <div class="time-mode-radio">
-                <input type="radio" id="time-mode-loop" name="timeMode" value="loop">
-                <label for="time-mode-loop">Loop <span class="signal-hint">(sawtooth)</span></label>
-            </div>
-            <div class="time-mode-radio">
-                <input type="radio" id="time-mode-oscillate" name="timeMode" value="oscillate" checked>
-                <label for="time-mode-oscillate">Oscillate <span class="signal-hint">(sine wave)</span></label>
-            </div>
-            <div class="time-mode-radio">
-                <input type="radio" id="time-mode-infinite" name="timeMode" value="infinite">
-                <label for="time-mode-infinite">Infinite <span class="signal-hint">(linear)</span></label>
-            </div>
-        </div>
-    </div>
-    
-    <div id="population-panel">
-        <span class="panel-label">Population:</span>
-        <span id="new-from-seeds-btn" class="pop-btn" role="button" tabindex="0">New from Seeds</span>
-        <span id="new-from-community-btn" class="pop-btn" role="button" tabindex="0">New from Community</span>
-        <span id="load-saved-btn" class="pop-btn" role="button" tabindex="0">Load Saved</span>
-        <span id="save-current-btn" class="pop-btn" role="button" tabindex="0">Save Current</span>
-        <span id="import-btn" class="pop-btn" role="button" tabindex="0">Import</span>
-        <span id="moderate-community-btn" class="pop-btn" role="button" tabindex="0" title="Accept community submissions (admin)">Moderate</span>
-        <input type="file" id="import-file" accept=".json,.zip" style="display:none;">
-    </div>
-    
+
     <div id="admin-modal">
         <div class="modal-content">
             <div id="admin-step-key">
                 <h3>Community moderation</h3>
-                <p style="color:#888;font-size:13px;">Enter the admin API key to review pending submissions.</p>
+                <p>Enter the admin API key to review pending submissions.</p>
                 <label>API key <input type="password" id="admin-key-input" placeholder="Admin key" autocomplete="off"></label>
-                <p id="admin-key-error" style="color:#dc3545;font-size:13px;margin-top:8px;display:none;"></p>
+                <p id="admin-key-error"></p>
                 <div class="modal-actions">
                     <button type="button" class="primary" id="admin-key-submit">Continue</button>
                     <button type="button" id="admin-modal-cancel">Cancel</button>
                 </div>
             </div>
-            <div id="admin-step-list" style="display:none;">
+            <div id="admin-step-list">
                 <h3>Pending submissions</h3>
-                <p style="color:#888;font-size:13px;">Approve to publish in Community, or reject to remove.</p>
+                <p>Approve to publish in Community, or reject to remove.</p>
                 <ul id="admin-pending-list"></ul>
                 <span class="modal-close" id="admin-list-close">Close</span>
             </div>
         </div>
     </div>
-    
+
     <div id="community-submit-modal">
         <div class="modal-content">
             <h3>Submit to Community</h3>
-            <p style="color:#888;font-size:13px;">Share this pattern for others to use. It will be reviewed before appearing in Community.</p>
+            <p>Share this pattern for others to use. It will be reviewed before appearing in Community.</p>
             <label>Pattern name <input type="text" id="community-submit-name" placeholder="e.g. Sunset spiral"></label>
             <label>Your name <input type="text" id="community-submit-creator" placeholder="e.g. Anonymous"></label>
             <div class="modal-actions">
@@ -106,947 +198,107 @@
     <div id="community-list-modal">
         <div class="modal-content">
             <h3>Load from Community</h3>
-            <p style="color:#888;font-size:13px;">Select one or more patterns (click row or checkbox), then "Load selected". Or use the shortcuts below.</p>
+            <p>Select one or more patterns (click row or checkbox), then "Load selected". Or use the shortcuts below.</p>
             <ul id="community-list"></ul>
-            <div class="community-modal-actions" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <div class="community-modal-actions">
                 <button type="button" class="pop-btn primary" id="community-load-selected-btn">Load selected</button>
                 <button type="button" class="pop-btn" id="community-load-12-btn">Load first 12</button>
-                <span style="color:#666;font-size:12px;">|</span>
-                <button type="button" class="pop-btn" id="community-select-all-btn" style="font-size:12px;">Select all</button>
-                <button type="button" class="pop-btn" id="community-deselect-all-btn" style="font-size:12px;">Deselect all</button>
+                <span class="community-modal-sep">|</span>
+                <button type="button" class="pop-btn" id="community-select-all-btn">Select all</button>
+                <button type="button" class="pop-btn" id="community-deselect-all-btn">Deselect all</button>
             </div>
-            <span class="modal-close" id="community-list-close" style="display:block;margin-top:12px;">Cancel</span>
+            <span class="modal-close" id="community-list-close">Cancel</span>
         </div>
     </div>
-    
+
     <div id="load-list-modal">
         <div class="modal-content">
-            <h3>Load saved population</h3>
+            <h3>Load population</h3>
             <ul id="load-list"></ul>
             <span class="modal-close" id="load-modal-close">Cancel</span>
         </div>
     </div>
-    
-    <div id="signal-controls">
-        <div class="signal-group">
-            <div class="signal-group-title">Time Signal CPPN Inputs</div>
-            <div class="signal-checkboxes">
-                <div class="signal-checkbox">
-                    <input type="checkbox" id="time-rawTime" checked>
-                    <label for="time-rawTime">Raw Time <span class="signal-hint">(from Time Mode above)</span></label>
-                </div>
-                <div class="signal-checkbox">
-                    <input type="checkbox" id="time-mouseSpeed" checked>
-                    <label for="time-mouseSpeed">Mouse Speed</label>
-                </div>
-                <div class="signal-checkbox">
-                    <input type="checkbox" id="time-mouseDist" checked>
-                    <label for="time-mouseDist">Mouse Dist</label>
-                </div>
-                <div class="signal-checkbox">
-                    <input type="checkbox" id="time-inactivity" checked>
-                    <label for="time-inactivity">Activity</label>
-                </div>
-            </div>
-        </div>
-        <div class="signal-flow">→</div>
-        <div class="signal-group">
-            <div class="signal-group-title">Visual CPPN Inputs</div>
-            <div class="signal-checkboxes">
-                <div class="signal-checkbox signal-derived">
-                    <input type="checkbox" id="visual-time" checked>
-                    <label for="visual-time">Body Clock <span class="signal-hint">(from Time CPPN)</span></label>
-                </div>
-                <div class="signal-checkbox">
-                    <input type="checkbox" id="visual-mouseSpeed" checked>
-                    <label for="visual-mouseSpeed">Mouse Speed</label>
-                </div>
-                <div class="signal-checkbox">
-                    <input type="checkbox" id="visual-mouseDist" checked>
-                    <label for="visual-mouseDist">Mouse Dist</label>
-                </div>
-                <div class="signal-checkbox">
-                    <input type="checkbox" id="visual-inactivity" checked>
-                    <label for="visual-inactivity">Activity</label>
-                </div>
-            </div>
-        </div>
-        <div class="signal-flow">|</div>
-        <div class="signal-group">
-            <div class="signal-group-title">Effects</div>
-            <div class="signal-checkboxes">
-                <div class="signal-checkbox">
-                    <input type="checkbox" id="effect-mouseRipple">
-                    <label for="effect-mouseRipple">Mouse Ripple <span class="signal-hint">(local distortion)</span></label>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div id="grid" style="min-height:280px;padding:10px;background:#0d0d0d;"></div>
-    
-    <div id="loading" style="display: none;">
+
+    <div id="grid"></div>
+
+    <div id="loading">
         <div class="spinner"></div>
-        <div style="text-align: center; margin-top: 10px;">Loading patterns...</div>
+        <div>Loading patterns...</div>
     </div>
-    
-    <div id="toast-container"></div>
-    
-    <script src="storage.js"></script>
-    <script src="population_ui.js"></script>
-    <script src="community.js"></script>
-    <!-- Debug overlay module (creates its own DOM elements) -->
-    <script src="debug.js"></script>
-    <script src="pattern_renderer.js"></script>
-    <!-- Open-endedness tracking module -->
-    <script src="open_endedness.js"></script>
 
-    <script>
-        // Use same origin when page is served over HTTP (e.g. by Flask); fallback for file://
-        const API_URL = (window.location.origin && window.location.protocol.startsWith('http'))
-            ? `${window.location.origin}/api`
-            : 'http://localhost:5001/api';
-        
-        // Toast notification system
-        function showToast(title, body, type = 'success', options = {}) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.style.position = 'relative';
-            
-            let html = `<button class="toast-close" aria-label="Close">&times;</button>`;
-            html += `<div class="toast-title">${title}</div>`;
-            if (body) html += `<div class="toast-body">${body}</div>`;
-            if (options.linkText && options.linkUrl) {
-                html += `<a class="toast-link" href="${options.linkUrl}" target="_blank">${options.linkText}</a>`;
-            }
-            toast.innerHTML = html;
-            
-            toast.querySelector('.toast-close').onclick = () => dismissToast(toast);
-            container.appendChild(toast);
-            
-            // Auto-dismiss after duration (default 6s, longer if there's a link)
-            const duration = options.duration || (options.linkUrl ? 10000 : 6000);
-            setTimeout(() => dismissToast(toast), duration);
-            
-            return toast;
-        }
-        
-        function dismissToast(toast) {
-            if (!toast.parentNode) return;
-            toast.style.animation = 'toast-out 0.3s ease-in forwards';
-            setTimeout(() => toast.remove(), 300);
-        }
-        
-        function base64ToBlob(base64, mime) {
-            const bin = atob(base64);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            return new Blob([bytes], { type: mime });
-        }
-        
-        function triggerDownload(blob, filename) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-        
-        let currentPopulation = [];
-        let currentGenomes = null;  // Client-held genomes; set whenever grid is populated
-        let currentGenerationNum = 0;
-        let animationTime = 0;
-        let oscillatePhase = 0;  // For oscillate mode: phase of sine wave
-        let animating = true;
-        
-        // Time mode configuration
-        const ANIMATION_SPEED = 0.005;  // Time increment per frame (0.001 = slow, 0.01 = fast)
-        
-        // Signal enable states (which inputs are fed to the CPPNs)
-        const signalState = {
-            time: {
-                rawTime: true,
-                mouseSpeed: true,
-                mouseDist: true,
-                inactivity: true
-            },
-            visual: {
-                time: true,
-                mouseSpeed: true,
-                mouseDist: true,
-                inactivity: true
-            },
-            effects: {
-                mouseRipple: false  // Off by default
-            }
-        };
-        
-        // Pattern grid zoom
-        let patternZoom = 1.0;
-        const ZOOM_MIN = 0.5;
-        const ZOOM_MAX = 2.0;
-        const ZOOM_STEP = 0.25;
-        function applyZoom() {
-            document.documentElement.style.setProperty('--pattern-zoom', String(patternZoom));
-            const label = document.getElementById('zoom-label');
-            if (label) label.textContent = Math.round(patternZoom * 100) + '%';
-        }
-        
-        // Wire up signal checkboxes and zoom
-        function initSignalControls() {
-            // Time CPPN signals (including rawTime)
-            ['rawTime', 'mouseSpeed', 'mouseDist', 'inactivity'].forEach(sig => {
-                const checkbox = document.getElementById(`time-${sig}`);
-                if (checkbox) {
-                    checkbox.addEventListener('change', (e) => {
-                        signalState.time[sig] = e.target.checked;
-                    });
-                }
-            });
-            // Visual CPPN signals
-            ['time', 'mouseSpeed', 'mouseDist', 'inactivity'].forEach(sig => {
-                const checkbox = document.getElementById(`visual-${sig}`);
-                if (checkbox) {
-                    checkbox.addEventListener('change', (e) => {
-                        signalState.visual[sig] = e.target.checked;
-                    });
-                }
-            });
-            // Effects
-            const mouseRippleCheckbox = document.getElementById('effect-mouseRipple');
-            if (mouseRippleCheckbox) {
-                mouseRippleCheckbox.addEventListener('change', (e) => {
-                    signalState.effects.mouseRipple = e.target.checked;
-                    console.log('🌊 Mouse Ripple:', e.target.checked ? 'ON' : 'OFF');
-                });
-            }
-            // Zoom controls
-            document.getElementById('zoom-in').addEventListener('click', () => {
-                patternZoom = Math.min(ZOOM_MAX, patternZoom + ZOOM_STEP);
-                applyZoom();
-            });
-            document.getElementById('zoom-out').addEventListener('click', () => {
-                patternZoom = Math.max(ZOOM_MIN, patternZoom - ZOOM_STEP);
-                applyZoom();
-            });
-            applyZoom();
-        }
-        
-        // Mouse tracking
-        let mouseSpeed = 0;
-        let mouseX = 0;  // Current mouse position
-        let mouseY = 0;
-        let lastMouseX = 0;
-        let lastMouseY = 0;
-        let lastMouseTime = performance.now();
-        let activity = 0;  // User activity level (0-1), boosted by mouse speed, decays when still
-        const MOUSE_SPEED_DECAY = 0.95;  // How fast mouse speed decays
-        const MOUSE_SPEED_SCALE = 0.005;  // Scale factor for mouse movement
-        const MOUSE_DIST_SCALE = 300;  // Pixels for max distance (1.0) - smaller for compact grid
-        const ACTIVITY_DECAY = 0.985;  // How fast activity decays when still
-        const ACTIVITY_BOOST = 0.15;  // How much mouse speed boosts activity
-        
-        // Track mouse movement globally
-        document.addEventListener('mousemove', (e) => {
-            const now = performance.now();
-            const dt = now - lastMouseTime;
-            
-            // Update current mouse position
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-            
-            if (dt > 0) {
-                const dx = e.clientX - lastMouseX;
-                const dy = e.clientY - lastMouseY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                const instantSpeed = distance / dt;
-                
-                // Smooth the speed with exponential moving average
-                mouseSpeed = Math.min(1.0, mouseSpeed * 0.7 + instantSpeed * MOUSE_SPEED_SCALE * 0.3);
-            }
-            
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-            lastMouseTime = now;
-            
-            // Boost activity based on mouse speed
-            activity = Math.min(1.0, activity + mouseSpeed * ACTIVITY_BOOST);
-        });
-        
-        // Compute distance from mouse to a canvas center (normalized 0-1)
-        function getMouseDistanceToCanvas(canvas) {
-            const rect = canvas.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            const dx = mouseX - centerX;
-            const dy = mouseY - centerY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            // Normalize: 0 = on center, 1 = far away
-            return Math.min(1.0, dist / MOUSE_DIST_SCALE);
-        }
-
-        // Compute mouse position within a canvas (normalized 0-1)
-        function getMousePositionOnCanvas(canvas) {
-            const rect = canvas.getBoundingClientRect();
-            // Normalize to 0-1, clamped
-            const x = Math.max(0, Math.min(1, (mouseX - rect.left) / rect.width));
-            // Flip Y: browser has Y=0 at top, WebGL has Y=0 at bottom
-            const y = 1.0 - Math.max(0, Math.min(1, (mouseY - rect.top) / rect.height));
-            return { x, y };
-        }
-        
-        // Pattern grid and WebGL (setup/render delegate to PatternRenderer)
-        const patterns = new Map();
-        function setupPattern(canvas, shaderCode) {
-            return window.PatternRenderer && PatternRenderer.setupPattern(canvas, shaderCode);
-        }
-        function renderPattern(patternData, time, mouseSpd, mouseDist, inact, mousePos) {
-            if (window.PatternRenderer) {
-                PatternRenderer.renderPattern(patternData, time, mouseSpd, mouseDist, inact, signalState, mousePos);
-            }
-        }
-        
-        function showGridError(message, showRetry) {
-            const grid = document.getElementById('grid');
-            grid.innerHTML = '<div class="grid-error">' +
-                '<div style="color:#dc3545;font-weight:600;">Could not load CPPN patterns</div>' +
-                '<div style="margin-top:8px;">' + message + '</div>' +
-                '<div style="margin-top:12px;font-size:13px;color:#888;">Start the server: <code>python server.py</code><br>Then open <a href="http://localhost:5001" style="color:#0066cc;">http://localhost:5001</a></div>' +
-                (showRetry ? '<button type="button" class="retry-btn" id="grid-retry-btn">New random population</button>' : '') +
-                '</div>';
-            document.getElementById('loading').style.display = 'none';
-            if (showRetry) {
-                document.getElementById('grid-retry-btn').onclick = () => PopulationUI.startNewRandomPopulation();
-            }
-        }
-        
-        function renderGridFromPopulation(population) {
-            document.getElementById('grid').innerHTML = '';
-            patterns.clear();
-            const grid = document.getElementById('grid');
-            for (const pattern of population) {
-                const card = document.createElement('div');
-                card.className = 'pattern-card';
-                card.dataset.id = pattern.id;
-                const canvas = document.createElement('canvas');
-                canvas.className = 'pattern-canvas';
-                canvas.width = 256;
-                canvas.height = 256;
-                const info = document.createElement('div');
-                info.className = 'pattern-info';
-                info.innerHTML = `
-                    <div class="pattern-meta">
-                        ID: ${pattern.id} | Nodes: ${pattern.nodes} | Connections: ${pattern.connections}
+    <!-- Network Sidebar (CPPN visualization) -->
+        <div id="network-sidebar" class="network-container">
+        <button class="network-container-close" id="network-sidebar-close">Close</button>
+            <div class="network-labels-header">
+                <div class="network-labels-main">
+                    <div class="network-label-item">
+                        <span class="network-label-title">Visual Network</span>
+                        <span class="network-label-description">(Left)</span>
                     </div>
-                    <div class="click-count ${pattern.clicks === 0 ? 'zero' : ''}">${pattern.clicks}</div>
-                `;
-                const actions = document.createElement('div');
-                actions.className = 'pattern-actions';
-                const submitCommunityBtn = document.createElement('button');
-                submitCommunityBtn.className = 'submit-community-btn';
-                submitCommunityBtn.setAttribute('title', 'Submit to Community');
-                submitCommunityBtn.setAttribute('aria-label', 'Submit to Community');
-                submitCommunityBtn.textContent = '↗';
-                submitCommunityBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    CommunityUI.openSubmitCommunityModal(pattern.id);
-                };
-                const saveBtn = document.createElement('button');
-                saveBtn.className = 'save-btn';
-                saveBtn.textContent = '💾 Save';
-                saveBtn.setAttribute('title', 'Save pattern (compiling may take a moment before download)');
-                saveBtn.setAttribute('aria-label', 'Save pattern; compiling may take a moment before download');
-                saveBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    savePattern(pattern.id, saveBtn);
-                };
-                actions.appendChild(submitCommunityBtn);
-                actions.appendChild(saveBtn);
-                card.appendChild(canvas);
-                card.appendChild(actions);
-                card.appendChild(info);
-                grid.appendChild(card);
-                const patternData = setupPattern(canvas, pattern.shader);
-                if (patternData) {
-                    patterns.set(pattern.id, { canvas, ...patternData, clicks: pattern.clicks });
-                } else {
-                    const fallback = document.createElement('div');
-                    fallback.className = 'pattern-canvas-fallback';
-                    fallback.textContent = 'WebGL not available';
-                    card.replaceChild(fallback, canvas);
-                }
-                card.addEventListener('click', () => clickPattern(pattern.id, card));
-                card.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    unclickPattern(pattern.id, card);
-                });
-                card.addEventListener('mouseenter', () => {
-                    if (typeof EyecatcherDebug !== 'undefined') EyecatcherDebug.setHoveredPatternId(pattern.id);
-                });
-                card.addEventListener('mouseleave', () => {
-                    if (typeof EyecatcherDebug !== 'undefined' && EyecatcherDebug.getHoveredPatternId() === pattern.id) {
-                        EyecatcherDebug.setHoveredPatternId(null);
-                    }
-                });
-            }
-            updateStats();
-        }
-        
-        async function loadFromStatelessGenomes(genomes, generationNum) {
-            if (!genomes || !genomes.length) return;
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('grid').innerHTML = '';
-            patterns.clear();
-            try {
-                const compilePayload = genomes.map(g => ({ ...g, clicks: 0 }));
-                const comp = await fetch(`${API_URL}/compile`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ genomes: compilePayload })
-                });
-                if (!comp.ok) {
-                    const err = await comp.json().catch(() => ({}));
-                    showGridError(err.error || 'Compile failed', true);
-                    return;
-                }
-                const compData = await comp.json();
-                currentGenomes = genomes;
-                currentGenerationNum = generationNum;
-                currentPopulation = compData.shaders || [];
-                document.getElementById('gen-num').textContent = currentGenerationNum;
-                renderGridFromPopulation(currentPopulation);
-            } catch (e) {
-                console.error(e);
-                showGridError(e.message || 'Failed to compile', true);
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
-        
-        /**
-         * Append pattern cards to the existing grid without clearing. Used by Import and Community Load.
-         */
-        async function addToGrid(genomes) {
-            if (!genomes || !genomes.length) return;
-            document.getElementById('loading').style.display = 'block';
-            try {
-                const compilePayload = genomes.map(g => ({ ...g, clicks: 0 }));
-                const comp = await fetch(`${API_URL}/compile`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ genomes: compilePayload })
-                });
-                if (!comp.ok) {
-                    const err = await comp.json().catch(() => ({}));
-                    showToast('Add failed', err.error || 'Compile failed', 'error');
-                    return;
-                }
-                const compData = await comp.json();
-                const newShaders = compData.shaders || [];
-                if (!currentGenomes) currentGenomes = [];
-                if (!currentPopulation) currentPopulation = [];
-                currentGenomes.push(...genomes);
-                currentPopulation.push(...newShaders);
-                const grid = document.getElementById('grid');
-                for (let i = 0; i < newShaders.length; i++) {
-                    const pattern = newShaders[i];
-                    const clicks = pattern.clicks !== undefined ? pattern.clicks : 0;
-                    const card = document.createElement('div');
-                    card.className = 'pattern-card';
-                    card.dataset.id = pattern.id;
-                    const canvas = document.createElement('canvas');
-                    canvas.className = 'pattern-canvas';
-                    canvas.width = 256;
-                    canvas.height = 256;
-                    const info = document.createElement('div');
-                    info.className = 'pattern-info';
-                    info.innerHTML = `
-                        <div class="pattern-meta">
-                            ID: ${pattern.id} | Nodes: ${pattern.nodes} | Connections: ${pattern.connections}
-                        </div>
-                        <div class="click-count ${clicks === 0 ? 'zero' : ''}">${clicks}</div>
-                    `;
-                    const actions = document.createElement('div');
-                    actions.className = 'pattern-actions';
-                    const submitCommunityBtn = document.createElement('button');
-                    submitCommunityBtn.className = 'submit-community-btn';
-                    submitCommunityBtn.setAttribute('title', 'Submit to Community');
-                    submitCommunityBtn.setAttribute('aria-label', 'Submit to Community');
-                    submitCommunityBtn.textContent = '↗';
-                    submitCommunityBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        CommunityUI.openSubmitCommunityModal(pattern.id);
-                    };
-                    const saveBtn = document.createElement('button');
-                    saveBtn.className = 'save-btn';
-                    saveBtn.textContent = '💾 Save';
-                    saveBtn.setAttribute('title', 'Save pattern (compiling may take a moment before download)');
-                    saveBtn.setAttribute('aria-label', 'Save pattern; compiling may take a moment before download');
-                    saveBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        savePattern(pattern.id, saveBtn);
-                    };
-                    actions.appendChild(submitCommunityBtn);
-                    actions.appendChild(saveBtn);
-                    card.appendChild(canvas);
-                    card.appendChild(actions);
-                    card.appendChild(info);
-                    grid.appendChild(card);
-                    const patternData = setupPattern(canvas, pattern.shader);
-                    if (patternData) {
-                        patterns.set(pattern.id, { canvas, ...patternData, clicks });
-                    } else {
-                        const fallback = document.createElement('div');
-                        fallback.className = 'pattern-canvas-fallback';
-                        fallback.textContent = 'WebGL not available';
-                        card.replaceChild(fallback, canvas);
-                    }
-                    card.addEventListener('click', () => clickPattern(pattern.id, card));
-                    card.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        unclickPattern(pattern.id, card);
-                    });
-                    card.addEventListener('mouseenter', () => {
-                        if (typeof EyecatcherDebug !== 'undefined') EyecatcherDebug.setHoveredPatternId(pattern.id);
-                    });
-                    card.addEventListener('mouseleave', () => {
-                        if (typeof EyecatcherDebug !== 'undefined' && EyecatcherDebug.getHoveredPatternId() === pattern.id) {
-                            EyecatcherDebug.setHoveredPatternId(null);
-                        }
-                    });
-                }
-                updateStats();
-            } catch (e) {
-                console.error(e);
-                showToast('Add failed', e.message || 'Failed to compile', 'error');
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
-        
-        function clickPattern(id, card) {
-            const pattern = patterns.get(id);
-            if (pattern) {
-                pattern.clicks = (pattern.clicks || 0) + 1;
-                const clickCount = card.querySelector('.click-count');
-                clickCount.textContent = pattern.clicks;
-                clickCount.classList.remove('zero');
-                card.classList.add('selected');
-                updateStats();
-            }
-        }
-        
-        function unclickPattern(id, card) {
-            const pattern = patterns.get(id);
-            if (pattern && pattern.clicks > 0) {
-                pattern.clicks--;
-                const clickCount = card.querySelector('.click-count');
-                clickCount.textContent = pattern.clicks;
-                if (pattern.clicks === 0) {
-                    clickCount.classList.add('zero');
-                    card.classList.remove('selected');
-                }
-                updateStats();
-            }
-        }
-        
-        function setBreedButtonDisabled(disabled) {
-            const el = document.getElementById('breed-btn');
-            if (disabled) {
-                el.classList.add('disabled');
-                el.setAttribute('aria-disabled', 'true');
-            } else {
-                el.classList.remove('disabled');
-                el.setAttribute('aria-disabled', 'false');
-            }
-        }
-        
-        async function breedGeneration() {
-            if (document.getElementById('breed-btn').classList.contains('disabled')) return;
-            setBreedButtonDisabled(true);
-            document.getElementById('loading').style.display = 'block';
-            
-            if (currentGenomes) {
-                try {
-                    const parents = currentPopulation
-                        .map((p, idx) => {
-                            const pat = patterns.get(p.id);
-                            const clicks = pat ? pat.clicks : 0;
-                            const genome = currentGenomes[idx];
-                            return genome ? { genome, clicks } : null;
-                        })
-                        .filter(Boolean)
-                        .filter(p => p.clicks > 0);
-                    if (!parents.length) {
-                        alert('Select at least one pattern (click on it) before breeding.');
-                        document.getElementById('loading').style.display = 'none';
-                        updateStats();
-                        return;
-                    }
-                    const response = await fetch(`${API_URL}/breed`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ parents, population_size: currentPopulation.length || 12 })
-                    });
-                    let data;
-                    try {
-                        data = await response.json();
-                    } catch (_) {
-                        alert('Breed failed: server returned invalid response (status ' + response.status + ')');
-                        document.getElementById('loading').style.display = 'none';
-                        updateStats();
-                        return;
-                    }
-                    if (!response.ok || data.error) {
-                        alert(data.error || 'Breed failed (status ' + response.status + ')');
-                        document.getElementById('loading').style.display = 'none';
-                        updateStats();
-                        return;
-                    }
-                    if (!Array.isArray(data.children)) {
-                        alert('Breed failed: no children in response');
-                        document.getElementById('loading').style.display = 'none';
-                        updateStats();
-                        return;
-                    }
-                    await loadFromStatelessGenomes(data.children, currentGenerationNum + 1);
-                    // Clear score displays from previous generation
-                    if (typeof OpenEndednessTracker !== 'undefined') {
-                        OpenEndednessTracker.clearScoreDisplays();
-                    }
-                } catch (e) {
-                    console.error('Error breeding:', e);
-                    alert('Breed failed: ' + (e.message || String(e)));
-                    document.getElementById('loading').style.display = 'none';
-                    updateStats();
-                }
-                return;
-            }
-            alert('No population loaded. Start with New random population, New from Seeds, or Load Saved.');
-            document.getElementById('loading').style.display = 'none';
-            setBreedButtonDisabled(false);
-            updateStats();
-        }
-        
-        /** Get current genomes and generation (client state only). */
-        async function getCurrentGenomesForSave() {
-            if (currentGenomes && currentGenomes.length) {
-                return { genomes: currentGenomes, generation: currentGenerationNum };
-            }
-            return null;
-        }
+                    <div class="network-label-divider">→</div>
+                    <div class="network-label-item">
+                        <span class="network-label-title">Time Signal Network</span>
+                        <span class="network-label-description">(Right)</span>
+                    </div>
+                </div>
+                <div class="network-legend-header">
+                    <div class="legend-item-inline">
+                        <div class="legend-dot" style="background: #0066cc;"></div>
+                        <span>Input</span>
+                    </div>
+                    <div class="legend-item-inline">
+                        <div class="legend-dot" style="background: #28a745;"></div>
+                        <span>Hidden</span>
+                    </div>
+                    <div class="legend-item-inline">
+                        <div class="legend-dot" style="background: #dc3545;"></div>
+                        <span>Output</span>
+                    </div>
+                </div>
+            </div>
+            <div class="network-visualization"></div>
+            <div class="network-inline-controls">
+            <button id="network-fit-btn">Fit View</button>
+            <button id="network-export-btn">Export JSON</button>
+            </div>
+            <div class="weight-adjustment-panel" id="weight-adjustment-panel" style="display: none;">
+                <div class="weight-adjustment-title">Adjust Connection Weights</div>
+                <div id="weight-sliders-container"></div>
+            </div>
+            <div class="network-info-panel">
+                <div class="network-info-item">
+                    <span class="network-info-label">Hidden Nodes:</span>
+                    <span class="network-info-value" data-nodes>0</span>
+                </div>
+                <div class="network-info-item">
+                    <span class="network-info-label">Connections:</span>
+                    <span class="network-info-value" data-connections>0</span>
+                </div>
+            </div>
+        </div>
+    <div id="fullscreen-modal" class="fullscreen-modal" hidden aria-modal="true" role="dialog" aria-label="Pattern fullscreen">
+        <div id="fullscreen-backdrop" class="fullscreen-backdrop"></div>
+        <div class="fullscreen-content">
+            <button type="button" id="fullscreen-close" class="fullscreen-close" aria-label="Close fullscreen">&times;</button>
+            <div id="fullscreen-canvas-wrap" class="fullscreen-canvas-wrap"></div>
+    </div>
+    </div>
+    <div id="toast-container"></div>
 
-        async function savePattern(id, buttonEl) {
-            if (!currentGenomes || !currentGenomes.length) {
-                showToast('Cannot save', 'No pattern data. Start with New random population or Load Saved.', 'error');
-                return;
-            }
-            const idx = currentPopulation.findIndex(p => p.id === id);
-            const genome = idx >= 0 && currentGenomes[idx] ? currentGenomes[idx] : null;
-            if (!genome) {
-                showToast('Cannot save', 'Could not get pattern data.', 'error');
-                return;
-            }
-            
-            // Show compiling state on button (save compiles shader + image + optional PDF before download)
-            const originalText = buttonEl ? buttonEl.textContent : null;
-            if (buttonEl) {
-                buttonEl.textContent = 'Compiling...';
-                buttonEl.classList.add('saving');
-            }
-            
-            try {
-                const response = await fetch(`${API_URL}/save`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, genome })
-                });
-
-                const data = await response.json();
-                if (data.error) {
-                    showToast('Save failed', data.error, 'error');
-                    return;
-                }
-                
-                // Trigger download (server returns a single zip with all assets)
-                if (Array.isArray(data.downloads) && data.downloads.length) {
-                    const file = data.downloads[0];
-                    const blob = file.content_base64
-                        ? base64ToBlob(file.content_base64, file.mime)
-                        : new Blob([file.content], { type: file.mime });
-                    triggerDownload(blob, file.filename);
-                    showToast('Pattern saved!', 'Zip downloaded to your computer.', 'success', { duration: 5000 });
-                } else {
-                    showToast('Pattern saved!', 'No download in response.', 'success');
-                }
-
-            } catch (error) {
-                console.error('Error saving:', error);
-                showToast('Save failed', error.message || 'Network error', 'error');
-            } finally {
-                // Restore button state
-                if (buttonEl) {
-                    buttonEl.textContent = originalText;
-                    buttonEl.classList.remove('saving');
-                }
-            }
-        }
-
-        /** Get genome JSON for a pattern (from client state). */
-        async function getGenomeForPattern(patternId) {
-            if (!currentGenomes) return null;
-            const idx = currentPopulation.findIndex(p => p.id === patternId);
-            if (idx >= 0 && currentGenomes[idx]) return currentGenomes[idx];
-            return null;
-        }
-
-        function updateStats() {
-            const selected = Array.from(patterns.values()).filter(p => p.clicks > 0).length;
-            const totalClicks = Array.from(patterns.values()).reduce((sum, p) => sum + p.clicks, 0);
-            
-            document.getElementById('selected-count').textContent = selected;
-            document.getElementById('total-clicks').textContent = totalClicks;
-            
-            // Enable breed button if at least one pattern selected
-            setBreedButtonDisabled(selected === 0);
-        }
-        
-        // Animation loop
-        function animate() {
-            if (animating) {
-                // Get selected time mode (default to 'oscillate')
-                const timeMode = document.querySelector('input[name="timeMode"]:checked')?.value || 'oscillate';
-                
-                // Update time based on mode
-                // Time mode generates BASE time (0-1), which Time Signal CPPN will then modify
-                // If mode is "none", time stays at 0 (no automatic animation)
-                switch (timeMode) {
-                    case 'loop':
-                        // Sawtooth: 0 -> 1 -> 0 -> 1 (sharp loop/wrap around)
-                        // This creates a linear ramp that resets to 0
-                        animationTime = (animationTime + ANIMATION_SPEED) % 1.0;
-                        break;
-                    
-                    case 'oscillate':
-                        // Smooth sine wave: 0 -> 1 -> 0 -> 1 (smooth breathing)
-                        // This creates a smooth oscillation
-                        oscillatePhase += ANIMATION_SPEED;
-                        // Map sine wave to 0-1 range
-                        // sin(phase) goes from -1 to 1, we map it to 0 to 1
-                        animationTime = (Math.sin(oscillatePhase * Math.PI * 2) + 1) * 0.5;
-                        break;
-                    
-                    case 'infinite':
-                        // Linear: keeps increasing forever (truly infinite, no wrapping)
-                        // Time grows unbounded - shader can handle values > 1.0
-                        animationTime += ANIMATION_SPEED;
-                        // No wrapping - let it grow infinitely
-                        break;
-                    
-                    default:
-                        console.error('Unknown TIME_MODE:', timeMode);
-                        animationTime = (animationTime + ANIMATION_SPEED) % 1.0;
-                }
-                
-                // Prepare time for shader
-                // For loop/oscillate: time is already 0-1
-                // For infinite: time can be > 1.0 (truly infinite growth)
-                // Shader converts uTime to -1 to 1 range, so values > 1.0 become > 1.0 in that range
-                // This BASE time will be modified by Time Signal CPPN (if Raw Time is enabled)
-                const normalizedTime = animationTime;
-                
-                // Decay mouse speed when not moving
-                mouseSpeed *= MOUSE_SPEED_DECAY;
-                
-                // Decay activity when not moving
-                activity *= ACTIVITY_DECAY;
-                
-                patterns.forEach((patternData) => {
-                    // Compute distance from mouse to this pattern's canvas center
-                    const mouseDist = getMouseDistanceToCanvas(patternData.canvas);
-                    // Compute mouse position on this canvas (for ripple effect)
-                    const mousePos = getMousePositionOnCanvas(patternData.canvas);
-                    // Pass normalized time (0-1) to shader
-                    renderPattern(patternData, normalizedTime, mouseSpeed, mouseDist, activity, mousePos);
-                });
-                
-                // Update debug overlay (guard against missing debug.js)
-                if (typeof EyecatcherDebug !== 'undefined') {
-                    EyecatcherDebug.update({
-                        time: normalizedTime,
-                        mouseSpeed: mouseSpeed,
-                        activity: activity,
-                        mouseX: mouseX,
-                        mouseY: mouseY
-                    });
-                }
-                
-                // Debug: Log time mode changes (only once per mode change)
-                if (typeof animate.lastTimeMode === 'undefined') {
-                    animate.lastTimeMode = timeMode;
-                }
-                if (animate.lastTimeMode !== timeMode) {
-                    console.log(`⏱️ Time mode changed: ${animate.lastTimeMode} → ${timeMode}`);
-                    animate.lastTimeMode = timeMode;
-                }
-            }
-            
-            requestAnimationFrame(animate);
-        }
-        
-        // Keyboard support for span-based buttons
-        function onRoleButtonKeydown(e, onClick) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onClick();
-            }
-        }
-        
-        // Event listeners
-        const breedBtnEl = document.getElementById('breed-btn');
-        breedBtnEl.addEventListener('click', breedGeneration);
-        breedBtnEl.addEventListener('keydown', (e) => onRoleButtonKeydown(e, breedGeneration));
-        document.getElementById('new-random-btn').addEventListener('click', PopulationUI.startNewRandomPopulation);
-        document.getElementById('new-random-btn').addEventListener('keydown', (e) => onRoleButtonKeydown(e, PopulationUI.startNewRandomPopulation));
-        document.getElementById('zoom-in').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                document.getElementById('zoom-in').click();
-            }
-        });
-        document.getElementById('zoom-out').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                document.getElementById('zoom-out').click();
-            }
-        });
-        
-        // Initialize modules (must run before event listeners that use them)
-        PopulationUI.init({
-            apiUrl: API_URL,
-            loadFromStatelessGenomes: loadFromStatelessGenomes,
-            addToGrid: addToGrid,
-            getCurrentGenomesForSave: getCurrentGenomesForSave
-        });
-        CommunityUI.init({
-            apiUrl: API_URL,
-            loadFromStatelessGenomes: loadFromStatelessGenomes,
-            addToGrid: addToGrid,
-            getGenomeForPattern: getGenomeForPattern,
-            setupPattern: setupPattern,
-            renderPattern: renderPattern
-        });
-
-        // Population panel: keyboard support for span-buttons
-        const populationPanel = document.getElementById('population-panel');
-        if (populationPanel) {
-            populationPanel.addEventListener('keydown', (e) => {
-                if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute && e.target.getAttribute('role') === 'button') {
-                    e.preventDefault();
-                    e.target.click();
-                }
-            });
-        }
-        
-        const newFromSeedsBtn = document.getElementById('new-from-seeds-btn');
-        if (newFromSeedsBtn) newFromSeedsBtn.addEventListener('click', PopulationUI.onNewFromSeedsClick);
-        const loadSavedBtn = document.getElementById('load-saved-btn');
-        if (loadSavedBtn) loadSavedBtn.addEventListener('click', PopulationUI.onLoadSavedClick);
-        const loadModalClose = document.getElementById('load-modal-close');
-        if (loadModalClose) loadModalClose.addEventListener('click', () => { document.getElementById('load-list-modal').classList.remove('show'); });
-        document.getElementById('community-submit-do').addEventListener('click', CommunityUI.submitCommunityForm);
-        document.getElementById('community-submit-cancel').addEventListener('click', CommunityUI.closeSubmitCommunityModal);
-        document.getElementById('community-list-close').addEventListener('click', () => document.getElementById('community-list-modal').classList.remove('show'));
-        document.getElementById('community-load-selected-btn').addEventListener('click', CommunityUI.onCommunityLoadSelected);
-        document.getElementById('community-load-12-btn').addEventListener('click', CommunityUI.onCommunityLoad12);
-        document.getElementById('community-select-all-btn').addEventListener('click', CommunityUI.onCommunitySelectAll);
-        document.getElementById('community-deselect-all-btn').addEventListener('click', CommunityUI.onCommunityDeselectAll);
-        const newFromCommunityBtn = document.getElementById('new-from-community-btn');
-        if (newFromCommunityBtn) {
-            newFromCommunityBtn.addEventListener('click', CommunityUI.onNewFromCommunityClick);
-            newFromCommunityBtn.addEventListener('keydown', (e) => onRoleButtonKeydown(e, CommunityUI.onNewFromCommunityClick));
-        }
-        const moderateBtn = document.getElementById('moderate-community-btn');
-        if (moderateBtn) {
-            moderateBtn.addEventListener('click', CommunityUI.openAdminModal);
-            moderateBtn.addEventListener('keydown', (e) => onRoleButtonKeydown(e, CommunityUI.openAdminModal));
-        }
-        document.getElementById('admin-key-submit').addEventListener('click', CommunityUI.submitAdminKey);
-        document.getElementById('admin-modal-cancel').addEventListener('click', CommunityUI.closeAdminModal);
-        document.getElementById('admin-list-close').addEventListener('click', CommunityUI.closeAdminModal);
-        document.getElementById('admin-key-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') CommunityUI.submitAdminKey(); });
-        const saveCurrentBtn = document.getElementById('save-current-btn');
-        if (saveCurrentBtn) saveCurrentBtn.addEventListener('click', PopulationUI.onSaveCurrentClick);
-        const importBtn = document.getElementById('import-btn');
-        const importFile = document.getElementById('import-file');
-        if (importBtn && importFile) importBtn.addEventListener('click', PopulationUI.onImportClick);
-        if (importFile) importFile.addEventListener('change', async (e) => {
-            const file = e.target.files && e.target.files[0];
-            e.target.value = '';
-            if (file && typeof PopulationUI.handleImportFile === 'function') {
-                await PopulationUI.handleImportFile(file);
-            }
-        });
-        
-        // Initialize
-        initSignalControls();
-        
-        // Wire up time mode radio buttons to reset time on change
-        function initTimeModeControls() {
-            const timeModeRadios = document.querySelectorAll('input[name="timeMode"]');
-            
-            timeModeRadios.forEach(radio => {
-                radio.addEventListener('change', (e) => {
-                    const mode = e.target.value;
-                    
-                    // Reset time when switching modes for clearer transition
-                    animationTime = 0;
-                    oscillatePhase = 0;
-                    
-                    console.log(`⏱️ Time mode set to: ${mode}`);
-                });
-            });
-        }
-        
-        // Initialize debug module (guard against missing debug.js)
-        if (typeof EyecatcherDebug !== 'undefined') {
-            EyecatcherDebug.init({
-                apiUrl: API_URL,
-                getMouseDistance: getMouseDistanceToCanvas,
-                getPatterns: () => patterns,
-                getSignalState: () => signalState,
-                getGenomeForPattern: getGenomeForPattern
-            });
-        }
-        
-        initTimeModeControls();
-
-        // Initialize Open-Endedness Scorer (guard against missing module)
-        if (typeof OpenEndednessTracker !== 'undefined') {
-            OpenEndednessTracker.init();
-
-            // OE Score button
-            const oeToggle = document.getElementById('oe-toggle');
-            if (oeToggle) {
-                oeToggle.addEventListener('click', OpenEndednessTracker.toggleTracking);
-                oeToggle.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        OpenEndednessTracker.toggleTracking();
-                    }
-                });
-            }
-        }
-
-        PopulationUI.startNewRandomPopulation();
-        animate();
-
-        console.log('🎨 Eyecatcher Interactive Evolution ready!');
-    </script>
+    <script src="js/modules/storage.js"></script>
+    <script src="js/modules/population_ui.js"></script>
+    <script src="js/modules/community.js"></script>
+    <script src="js/modules/debug.js"></script>
+    <script src="js/modules/pattern_renderer.js"></script>
+    <script src="js/modules/toast.js"></script>
+    <script src="js/modules/zoom_signals.js"></script>
+    <script src="js/modules/toolbar_ui.js"></script>
+    <script src="js/modules/network_visualizer.js"></script>
+    <script src="js/modules/api_client.js"></script>
+    <script src="js/modules/animation_loop.js"></script>
+    <!-- Open-endedness scoring module -->
+    <script src="open_endedness.js"></script>
+    <script src="js/app.js"></script>
 </body>
+
 </html>

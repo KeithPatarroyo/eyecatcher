@@ -52,7 +52,7 @@
         const genome = _getGenomeForPattern ? await _getGenomeForPattern(patternId) : null;
         document.getElementById('loading').style.display = 'none';
         if (!genome) {
-            alert('Could not get pattern data.');
+            if (window.Toast) Toast.error('Could not get pattern data.'); else alert('Could not get pattern data.');
             return;
         }
         _submitCommunityGenome = genome;
@@ -78,13 +78,13 @@
             });
             const d = await r.json().catch(() => ({}));
             if (!r.ok) {
-                alert(d.error || 'Submit failed');
+                if (window.Toast) Toast.error(d.error || 'Submit failed'); else alert(d.error || 'Submit failed');
                 return;
             }
-            alert('Submitted! It will be reviewed before appearing in Community.');
+            if (window.Toast) Toast.show('Submitted', 'It will be reviewed before appearing in Community.', 'success'); else alert('Submitted! It will be reviewed before appearing in Community.');
             closeSubmitCommunityModal();
         } catch (e) {
-            alert('Error: ' + (e.message || String(e)));
+            if (window.Toast) Toast.error('Error: ' + (e.message || String(e))); else alert('Error: ' + (e.message || String(e)));
         }
     }
 
@@ -96,7 +96,7 @@
         document.getElementById('loading').style.display = 'block';
         try {
             const r = await fetch(_apiUrl + '/community');
-            if (!r.ok) { alert('Failed to load community.'); return; }
+            if (!r.ok) { if (window.Toast) Toast.error('Failed to load community.'); else alert('Failed to load community.'); return; }
             const d = await r.json();
             _communityPatternsList = d.patterns || [];
             const ul = document.getElementById('community-list');
@@ -168,7 +168,7 @@
             }
             document.getElementById('community-list-modal').classList.add('show');
         } catch (e) {
-            alert('Error: ' + (e.message || e));
+            if (window.Toast) Toast.error('Error: ' + (e.message || e)); else alert('Error: ' + (e.message || e));
         } finally {
             document.getElementById('loading').style.display = 'none';
         }
@@ -182,8 +182,9 @@
         checked.forEach(cb => {
             const li = cb.closest('.community-item');
             const idx = parseInt(li.dataset.idx, 10);
-            if (_communityPatternsList[idx]) {
-                genomes.push(_communityPatternsList[idx].genome);
+            const pat = _communityPatternsList[idx];
+            if (pat) {
+                genomes.push({ ...pat.genome, key: pat.id });
             }
         });
         return genomes;
@@ -192,7 +193,7 @@
     function onCommunityLoadSelected() {
         const genomes = getCommunitySelectedGenomes();
         if (!genomes.length) {
-            alert('No patterns selected.');
+            if (window.Toast) Toast.error('No patterns selected.'); else alert('No patterns selected.');
             return;
         }
         document.getElementById('community-list-modal').classList.remove('show');
@@ -202,7 +203,7 @@
     }
 
     function onCommunityLoad12() {
-        const first12 = _communityPatternsList.slice(0, 12).map(p => p.genome);
+        const first12 = _communityPatternsList.slice(0, 12).map(p => ({ ...p.genome, key: p.id }));
         document.getElementById('community-list-modal').classList.remove('show');
         if (_addToGrid) {
             _addToGrid(first12);
@@ -334,10 +335,10 @@
                 headers: { 'Content-Type': 'application/json', 'X-Admin-Key': _adminKey },
                 body: JSON.stringify({ id })
             });
-            if (r.status === 403) { alert('Invalid API key.'); return; }
-            if (!r.ok) { alert('Approve failed.'); return; }
+            if (r.status === 403) { if (window.Toast) Toast.error('Invalid API key.'); else alert('Invalid API key.'); return; }
+            if (!r.ok) { if (window.Toast) Toast.error('Approve failed.'); else alert('Approve failed.'); return; }
             rowEl.remove();
-        } catch (e) { alert('Error: ' + (e.message || e)); }
+        } catch (e) { if (window.Toast) Toast.error('Error: ' + (e.message || e)); else alert('Error: ' + (e.message || e)); }
     }
 
     async function adminReject(id, rowEl) {
@@ -347,10 +348,10 @@
                 headers: { 'Content-Type': 'application/json', 'X-Admin-Key': _adminKey },
                 body: JSON.stringify({ id })
             });
-            if (r.status === 403) { alert('Invalid API key.'); return; }
-            if (!r.ok) { alert('Reject failed.'); return; }
+            if (r.status === 403) { if (window.Toast) Toast.error('Invalid API key.'); else alert('Invalid API key.'); return; }
+            if (!r.ok) { if (window.Toast) Toast.error('Reject failed.'); else alert('Reject failed.'); return; }
             rowEl.remove();
-        } catch (e) { alert('Error: ' + (e.message || e)); }
+        } catch (e) { if (window.Toast) Toast.error('Error: ' + (e.message || e)); else alert('Error: ' + (e.message || e)); }
     }
 
     // Export to global namespace

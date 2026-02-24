@@ -50,6 +50,7 @@ def genome_from_json(data: Dict[str, Any], config: neat.Config) -> neat.DefaultG
     genome.fitness = data.get("fitness")
     genome.nodes = {}
     genome.connections = {}
+    
     for nid_str, nd in data.get("nodes", {}).items():
         nid = int(nid_str)
         node = gc.node_gene_type(nid)
@@ -58,6 +59,7 @@ def genome_from_json(data: Dict[str, Any], config: neat.Config) -> neat.DefaultG
         node.activation = str(nd.get("activation", "sigmoid"))
         node.aggregation = str(nd.get("aggregation", "sum"))
         genome.nodes[nid] = node
+    
     for conn_key_str, cd in data.get("connections", {}).items():
         parts = conn_key_str.split("_", 1)
         if len(parts) != 2:
@@ -99,10 +101,41 @@ def dual_genome_from_json(data: Dict[str, Any], engine: "CPPNEngine") -> "DualGe
     time_data = data.get("time_signal", {})
     if not visual_data or not time_data:
         raise ValueError("dual genome JSON must contain 'visual' and 'time_signal'")
+    
+    # Deserialize both genomes
     visual = genome_from_json(visual_data, engine.config)
     time_signal = genome_from_json(time_data, engine.time_config)
+    
+    # Additional safety: update node indexers globally to prevent collisions
+    # This is especially important when loading from genealogy
+    _update_node_indexer_from_genome(visual, engine.config.genome_config)
+    _update_node_indexer_from_genome(time_signal, engine.time_config.genome_config)
+    
     key = data.get("key", 0)
     return DualGenome(visual=visual, time_signal=time_signal, key=key)
+
+
+def _update_node_indexer_from_genome(genome: "neat.DefaultGenome", genome_config: "neat.DefaultGenomeConfig"):
+    """Update the genome config's node indexer to prevent ID collisions."""
+    if not genome.nodes:
+        return
+    
+    # Find the maximum node ID in this genome (only hidden nodes, which have positive IDs)
+    # Input nodes have negative IDs, output nodes are 0+, hidden nodes are higher
+    hidden_node_ids = [nid for nid in genome.nodes.keys() if nid >= genome_config.num_outputs]
+    
+    if not hidden_node_ids:
+        # No hidden nodes yet, nothing to update
+        return
+    
+    max_node_id = max(hidden_node_ids)
+    
+    # Update the indexer by replacing it with a new counter starting at max_node_id + 1
+    # This prevents ID collisions when mutating loaded genomes
+    if hasattr(genome_config, 'node_indexer'):
+        import itertools
+        # Replace the counter to start at max_node_id + 1
+        genome_config.node_indexer = itertools.count(max_node_id + 1)
 
 
 def copy_genome(genome: neat.DefaultGenome, config: neat.Config) -> neat.DefaultGenome:
