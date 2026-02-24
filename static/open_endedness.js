@@ -16,6 +16,25 @@ const OpenEndednessTracker = (function() {
     const NUM_FRAMES = 16;
     const FRAME_RESOLUTION = 64;
 
+    // Injected dependencies (set via init)
+    let _getPatterns = null;
+    let _getGenomes = null;
+    let _getGeneration = null;
+    let _apiUrl = '';
+
+    /**
+     * Show a toast notification (uses modular toast system if available)
+     */
+    function showToast(title, message, type) {
+        if (typeof window.Toast !== 'undefined' && window.Toast.show) {
+            window.Toast.show(title, message, type);
+        } else if (typeof window.showToast === 'function') {
+            window.showToast(title, message, type);
+        } else {
+            console.log(`[${type}] ${title}: ${message}`);
+        }
+    }
+
     /**
      * Capture frames from a pattern's WebGL canvas at different time values.
      * Uses the same shader that renders in the interactive viewer.
@@ -42,14 +61,17 @@ const OpenEndednessTracker = (function() {
         // Signal state for rendering (only time enabled for consistent capture)
         const signalState = {
             time: { rawTime: true, mouseSpeed: false, mouseDist: false, inactivity: false },
-            visual: { time: true, mouseSpeed: false, mouseDist: false, inactivity: false }
+            visual: { time: true, mouseSpeed: false, mouseDist: false, inactivity: false },
+            effects: { mouseRipple: false }
         };
 
         for (let i = 0; i < numFrames; i++) {
             const time = i / (numFrames - 1);  // 0 to 1
 
             // Render the pattern at this time
-            PatternRenderer.renderPattern(patternData, time, 0, 0, 0, signalState);
+            if (window.PatternRenderer) {
+                window.PatternRenderer.renderPattern(patternData, time, 0, 0, 0, signalState, { x: 0.5, y: 0.5 });
+            }
 
             // Capture pixels at current canvas size
             const pixels = new Uint8Array(width * height * 4);
@@ -79,11 +101,6 @@ const OpenEndednessTracker = (function() {
             frames.push(btoa(binary));
         }
 
-        // Re-render at current animation time to restore display
-        const currentTime = typeof animationTime !== 'undefined' ? animationTime : 0;
-        const currentSignalState = typeof window.signalState !== 'undefined' ? window.signalState : signalState;
-        PatternRenderer.renderPattern(patternData, currentTime, 0, 0, 0, currentSignalState);
-
         return { frames, width, height };
     }
 
@@ -92,7 +109,7 @@ const OpenEndednessTracker = (function() {
      */
     async function computeSinglePatternScore(patternId, frameData, generation) {
         try {
-            const response = await fetch(`${API_URL}/open-endedness/from-frames`, {
+            const response = await fetch(`${_apiUrl}/open-endedness/from-frames`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -125,7 +142,9 @@ const OpenEndednessTracker = (function() {
      * Compute OE scores for all patterns, one at a time.
      */
     async function computeAllScores(genomes, generation) {
-        if (isComputing || !genomes || genomes.length === 0) {
+        const patternsArray = _getPatterns ? _getPatterns() : [];
+
+        if (isComputing || !patternsArray || patternsArray.length === 0) {
             return;
         }
 
@@ -150,19 +169,19 @@ const OpenEndednessTracker = (function() {
             }
         });
 
-        showToast('Computing...', `Processing ${currentPopulation.length} patterns one at a time. Check terminal for progress.`, 'info');
+        showToast('Computing...', `Processing ${patternsArray.length} patterns one at a time. Check terminal for progress.`, 'info');
 
         let successCount = 0;
 
         // Process patterns one at a time
-        for (let i = 0; i < currentPopulation.length; i++) {
-            const pattern = currentPopulation[i];
-            const patternData = patterns.get(pattern.id);
-            const card = document.querySelector(`.pattern-card[data-id="${pattern.id}"]`);
+        for (let i = 0; i < patternsArray.length; i++) {
+            const patternData = patternsArray[i];
+            const genomeKey = genomes && genomes[i] ? genomes[i].key : i;
+            const card = cards[i];
             const scoreDisplay = card?.querySelector('.oe-score');
 
             if (!patternData) {
-                console.warn(`Pattern ${pattern.id} not found in patterns map`);
+                console.warn(`Pattern ${i} not found`);
                 if (scoreDisplay) {
                     scoreDisplay.className = 'oe-score error';
                     scoreDisplay.textContent = 'N/A';
@@ -173,14 +192,14 @@ const OpenEndednessTracker = (function() {
             // Update progress indicator
             if (scoreDisplay) {
                 scoreDisplay.textContent = `${i + 1}...`;
-                scoreDisplay.title = `Computing (${i + 1}/${currentPopulation.length})...`;
+                scoreDisplay.title = `Computing (${i + 1}/${patternsArray.length})...`;
             }
 
             // Capture frames for this pattern (at current canvas size)
             const frameData = capturePatternFrames(patternData, NUM_FRAMES);
 
             if (!frameData || !frameData.frames) {
-                console.warn(`Failed to capture frames for pattern ${pattern.id}`);
+                console.warn(`Failed to capture frames for pattern ${i}`);
                 if (scoreDisplay) {
                     scoreDisplay.className = 'oe-score error';
                     scoreDisplay.textContent = 'ERR';
@@ -189,10 +208,10 @@ const OpenEndednessTracker = (function() {
             }
 
             // Send to server and get score
-            const score = await computeSinglePatternScore(pattern.id, frameData, generation);
+            const score = await computeSinglePatternScore(genomeKey, frameData, generation);
 
             if (typeof score === 'number') {
-                currentScores.set(pattern.id, score);
+                currentScores.set(genomeKey, score);
                 successCount++;
 
                 if (scoreDisplay) {
@@ -244,10 +263,12 @@ const OpenEndednessTracker = (function() {
             return;
         }
 
-        // Get all current genomes and generation from the viewer
-        if (typeof currentGenomes !== 'undefined' && currentGenomes && currentGenomes.length > 0) {
-            const generation = typeof currentGenerationNum !== 'undefined' ? currentGenerationNum : 0;
-            await computeAllScores(currentGenomes, generation);
+        // Get genomes and generation from injected getters
+        const genomes = _getGenomes ? _getGenomes() : [];
+        const generation = _getGeneration ? _getGeneration() : 0;
+
+        if (genomes && genomes.length > 0) {
+            await computeAllScores(genomes, generation);
         } else {
             showToast('No patterns', 'No patterns loaded to compute scores for', 'info');
         }
@@ -290,8 +311,18 @@ const OpenEndednessTracker = (function() {
         }
     }
 
-    // Initialize the module
-    async function init() {
+    // Initialize the module with dependencies
+    function init(options) {
+        options = options || {};
+        _getPatterns = options.getPatterns || null;
+        _getGenomes = options.getGenomes || null;
+        _getGeneration = options.getGeneration || function() { return 0; };
+
+        // Detect API URL
+        _apiUrl = (window.location.origin && window.location.protocol.startsWith('http'))
+            ? window.location.origin + '/api'
+            : 'http://localhost:5001/api';
+
         updateToggleState();
     }
 
@@ -306,3 +337,6 @@ const OpenEndednessTracker = (function() {
         getScore: (genomeKey) => currentScores.get(genomeKey)
     };
 })();
+
+// Export for global access
+window.OpenEndednessTracker = OpenEndednessTracker;

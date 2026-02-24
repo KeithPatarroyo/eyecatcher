@@ -566,6 +566,25 @@
 
     window.ZoomSignals.init();
 
+    // Open-Endedness toggle initialization
+    var oeToggle = document.getElementById('oe-toggle');
+    if (oeToggle && typeof window.OpenEndednessTracker !== 'undefined') {
+        window.OpenEndednessTracker.init({
+            getPatterns: function () { return patterns; },
+            getGenomes: function () { return currentGenomes; },
+            getGeneration: function () { return currentGenerationNum; }
+        });
+        oeToggle.addEventListener('click', function () {
+            window.OpenEndednessTracker.toggleTracking();
+        });
+        oeToggle.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                window.OpenEndednessTracker.toggleTracking();
+            }
+        });
+    }
+
     if (typeof window.EyecatcherDebug !== 'undefined') {
         window.EyecatcherDebug.init({
             apiUrl: API_URL,
